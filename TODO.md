@@ -3,7 +3,7 @@ convergen TODO
 
 - [ ] Generate return value style converter by default.  
   ```go
-  interface Convergen {
+  type Convergen interface {
     ModelToDomain(*Model) *Domain
   }
 
@@ -16,7 +16,7 @@ convergen TODO
   //generate: go run github.com/reedom/convergen -z
 
   // convergen:style:zero-memory    // or on the interface
-  interface Convergen {
+  type Convergen interface {
     // convergen:style:zero-memory  // or on a specific method
     ModelToDomain(*Model) *Domain
   }
@@ -27,14 +27,14 @@ convergen TODO
 
 - [ ] Generate a converter that can return an error that is determined by the signature  
   ```go
-  interface Convergen {
+  type Convergen interface {
     ModelToDomain(*Model) (*Domain, error)
   }
 
   func ModelToDomain(*Model) (*Domain, error) {}
   ```
   ```go
-  interface Convergen {
+  type Convergen interface {
     // convergen:style:zero-memory
     ModelToDomain(*Model) (*Domain, error)
   }
@@ -45,7 +45,7 @@ convergen TODO
 
 - [ ] Generate a converter as medhod.  
   ```go
-  interface Convergen {
+  type Convergen interface {
     // convergen:receiver:m
     ModelToDomain(*Model) *Domain
   }
@@ -70,7 +70,7 @@ convergen TODO
   //generate: go run github.com/reedom/convergen --nocase
 
   // convergen:opt:nocase          // or on the interface
-  interface Convergen {
+  type Convergen interface {
     // convergen:opt:nocase        // or on a specific method
     ModelToDomain(*Model) *Domain
   }
@@ -78,7 +78,7 @@ convergen TODO
 
 - [ ] Support field name mappings.  
   ```go
-  interface Convergen {
+  type Convergen interface {
     // convergen:map ID UserID
     ModelToDomain(*Model) *Domain
   }
@@ -92,7 +92,7 @@ convergen TODO
 
 - [ ] Support convertion functions.  
   ```go
-  interface Convergen {
+  type Convergen interface {
     // convergen:with Atoi ID
     // convergen:with Atoi Timestamp TS
     ModelToDomain(*Model) *Domain
@@ -115,7 +115,7 @@ convergen TODO
   //generate: go run github.com/reedom/convergen --match getter,field
 
   // convergen:opt:match getter,field    // or on the interface
-  interface Convergen {
+  type Convergen interface {
     // convergen:opt:match getter,field  // or on a specific method
     // convergen:map Timestamp TS 
     ModelToDomain(*Model) *Domain
@@ -129,10 +129,9 @@ convergen TODO
   }
   ```
 
-
 - [ ] Support skipping assignment.  
   ```go
-  interface Convergen {
+  type Convergen interface {
     // convergen:skip Test.*             // with regexp
     ModelToDomain(*Model) *Domain
   }
