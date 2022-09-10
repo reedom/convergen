@@ -53,6 +53,17 @@ convergen TODO
   func (m *Model) ToDomain() *Domain {}
   ```
 
+- [ ] Support embedded struct.  
+  ```go
+  type Model struct {
+    OtherModel
+  }
+
+  interface Convergen {
+    ModelToDomain(*Model) *Domain
+  }
+  ```
+
 - [ ] Support case-insensitive field matching.  
   ```go
   // by "--nocase" cli flag
@@ -118,3 +129,11 @@ convergen TODO
   }
   ```
 
+
+- [ ] Support skipping assignment.  
+  ```go
+  interface Convergen {
+    // convergen:skip Test.*             // with regexp
+    ModelToDomain(*Model) *Domain
+  }
+  ```
