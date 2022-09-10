@@ -230,3 +230,4 @@ fabric.properties
 ### Project specific
 
 /.idea
+/build
