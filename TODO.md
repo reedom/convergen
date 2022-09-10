@@ -136,3 +136,11 @@ convergen TODO
     ModelToDomain(*Model) *Domain
   }
   ```
+
+- [ ] Support deep-copy for slice, etc.
+  ```go
+  type Convergen interface {
+    // convergen:deepcopy photoURLs
+    ModelToDomain(*model.Pet) *domain.Pet
+  }
+  ```
