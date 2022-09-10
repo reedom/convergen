@@ -1,6 +1,7 @@
 package config
 
 import (
+	"flag"
 	"os"
 	"path"
 )
@@ -11,7 +12,15 @@ type ConvergenConfig struct {
 	Output string
 }
 
-func (c ConvergenConfig) OutputPath(srcPath string) string {
+func (c *ConvergenConfig) ParseArgs() error {
+	output := flag.String("o", "", "File name or path for generated code")
+	flag.Parse()
+
+	c.Output = *output
+	return nil
+}
+
+func (c *ConvergenConfig) OutputPath(srcPath string) string {
 	pwd, err := os.Getwd()
 	if err != nil {
 		panic(err)
