@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"bytes"
+	"go/printer"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,6 +11,8 @@ import (
 )
 
 func TestGetComments(t *testing.T) {
+	t.Parallel()
+
 	src := `
 package main
 
@@ -39,6 +44,8 @@ var y = 0
 }
 
 func TestGetEmptyComments(t *testing.T) {
+	t.Parallel()
+
 	src := `
 package main
 
@@ -60,4 +67,39 @@ var y = 0
 
 	found := astGetDocCommentOn(p.entryFile.file, intf)
 	assert.Nil(t, found)
+}
+
+func TestRemoveMatchComments(t *testing.T) {
+	t.Parallel()
+
+	src := `package main
+
+// remain
+// remove
+// remain
+var x = 1
+
+// remove
+// remain
+var y = 1
+`
+
+	expected := `package main
+
+// remain
+// remain
+var x = 1
+
+// remain
+var y = 1
+`
+	re := regexp.MustCompile(`//\s*remove\b`)
+
+	p, err := NewParser("comment.go", src)
+	require.Nil(t, err)
+	e := p.entryFile
+	astRemoveMatchComments(e.file, re)
+	buf := bytes.Buffer{}
+	require.Nil(t, printer.Fprint(&buf, e.fileSet, e.file))
+	assert.Equal(t, expected, buf.String())
 }
