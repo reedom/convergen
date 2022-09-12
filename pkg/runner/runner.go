@@ -1,9 +1,9 @@
 package runner
 
 import (
-	"github.com/reedom/convergen/pkg/config"
+	"github.com/reedom/loki/pkg/config"
 )
 
-func Run(conf config.ConvergenConfig) error {
+func Run(conf config.lokiConfig) error {
 	return nil
 }

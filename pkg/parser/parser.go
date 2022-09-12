@@ -8,11 +8,12 @@ import (
 	"go/token"
 	"go/types"
 	"regexp"
+	"strings"
 
 	"golang.org/x/tools/go/packages"
 )
 
-const buildTag = "convergen"
+const buildTag = "loki"
 
 type Parser struct {
 	pkgs      []*packages.Package
@@ -63,24 +64,37 @@ func NewParser(srcPath string, src any) (*Parser, error) {
 	}, nil
 }
 
-var reGoBuildGen = regexp.MustCompile(`\s*//\s*((go:generate\b|build convergen\b)|\+build convergen)`)
+var reGoBuildGen = regexp.MustCompile(`\s*//\s*((go:generate\b|build loki\b)|\+build loki)`)
 
 func (p *Parser) Parse() error {
+	astRemoveMatchComments(p.entryFile.file, reGoBuildGen)
+	err := p.parseloki()
+	return err
+}
+
+func (p *Parser) parseloki() error {
 	e := p.entryFile
-
-	astRemoveMatchComments(e.file, reGoBuildGen)
-
 	intf, err := e.getInterface()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(e.fileSet.Position(intf.Pos()))
-	nodes, _ := astToNodes(e.file, intf)
-	fmt.Printf("@@@ nodes: %v\n", len(nodes))
-	intfDocComment := astGetDocCommentOn(e.file, intf)
-	for _, comment := range intfDocComment.List {
-		fmt.Println(comment.Text)
+	//intfDocComment := astGetDocCommentOn(e.file, intf)
+
+	iface, ok := intf.Type().Underlying().(*types.Interface)
+	if !ok {
+		panic("???")
+	}
+
+	mset := types.NewMethodSet(iface)
+	for i := 0; i < mset.Len(); i++ {
+		err = p.parseMethod()
+		meth := mset.At(i).Obj()
+		//cg := astGetDocCommentOn(e.file, meth)
+		sig := types.TypeString(meth.Type(), (*types.Package).Name)
+		fmt.Printf("func %s%s \n",
+			meth.Name(),
+			strings.TrimPrefix(sig, "func"))
 	}
 
 	return nil

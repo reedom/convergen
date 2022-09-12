@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/reedom/convergen/pkg/config"
+	"github.com/reedom/loki/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +17,7 @@ func TestOutputPath(t *testing.T) {
 		"./generated/converter.go": wd + "/generated/converter.go",
 		"":                         wd + "/setup.gen.go1",
 	} {
-		c := config.ConvergenConfig{Output: output}
+		c := config.Config{Output: output}
 		actual := c.OutputPath("setup.go")
 		assert.Equal(t, expected, actual, `"Output": "%v"`, output)
 	}

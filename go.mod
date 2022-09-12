@@ -1,4 +1,4 @@
-module github.com/reedom/convergen
+module github.com/reedom/loki
 
 go 1.19
 

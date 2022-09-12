@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/reedom/convergen/pkg/parser"
+	"github.com/reedom/loki/pkg/parser"
 	"github.com/stretchr/testify/require"
 )
 
