@@ -6,24 +6,23 @@ import (
 	"go/token"
 	"go/types"
 	"strings"
+
+	"github.com/reedom/loki/pkg/parser/option"
 )
 
 type entryFile struct {
-	srcPath string
-	file    *ast.File
-	fileSet *token.FileSet
-	pkg     *types.Package
+	srcPath    string
+	file       *ast.File
+	fileSet    *token.FileSet
+	pkg        *types.Package
+	opt        *option.GlobalOption
+	docComment ast.CommentGroup
 }
 
 type parsedMethod struct {
 	method    types.Object
 	comments  []*ast.Comment
 	notations []*notation
-	from
-}
-
-type notation struct {
-	name string
 }
 
 func (e *entryFile) getInterface() (*types.TypeName, error) {
@@ -34,13 +33,25 @@ func (e *entryFile) getInterface() (*types.TypeName, error) {
 	return intf, nil
 }
 
-func (e *entryFile) parseconvergen() error {
+func (e *entryFile) parseDocComment(intf *types.TypeName) {
+	docComment := astGetDocCommentOn(e.file, intf)
+	if docComment == nil || len(docComment.List) == 0 {
+		return
+	}
+
+	notations := make([]notation, 0)
+	for _, comment := range docComment.List {
+		m := reNotation.FindStringSubmatch(comment.Text)
+	}
+}
+
+func (e *entryFile) parseLoki() error {
 	intf, err := e.getInterface()
 	if err != nil {
 		return err
 	}
 
-	//intfDocComment := astGetDocCommentOn(e.file, intf)
+	e.parseDocComment(intf)
 
 	iface, ok := intf.Type().Underlying().(*types.Interface)
 	if !ok {

@@ -23,32 +23,55 @@ func astGetDocCommentOn(file *ast.File, obj types.Object) *ast.CommentGroup {
 	for _, node := range nodes {
 		switch n := node.(type) {
 		case *ast.GenDecl:
-			return n.Doc
+			if n.Doc != nil {
+				return n.Doc
+			}
 		case *ast.FuncDecl:
-			return n.Doc
-		default:
-			continue
+			if n.Doc != nil {
+				return n.Doc
+			}
+		case *ast.TypeSpec:
+			if n.Doc != nil {
+				return n.Doc
+			}
+		case *ast.Field:
+			if n.Doc != nil {
+				return n.Doc
+			}
 		}
 	}
 	return nil
 }
 
-// astRemoveMatchComments removes pattern patched comments from file.Comments.
+// astRemoveMatchComments removes pattern matched comments from file.Comments.
 func astRemoveMatchComments(file *ast.File, pattern *regexp.Regexp) {
 	for _, group := range file.Comments {
-		var modified []*ast.Comment
-		for i, c := range group.List {
-			if pattern.MatchString(c.Text) {
-				if modified == nil {
-					modified = make([]*ast.Comment, i)
-					copy(modified, group.List[0:i])
-				}
-			} else if modified != nil {
-				modified = append(modified, c)
+		_ = astExtractMatchComments(group, pattern)
+	}
+}
+
+// astExtractMatchComments removes pattern matched comments from commentGroup and return them.
+func astExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) []*ast.Comment {
+	if commentGroup == nil {
+		return nil
+	}
+
+	var modified, removed []*ast.Comment
+	for i, c := range commentGroup.List {
+		if pattern.MatchString(c.Text) {
+			if modified == nil {
+				removed = []*ast.Comment{commentGroup.List[i]}
+				modified = make([]*ast.Comment, i)
+				copy(modified, commentGroup.List[0:i])
+			} else {
+				removed = append(removed, commentGroup.List[i])
 			}
-		}
-		if modified != nil {
-			group.List = modified
+		} else if modified != nil {
+			modified = append(modified, c)
 		}
 	}
+	if modified != nil {
+		commentGroup.List = modified
+	}
+	return removed
 }

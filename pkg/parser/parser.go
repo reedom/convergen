@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/reedom/loki/pkg/parser/option"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -18,6 +19,7 @@ const buildTag = "convergen"
 type Parser struct {
 	pkgs      []*packages.Package
 	entryFile *entryFile
+	Opt       *option.GlobalOption
 }
 
 const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedDeps |
@@ -31,6 +33,7 @@ func NewParser(srcPath string, src any) (*Parser, error) {
 		return nil, fmt.Errorf("failed to parse the source file: %v\n%w", srcPath, err)
 	}
 
+	opt := option.NewGlobalOption()
 	if src == nil {
 		cfg := &packages.Config{Mode: parserLoadMode, BuildFlags: []string{"-tags", buildTag}, Fset: fset}
 		pkgs, err := packages.Load(cfg, srcPath)
@@ -44,6 +47,7 @@ func NewParser(srcPath string, src any) (*Parser, error) {
 				file:    pkgs[0].Syntax[0],
 				fileSet: fset,
 				pkg:     pkgs[0].Types,
+				opt:     opt,
 			},
 		}, nil
 	}
@@ -61,6 +65,7 @@ func NewParser(srcPath string, src any) (*Parser, error) {
 			fileSet: fset,
 			pkg:     pkg,
 		},
+		Opt: opt,
 	}, nil
 }
 

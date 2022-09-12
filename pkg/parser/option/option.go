@@ -25,6 +25,15 @@ type GlobalOption struct {
 	Converters      []any
 }
 
+func NewGlobalOption() *GlobalOption {
+	return &GlobalOption{
+		Style:           DstVarReturn,
+		FieldMatchOrder: []FieldMatchSrc{FieldMatchField, FieldMatchGetter},
+		NoCase:          false,
+		Converters:      make([]any, 0),
+	}
+}
+
 type MethodOption struct {
 	Style           DstVarStyle
 	FieldMatchOrder []FieldMatchSrc
