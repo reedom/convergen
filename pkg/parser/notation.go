@@ -2,7 +2,6 @@ package parser
 
 import (
 	"regexp"
-	"strings"
 )
 
 type notationKind string
@@ -52,7 +51,7 @@ func (o optNotation) kind() notationKind {
 	return ntOpt
 }
 
-var reNotation = regexp.MustCompile(`^\s*//\s*loki:(\S*)\s*(.*)$`)
+var reNotation = regexp.MustCompile(`^\s*//\s*convergen:(\S*)\s*(.*)$`)
 
 func newNotion(comment string) notation {
 	m := reNotation.FindStringSubmatch(comment)
@@ -64,5 +63,6 @@ func newNotion(comment string) notation {
 		return invalidNotation{}
 	}
 
-	fields := strings.Fields(m[1])
+	//fields := strings.Fields(m[1])
+	return nil
 }
