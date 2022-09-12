@@ -13,7 +13,7 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-const buildTag = "loki"
+const buildTag = "convergen"
 
 type Parser struct {
 	pkgs      []*packages.Package
@@ -64,15 +64,15 @@ func NewParser(srcPath string, src any) (*Parser, error) {
 	}, nil
 }
 
-var reGoBuildGen = regexp.MustCompile(`\s*//\s*((go:generate\b|build loki\b)|\+build loki)`)
+var reGoBuildGen = regexp.MustCompile(`\s*//\s*((go:generate\b|build convergen\b)|\+build convergen)`)
 
 func (p *Parser) Parse() error {
 	astRemoveMatchComments(p.entryFile.file, reGoBuildGen)
-	err := p.parseloki()
+	err := p.parseconvergen()
 	return err
 }
 
-func (p *Parser) parseloki() error {
+func (p *Parser) parseconvergen() error {
 	e := p.entryFile
 	intf, err := e.getInterface()
 	if err != nil {

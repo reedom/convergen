@@ -27,14 +27,14 @@ type notation struct {
 }
 
 func (e *entryFile) getInterface() (*types.TypeName, error) {
-	intf := findInterface(e.pkg.Scope(), "loki")
+	intf := findInterface(e.pkg.Scope(), "convergen")
 	if intf == nil {
-		return nil, fmt.Errorf(`"loki" interface not found in %v`, e.srcPath)
+		return nil, fmt.Errorf(`"convergen" interface not found in %v`, e.srcPath)
 	}
 	return intf, nil
 }
 
-func (e *entryFile) parseloki() error {
+func (e *entryFile) parseconvergen() error {
 	intf, err := e.getInterface()
 	if err != nil {
 		return err

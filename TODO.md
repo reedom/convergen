@@ -1,9 +1,9 @@
-Loki TODO
+Convergen TODO
 ==============
 
 - [ ] Generate return value style converter by default.  
   ```go
-  type Loki interface {
+  type Convergen interface {
     ModelToDomain(*Model) *Domain
   }
 
@@ -13,11 +13,11 @@ Loki TODO
 - [ ] Generate zero-memory style converter as an option.  
   ```go
   // by "-z" cli flag
-  //generate: go run github.com/reedom/loki -z
+  //generate: go run github.com/reedom/convergen -z
 
-  // loki:style:zero-memory    // or on the interface
-  type Loki interface {
-    // loki:style:zero-memory  // or on a specific method
+  // convergen:style:zero-memory    // or on the interface
+  type Convergen interface {
+    // convergen:style:zero-memory  // or on a specific method
     ModelToDomain(*Model) *Domain
   }
 
@@ -27,15 +27,15 @@ Loki TODO
 
 - [ ] Generate a converter that can return an error that is determined by the signature  
   ```go
-  type Loki interface {
+  type Convergen interface {
     ModelToDomain(*Model) (*Domain, error)
   }
 
   func ModelToDomain(*Model) (*Domain, error) {}
   ```
   ```go
-  type Loki interface {
-    // loki:style:zero-memory
+  type Convergen interface {
+    // convergen:style:zero-memory
     ModelToDomain(*Model) (*Domain, error)
   }
 
@@ -45,8 +45,8 @@ Loki TODO
 
 - [ ] Generate a converter as medhod.  
   ```go
-  type Loki interface {
-    // loki:receiver:m
+  type Convergen interface {
+    // convergen:receiver:m
     ModelToDomain(*Model) *Domain
   }
 
@@ -59,7 +59,7 @@ Loki TODO
     OtherModel
   }
 
-  interface loki {
+  interface convergen {
     ModelToDomain(*Model) *Domain
   }
   ```
@@ -67,19 +67,19 @@ Loki TODO
 - [ ] Support case-insensitive field matching.  
   ```go
   // by "--nocase" cli flag
-  //generate: go run github.com/reedom/loki --nocase
+  //generate: go run github.com/reedom/convergen --nocase
 
-  // loki:opt:nocase          // or on the interface
-  type Loki interface {
-    // loki:opt:nocase        // or on a specific method
+  // convergen:opt:nocase          // or on the interface
+  type Convergen interface {
+    // convergen:opt:nocase        // or on a specific method
     ModelToDomain(*Model) *Domain
   }
   ```
 
 - [ ] Support field name mappings.  
   ```go
-  type Loki interface {
-    // loki:map ID UserID
+  type Convergen interface {
+    // convergen:map ID UserID
     ModelToDomain(*Model) *Domain
   }
 
@@ -92,19 +92,19 @@ Loki TODO
 
 - [ ] Support conversion functions.  
   ```go
-  type Loki interface {
-    // loki:with Atoi ID
-    // loki:with Atoi Timestamp TS
+  type Convergen interface {
+    // convergen:with Atoi ID
+    // convergen:with Atoi Timestamp TS
     ModelToDomain(*Model) *Domain
   }
 
-  // loki:convert Model.Code.*      // general functions can also have `convert` specification.
+  // convergen:convert Model.Code.*      // general functions can also have `convert` specification.
   func Atoi(s string) int { ... }
 
-  // loki:convert:type FooType BarType
+  // convergen:convert:type FooType BarType
   func ConvFoo(v FooType) BarType { ... }
   
-  // loki:convert:to BarType
+  // convergen:convert:to BarType
   func ConvTo(v Pet) BarType { ... }
   
   func ToDomain(rhs *Model) *Domain {
@@ -118,12 +118,12 @@ Loki TODO
 - [ ] Support getter method matching.  
   ```go
   // by "--match" cli flag, you can specify the matching order
-  //generate: go run github.com/reedom/loki --match getter,field
+  //generate: go run github.com/reedom/convergen --match getter,field
 
-  // loki:opt:match getter,field    // or on the interface
-  type Loki interface {
-    // loki:opt:match getter,field  // or on a specific method
-    // loki:map Timestamp TS 
+  // convergen:opt:match getter,field    // or on the interface
+  type Convergen interface {
+    // convergen:opt:match getter,field  // or on a specific method
+    // convergen:map Timestamp TS 
     ModelToDomain(*Model) *Domain
   }
 
@@ -137,16 +137,16 @@ Loki TODO
 
 - [ ] Support skipping assignment.  
   ```go
-  type Loki interface {
-    // loki:skip Test.*             // with regexp
+  type Convergen interface {
+    // convergen:skip Test.*             // with regexp
     ModelToDomain(*Model) *Domain
   }
   ```
 
 - [ ] Support deep-copy for slice, etc.
   ```go
-  type Loki interface {
-    // loki:deepcopy photoURLs
+  type Convergen interface {
+    // convergen:deepcopy photoURLs
     ModelToDomain(*model.Pet) *domain.Pet
   }
   ```

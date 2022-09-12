@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/reedom/loki/pkg/config"
-	"github.com/reedom/loki/pkg/runner"
+	"github.com/reedom/convergen/pkg/config"
+	"github.com/reedom/convergen/pkg/runner"
 )
 
 func main() {
-	var conf config.lokiConfig
+	var conf config.convergenConfig
 	if err := conf.ParseArgs(); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)

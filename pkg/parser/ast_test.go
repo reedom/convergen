@@ -20,11 +20,11 @@ package main
 var x = 0
 
 // Comment I-1
-// loki:command i
+// convergen:command i
 // Comment I-2
-type loki interface {
+type convergen interface {
     // Comment M-1
-	// loki;command m
+	// convergen;command m
 	// Comment M-2
 	ToModel()
 }
@@ -52,7 +52,7 @@ package main
 // x is.
 var x = 0
 
-type loki interface {
+type convergen interface {
     // Comment M-1
 	ToModel()
 }

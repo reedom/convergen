@@ -6,7 +6,7 @@ help: ## Show this help message.
 	@egrep '^(.+)\:\ ##\ (.+)' ${MAKEFILE_LIST} | column -t -c 2 -s ':#'
 
 SRC   := $(shell find . -name '*.go')
-TARGET = build/loki
+TARGET = build/convergen
 
 .PHONY: build
 build: ## Build cli command
@@ -14,4 +14,4 @@ build: $(TARGET)
 
 $(TARGET): $(SRC)
 	@mkdir -p build
-	go build -o build/loki cmd/loki/main.go
+	go build -o build/convergen cmd/convergen/main.go
