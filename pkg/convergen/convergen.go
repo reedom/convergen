@@ -22,7 +22,7 @@ type Convergen struct {
 	fset    *token.FileSet
 	pkg     *packages.Package
 	opt     *option.GlobalOption
-	imports Imports
+	imports importNames
 }
 
 type intfEntry struct {
@@ -74,7 +74,7 @@ func NewConvergen(srcPath string) (*Convergen, error) {
 		file:    file,
 		pkg:     pkgs[0],
 		opt:     option.NewGlobalOption(),
-		imports: NewImports(file.Imports),
+		imports: newImportNames(file.Imports),
 	}, nil
 }
 

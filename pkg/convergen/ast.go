@@ -4,7 +4,6 @@ import (
 	"go/ast"
 	"go/types"
 	"regexp"
-	"strings"
 
 	"golang.org/x/tools/go/ast/astutil"
 )
@@ -75,20 +74,4 @@ func astExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Reg
 		commentGroup.List = modified
 	}
 	return removed
-}
-
-type Imports map[string]string
-
-func NewImports(specs []*ast.ImportSpec) Imports {
-	imports := make(Imports)
-	for _, spec := range specs {
-		pkgPath := strings.ReplaceAll(spec.Path.Value, `"`, "")
-		imports[pkgPath] = spec.Name.Name
-	}
-	return imports
-}
-
-func (i Imports) LookupName(pkgPath string) (name string, ok bool) {
-	name, ok = i[pkgPath]
-	return
 }
