@@ -26,62 +26,62 @@ func testLoadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Pa
 	return file, fset, pkg
 }
 
-func TestGetComments(t *testing.T) {
-	t.Parallel()
-
-	src := `
-package main
-
-// x is.
-var x = 0
-
-// Comment I-1
-// convergen:command i
-// Comment I-2
-type Convergen interface {
-   // Comment M-1
-	// convergen;command m
-	// Comment M-2
-	ToModel()
-}
-
-// y is.
-var y = 0
-`
-	file, _, pkg := testLoadSrc(t, src)
-	intf := findInterface(pkg.Scope(), "Convergen")
-	require.NotNil(t, intf)
-
-	found := astGetDocCommentOn(file, intf)
-	require.NotNil(t, found)
-	assert.Len(t, found.List, 3)
-	assert.Equal(t, "// Comment I-1", found.List[0].Text)
-}
-
-func TestGetEmptyComments(t *testing.T) {
-	t.Parallel()
-
-	src := `
-package main
-
-// x is.
-var x = 0
-
-type Convergen interface {
-   // Comment M-1
-	ToModel()
-}
-
-// y is.
-var y = 0
-`
-	file, _, pkg := testLoadSrc(t, src)
-	intf := findInterface(pkg.Scope(), "Convergen")
-	require.NotNil(t, intf)
-
-	found := astGetDocCommentOn(file, intf)
-	assert.Nil(t, found)
-}
+//func TestGetComments(t *testing.T) {
+//	t.Parallel()
+//
+//	src := `
+//package main
+//
+//// x is.
+//var x = 0
+//
+//// Comment I-1
+//// convergen:command i
+//// Comment I-2
+//type Convergen interface {
+//   // Comment M-1
+//	// convergen;command m
+//	// Comment M-2
+//	ToModel()
+//}
+//
+//// y is.
+//var y = 0
+//`
+//	file, _, pkg := testLoadSrc(t, src)
+//	intf := findInterface(pkg.Scope(), "Convergen")
+//	require.NotNil(t, intf)
+//
+//	found := astGetDocCommentOn(file, intf)
+//	require.NotNil(t, found)
+//	assert.Len(t, found.List, 3)
+//	assert.Equal(t, "// Comment I-1", found.List[0].Text)
+//}
+//
+//func TestGetEmptyComments(t *testing.T) {
+//	t.Parallel()
+//
+//	src := `
+//package main
+//
+//// x is.
+//var x = 0
+//
+//type Convergen interface {
+//   // Comment M-1
+//	ToModel()
+//}
+//
+//// y is.
+//var y = 0
+//`
+//	file, _, pkg := testLoadSrc(t, src)
+//	intf := findInterface(pkg.Scope(), "Convergen")
+//	require.NotNil(t, intf)
+//
+//	found := astGetDocCommentOn(file, intf)
+//	assert.Nil(t, found)
+//}
 
 func TestRemoveMatchComments(t *testing.T) {
 	t.Parallel()

@@ -17,14 +17,6 @@ type intfEntry struct {
 	notations []*ast.Comment
 }
 
-type methodEntry struct {
-	name      string
-	method    types.Object
-	notations []*ast.Comment
-	src       *types.Tuple
-	dst       *types.Tuple
-}
-
 type funcEntry struct {
 	fun       *types.Object
 	notations []*ast.Comment
@@ -82,49 +74,6 @@ func (p *Convergen) extractIntfMethods(intf *types.TypeName) ([]*methodEntry, er
 		methods = append(methods, method)
 	}
 	return methods, nil
-}
-
-func (p *Convergen) getTypeSignature(t types.Type) string {
-	switch typ := t.(type) {
-	case *types.Pointer:
-		return "*" + p.getTypeSignature(typ.Elem())
-	case *types.Named:
-		pkgPath := typ.Obj().Pkg().Path()
-		pkgName, ok := p.imports[pkgPath]
-		fmt.Printf("XXX %v, %v\n", pkgPath, pkgName)
-		if ok {
-			return fmt.Sprintf("%v.%v", pkgName, typ.Obj().Name())
-		}
-		return typ.Obj().Name()
-	}
-	return "???"
-}
-
-func (p *Convergen) extractMethodEntry(method types.Object) (*methodEntry, error) {
-	signature, ok := method.Type().(*types.Signature)
-	if !ok {
-		return nil, fmt.Errorf(`%v: expected signature but %#v`, p.fset.Position(method.Pos()), method)
-	}
-
-	if signature.Params().Len() == 0 {
-		return nil, fmt.Errorf(`%v: method must have one or more arguments as copy source`, p.fset.Position(method.Pos()))
-	}
-	if signature.Results().Len() == 0 {
-		return nil, fmt.Errorf(`%v: method must have one or more return values as copy destination`, p.fset.Position(method.Pos()))
-	}
-
-	docComment := astGetDocCommentOn(p.file, method)
-	notations := astExtractMatchComments(docComment, reNotation)
-	fmt.Printf("### %v\n", p.getTypeSignature(signature.Params().At(0).Type()))
-	p.parseIt(p.pkg.Types.Scope(), signature.Params().At(0))
-
-	return &methodEntry{
-		name:      method.Name(),
-		method:    method,
-		notations: notations,
-		src:       signature.Params(),
-		dst:       signature.Results(),
-	}, nil
 }
 
 func (p *Convergen) lookupField(path string) error {
