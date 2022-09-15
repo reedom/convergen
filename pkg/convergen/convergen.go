@@ -18,6 +18,8 @@ type Convergen struct {
 	pkg     *packages.Package
 	opt     *option.GlobalOption
 	imports importNames
+
+	intfEntry *intfEntry
 }
 
 const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedDeps |

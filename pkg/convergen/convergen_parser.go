@@ -15,8 +15,6 @@ const intfName = "Convergen"
 type intfEntry struct {
 	intf      *types.TypeName
 	notations []*ast.Comment
-	methods   []*methodEntry
-	functions []*funcEntry
 }
 
 type methodEntry struct {
@@ -32,41 +30,25 @@ type funcEntry struct {
 	notations []*ast.Comment
 }
 
-func (p *Convergen) Parse() error {
-	//astRemoveMatchComments(p.file, reGoBuildGen)
-	intfEntry, err := p.extractIntfEntry()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%#v\n", intfEntry)
-	return nil
-}
-
-func (p *Convergen) extractIntfEntry() (*intfEntry, error) {
+func (p *Convergen) ExtractIntfEntry() error {
 	var intf *types.TypeName
 	intf = findInterface(p.pkg.Types.Scope(), intfName)
 	if intf == nil {
-		return nil, fmt.Errorf("%v: %v interface not found", p.fset.Position(p.file.Package), intfName)
+		return fmt.Errorf("%v: %v interface not found", p.fset.Position(p.file.Package), intfName)
 	}
 
 	docComment := astGetDocCommentOn(p.file, intf)
 	notations := astExtractMatchComments(docComment, reNotation)
 	err := p.parseIntfNotations(notations)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	methods, err := p.extractIntfMethods(intf)
-	if err != nil {
-		return nil, err
-	}
-
-	return &intfEntry{
+	p.intfEntry = &intfEntry{
 		intf:      intf,
 		notations: notations,
-		methods:   methods,
-		functions: nil,
-	}, nil
+	}
+	return nil
 }
 
 func (p *Convergen) extractIntfMethods(intf *types.TypeName) ([]*methodEntry, error) {
