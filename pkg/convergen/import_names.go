@@ -13,7 +13,12 @@ func newImportNames(specs []*ast.ImportSpec) importNames {
 	imports := make(importNames)
 	for _, spec := range specs {
 		pkgPath := strings.ReplaceAll(spec.Path.Value, `"`, "")
-		imports[pkgPath] = spec.Name.Name
+		if spec.Name != nil {
+			imports[pkgPath] = spec.Name.Name
+		} else {
+			i := strings.LastIndex(pkgPath, "/")
+			imports[pkgPath] = pkgPath[i+1:]
+		}
 	}
 	return imports
 }
