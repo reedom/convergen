@@ -34,15 +34,14 @@ type funcEntry struct {
 // parses convergen notations from the interface's doc comment. And then store them to the
 // Convergen.intfEntry field.
 func (p *Convergen) ExtractIntfEntry() error {
-	var intf *types.TypeName
-	intf = findInterface(p.pkg.Types.Scope(), intfName)
-	if intf == nil {
-		return fmt.Errorf("%v: %v interface not found", p.fset.Position(p.file.Package), intfName)
+	intf, err := p.findIntfEntry(p.pkg.Types.Scope(), intfName)
+	if err != nil {
+		return err
 	}
 
 	docComment := astGetDocCommentOn(p.file, intf)
 	notations := astExtractMatchComments(docComment, reNotation)
-	err := p.parseIntfNotations(notations)
+	err = p.parseIntfNotations(notations)
 	if err != nil {
 		return err
 	}
@@ -52,6 +51,19 @@ func (p *Convergen) ExtractIntfEntry() error {
 		notations: notations,
 	}
 	return nil
+}
+
+// findIntfEntry looks up the setup interface with the specific name and returns it.
+func (p *Convergen) findIntfEntry(scope *types.Scope, name string) (*types.TypeName, error) {
+	if typ := scope.Lookup(name); typ != nil {
+		if intf, ok := typ.(*types.TypeName); ok {
+			if _, ok = intf.Type().Underlying().(*types.Interface); ok {
+				return intf, nil
+			}
+			return nil, fmt.Errorf("%v: %v it not interface", p.fset.Position(p.file.Package), name)
+		}
+	}
+	return nil, fmt.Errorf("%v: %v interface not found", p.fset.Position(p.file.Package), name)
 }
 
 func (p *Convergen) extractIntfMethods(intf *types.TypeName) ([]*methodEntry, error) {

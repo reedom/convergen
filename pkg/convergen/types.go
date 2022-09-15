@@ -10,18 +10,6 @@ import (
 
 var errNotFound = errors.New("not found")
 
-func findInterface(scope *types.Scope, name string) *types.TypeName {
-	typ := scope.Lookup(name)
-	if typ == nil {
-		return nil
-	}
-	intf, ok := typ.(*types.TypeName)
-	if !ok {
-		return nil
-	}
-	return intf
-}
-
 type lookupFieldOpt struct {
 	exactCase     bool
 	supportsError bool
