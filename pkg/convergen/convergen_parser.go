@@ -30,6 +30,9 @@ type funcEntry struct {
 	notations []*ast.Comment
 }
 
+// ExtractIntfEntry looks up the setup interface with the name of intfName("Convergen") and also
+// parses convergen notations from the interface's doc comment. And then store them to the
+// Convergen.intfEntry field.
 func (p *Convergen) ExtractIntfEntry() error {
 	var intf *types.TypeName
 	intf = findInterface(p.pkg.Types.Scope(), intfName)
