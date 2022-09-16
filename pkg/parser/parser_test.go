@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,5 +10,7 @@ import (
 func TestParser_Parse(t *testing.T) {
 	p, err := NewParser("../fixtures/setups/getter/setup.go")
 	require.Nil(t, err)
-	require.Nil(t, p.extractIntfEntry())
+	f, err := p.Parse()
+	require.Nil(t, err)
+	fmt.Println(f.Base)
 }

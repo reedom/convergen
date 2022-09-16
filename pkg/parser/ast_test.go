@@ -52,7 +52,7 @@ func testLoadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Pa
 //	intf := findInterface(pkg.Scope(), "Convergen")
 //	require.NotNil(t, intf)
 //
-//	found := astGetDocCommentOn(file, intf)
+//	found := getDocCommentOn(file, intf)
 //	require.NotNil(t, found)
 //	assert.Len(t, found.List, 3)
 //	assert.Equal(t, "// Comment I-1", found.List[0].Text)
@@ -79,7 +79,7 @@ func testLoadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Pa
 //	intf := findInterface(pkg.Scope(), "Convergen")
 //	require.NotNil(t, intf)
 //
-//	found := astGetDocCommentOn(file, intf)
+//	found := getDocCommentOn(file, intf)
 //	assert.Nil(t, found)
 //}
 

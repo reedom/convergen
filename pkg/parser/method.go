@@ -26,8 +26,8 @@ type methodEntry struct {
 	dst         *types.Tuple
 }
 
-func (p *Parser) parseMethods() ([]*model.Function, error) {
-	iface := p.intfEntry.intf.Type().Underlying().(*types.Interface)
+func (p *Parser) parseMethods(intf *intfEntry) ([]*model.Function, error) {
+	iface := intf.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
 	methods := make([]*methodEntry, 0)
 	for i := 0; i < mset.Len(); i++ {
@@ -67,7 +67,7 @@ func (p *Parser) extractMethodEntry(method types.Object) (*methodEntry, error) {
 		return nil, fmt.Errorf(`%v: method must have one or more return values as copy destination`, p.fset.Position(method.Pos()))
 	}
 
-	docComment := astGetDocCommentOn(p.file, method)
+	docComment := getDocCommentOn(p.file, method)
 	notations := astExtractMatchComments(docComment, reNotation)
 
 	return &methodEntry{

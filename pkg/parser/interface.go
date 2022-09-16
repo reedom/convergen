@@ -14,8 +14,9 @@ import (
 const intfName = "Convergen"
 
 type intfEntry struct {
-	intf      *types.TypeName
-	notations []*ast.Comment
+	intf       *types.TypeName
+	docComment *ast.CommentGroup
+	notations  []*ast.Comment
 }
 
 type funcEntry struct {
@@ -24,26 +25,26 @@ type funcEntry struct {
 }
 
 // extractIntfEntry looks up the setup interface with the name of intfName("Convergen") and also
-// parses convergen notations from the interface's doc comment. And then store them to the
-// Convergen.intfEntry field.
-func (p *Parser) extractIntfEntry() error {
+// parses convergen notations from the interface's doc comment.
+func (p *Parser) extractIntfEntry() (*intfEntry, error) {
+	//intf, err := astFindIntfEntry(p.file, p.fset, p.pkg.Types.Scope(), intfName)
 	intf, err := p.findIntfEntry(p.pkg.Types.Scope(), intfName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	docComment := astGetDocCommentOn(p.file, intf)
+	docComment := getDocCommentOn(p.file, intf)
 	notations := astExtractMatchComments(docComment, reNotation)
 	err = p.parseIntfNotations(notations)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	p.intfEntry = &intfEntry{
-		intf:      intf,
-		notations: notations,
-	}
-	return nil
+	return &intfEntry{
+		intf:       intf,
+		docComment: docComment,
+		notations:  notations,
+	}, nil
 }
 
 // findIntfEntry looks up the setup interface with the specific name and returns it.

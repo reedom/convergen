@@ -3,9 +3,12 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"go/ast"
 	"go/types"
 	"path"
 	"strings"
+
+	"golang.org/x/tools/go/ast/astutil"
 )
 
 var errNotFound = errors.New("not found")
@@ -16,8 +19,57 @@ type lookupFieldOpt struct {
 	pattern       string
 }
 
+// toAstNode converts types.Object to []ast.Node.
+func toAstNode(file *ast.File, obj types.Object) (path []ast.Node, exact bool) {
+	return astutil.PathEnclosingInterval(file, obj.Pos(), obj.Pos())
+}
+
 func isErrorType(t types.Type) bool {
 	return t.String() == "error"
+}
+
+func removeObject(file *ast.File, obj types.Object) {
+	nodes, _ := toAstNode(file, obj)
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *ast.GenDecl:
+			if n.Doc != nil {
+				n.Doc.List = nil
+			}
+			astRemoveDecl(file, obj.Name())
+		}
+	}
+	return
+}
+
+// getDocCommentOn retrieves doc comments that relate to nodes.
+func getDocCommentOn(file *ast.File, obj types.Object) *ast.CommentGroup {
+	nodes, _ := toAstNode(file, obj)
+	if nodes == nil {
+		return nil
+	}
+
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *ast.GenDecl:
+			if n.Doc != nil {
+				return n.Doc
+			}
+		case *ast.FuncDecl:
+			if n.Doc != nil {
+				return n.Doc
+			}
+		case *ast.TypeSpec:
+			if n.Doc != nil {
+				return n.Doc
+			}
+		case *ast.Field:
+			if n.Doc != nil {
+				return n.Doc
+			}
+		}
+	}
+	return nil
 }
 
 func findField(pkg *types.Package, t types.Type, opt lookupFieldOpt) (types.Object, error) {

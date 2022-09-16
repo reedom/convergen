@@ -9,8 +9,8 @@ import (
 func TestGenerator(t *testing.T) {
 	c, err := NewParser("../fixtures/setups/types/setup.go")
 	require.Nil(t, err)
-	err = c.extractIntfEntry()
+	intf, err := c.extractIntfEntry()
 	require.Nil(t, err)
-	_, err = c.parseMethods()
+	_, err = c.parseMethods(intf)
 	require.Nil(t, err)
 }
