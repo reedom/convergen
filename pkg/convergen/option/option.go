@@ -3,29 +3,9 @@ package option
 import (
 	"fmt"
 	"strings"
+
+	"github.com/reedom/convergen/pkg/model"
 )
-
-type DstVarStyle string
-
-func (s DstVarStyle) String() string {
-	return string(s)
-}
-
-const (
-	DstVarReturn = DstVarStyle("return")
-	DstVarArg    = DstVarStyle("arg")
-)
-
-var DstVarStyleValues = []DstVarStyle{DstVarReturn, DstVarArg}
-
-func NewDstVarStyleFromValue(v string) (DstVarStyle, bool) {
-	for _, style := range DstVarStyleValues {
-		if style.String() == v {
-			return style, true
-		}
-	}
-	return DstVarStyle(""), false
-}
 
 type FieldMatchSrc string
 
@@ -62,7 +42,7 @@ func FieldMatchOrderFromValue(v string) ([]FieldMatchSrc, bool) {
 }
 
 type GlobalOption struct {
-	Style           DstVarStyle
+	Style           model.DstVarStyle
 	FieldMatchOrder []FieldMatchSrc
 	ExactCase       bool
 
@@ -75,7 +55,7 @@ type GlobalOption struct {
 
 func NewGlobalOption() *GlobalOption {
 	return &GlobalOption{
-		Style:           DstVarReturn,
+		Style:           model.DstVarReturn,
 		FieldMatchOrder: []FieldMatchSrc{FieldMatchField, FieldMatchGetter},
 		ExactCase:       true,
 		Converters:      make([]any, 0),
@@ -83,7 +63,7 @@ func NewGlobalOption() *GlobalOption {
 }
 
 type MethodOption struct {
-	Style           DstVarStyle
+	Style           model.DstVarStyle
 	FieldMatchOrder []FieldMatchSrc
 	ExactCase       bool
 	PostProcess     string

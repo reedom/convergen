@@ -16,6 +16,10 @@ type lookupFieldOpt struct {
 	pattern       string
 }
 
+func isErrorType(t types.Type) bool {
+	return t.String() == "error"
+}
+
 func findField(pkg *types.Package, t types.Type, opt lookupFieldOpt) (types.Object, error) {
 	switch typ := t.(type) {
 	case *types.Pointer:

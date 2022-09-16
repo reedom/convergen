@@ -8,6 +8,7 @@ import (
 	"unicode"
 
 	"github.com/reedom/convergen/pkg/convergen/option"
+	"github.com/reedom/convergen/pkg/model"
 )
 
 const intfName = "Convergen"
@@ -98,7 +99,7 @@ func (p *Convergen) parseIntfNotations(notations []*ast.Comment) error {
 		case "opt:style":
 			if args == nil {
 				return fmt.Errorf("%v: needs <style> arg", p.fset.Position(n.Pos()))
-			} else if style, ok := option.NewDstVarStyleFromValue(args[0]); !ok {
+			} else if style, ok := model.NewDstVarStyleFromValue(args[0]); !ok {
 				return fmt.Errorf("%v: invalid <style> arg", p.fset.Position(n.Pos()))
 			} else {
 				p.opt.Style = style

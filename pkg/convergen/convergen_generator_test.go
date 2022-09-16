@@ -12,6 +12,6 @@ func TestGenerator(t *testing.T) {
 	require.Nil(t, err)
 	err = c.ExtractIntfEntry()
 	require.Nil(t, err)
-	err = c.Generate("testit.go")
+	_, err = c.Generate()
 	require.Nil(t, err)
 }

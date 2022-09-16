@@ -67,3 +67,18 @@ func TestPathMatch(t *testing.T) {
 		}
 	}
 }
+
+func TestIsErrorType(t *testing.T) {
+	src := `package main
+var err error
+type ErrFoo error
+var err2 ErrFoo`
+
+	_, _, pkg := testLoadSrc(t, src)
+
+	obj := pkg.Scope().Lookup("err")
+	assert.True(t, isErrorType(obj.Type()))
+
+	obj = pkg.Scope().Lookup("err2")
+	assert.False(t, isErrorType(obj.Type()))
+}

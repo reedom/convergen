@@ -4,31 +4,29 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
+	"log"
 	"os"
 	"regexp"
-	"strings"
 
-	. "github.com/dave/jennifer/jen"
-	"github.com/reedom/convergen/pkg/convergen/option"
+	"github.com/reedom/convergen/pkg/model"
 )
 
 var reGoBuildGen = regexp.MustCompile(`\s*//\s*((go:generate\b|build convergen\b)|\+build convergen)`)
 var ErrAbort = errors.New("abort")
 
 type methodEntry struct {
-	name        string
 	method      types.Object // Also a *types.Signature
+	docComment  *ast.CommentGroup
 	notations   []*ast.Comment
-	dstVarStyle option.DstVarStyle
+	dstVarStyle model.DstVarStyle
 	receiver    string
 	src         *types.Tuple
 	dst         *types.Tuple
 }
 
-func (p *Convergen) Generate(filePath string) error {
-	jen := NewFile(filePath)
-
+func (p *Convergen) Generate() ([]*model.Function, error) {
 	iface := p.intfEntry.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
 	methods := make([]*methodEntry, 0)
@@ -41,16 +39,19 @@ func (p *Convergen) Generate(filePath string) error {
 		methods = append(methods, method)
 	}
 	if len(methods) < mset.Len() {
-		return ErrAbort
+		return nil, ErrAbort
 	}
 
+	functions := make([]*model.Function, 0)
 	for _, method := range methods {
-		if err := p.GenerateMethod(jen, method); err != nil {
-			return err
+		fn, err := p.CreateFunction(method)
+		if err != nil {
+			return nil, err
 		}
+		functions = append(functions, fn)
 	}
 
-	return nil
+	return functions, nil
 }
 
 func (p *Convergen) extractMethodEntry(method types.Object) (*methodEntry, error) {
@@ -70,10 +71,10 @@ func (p *Convergen) extractMethodEntry(method types.Object) (*methodEntry, error
 	notations := astExtractMatchComments(docComment, reNotation)
 
 	return &methodEntry{
-		name:        method.Name(),
 		method:      method,
+		docComment:  docComment,
 		notations:   notations,
-		dstVarStyle: option.DstVarReturn,
+		dstVarStyle: model.DstVarReturn,
 		src:         signature.Params(),
 		dst:         signature.Results(),
 	}, nil
@@ -96,47 +97,127 @@ func (p *Convergen) getTypeSignature(t types.Type) string {
 	panic(t)
 }
 
-func (p *Convergen) GenerateMethod(jen *File, m *methodEntry) error {
-	fn := jen.Func()
-
+func (p *Convergen) CreateFunction(m *methodEntry) (*model.Function, error) {
 	sig := m.method.Type().(*types.Signature)
+	hasError := 1 < sig.Results().Len() &&
+		isErrorType(sig.Results().At(sig.Results().Len()-1).Type())
+
+	comments := make([]string, len(m.docComment.List))
+	for i := range m.docComment.List {
+		comments[i] = m.docComment.List[i].Text
+	}
+
 	src := sig.Params().At(0)
 	dst := sig.Results().At(0)
+	srcVar := p.createVar(src, "src")
+	dstVar := p.createVar(dst, "dst")
 
-	// Receiver
-	srcType := p.getTypeSignature(src.Type())
-	if m.receiver != "" {
-		fn.Add(Params(Id(m.receiver).Id(srcType)))
+	assignments := make([]*model.Assignment, 0)
+	strct, ok := dst.Type().Underlying().(*types.Struct)
+	if !ok {
+		if ptr, ok := dst.Type().Underlying().(*types.Pointer); ok {
+			strct = ptr.Elem().Underlying().(*types.Struct)
+		}
 	}
 
-	// func name
-	fn.Add(Id(m.method.Name()))
-
-	// func args
-	args := make([]Code, 0)
-	dstType := p.getTypeSignature(dst.Type())
-	if m.dstVarStyle == option.DstVarArg {
-		args = append(
-			args,
-			Id("dst").Op("*").Id(strings.Replace(dstType, "*", "", 1)),
-		)
-	}
-	if m.receiver == "" {
-		args = append(
-			args,
-			Id("src").Op("*").Id(strings.Replace(srcType, "*", "", 1)),
-		)
-	}
-	fn.Add(Params(args...))
-
-	// func return value
-	if m.dstVarStyle == option.DstVarReturn {
-		fn.Add(Id(dstType))
+	for i := 0; i < strct.NumFields(); i++ {
+		f := strct.Field(i)
+		a, err := p.createAssign(f, dstVar, strct, srcVar, m.method.Pos())
+		if err == errNotFound {
+			log.Printf("no assigment src found for %v.%v\n", p.getTypeSignature(dst.Type()), f.Name())
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		assignments = append(assignments, a)
 	}
 
-	fn.Add(Block(
-		Return(Nil()),
-	))
-	fmt.Println(fn.GoString())
-	return nil
+	fn := &model.Function{
+		Name:         m.method.Name(),
+		Comments:     comments,
+		Receiver:     m.receiver,
+		Src:          srcVar,
+		Dst:          dstVar,
+		DstVarStyle:  model.DstVarReturn,
+		ReturnsError: hasError,
+		Assignments:  assignments,
+	}
+
+	return fn, nil
+}
+
+func (p *Convergen) createVar(v *types.Var, defName string) model.Var {
+	mv := model.Var{Name: v.Name()}
+	if mv.Name == "" {
+		mv.Name = defName
+	}
+
+	p.parseVarType(v.Type(), &mv)
+	return mv
+}
+
+func (p *Convergen) parseVarType(t types.Type, varModel *model.Var) {
+	switch typ := t.(type) {
+	case *types.Pointer:
+		varModel.Pointer = true
+		p.parseVarType(typ.Elem(), varModel)
+	case *types.Named:
+		if pkgName, ok := p.imports[typ.Obj().Pkg().Path()]; ok {
+			varModel.PkgName = pkgName
+		}
+		varModel.Type = typ.Obj().Name()
+	case *types.Basic:
+		varModel.Type = typ.Name()
+	default:
+		panic(t)
+	}
+}
+
+func (p *Convergen) createAssign(dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var, pos token.Pos) (*model.Assignment, error) {
+	name := dst.Name()
+
+	named, ok := srcType.(*types.Named)
+	if !ok {
+		if ptr, ok := srcType.(*types.Pointer); ok {
+			named, ok = ptr.Elem().(*types.Named)
+		}
+	}
+
+	if named != nil {
+		for i := 0; i < named.NumMethods(); i++ {
+			m := named.Method(i)
+			if name != m.Name() {
+				continue
+			}
+			if types.AssignableTo(m.Type(), dst.Type()) {
+				return &model.Assignment{
+					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+					RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
+				}, nil
+			}
+			break
+		}
+	}
+
+	strct, ok := srcType.Underlying().(*types.Struct)
+	if !ok {
+		return nil, fmt.Errorf("%v: src value is not a struct", p.fset.Position(pos))
+	}
+
+	for i := 0; i < strct.NumFields(); i++ {
+		m := strct.Field(i)
+		if name != m.Name() {
+			continue
+		}
+		if types.AssignableTo(m.Type(), dst.Type()) {
+			return &model.Assignment{
+				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v", srcVar.Name, m.Name())},
+			}, nil
+		}
+		break
+	}
+
+	return nil, errNotFound
 }
