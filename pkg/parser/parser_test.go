@@ -12,5 +12,7 @@ func TestParser_Parse(t *testing.T) {
 	require.Nil(t, err)
 	f, err := p.Parse()
 	require.Nil(t, err)
-	fmt.Println(f.Base)
+	fmt.Println(f.Pre)
+	fmt.Println("------------")
+	fmt.Println(f.Post)
 }

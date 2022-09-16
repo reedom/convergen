@@ -1,7 +1,7 @@
 package model
 
 type Code struct {
-	Base      string
-	Marker    string
+	Pre       string
+	Post      string
 	Functions []*Function
 }

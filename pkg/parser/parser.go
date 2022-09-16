@@ -8,8 +8,9 @@ import (
 	"go/printer"
 	"go/token"
 	"regexp"
+	"strings"
 
-	"github.com/matoous/go-nanoid"
+	gonanoid "github.com/matoous/go-nanoid"
 	"github.com/reedom/convergen/pkg/model"
 	"github.com/reedom/convergen/pkg/parser/option"
 	"golang.org/x/tools/go/packages"
@@ -70,20 +71,19 @@ func (p *Parser) Parse() (*model.Code, error) {
 	}
 
 	astRemoveMatchComments(p.file, reGoBuildGen)
-	marker, _ := gonanoid.Nanoid()
-	base, err := p.generateBaseCode(intf, marker)
+	pre, post, err := p.generateBaseCode(intf)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.Code{
-		Base:      base,
-		Marker:    marker,
+		Pre:       pre,
+		Post:      post,
 		Functions: functions,
 	}, nil
 }
 
-func (p *Parser) generateBaseCode(intf *intfEntry, marker string) (string, error) {
+func (p *Parser) generateBaseCode(intf *intfEntry) (pre string, post string, err error) {
 	// Remove doc comment of the interface.
 	// And also find the range pos of the interface in the code.
 	nodes, _ := toAstNode(p.file, intf.intf)
@@ -116,13 +116,14 @@ func (p *Parser) generateBaseCode(intf *intfEntry, marker string) (string, error
 	}
 
 	// Insert markers.
+	marker, _ := gonanoid.Nanoid()
 	astInsertComment(p.file, marker, minPos)
 	astInsertComment(p.file, marker, maxPos)
 
 	var buf bytes.Buffer
-	err := printer.Fprint(&buf, p.fset, p.file)
+	err = printer.Fprint(&buf, p.fset, p.file)
 	if err != nil {
-		return "", err
+		return
 	}
 	base := buf.String()
 
@@ -152,5 +153,6 @@ func (p *Parser) generateBaseCode(intf *intfEntry, marker string) (string, error
 	re := regexp.MustCompile(`.+` + reMarker + ".*(\n|.)*?" + reMarker)
 	base = re.ReplaceAllString(base, marker)
 
-	return base, nil
+	pre, post, _ = strings.Cut(base, marker)
+	return
 }
