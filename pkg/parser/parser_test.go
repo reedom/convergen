@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"github.com/reedom/convergen/pkg/generator"
+	"github.com/reedom/convergen/pkg/logger"
 	"github.com/stretchr/testify/require"
 )
 
 func TestParser_Parse(t *testing.T) {
+	logger.SetupLogger(logger.Enable())
 	p, err := NewParser("../fixtures/setups/getter/setup.go")
 	require.Nil(t, err)
 	code, err := p.Parse()

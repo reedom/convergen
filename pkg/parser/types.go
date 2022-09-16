@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
 	"path"
 	"strings"
 
+	"github.com/reedom/convergen/pkg/logger"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
@@ -72,25 +74,24 @@ func getDocCommentOn(file *ast.File, obj types.Object) *ast.CommentGroup {
 	return nil
 }
 
-func findField(pkg *types.Package, t types.Type, opt lookupFieldOpt) (types.Object, error) {
+func findField(fset *token.FileSet, pkg *types.Package, t types.Type, opt lookupFieldOpt) (types.Object, error) {
 	switch typ := t.(type) {
 	case *types.Pointer:
-		return findField(pkg, typ.Elem(), opt)
+		return findField(fset, pkg, typ.Elem(), opt)
 	case *types.Named:
-		return findFieldInternal(pkg, typ.Obj().Pkg(), typ.Underlying(), opt, strings.Split(opt.pattern, "."))
+		return findFieldInternal(fset, pkg, typ.Obj().Pkg(), typ.Underlying(), opt, strings.Split(opt.pattern, "."))
 	}
-	return findFieldInternal(pkg, pkg, t, opt, strings.Split(opt.pattern, "."))
+	return findFieldInternal(fset, pkg, pkg, t, opt, strings.Split(opt.pattern, "."))
 }
 
-func findFieldInternal(pkg, typePkg *types.Package, t types.Type, opt lookupFieldOpt, pattern []string) (types.Object, error) {
-	fmt.Printf("@@@ lookupFieldByPattern t: %v\n", t.String())
+func findFieldInternal(fset *token.FileSet, pkg, typePkg *types.Package, t types.Type, opt lookupFieldOpt, pattern []string) (types.Object, error) {
 	if pattern[0] == "" {
 		return nil, fmt.Errorf("invalid pattern")
 	}
 
 	switch typ := t.(type) {
 	case *types.Pointer:
-		return findFieldInternal(pkg, typePkg, typ.Elem(), opt, pattern)
+		return findFieldInternal(fset, pkg, typePkg, typ.Elem(), opt, pattern)
 	case *types.Named:
 		for i := 0; i < typ.NumMethods(); i++ {
 			m := typ.Method(i)
@@ -106,13 +107,12 @@ func findFieldInternal(pkg, typePkg *types.Package, t types.Type, opt lookupFiel
 				if len(pattern) == 1 {
 					return m, nil
 				} else {
-					return findFieldInternal(pkg, typePkg, m.Type(), opt, pattern[1:])
+					return findFieldInternal(fset, pkg, typePkg, m.Type(), opt, pattern[1:])
 				}
 			}
 		}
-		return findFieldInternal(pkg, typ.Obj().Pkg(), typ.Underlying(), opt, pattern)
+		return findFieldInternal(fset, pkg, typ.Obj().Pkg(), typ.Underlying(), opt, pattern)
 	case *types.Struct:
-		fmt.Printf("@@@ Struct: %v\n", typ.Underlying().String())
 		for i := 0; i < typ.NumFields(); i++ {
 			e := typ.Field(i)
 			if pkg.Name() != typePkg.Name() && !e.Exported() {
@@ -127,20 +127,28 @@ func findFieldInternal(pkg, typePkg *types.Package, t types.Type, opt lookupFiel
 				if len(pattern) == 1 {
 					return e, nil
 				} else {
-					return findFieldInternal(pkg, typePkg, e.Type(), opt, pattern[1:])
+					return findFieldInternal(fset, pkg, typePkg, e.Type(), opt, pattern[1:])
 				}
 			}
 		}
 	case *types.Basic:
+		logger.Printf("findField for *types.Basic is not implemented")
 	case *types.Array:
+		logger.Printf("findField for *types.Array is not implemented")
 	case *types.Slice:
+		logger.Printf("findField for *types.Slice is not implemented")
 	case *types.Map:
+		logger.Printf("findField for *types.Map is not implemented")
 	case *types.Chan:
+		logger.Printf("findField for *types.Chan is not implemented")
 	case *types.Interface:
-	//case *types.Tuple:
+		logger.Printf("findField for *types.Interface is not implemented")
+	case *types.Tuple:
+		logger.Printf("findField for *types.Tuple is not implemented")
 	case *types.Signature:
+		logger.Printf("findField for *types.Signature is not implemented")
 	}
-	fmt.Printf("@@@ LAST: %#v, %v\n", pattern, t)
+	logger.Printf("field pattern mismatch. pattern=%#v, t=%v\n", pattern, t)
 	return nil, errNotFound
 }
 

@@ -6,10 +6,10 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"log"
 	"os"
 	"regexp"
 
+	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/model"
 )
 
@@ -57,14 +57,14 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*model.Function, error) {
 func (p *Parser) extractMethodEntry(method types.Object) (*methodEntry, error) {
 	signature, ok := method.Type().(*types.Signature)
 	if !ok {
-		return nil, fmt.Errorf(`%v: expected signature but %#v`, p.fset.Position(method.Pos()), method)
+		return nil, logger.Errorf(`%v: expected signature but %#v`, p.fset.Position(method.Pos()), method)
 	}
 
 	if signature.Params().Len() == 0 {
-		return nil, fmt.Errorf(`%v: method must have one or more arguments as copy source`, p.fset.Position(method.Pos()))
+		return nil, logger.Errorf(`%v: method must have one or more arguments as copy source`, p.fset.Position(method.Pos()))
 	}
 	if signature.Results().Len() == 0 {
-		return nil, fmt.Errorf(`%v: method must have one or more return values as copy destination`, p.fset.Position(method.Pos()))
+		return nil, logger.Errorf(`%v: method must have one or more return values as copy destination`, p.fset.Position(method.Pos()))
 	}
 
 	docComment := getDocCommentOn(p.file, method)
@@ -122,9 +122,8 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 
 	for i := 0; i < strct.NumFields(); i++ {
 		f := strct.Field(i)
-		a, err := p.createAssign(f, dstVar, strct, srcVar, m.method.Pos())
+		a, err := p.createAssign(f, dstVar, src.Type(), srcVar, m.method.Pos())
 		if err == errNotFound {
-			log.Printf("no assigment src found for %v.%v\n", p.getTypeSignature(dst.Type()), f.Name())
 			continue
 		}
 		if err != nil {
@@ -174,6 +173,20 @@ func (p *Parser) parseVarType(t types.Type, varModel *model.Var) {
 	}
 }
 
+func isMethodAssignableTo(m *types.Func, dst types.Type, returnsError bool) bool {
+	sig := m.Type().(*types.Signature)
+	num := sig.Results().Len()
+	if num == 0 || 2 < num {
+		return false
+	}
+
+	r := sig.Results().At(0).Type()
+	if !types.AssignableTo(r, dst) {
+		return false
+	}
+	return num == 1 || returnsError && isErrorType(sig.Results().At(1).Type())
+}
+
 func (p *Parser) createAssign(dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var, pos token.Pos) (*model.Assignment, error) {
 	name := dst.Name()
 
@@ -184,13 +197,26 @@ func (p *Parser) createAssign(dst *types.Var, dstVar model.Var, srcType types.Ty
 		}
 	}
 
+	var strct *types.Struct
+
 	if named != nil {
+		strct, ok = named.Underlying().(*types.Struct)
+		if !ok {
+			if ptr, ok := named.Underlying().(*types.Pointer); ok {
+				strct, ok = ptr.Elem().(*types.Struct)
+			}
+		}
+
 		for i := 0; i < named.NumMethods(); i++ {
 			m := named.Method(i)
 			if name != m.Name() {
 				continue
 			}
-			if types.AssignableTo(m.Type(), dst.Type()) {
+
+			if isMethodAssignableTo(m, dst.Type(), false) {
+				logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
+					p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
+					dstVar.Name, dst.Name(), dst.Type().String())
 				return &model.Assignment{
 					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
 					RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
@@ -200,24 +226,32 @@ func (p *Parser) createAssign(dst *types.Var, dstVar model.Var, srcType types.Ty
 		}
 	}
 
-	strct, ok := srcType.Underlying().(*types.Struct)
-	if !ok {
-		return nil, fmt.Errorf("%v: src value is not a struct", p.fset.Position(pos))
+	if strct == nil {
+		strct, ok = srcType.Underlying().(*types.Struct)
+		if !ok {
+			return nil, logger.Errorf("%v: src value is not a struct", p.fset.Position(pos))
+		}
 	}
 
 	for i := 0; i < strct.NumFields(); i++ {
-		m := strct.Field(i)
-		if name != m.Name() {
+		f := strct.Field(i)
+		if name != f.Name() {
 			continue
 		}
-		if types.AssignableTo(m.Type(), dst.Type()) {
+		if types.AssignableTo(f.Type(), dst.Type()) {
+			logger.Printf("%v: assignment found, %v.%v [%v] to %v.%v [%v]",
+				p.fset.Position(dst.Pos()), srcVar.Name, f.Name(), f.Type().String(),
+				dstVar.Name, dst.Name(), dst.Type().String())
 			return &model.Assignment{
 				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v", srcVar.Name, m.Name())},
+				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v", srcVar.Name, f.Name())},
 			}, nil
 		}
 		break
 	}
 
+	logger.Printf("%v: no assignment for %v.%v [%v]",
+		p.fset.Position(dst.Pos()),
+		dstVar.Name, dst.Name(), dst.Type().String())
 	return nil, errNotFound
 }
