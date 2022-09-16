@@ -13,7 +13,7 @@ import (
 	"github.com/reedom/convergen/pkg/model"
 )
 
-var reGoBuildGen = regexp.MustCompile(`\s*//\s*((go:generate\b|build convergen\b)|\+build convergen)`)
+var reGoBuildGen = regexp.MustCompile(`\s*//\s*(go:(generate\b|build convergen\b)|\+build convergen)`)
 var ErrAbort = errors.New("abort")
 
 type methodEntry struct {

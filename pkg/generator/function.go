@@ -6,7 +6,7 @@ import (
 	"github.com/reedom/convergen/pkg/model"
 )
 
-func FuncToString(f *model.Function) string {
+func (g *Generator) FuncToString(f *model.Function) string {
 	var sb strings.Builder
 	for i := range f.Comments {
 		sb.WriteString(f.Comments[i])

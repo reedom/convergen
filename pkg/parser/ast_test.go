@@ -115,3 +115,28 @@ var y = 1
 	require.Nil(t, printer.Fprint(&buf, fset, file))
 	assert.Equal(t, expected, buf.String())
 }
+
+func TestRemoveBuildFlagAndGenerator(t *testing.T) {
+	t.Parallel()
+
+	src := `package main
+
+
+//go:build convergen
+// +build convergen
+
+//go:generate go run github.com/reedom/convergen
+var y = 1
+`
+
+	expected := `package main
+
+var y = 1
+`
+
+	file, fset, _ := testLoadSrc(t, src)
+	astRemoveMatchComments(file, reGoBuildGen)
+	buf := bytes.Buffer{}
+	require.Nil(t, printer.Fprint(&buf, fset, file))
+	assert.Equal(t, expected, buf.String())
+}
