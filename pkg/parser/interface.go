@@ -1,4 +1,4 @@
-package convergen
+package parser
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/reedom/convergen/pkg/convergen/option"
 	"github.com/reedom/convergen/pkg/model"
+	"github.com/reedom/convergen/pkg/parser/option"
 )
 
 const intfName = "Convergen"
@@ -23,10 +23,10 @@ type funcEntry struct {
 	notations []*ast.Comment
 }
 
-// ExtractIntfEntry looks up the setup interface with the name of intfName("Convergen") and also
+// extractIntfEntry looks up the setup interface with the name of intfName("Convergen") and also
 // parses convergen notations from the interface's doc comment. And then store them to the
 // Convergen.intfEntry field.
-func (p *Convergen) ExtractIntfEntry() error {
+func (p *Parser) extractIntfEntry() error {
 	intf, err := p.findIntfEntry(p.pkg.Types.Scope(), intfName)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func (p *Convergen) ExtractIntfEntry() error {
 }
 
 // findIntfEntry looks up the setup interface with the specific name and returns it.
-func (p *Convergen) findIntfEntry(scope *types.Scope, name string) (*types.TypeName, error) {
+func (p *Parser) findIntfEntry(scope *types.Scope, name string) (*types.TypeName, error) {
 	if typ := scope.Lookup(name); typ != nil {
 		if intf, ok := typ.(*types.TypeName); ok {
 			if _, ok = intf.Type().Underlying().(*types.Interface); ok {
@@ -59,35 +59,7 @@ func (p *Convergen) findIntfEntry(scope *types.Scope, name string) (*types.TypeN
 	return nil, fmt.Errorf("%v: %v interface not found", p.fset.Position(p.file.Package), name)
 }
 
-func (p *Convergen) extractIntfMethods(intf *types.TypeName) ([]*methodEntry, error) {
-	iface, ok := intf.Type().Underlying().(*types.Interface)
-	if !ok {
-		return nil, fmt.Errorf("%v: %v is not interface", p.fset.Position(intf.Pos()), intf.Name())
-	}
-
-	methods := make([]*methodEntry, 0)
-	mset := types.NewMethodSet(iface)
-	for i := 0; i < mset.Len(); i++ {
-		method, err := p.extractMethodEntry(mset.At(i).Obj())
-		if err != nil {
-			return nil, err
-		}
-		methods = append(methods, method)
-	}
-	return methods, nil
-}
-
-func (p *Convergen) lookupField(path string) error {
-	parts := strings.Split(path, ".")
-	switch len(parts) {
-	case 1:
-		// Must be a field name.
-
-	}
-	return nil
-}
-
-func (p *Convergen) parseIntfNotations(notations []*ast.Comment) error {
+func (p *Parser) parseIntfNotations(notations []*ast.Comment) error {
 	for _, n := range notations {
 		m := reNotation.FindStringSubmatch(n.Text)
 		var args []string
@@ -157,16 +129,7 @@ func (p *Convergen) parseIntfNotations(notations []*ast.Comment) error {
 	return nil
 }
 
-type varEntry struct {
-	v *types.Var
-}
-
-type typeEntry struct {
-	isPointer bool
-	elem      *typeEntry
-}
-
-func (p *Convergen) parseIt(scope *types.Scope, at *types.Var) {
+func (p *Parser) parseIt(scope *types.Scope, at *types.Var) {
 	signature, ok := at.Type().(*types.Signature)
 	if ok {
 		fmt.Printf("--- NAME: %v\n", signature.String())

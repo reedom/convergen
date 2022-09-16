@@ -1,4 +1,4 @@
-package convergen
+package parser
 
 import (
 	"fmt"
@@ -6,13 +6,13 @@ import (
 	"go/parser"
 	"go/token"
 
-	"github.com/reedom/convergen/pkg/convergen/option"
+	"github.com/reedom/convergen/pkg/parser/option"
 	"golang.org/x/tools/go/packages"
 )
 
 const buildTag = "convergen"
 
-type Convergen struct {
+type Parser struct {
 	file    *ast.File
 	fset    *token.FileSet
 	pkg     *packages.Package
@@ -25,7 +25,7 @@ type Convergen struct {
 const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedDeps |
 	packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo
 
-func NewConvergen(srcPath string) (*Convergen, error) {
+func NewParser(srcPath string) (*Parser, error) {
 	fileSet := token.NewFileSet()
 	file, err := parser.ParseFile(fileSet, srcPath, nil, parser.ParseComments)
 	if err != nil {
@@ -46,7 +46,7 @@ func NewConvergen(srcPath string) (*Convergen, error) {
 		file = pkgs[0].Syntax[0]
 	}
 
-	return &Convergen{
+	return &Parser{
 		fset:    fileSet,
 		file:    file,
 		pkg:     pkgs[0],

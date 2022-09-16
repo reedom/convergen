@@ -1,4 +1,4 @@
-package convergen
+package parser
 
 import (
 	"errors"
@@ -26,7 +26,7 @@ type methodEntry struct {
 	dst         *types.Tuple
 }
 
-func (p *Convergen) Generate() ([]*model.Function, error) {
+func (p *Parser) parseMethods() ([]*model.Function, error) {
 	iface := p.intfEntry.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
 	methods := make([]*methodEntry, 0)
@@ -54,7 +54,7 @@ func (p *Convergen) Generate() ([]*model.Function, error) {
 	return functions, nil
 }
 
-func (p *Convergen) extractMethodEntry(method types.Object) (*methodEntry, error) {
+func (p *Parser) extractMethodEntry(method types.Object) (*methodEntry, error) {
 	signature, ok := method.Type().(*types.Signature)
 	if !ok {
 		return nil, fmt.Errorf(`%v: expected signature but %#v`, p.fset.Position(method.Pos()), method)
@@ -80,7 +80,7 @@ func (p *Convergen) extractMethodEntry(method types.Object) (*methodEntry, error
 	}, nil
 }
 
-func (p *Convergen) getTypeSignature(t types.Type) string {
+func (p *Parser) getTypeSignature(t types.Type) string {
 	switch typ := t.(type) {
 	case *types.Pointer:
 		return "*" + p.getTypeSignature(typ.Elem())
@@ -97,7 +97,7 @@ func (p *Convergen) getTypeSignature(t types.Type) string {
 	panic(t)
 }
 
-func (p *Convergen) CreateFunction(m *methodEntry) (*model.Function, error) {
+func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 	sig := m.method.Type().(*types.Signature)
 	hasError := 1 < sig.Results().Len() &&
 		isErrorType(sig.Results().At(sig.Results().Len()-1).Type())
@@ -147,7 +147,7 @@ func (p *Convergen) CreateFunction(m *methodEntry) (*model.Function, error) {
 	return fn, nil
 }
 
-func (p *Convergen) createVar(v *types.Var, defName string) model.Var {
+func (p *Parser) createVar(v *types.Var, defName string) model.Var {
 	mv := model.Var{Name: v.Name()}
 	if mv.Name == "" {
 		mv.Name = defName
@@ -157,7 +157,7 @@ func (p *Convergen) createVar(v *types.Var, defName string) model.Var {
 	return mv
 }
 
-func (p *Convergen) parseVarType(t types.Type, varModel *model.Var) {
+func (p *Parser) parseVarType(t types.Type, varModel *model.Var) {
 	switch typ := t.(type) {
 	case *types.Pointer:
 		varModel.Pointer = true
@@ -174,7 +174,7 @@ func (p *Convergen) parseVarType(t types.Type, varModel *model.Var) {
 	}
 }
 
-func (p *Convergen) createAssign(dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var, pos token.Pos) (*model.Assignment, error) {
+func (p *Parser) createAssign(dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var, pos token.Pos) (*model.Assignment, error) {
 	name := dst.Name()
 
 	named, ok := srcType.(*types.Named)

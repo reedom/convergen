@@ -1,4 +1,4 @@
-package convergen
+package parser
 
 import (
 	"bytes"
