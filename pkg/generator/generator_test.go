@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerator(t *testing.T) {
+func TestGenerator_ArgRetReceiver(t *testing.T) {
 	t.Parallel()
 
 	const pre = `package simple
@@ -27,7 +27,7 @@ import (
 		expected string
 	}{
 		{
-			name: "src:ptr, dst:ptr,arg rhs:simple",
+			name: "src:ptr|dst:ptr,arg|rhs:simple",
 			fn: &model.Function{
 				Comments: []string{"comment 1", "comment 2"},
 				Name:     "ToModel",
@@ -62,7 +62,7 @@ func ToModel(dst *model.Pet, src *domain.Pet) {
 `,
 		},
 		{
-			name: "src:ptr, dst:ptr,return rhs:simple",
+			name: "src:ptr|dst:ptr,return|rhs:simple",
 			fn: &model.Function{
 				Name:     "ToModel",
 				Receiver: "",
@@ -96,7 +96,140 @@ func ToModel(src *domain.Pet) (dst *model.Pet) {
 }
 `,
 		},
-	}
+		{
+			name: "src:ptr|dst:copy,return|rhs:simple",
+			fn: &model.Function{
+				Name:     "ToModel",
+				Receiver: "",
+				Src: model.Var{
+					Name:    "src",
+					PkgName: "domain",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				Dst: model.Var{
+					Name:    "dst",
+					PkgName: "model",
+					Type:    "Pet",
+					Pointer: false,
+				},
+				ReturnsError: false,
+				DstVarStyle:  model.DstVarReturn,
+				Assignments: []*model.Assignment{
+					{
+						LHS: "dst.ID",
+						RHS: model.SimpleField{Path: "src.ID"},
+					},
+				},
+			},
+			expected: header + pre + `
+func ToModel(src *domain.Pet) (dst model.Pet) {
+	dst.ID = src.ID
+
+	return
+}
+`,
+		},
+		{
+			name: "src:ptr,receiver|dst:copy,return|rhs:simple",
+			fn: &model.Function{
+				Name:     "ToModel",
+				Receiver: "src",
+				Src: model.Var{
+					Name:    "src",
+					PkgName: "domain",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				Dst: model.Var{
+					Name:    "dst",
+					PkgName: "model",
+					Type:    "Pet",
+					Pointer: false,
+				},
+				ReturnsError: false,
+				DstVarStyle:  model.DstVarReturn,
+				Assignments: []*model.Assignment{
+					{
+						LHS: "dst.ID",
+						RHS: model.SimpleField{Path: "src.ID"},
+					},
+				},
+			},
+			expected: header + pre + `
+func (src *domain.Pet) ToModel() (dst model.Pet) {
+	dst.ID = src.ID
+
+	return
+}
+`,
+		},
+		{
+			name: "src:ptr,receiver|dst:ptr,arg|rhs:simple",
+			fn: &model.Function{
+				Name:     "ToModel",
+				Receiver: "src",
+				Src: model.Var{
+					Name:    "src",
+					PkgName: "domain",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				Dst: model.Var{
+					Name:    "dst",
+					PkgName: "model",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				ReturnsError: false,
+				DstVarStyle:  model.DstVarArg,
+				Assignments: []*model.Assignment{
+					{
+						LHS: "dst.ID",
+						RHS: model.SimpleField{Path: "src.ID"},
+					},
+				},
+			},
+			expected: header + pre + `
+func (src *domain.Pet) ToModel(dst *model.Pet) {
+	dst.ID = src.ID
+}
+`,
+		},
+		{
+			name: "src:ptr,receiver|dst:ptr,arg error|rhs:simple",
+			fn: &model.Function{
+				Name:     "ToModel",
+				Receiver: "src",
+				Src: model.Var{
+					Name:    "src",
+					PkgName: "domain",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				Dst: model.Var{
+					Name:    "dst",
+					PkgName: "model",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				ReturnsError: true,
+				DstVarStyle:  model.DstVarArg,
+				Assignments: []*model.Assignment{
+					{
+						LHS: "dst.ID",
+						RHS: model.SimpleField{Path: "src.ID"},
+					},
+				},
+			},
+			expected: header + pre + `
+func (src *domain.Pet) ToModel(dst *model.Pet) (err error) {
+	dst.ID = src.ID
+
+	return
+}
+`,
+		}}
 
 	for _, tt := range cases {
 		tt := tt
