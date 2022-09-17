@@ -11,7 +11,6 @@ func (g *Generator) FuncToString(f *model.Function) string {
 
 	// doc comment
 	for i := range f.Comments {
-		sb.WriteString("// ")
 		sb.WriteString(f.Comments[i])
 		sb.WriteString("\n")
 	}

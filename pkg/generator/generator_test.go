@@ -27,9 +27,9 @@ import (
 		expected string
 	}{
 		{
-			name: "src:ptr|dst:ptr,arg|rhs:simple",
+			name: "src:ptr/dst:ptr,arg/rhs:simple",
 			fn: &model.Function{
-				Comments: []string{"comment 1", "comment 2"},
+				Comments: []string{"// comment 1", "// comment 2"},
 				Name:     "ToModel",
 				Receiver: "",
 				Src: model.Var{
@@ -62,7 +62,7 @@ func ToModel(dst *model.Pet, src *domain.Pet) {
 `,
 		},
 		{
-			name: "src:ptr|dst:ptr,return|rhs:simple",
+			name: "src:ptr/dst:ptr,return/rhs:simple",
 			fn: &model.Function{
 				Name:     "ToModel",
 				Receiver: "",
@@ -97,7 +97,7 @@ func ToModel(src *domain.Pet) (dst *model.Pet) {
 `,
 		},
 		{
-			name: "src:ptr|dst:copy,return|rhs:simple",
+			name: "src:ptr/dst:copy,return/rhs:simple",
 			fn: &model.Function{
 				Name:     "ToModel",
 				Receiver: "",
@@ -131,7 +131,7 @@ func ToModel(src *domain.Pet) (dst model.Pet) {
 `,
 		},
 		{
-			name: "src:ptr,receiver|dst:copy,return|rhs:simple",
+			name: "src:ptr,receiver/dst:copy,return/rhs:simple",
 			fn: &model.Function{
 				Name:     "ToModel",
 				Receiver: "src",
@@ -165,7 +165,7 @@ func (src *domain.Pet) ToModel() (dst model.Pet) {
 `,
 		},
 		{
-			name: "src:ptr,receiver|dst:ptr,arg|rhs:simple",
+			name: "src:ptr,receiver/dst:ptr,arg/rhs:simple",
 			fn: &model.Function{
 				Name:     "ToModel",
 				Receiver: "src",
@@ -197,7 +197,7 @@ func (src *domain.Pet) ToModel(dst *model.Pet) {
 `,
 		},
 		{
-			name: "src:ptr,receiver|dst:ptr,arg error|rhs:simple",
+			name: "src:ptr,receiver/dst:ptr,arg error/rhs:simple",
 			fn: &model.Function{
 				Name:     "ToModel",
 				Receiver: "src",
