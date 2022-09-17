@@ -9,6 +9,7 @@ import (
 func (g *Generator) FuncToString(f *model.Function) string {
 	var sb strings.Builder
 	for i := range f.Comments {
+		sb.WriteString("// ")
 		sb.WriteString(f.Comments[i])
 		sb.WriteString("\n")
 	}
@@ -67,6 +68,9 @@ func (g *Generator) FuncToString(f *model.Function) string {
 
 	for i := range f.Assignments {
 		sb.WriteString(AssignmentToString(f.Assignments[i]))
+	}
+	if f.DstVarStyle == model.DstVarReturn {
+		sb.WriteString("\nreturn\n")
 	}
 	sb.WriteString("}\n")
 	return sb.String()

@@ -20,7 +20,7 @@ func NewGenerator(code *model.Code) *Generator {
 	}
 }
 
-func (g *Generator) Generate(outPath string, dryRun bool) ([]byte, error) {
+func (g *Generator) Generate(outPath string, output, dryRun bool) ([]byte, error) {
 	content, err := g.generateContent()
 	if err != nil {
 		return nil, err
@@ -28,21 +28,24 @@ func (g *Generator) Generate(outPath string, dryRun bool) ([]byte, error) {
 
 	optimized, err := imports.Process(outPath, content, nil)
 	if err != nil {
-		if dryRun {
-			fmt.Println(content)
+		if output {
+			fmt.Println(string(content))
 		}
 		return nil, fmt.Errorf("error on optimizing imports of the generated code.\n%w", err)
 	}
 
 	formatted, err := format.Source(optimized)
 	if err != nil {
-		if dryRun {
-			fmt.Println(content)
+		if output {
+			fmt.Println(string(content))
 		}
 		return nil, fmt.Errorf("error on formatting the generated code.\n%w", err)
 	}
 
 	if dryRun {
+		if output {
+			fmt.Println(string(content))
+		}
 		return formatted, nil
 	}
 
