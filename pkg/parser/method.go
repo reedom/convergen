@@ -116,7 +116,10 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 	strct, ok := dst.Type().Underlying().(*types.Struct)
 	if !ok {
 		if ptr, ok := dst.Type().Underlying().(*types.Pointer); ok {
-			strct = ptr.Elem().Underlying().(*types.Struct)
+			strct, ok = ptr.Elem().Underlying().(*types.Struct)
+			if !ok {
+				return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().String())
+			}
 		}
 	}
 
