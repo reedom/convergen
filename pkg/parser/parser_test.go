@@ -21,7 +21,7 @@ func TestParser_Parse(t *testing.T) {
 	g := generator.NewGenerator(code)
 	wd, _ := os.Getwd()
 	absPath := path.Join(wd, "../fixtures/setups/getter/generated.go")
-	generated, err := g.Generate(absPath, true)
+	generated, err := g.Generate(absPath, false, true)
 	require.Nil(t, err)
 	fmt.Println(string(generated))
 }
