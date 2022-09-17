@@ -14,8 +14,8 @@ func TestGenerator_ArgRetReceiver(t *testing.T) {
 	const pre = `package simple
 
 import (
-	"github.com/reedom/convergen/pkg/fixtures/data/domain"
-	"github.com/reedom/convergen/pkg/fixtures/data/model"
+	"github.com/reedom/convergen/pkg/tests/fixtures/data/domain"
+	"github.com/reedom/convergen/pkg/tests/fixtures/data/model"
 )
 `
 

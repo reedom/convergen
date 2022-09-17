@@ -1,5 +1,3 @@
-//go:build convergen
-
 package types
 
 type From struct {
@@ -68,7 +66,9 @@ type To struct {
 	FuncPtr      *func(int) string
 }
 
-//go:generate go run github.com/reedom/convergen
+// hoge
+//
+// !go:generate go run github.com/reedom/convergen
 type Convergen interface {
 	// convergen:map foo bar
 	FromTo(*From) *To
