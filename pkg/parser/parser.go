@@ -95,9 +95,6 @@ func (p *Parser) generateBaseCode(intf *intfEntry) (pre string, post string, err
 	for _, node := range nodes {
 		switch n := node.(type) {
 		case *ast.GenDecl:
-			if n.Doc != nil {
-				n.Doc.List = nil
-			}
 			ast.Inspect(n, func(node ast.Node) bool {
 				if node == nil {
 					return true

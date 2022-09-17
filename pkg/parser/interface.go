@@ -34,8 +34,11 @@ func (p *Parser) extractIntfEntry() (*intfEntry, error) {
 		return nil, err
 	}
 
-	docComment := getDocCommentOn(p.file, intf)
+	docComment, cleanUp := getDocCommentOn(p.file, intf)
 	notations := astExtractMatchComments(docComment, reNotation)
+	docComment.List = nil
+	cleanUp()
+
 	err = p.parseIntfNotations(notations)
 	if err != nil {
 		return nil, err

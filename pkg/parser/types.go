@@ -45,33 +45,55 @@ func removeObject(file *ast.File, obj types.Object) {
 }
 
 // getDocCommentOn retrieves doc comments that relate to nodes.
-func getDocCommentOn(file *ast.File, obj types.Object) *ast.CommentGroup {
+func getDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cleanUp func()) {
 	nodes, _ := toAstNode(file, obj)
 	if nodes == nil {
-		return nil
+		return
 	}
 
 	for _, node := range nodes {
 		switch n := node.(type) {
 		case *ast.GenDecl:
 			if n.Doc != nil {
-				return n.Doc
+				return n.Doc, func() {
+					if len(n.Doc.List) == 0 {
+						n.Doc = nil
+					}
+				}
 			}
 		case *ast.FuncDecl:
 			if n.Doc != nil {
-				return n.Doc
+				if n.Doc != nil {
+					return n.Doc, func() {
+						if len(n.Doc.List) == 0 {
+							n.Doc = nil
+						}
+					}
+				}
 			}
 		case *ast.TypeSpec:
 			if n.Doc != nil {
-				return n.Doc
+				if n.Doc != nil {
+					return n.Doc, func() {
+						if len(n.Doc.List) == 0 {
+							n.Doc = nil
+						}
+					}
+				}
 			}
 		case *ast.Field:
 			if n.Doc != nil {
-				return n.Doc
+				if n.Doc != nil {
+					return n.Doc, func() {
+						if len(n.Doc.List) == 0 {
+							n.Doc = nil
+						}
+					}
+				}
 			}
 		}
 	}
-	return nil
+	return
 }
 
 func findField(fset *token.FileSet, pkg *types.Package, t types.Type, opt lookupFieldOpt) (types.Object, error) {

@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"regexp"
@@ -49,8 +48,6 @@ func astRemoveDecl(file *ast.File, name string) {
 	for _, decl := range file.Decls {
 		if !ast.FilterDecl(decl, comparer) {
 			decls = append(decls, decl)
-		} else {
-			fmt.Println("@@@ REMOVE")
 		}
 	}
 	file.Decls = decls

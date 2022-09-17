@@ -67,8 +67,9 @@ func (p *Parser) extractMethodEntry(method types.Object) (*methodEntry, error) {
 		return nil, logger.Errorf(`%v: method must have one or more return values as copy destination`, p.fset.Position(method.Pos()))
 	}
 
-	docComment := getDocCommentOn(p.file, method)
+	docComment, cleanUp := getDocCommentOn(p.file, method)
 	notations := astExtractMatchComments(docComment, reNotation)
+	cleanUp()
 
 	return &methodEntry{
 		method:      method,
