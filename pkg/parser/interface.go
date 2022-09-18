@@ -4,12 +4,9 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
-	"strings"
 	"unicode"
 
 	"github.com/reedom/convergen/pkg/logger"
-	"github.com/reedom/convergen/pkg/model"
-	"github.com/reedom/convergen/pkg/parser/option"
 )
 
 const intfName = "Convergen"
@@ -39,7 +36,8 @@ func (p *Parser) extractIntfEntry() (*intfEntry, error) {
 	docComment.List = nil
 	cleanUp()
 
-	err = p.parseIntfNotations(notations)
+	opts := newOptions()
+	err = p.parseNotationInComments(notations, validOpsIntf, &opts)
 	if err != nil {
 		return nil, err
 	}
@@ -63,76 +61,6 @@ func (p *Parser) findIntfEntry(scope *types.Scope, name string) (*types.TypeName
 		}
 	}
 	return nil, logger.Errorf("%v: %v interface not found", p.fset.Position(p.file.Package), name)
-}
-
-func (p *Parser) parseIntfNotations(notations []*ast.Comment) error {
-	for _, n := range notations {
-		m := reNotation.FindStringSubmatch(n.Text)
-		var args []string
-		if len(m) == 3 {
-			args = strings.Fields(m[2])
-		}
-
-		switch m[1] {
-		case "opt:style":
-			if args == nil {
-				return logger.Errorf("%v: needs <style> arg", p.fset.Position(n.Pos()))
-			} else if style, ok := model.NewDstVarStyleFromValue(args[0]); !ok {
-				return logger.Errorf("%v: invalid <style> arg", p.fset.Position(n.Pos()))
-			} else {
-				p.opt.Style = style
-			}
-		case "opt:match":
-			if args == nil {
-				return logger.Errorf("%v: needs <order> arg", p.fset.Position(n.Pos()))
-			} else if order, ok := option.FieldMatchOrderFromValue(args[0]); !ok {
-				return logger.Errorf("%v: invalid <order> arg", p.fset.Position(n.Pos()))
-			} else {
-				p.opt.FieldMatchOrder = order
-			}
-		case "opt:nocase":
-			p.opt.ExactCase = true
-		case "rcv":
-			if args == nil {
-				return logger.Errorf("%v: needs name for the receiver", p.fset.Position(n.Pos()))
-			} else if !isValidIdentifier(args[0]) {
-				return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
-			}
-			p.opt.Receiver = args[0]
-		case "skip":
-			if args == nil {
-				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
-			}
-			matcher, err := option.NewIdentMatcher(args[0], p.opt.ExactCase)
-			if err != nil {
-				return logger.Errorf("%v: invalid <field> arg", p.fset.Position(n.Pos()))
-			}
-			p.opt.Skip = append(p.opt.Skip, matcher)
-		case "map":
-			if len(args) < 2 {
-				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
-			}
-			matcher, err := option.NewFieldMatcher(args[0], args[1], p.opt.ExactCase)
-			if err != nil {
-				return logger.Errorf("%v: invalid <field> arg", p.fset.Position(n.Pos()))
-			}
-			p.opt.Matchers = append(p.opt.Matchers, matcher)
-		case "conv":
-			if len(args) < 2 {
-				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
-			}
-			scope, obj := p.pkg.Types.Scope().LookupParent(args[0], n.Pos())
-			fmt.Printf("@@@ lookup %v, %#v, %#v\n", args[0], scope, obj)
-			obj = p.pkg.Types.Scope().Lookup(args[0])
-			fmt.Printf("@@@ lookup %v, %#v\n", args[0], obj)
-			inner := p.pkg.Types.Scope().Innermost(n.Pos())
-			scope, obj = inner.LookupParent("domain", n.Pos())
-			fmt.Printf("@@@! lookup %v, %#v, %#v\n", args[0], scope, obj)
-		default:
-			fmt.Printf("@@@ notation %v\n", m[1])
-		}
-	}
-	return nil
 }
 
 func (p *Parser) parseIt(scope *types.Scope, at *types.Var) {
