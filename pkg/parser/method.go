@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"go/types"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/model"
+	"golang.org/x/tools/go/loader"
 )
 
 var reGoBuildGen = regexp.MustCompile(`\s*//\s*(go:(generate\b|build convergen\b)|\+build convergen)`)
@@ -187,20 +189,6 @@ func (p *Parser) parseVarType(t types.Type, varModel *model.Var) {
 	}
 }
 
-func isMethodAssignableTo(m *types.Func, dst types.Type, returnsError bool) bool {
-	sig := m.Type().(*types.Signature)
-	num := sig.Results().Len()
-	if num == 0 || 2 < num {
-		return false
-	}
-
-	r := sig.Results().At(0).Type()
-	if !types.AssignableTo(r, dst) {
-		return false
-	}
-	return num == 1 || returnsError && isErrorType(sig.Results().At(1).Type())
-}
-
 func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var, pos token.Pos) (*model.Assignment, error) {
 	name := dst.Name()
 	dstVarName := fmt.Sprintf("%v.%v", dstVar.Name, name)
@@ -231,16 +219,34 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 			return
 		}
 
-		if isMethodAssignableTo(m, dst.Type(), false) {
-			logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
-				p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
-				dstVar.Name, dst.Name(), dst.Type().String())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
+		retType, ok := getMethodReturnTypes(m)
+		if ok && compliesGetter(retType, false) {
+			if isMethodAssignableTo(retType, dst.Type(), false) {
+				logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
+					p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
+					dstVar.Name, dst.Name(), dst.Type().String())
+				a = &model.Assignment{
+					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+					RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
+				}
+				return true, nil
 			}
-			return true, nil
+
+			// :stringer notation
+			if opts.stringer && supportsStringer(retType.At(0).Type(), dst.Type()) {
+				logger.Printf("%v: assignment found, %v.%v().String() to %v.%v [%v]",
+					p.fset.Position(dst.Pos()), srcVar.Name, m.Name(),
+					dstVar.Name, dst.Name(), dst.Type().String())
+				a = &model.Assignment{
+					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+					RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v().String()", srcVar.Name, m.Name())},
+				}
+				return true, nil
+			}
+			//types.AssignableTo(types.String, dst.Type())
+
 		}
+
 		return
 	})
 	if err != nil && err != errNotFound {
@@ -269,6 +275,18 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 			}
 			return true, nil
 		}
+
+		// :stringer notation
+		if opts.stringer && supportsStringer(f.Type(), dst.Type()) {
+			logger.Printf("%v: assignment found, %v.%v.String() to %v.%v [%v]",
+				p.fset.Position(dst.Pos()), srcVar.Name, f.Name(), f.Type().String(),
+				dstVar.Name, dst.Name(), dst.Type().String())
+			a = &model.Assignment{
+				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v.String()", srcVar.Name, f.Name())},
+			}
+			return true, nil
+		}
 		return
 	})
 	if err == errNotFound {
@@ -286,4 +304,40 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 		LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
 		RHS: model.NoMatchField{},
 	}, nil
+}
+
+func compliesGetter(retTypes *types.Tuple, returnsError bool) bool {
+	num := retTypes.Len()
+	if num == 0 || 2 < num {
+		return false
+	}
+	return num == 1 || returnsError && isErrorType(retTypes.At(1).Type())
+}
+
+func isMethodAssignableTo(retTypes *types.Tuple, dst types.Type, returnsError bool) bool {
+	if !compliesGetter(retTypes, returnsError) {
+		return false
+	}
+
+	r := retTypes.At(0).Type()
+	return types.AssignableTo(r, dst)
+}
+
+var stringer *types.Interface
+
+func supportsStringer(src types.Type, dst types.Type) bool {
+	strType := types.Universe.Lookup("string").Type()
+	if !types.AssignableTo(strType, dst) {
+		return false
+	}
+
+	if stringer == nil {
+		conf := loader.Config{ParserMode: parser.ParseComments}
+		conf.Import("fmt")
+		lprog, _ := conf.Load()
+		t := lprog.Package("fmt").Pkg.Scope().Lookup("Stringer").Type()
+		stringer = t.Underlying().(*types.Interface)
+	}
+
+	return types.Implements(src, stringer)
 }

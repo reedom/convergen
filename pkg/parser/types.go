@@ -311,3 +311,13 @@ func iterateFields(t types.Type, cb func(*types.Var) (done bool, err error)) err
 	}
 	return nil
 }
+
+func getMethodReturnTypes(m *types.Func) (*types.Tuple, bool) {
+	sig := m.Type().(*types.Signature)
+	num := sig.Results().Len()
+	if num == 0 || 2 < num {
+		return nil, false
+	}
+
+	return sig.Results(), true
+}
