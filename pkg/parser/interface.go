@@ -12,9 +12,8 @@ import (
 const intfName = "Convergen"
 
 type intfEntry struct {
-	intf       *types.TypeName
-	docComment *ast.CommentGroup
-	notations  []*ast.Comment
+	intf *types.TypeName
+	opts options
 }
 
 type funcEntry struct {
@@ -25,7 +24,6 @@ type funcEntry struct {
 // extractIntfEntry looks up the setup interface with the name of intfName("Convergen") and also
 // parses convergen notations from the interface's doc comment.
 func (p *Parser) extractIntfEntry() (*intfEntry, error) {
-	//intf, err := astFindIntfEntry(p.file, p.fset, p.pkg.Types.Scope(), intfName)
 	intf, err := p.findIntfEntry(p.pkg.Types.Scope(), intfName)
 	if err != nil {
 		return nil, err
@@ -43,9 +41,8 @@ func (p *Parser) extractIntfEntry() (*intfEntry, error) {
 	}
 
 	return &intfEntry{
-		intf:       intf,
-		docComment: docComment,
-		notations:  notations,
+		intf: intf,
+		opts: opts,
 	}, nil
 }
 

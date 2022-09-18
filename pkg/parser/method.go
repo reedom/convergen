@@ -17,13 +17,11 @@ var reGoBuildGen = regexp.MustCompile(`\s*//\s*(go:(generate\b|build convergen\b
 var ErrAbort = errors.New("abort")
 
 type methodEntry struct {
-	method      types.Object // Also a *types.Signature
-	docComment  *ast.CommentGroup
-	notations   []*ast.Comment
-	dstVarStyle model.DstVarStyle
-	receiver    string
-	src         *types.Tuple
-	dst         *types.Tuple
+	method     types.Object // Also a *types.Signature
+	opts       options
+	docComment *ast.CommentGroup
+	src        *types.Tuple
+	dst        *types.Tuple
 }
 
 func (p *Parser) parseMethods(intf *intfEntry) ([]*model.Function, error) {
@@ -31,7 +29,7 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*model.Function, error) {
 	mset := types.NewMethodSet(iface)
 	methods := make([]*methodEntry, 0)
 	for i := 0; i < mset.Len(); i++ {
-		method, err := p.extractMethodEntry(mset.At(i).Obj())
+		method, err := p.extractMethodEntry(mset.At(i).Obj(), intf.opts)
 		if err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err.Error())
 			continue
@@ -54,7 +52,7 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*model.Function, error) {
 	return functions, nil
 }
 
-func (p *Parser) extractMethodEntry(method types.Object) (*methodEntry, error) {
+func (p *Parser) extractMethodEntry(method types.Object, opts options) (*methodEntry, error) {
 	signature, ok := method.Type().(*types.Signature)
 	if !ok {
 		return nil, logger.Errorf(`%v: expected signature but %#v`, p.fset.Position(method.Pos()), method)
@@ -69,15 +67,19 @@ func (p *Parser) extractMethodEntry(method types.Object) (*methodEntry, error) {
 
 	docComment, cleanUp := getDocCommentOn(p.file, method)
 	notations := astExtractMatchComments(docComment, reNotation)
+	err := p.parseNotationInComments(notations, validOpsIntf, &opts)
+	if err != nil {
+		return nil, err
+	}
+
 	cleanUp()
 
 	return &methodEntry{
-		method:      method,
-		docComment:  docComment,
-		notations:   notations,
-		dstVarStyle: model.DstVarReturn,
-		src:         signature.Params(),
-		dst:         signature.Results(),
+		method:     method,
+		opts:       opts,
+		docComment: docComment,
+		src:        signature.Params(),
+		dst:        signature.Results(),
 	}, nil
 }
 
@@ -139,10 +141,10 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 	fn := &model.Function{
 		Name:         m.method.Name(),
 		Comments:     comments,
-		Receiver:     m.receiver,
+		Receiver:     m.opts.receiver,
 		Src:          srcVar,
 		Dst:          dstVar,
-		DstVarStyle:  model.DstVarReturn,
+		DstVarStyle:  m.opts.Style,
 		ReturnsError: hasError,
 		Assignments:  assignments,
 	}
