@@ -116,7 +116,7 @@ func testMethodNotations(t *testing.T) {
 		},
 		{
 			notation:  ":map ID UserID",
-			validator: func(opt options) bool { return len(opt.mapFields) == 1 },
+			validator: func(opt options) bool { return len(opt.nameMapper) == 1 },
 		},
 	}
 

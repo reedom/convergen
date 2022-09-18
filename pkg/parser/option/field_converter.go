@@ -1,13 +1,13 @@
 package option
 
 type FieldConverter struct {
-	m         *FieldMatcher
+	m         *NameMatcher
 	converter string
 	hasError  bool
 }
 
 func NewFieldConverter(src, dst string, exactCase bool, converter string, hasError bool) (*FieldConverter, error) {
-	m, err := NewFieldMatcher(src, dst, exactCase)
+	m, err := NewNameMatcher(src, dst, exactCase)
 	if err != nil {
 		return nil, err
 	}

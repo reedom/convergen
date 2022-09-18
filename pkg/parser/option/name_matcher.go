@@ -5,12 +5,12 @@ import (
 	"strings"
 )
 
-type FieldMatcher struct {
+type NameMatcher struct {
 	src *IdentMatcher
 	dst *IdentMatcher
 }
 
-func NewFieldMatcher(src, dst string, exactCase bool) (*FieldMatcher, error) {
+func NewNameMatcher(src, dst string, exactCase bool) (*NameMatcher, error) {
 	srcM, err := NewIdentMatcher(src, exactCase)
 	if err != nil {
 		return nil, fmt.Errorf("src regexp is invalid")
@@ -24,10 +24,10 @@ func NewFieldMatcher(src, dst string, exactCase bool) (*FieldMatcher, error) {
 		}
 	}
 
-	return &FieldMatcher{src: srcM, dst: dstM}, nil
+	return &NameMatcher{src: srcM, dst: dstM}, nil
 }
 
-func (m *FieldMatcher) Match(src, dst string, exactCase bool) bool {
+func (m *NameMatcher) Match(src, dst string, exactCase bool) bool {
 	if !m.src.Match(src, exactCase) {
 		return false
 	}

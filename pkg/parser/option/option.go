@@ -74,7 +74,7 @@ type MethodOption struct {
 
 func (o *MethodOption) AddMatcher(m any) {
 	switch m.(type) {
-	case *FieldMatcher:
+	case *NameMatcher:
 		o.Matchers = append(o.Matchers, m)
 	default:
 		panic(fmt.Sprintf("unknown matcher: %q", m))

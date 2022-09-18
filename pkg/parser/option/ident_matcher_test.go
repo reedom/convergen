@@ -8,6 +8,8 @@ import (
 )
 
 func TestIdentMatcher(t *testing.T) {
+	t.Parallel()
+
 	cases := map[string][]struct {
 		ident     string
 		exactCase bool

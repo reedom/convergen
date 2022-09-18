@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFieldMatcher(t *testing.T) {
+func TestNameMatcher(t *testing.T) {
+	t.Parallel()
+
 	cases := map[string]map[string][]struct {
 		src       string
 		dst       string
@@ -48,7 +50,7 @@ func TestFieldMatcher(t *testing.T) {
 	for srcPtn, ttMap := range cases {
 		for dstPtn, ttList := range ttMap {
 			for _, tt := range ttList {
-				m, err := NewFieldMatcher(srcPtn, dstPtn, tt.exactCase)
+				m, err := NewNameMatcher(srcPtn, dstPtn, tt.exactCase)
 				require.Nil(t, err, `test pattern src="%v", dst="%v"`, srcPtn, dstPtn)
 				assert.Equal(t, tt.matches, m.Match(tt.src, tt.dst, tt.exactCase),
 					`pattern src="%v", dst="%v" against src="%v", dst="%v" (case-sensitive=%v)`,
