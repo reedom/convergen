@@ -11,6 +11,10 @@ type Var struct {
 	Pointer bool
 }
 
+func (v Var) IsPkgExternal() bool {
+	return v.PkgName != ""
+}
+
 func (v Var) FullType() string {
 	var sb strings.Builder
 	if v.Pointer {

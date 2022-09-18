@@ -36,10 +36,14 @@ func TestUseCases(t *testing.T) {
 	for _, tt := range cases {
 		tt := tt
 		t.Run(tt.source, func(t *testing.T) {
+			t.Parallel()
 			expected, err := os.ReadFile(tt.expected)
 			require.Nil(t, err)
 
-			logger.SetupLogger(logger.Enable())
+			if tt.source == "fixtures/usecase/nocase/xxx.go" {
+				logger.SetupLogger(logger.Enable())
+			}
+
 			p, err := parser.NewParser(tt.source)
 			require.Nil(t, err)
 			code, err := p.Parse()
@@ -49,9 +53,10 @@ func TestUseCases(t *testing.T) {
 			actual, err := g.Generate(tt.source, false, true)
 			require.Nil(t, err)
 
-			assert.Equal(t, string(expected), string(actual))
-			fmt.Println("-----------[generated]------------")
-			fmt.Println(string(actual))
+			if !assert.Equal(t, string(expected), string(actual)) {
+				fmt.Println("-----------[generated]------------")
+				fmt.Println(string(actual))
+			}
 		})
 	}
 }

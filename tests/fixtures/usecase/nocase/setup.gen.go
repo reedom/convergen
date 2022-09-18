@@ -3,17 +3,24 @@
 
 package nocase
 
+import (
+	"github.com/reedom/convergen/tests/fixtures/usecase/nocase/model"
+)
+
 type ModelA struct {
-	ID uint64
+	ID   uint64
+	Name string
 }
 
 type ModelB struct {
-	id uint64
+	id   uint64
+	name string
 }
 
 func AtoB(src *ModelA) (dst *ModelB) {
 	dst = &ModelB{}
 	dst.id = src.ID
+	dst.name = src.Name
 
 	return
 }
@@ -21,6 +28,26 @@ func AtoB(src *ModelA) (dst *ModelB) {
 func BtoA(src *ModelB) (dst *ModelA) {
 	dst = &ModelA{}
 	dst.ID = src.id
+	dst.Name = src.name
+
+	return
+}
+
+// BtoUser demonstrates copy an internal to external package type.
+// It skips private fields (and getters) in the latter type.
+func BtoUser(src *ModelB) (dst *model.User) {
+	dst = &model.User{}
+	dst.Name = src.name
+
+	return
+}
+
+// UserToB demonstrates copy an external package type to internal.
+// It skips private fields (and getters) in the former type.
+func UserToB(src *model.User) (dst *ModelB) {
+	dst = &ModelB{}
+	// no match: dst.id
+	dst.name = src.Name
 
 	return
 }

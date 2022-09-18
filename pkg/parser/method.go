@@ -205,6 +205,12 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 	name := dst.Name()
 	dstVarName := fmt.Sprintf("%v.%v", dstVar.Name, name)
 
+	if dstVar.PkgName != "" && !ast.IsExported(name) {
+		logger.Printf("%v: skip %v.%v while it is not an exported field",
+			p.fset.Position(dst.Pos()), dstVar.Name, dst.Name())
+		return nil, errNotFound
+	}
+
 	// :skip notation
 	if opts.shouldSkip(dstVarName) {
 		logger.Printf("%v: skip %v.%v [%v]",
@@ -215,9 +221,13 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 		}, nil
 	}
 
+	// Handle getters
 	var a *model.Assignment
 	err := iterateMethods(srcType, func(m *types.Func) (done bool, err error) {
 		if !opts.compareFieldName(name, m.Name()) {
+			return
+		}
+		if srcVar.IsPkgExternal() && !ast.IsExported(m.Name()) {
 			return
 		}
 
@@ -240,10 +250,15 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 		return a, nil
 	}
 
+	// Field name mapping
 	err = iterateFields(srcType, func(f *types.Var) (done bool, err error) {
 		if !opts.compareFieldName(name, f.Name()) {
 			return
 		}
+		if srcVar.IsPkgExternal() && !ast.IsExported(f.Name()) {
+			return
+		}
+
 		if types.AssignableTo(f.Type(), dst.Type()) {
 			logger.Printf("%v: assignment found, %v.%v [%v] to %v.%v [%v]",
 				p.fset.Position(dst.Pos()), srcVar.Name, f.Name(), f.Type().String(),
