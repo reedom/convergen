@@ -7,7 +7,7 @@ import (
 )
 
 func TestGenerator(t *testing.T) {
-	c, err := NewParser("../fixtures/setups/types/setup.go")
+	c, err := NewParser("../../tests/fixtures/usecase/types/setup.go")
 	require.Nil(t, err)
 	intf, err := c.extractIntfEntry()
 	require.Nil(t, err)

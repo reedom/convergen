@@ -20,12 +20,12 @@ func TestUseCases(t *testing.T) {
 		expected string
 	}{
 		{
-			source:   "fixtures/setups/getter/setup.go",
-			expected: "fixtures/setups/getter/setup.gen.go",
+			source:   "fixtures/usecase/getter/setup.go",
+			expected: "fixtures/usecase/getter/setup.gen.go",
 		},
 		{
-			source:   "fixtures/setups/style/setup.go",
-			expected: "fixtures/setups/style/setup.gen.go",
+			source:   "fixtures/usecase/style/setup.go",
+			expected: "fixtures/usecase/style/setup.gen.go",
 		},
 	}
 

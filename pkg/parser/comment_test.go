@@ -86,7 +86,7 @@ func testCommonNotations(t *testing.T, validOpts map[string]struct{}) {
 		},
 	}
 
-	p, err := NewParser("../../tests/fixtures/setups/getter/setup.go")
+	p, err := NewParser("../../tests/fixtures/usecase/getter/setup.go")
 	require.Nil(t, err)
 
 	expected := newOptions()
@@ -120,7 +120,7 @@ func testMethodNotations(t *testing.T) {
 		},
 	}
 
-	p, err := NewParser("../../tests/fixtures/setups/getter/setup.go")
+	p, err := NewParser("../../tests/fixtures/usecase/getter/setup.go")
 	require.Nil(t, err)
 
 	for _, tt := range cases {

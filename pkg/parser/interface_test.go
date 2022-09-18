@@ -8,7 +8,7 @@ import (
 )
 
 func TestNoConvergenInterface(t *testing.T) {
-	c, err := NewParser("../fixtures/setups/nointf/setup.go")
+	c, err := NewParser("../../tests/fixtures/usecase/nointf/setup.go")
 	require.Nil(t, err)
 	_, err = c.extractIntfEntry()
 	require.NotNil(t, err)
