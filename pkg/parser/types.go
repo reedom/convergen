@@ -48,7 +48,7 @@ func removeObject(file *ast.File, obj types.Object) {
 func getDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cleanUp func()) {
 	nodes, _ := toAstNode(file, obj)
 	if nodes == nil {
-		return
+		return nil, func() {}
 	}
 
 	for _, node := range nodes {
@@ -63,37 +63,39 @@ func getDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cl
 			}
 		case *ast.FuncDecl:
 			if n.Doc != nil {
-				if n.Doc != nil {
-					return n.Doc, func() {
-						if len(n.Doc.List) == 0 {
-							n.Doc = nil
-						}
+				return n.Doc, func() {
+					if len(n.Doc.List) == 0 {
+						n.Doc = nil
 					}
 				}
 			}
 		case *ast.TypeSpec:
 			if n.Doc != nil {
-				if n.Doc != nil {
-					return n.Doc, func() {
-						if len(n.Doc.List) == 0 {
-							n.Doc = nil
-						}
+				return n.Doc, func() {
+					if len(n.Doc.List) == 0 {
+						n.Doc = nil
 					}
 				}
 			}
 		case *ast.Field:
 			if n.Doc != nil {
-				if n.Doc != nil {
-					return n.Doc, func() {
-						if len(n.Doc.List) == 0 {
-							n.Doc = nil
-						}
+				return n.Doc, func() {
+					if len(n.Doc.List) == 0 {
+						n.Doc = nil
+					}
+				}
+			}
+		case *ast.File:
+			if n.Doc != nil {
+				return n.Doc, func() {
+					if len(n.Doc.List) == 0 {
+						n.Doc = nil
 					}
 				}
 			}
 		}
 	}
-	return
+	return nil, func() {}
 }
 
 func findField(fset *token.FileSet, pkg *types.Package, t types.Type, opt lookupFieldOpt) (types.Object, error) {

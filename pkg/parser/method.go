@@ -108,11 +108,13 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 	hasError := 1 < sig.Results().Len() &&
 		isErrorType(sig.Results().At(sig.Results().Len()-1).Type())
 
-	comments := make([]string, len(m.docComment.List))
-	for i := range m.docComment.List {
-		comments[i] = m.docComment.List[i].Text
+	var comments []string
+	if m.docComment != nil {
+		comments = make([]string, len(m.docComment.List))
+		for i := range m.docComment.List {
+			comments[i] = m.docComment.List[i].Text
+		}
 	}
-
 	src := sig.Params().At(0)
 	dst := sig.Results().At(0)
 
