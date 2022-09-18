@@ -267,5 +267,8 @@ func (p *Parser) createAssign(dst *types.Var, dstVar model.Var, srcType types.Ty
 	logger.Printf("%v: no assignment for %v.%v [%v]",
 		p.fset.Position(dst.Pos()),
 		dstVar.Name, dst.Name(), dst.Type().String())
-	return nil, errNotFound
+	return &model.Assignment{
+		LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+		RHS: model.NoMatchField{},
+	}, nil
 }

@@ -1,6 +1,6 @@
 //go:build convergen
 
-package simple
+package style
 
 import (
 	"github.com/reedom/convergen/tests/fixtures/data/model"

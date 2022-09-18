@@ -4,13 +4,12 @@
 package simple
 
 import (
-	"github.com/reedom/convergen/pkg/tests/fixtures/data/domain"
-	"github.com/reedom/convergen/pkg/tests/fixtures/data/model"
+	"github.com/reedom/convergen/tests/fixtures/data/domain"
+	"github.com/reedom/convergen/tests/fixtures/data/model"
 )
 
 func ToModel(src *domain.Pet) (dst *model.Pet) {
 	dst = &model.Pet{}
-	dst.ID = src.ID
 
 	return
 }
