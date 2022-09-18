@@ -211,66 +211,68 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 
 	// Handle getters
 	var a *model.Assignment
-	err := iterateMethods(srcType, func(m *types.Func) (done bool, err error) {
-		if !opts.compareFieldName(name, m.Name()) {
-			return
-		}
-		if srcVar.IsPkgExternal() && !ast.IsExported(m.Name()) {
-			return
-		}
-
-		retTypes, ok := getMethodReturnTypes(m)
-		if !ok || !compliesGetter(retTypes, false) {
-			return
-		}
-
-		retType := retTypes.At(0).Type()
-		if types.AssignableTo(retType, dst.Type()) {
-			logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
-				p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
-				dstVar.Name, dst.Name(), dst.Type().String())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
+	if opts.getter {
+		err := iterateMethods(srcType, func(m *types.Func) (done bool, err error) {
+			if !opts.compareFieldName(name, m.Name()) {
+				return
 			}
-			return true, nil
-		}
-
-		// :stringer notation
-		if opts.stringer && supportsStringer(retType, dst.Type()) {
-			logger.Printf("%v: assignment found, %v.%v().String() to %v.%v [%v]",
-				p.fset.Position(dst.Pos()), srcVar.Name, m.Name(),
-				dstVar.Name, dst.Name(), dst.Type().String())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v().String()", srcVar.Name, m.Name())},
+			if srcVar.IsPkgExternal() && !ast.IsExported(m.Name()) {
+				return
 			}
-			return true, nil
-		}
 
-		// :typecast notation
-		if opts.typecast && types.ConvertibleTo(retType, dst.Type()) {
-			logger.Printf("%v: assignment found, %v(%v.%v) to %v.%v",
-				p.fset.Position(dst.Pos()), dst.Type().String(), srcVar.Name, dstVar.Name, dst.Name(),
-				dstVar.Name, dst.Name())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v(%v.%v)", dst.Type().String(), srcVar.Name, m.Name())},
+			retTypes, ok := getMethodReturnTypes(m)
+			if !ok || !compliesGetter(retTypes, false) {
+				return
 			}
-			return true, nil
-		}
 
-		return
-	})
-	if err != nil && err != errNotFound {
-		return nil, err
-	}
-	if a != nil {
-		return a, nil
+			retType := retTypes.At(0).Type()
+			if types.AssignableTo(retType, dst.Type()) {
+				logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
+					p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
+					dstVar.Name, dst.Name(), dst.Type().String())
+				a = &model.Assignment{
+					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+					RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
+				}
+				return true, nil
+			}
+
+			// :stringer notation
+			if opts.stringer && supportsStringer(retType, dst.Type()) {
+				logger.Printf("%v: assignment found, %v.%v().String() to %v.%v [%v]",
+					p.fset.Position(dst.Pos()), srcVar.Name, m.Name(),
+					dstVar.Name, dst.Name(), dst.Type().String())
+				a = &model.Assignment{
+					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+					RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v().String()", srcVar.Name, m.Name())},
+				}
+				return true, nil
+			}
+
+			// :typecast notation
+			if opts.typecast && types.ConvertibleTo(retType, dst.Type()) {
+				logger.Printf("%v: assignment found, %v(%v.%v) to %v.%v",
+					p.fset.Position(dst.Pos()), dst.Type().String(), srcVar.Name, dstVar.Name, dst.Name(),
+					dstVar.Name, dst.Name())
+				a = &model.Assignment{
+					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+					RHS: model.SimpleField{Path: fmt.Sprintf("%v(%v.%v)", dst.Type().String(), srcVar.Name, m.Name())},
+				}
+				return true, nil
+			}
+
+			return
+		})
+		if err != nil && err != errNotFound {
+			return nil, err
+		}
+		if a != nil {
+			return a, nil
+		}
 	}
 
 	// Field name mapping
-	err = iterateFields(srcType, func(f *types.Var) (done bool, err error) {
+	err := iterateFields(srcType, func(f *types.Var) (done bool, err error) {
 		if !opts.compareFieldName(name, f.Name()) {
 			return
 		}
