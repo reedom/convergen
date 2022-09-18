@@ -3,6 +3,8 @@ package parser
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
+	"go/types"
 	"regexp"
 	"strings"
 
@@ -178,16 +180,34 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
-			scope, obj := p.pkg.Types.Scope().LookupParent(args[0], n.Pos())
-			fmt.Printf("@@@ lookup %v, %#v, %#v\n", args[0], scope, obj)
-			obj = p.pkg.Types.Scope().Lookup(args[0])
-			fmt.Printf("@@@ lookup %v, %#v\n", args[0], obj)
-			inner := p.pkg.Types.Scope().Innermost(n.Pos())
-			scope, obj = inner.LookupParent("domain", n.Pos())
-			fmt.Printf("@@@! lookup %v, %#v, %#v\n", args[0], scope, obj)
+			_, obj := p.lookupType(args[0], n.Pos())
+			if obj == nil {
+				return logger.Errorf("%v: function %v not found", p.fset.Position(n.Pos()), args[0])
+			}
 		default:
 			fmt.Printf("@@@ notation %v\n", m[1])
 		}
 	}
 	return nil
+}
+
+func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types.Object) {
+	names := strings.Split(typeName, ".")
+	if len(names) == 1 {
+		inner := p.pkg.Types.Scope().Innermost(pos)
+		return inner.LookupParent(names[0], pos)
+	}
+
+	pkgPath, ok := p.imports.lookupPath(names[0])
+	if !ok {
+		return nil, nil
+	}
+	pkg, ok := p.pkg.Imports[pkgPath]
+	if !ok {
+		return nil, nil
+	}
+
+	scope := pkg.Types.Scope()
+	obj := scope.Lookup(names[1])
+	return scope, obj
 }

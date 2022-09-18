@@ -29,3 +29,14 @@ func (i importNames) lookupName(pkgPath string) (name string, ok bool) {
 	name, ok = i[pkgPath]
 	return
 }
+
+// lookupPath looks up the map with the pkgName and returns its corresponding path
+// in the conversion setup file.
+func (i importNames) lookupPath(pkgName string) (path string, ok bool) {
+	for p, n := range i {
+		if n == pkgName {
+			return p, true
+		}
+	}
+	return
+}
