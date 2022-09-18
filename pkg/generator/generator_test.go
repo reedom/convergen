@@ -229,7 +229,70 @@ func (src *domain.Pet) ToModel(dst *model.Pet) (err error) {
 	return
 }
 `,
-		}}
+		},
+		{
+			name: "src:ptr/dst:ptr,arg error/rhs:skip",
+			fn: &model.Function{
+				Name: "ToModel",
+				Src: model.Var{
+					Name:    "src",
+					PkgName: "domain",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				Dst: model.Var{
+					Name:    "dst",
+					PkgName: "model",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				ReturnsError: false,
+				DstVarStyle:  model.DstVarArg,
+				Assignments: []*model.Assignment{
+					{
+						LHS: "dst.ID",
+						RHS: model.SkipField{},
+					},
+				},
+			},
+			expected: header + pre + `
+func ToModel(dst *model.Pet, src *domain.Pet) {
+	// skip: dst.ID
+}
+`,
+		},
+		{
+			name: "src:ptr/dst:ptr,arg error/rhs:nomatch",
+			fn: &model.Function{
+				Name: "ToModel",
+				Src: model.Var{
+					Name:    "src",
+					PkgName: "domain",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				Dst: model.Var{
+					Name:    "dst",
+					PkgName: "model",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				ReturnsError: false,
+				DstVarStyle:  model.DstVarArg,
+				Assignments: []*model.Assignment{
+					{
+						LHS: "dst.ID",
+						RHS: model.NoMatchField{},
+					},
+				},
+			},
+			expected: header + pre + `
+func ToModel(dst *model.Pet, src *domain.Pet) {
+	// no match: dst.ID
+}
+`,
+		},
+	}
 
 	for _, tt := range cases {
 		tt := tt

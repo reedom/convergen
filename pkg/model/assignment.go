@@ -15,6 +15,31 @@ type AssignmentRHS interface {
 	ReturnsError() bool
 }
 
+// SkipField indicates that the field is skipped due to a :skip notation.
+type SkipField struct {
+}
+
+func (s SkipField) String() string {
+	return ""
+}
+
+func (s SkipField) ReturnsError() bool {
+	return false
+}
+
+// NoMatchField indicates that the field is skipped while there was no matching fields or getters.
+type NoMatchField struct {
+}
+
+func (s NoMatchField) String() string {
+	return ""
+}
+
+func (s NoMatchField) ReturnsError() bool {
+	return false
+}
+
+// SimpleField represents an RHS expression.
 type SimpleField struct {
 	Path string
 }
@@ -27,6 +52,7 @@ func (s SimpleField) ReturnsError() bool {
 	return false
 }
 
+// Converter represents an RHS expression that uses a converter function.
 type Converter struct {
 	Func  string
 	Error bool
