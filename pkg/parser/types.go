@@ -268,3 +268,46 @@ func walkStructInternal(typePkg *types.Package, t types.Type, opt walkStructOpt,
 	fmt.Printf("@@@ %#v\n", t)
 	return nil
 }
+
+func iterateMethods(t types.Type, cb func(*types.Func) (done bool, err error)) error {
+	if ptr, ok := t.(*types.Pointer); ok {
+		return iterateMethods(ptr.Elem(), cb)
+	}
+
+	named, ok := t.(*types.Named)
+	if !ok {
+		return errNotFound
+	}
+
+	for i := 0; i < named.NumMethods(); i++ {
+		m := named.Method(i)
+		done, err := cb(m)
+		if done || err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func iterateFields(t types.Type, cb func(*types.Var) (done bool, err error)) error {
+	if ptr, ok := t.(*types.Pointer); ok {
+		return iterateFields(ptr.Elem(), cb)
+	}
+	if named, ok := t.(*types.Named); ok {
+		return iterateFields(named.Underlying(), cb)
+	}
+
+	strct, ok := t.Underlying().(*types.Struct)
+	if !ok {
+		return errNotFound
+	}
+
+	for i := 0; i < strct.NumFields(); i++ {
+		m := strct.Field(i)
+		done, err := cb(m)
+		if done || err != nil {
+			return err
+		}
+	}
+	return nil
+}

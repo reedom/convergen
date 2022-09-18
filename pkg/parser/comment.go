@@ -55,6 +55,13 @@ func (o options) shouldSkip(fieldName string) bool {
 	return false
 }
 
+func (o options) compareFieldName(a, b string) bool {
+	if o.exactCase {
+		return a == b
+	}
+	return strings.ToLower(a) == strings.ToLower(b)
+}
+
 type converter interface {
 }
 

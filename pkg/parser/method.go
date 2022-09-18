@@ -203,8 +203,9 @@ func isMethodAssignableTo(m *types.Func, dst types.Type, returnsError bool) bool
 
 func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var, pos token.Pos) (*model.Assignment, error) {
 	name := dst.Name()
-
 	dstVarName := fmt.Sprintf("%v.%v", dstVar.Name, name)
+
+	// :skip notation
 	if opts.shouldSkip(dstVarName) {
 		logger.Printf("%v: skip %v.%v [%v]",
 			p.fset.Position(dst.Pos()), dstVar.Name, dst.Name(), dst.Type().String())
@@ -214,64 +215,54 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 		}, nil
 	}
 
-	named, ok := srcType.(*types.Named)
-	if !ok {
-		if ptr, ok := srcType.(*types.Pointer); ok {
-			named, ok = ptr.Elem().(*types.Named)
+	var a *model.Assignment
+	err := iterateMethods(srcType, func(m *types.Func) (done bool, err error) {
+		if !opts.compareFieldName(name, m.Name()) {
+			return
 		}
+
+		if isMethodAssignableTo(m, dst.Type(), false) {
+			logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
+				p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
+				dstVar.Name, dst.Name(), dst.Type().String())
+			a = &model.Assignment{
+				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
+			}
+			return true, nil
+		}
+		return
+	})
+	if err != nil && err != errNotFound {
+		return nil, err
+	}
+	if a != nil {
+		return a, nil
 	}
 
-	var strct *types.Struct
-
-	if named != nil {
-		strct, ok = named.Underlying().(*types.Struct)
-		if !ok {
-			if ptr, ok := named.Underlying().(*types.Pointer); ok {
-				strct, ok = ptr.Elem().(*types.Struct)
-			}
-		}
-
-		for i := 0; i < named.NumMethods(); i++ {
-			m := named.Method(i)
-			if name != m.Name() {
-				continue
-			}
-
-			if isMethodAssignableTo(m, dst.Type(), false) {
-				logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
-					p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
-					dstVar.Name, dst.Name(), dst.Type().String())
-				return &model.Assignment{
-					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-					RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
-				}, nil
-			}
-			break
-		}
-	}
-
-	if strct == nil {
-		strct, ok = srcType.Underlying().(*types.Struct)
-		if !ok {
-			return nil, logger.Errorf("%v: src value is not a struct", p.fset.Position(pos))
-		}
-	}
-
-	for i := 0; i < strct.NumFields(); i++ {
-		f := strct.Field(i)
-		if name != f.Name() {
-			continue
+	err = iterateFields(srcType, func(f *types.Var) (done bool, err error) {
+		if !opts.compareFieldName(name, f.Name()) {
+			return
 		}
 		if types.AssignableTo(f.Type(), dst.Type()) {
 			logger.Printf("%v: assignment found, %v.%v [%v] to %v.%v [%v]",
 				p.fset.Position(dst.Pos()), srcVar.Name, f.Name(), f.Type().String(),
 				dstVar.Name, dst.Name(), dst.Type().String())
-			return &model.Assignment{
+			a = &model.Assignment{
 				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
 				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v", srcVar.Name, f.Name())},
-			}, nil
+			}
+			return true, nil
 		}
-		break
+		return
+	})
+	if err == errNotFound {
+		return nil, logger.Errorf("%v: src value is not a struct", p.fset.Position(pos))
+	} else if err != nil {
+		return nil, err
+	}
+	if a != nil {
+		return a, nil
 	}
 
 	logger.Printf("%v: no assignment for %v.%v [%v]",
