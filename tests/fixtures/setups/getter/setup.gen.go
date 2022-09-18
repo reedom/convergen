@@ -14,7 +14,7 @@ func DomainToModel(pet *domain.Pet) (dst *model.Pet) {
 	dst.ID = pet.ID()
 	// no match: dst.Category
 	dst.Name = pet.Name()
-	// no match: dst.PhotoUrls
+	// skip: dst.PhotoUrls
 	// no match: dst.Status
 
 	return

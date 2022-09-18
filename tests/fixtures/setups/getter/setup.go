@@ -11,5 +11,6 @@ import (
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
 	// DomainToModel copies domain.Pet to model.Pet.
+	// :skip dst.PhotoUrls
 	DomainToModel(pet *domain.Pet) *model.Pet
 }

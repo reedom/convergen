@@ -46,6 +46,15 @@ func (o options) copyForMethods() options {
 	return newOpt
 }
 
+func (o options) shouldSkip(fieldName string) bool {
+	for _, skip := range o.skipFields {
+		if skip.Match(fieldName, o.exactCase) {
+			return true
+		}
+	}
+	return false
+}
+
 type converter interface {
 }
 

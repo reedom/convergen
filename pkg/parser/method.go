@@ -136,7 +136,7 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 
 	for i := 0; i < strct.NumFields(); i++ {
 		f := strct.Field(i)
-		a, err := p.createAssign(f, dstVar, src.Type(), srcVar, m.method.Pos())
+		a, err := p.createAssign(m.opts, f, dstVar, src.Type(), srcVar, m.method.Pos())
 		if err == errNotFound {
 			continue
 		}
@@ -201,8 +201,18 @@ func isMethodAssignableTo(m *types.Func, dst types.Type, returnsError bool) bool
 	return num == 1 || returnsError && isErrorType(sig.Results().At(1).Type())
 }
 
-func (p *Parser) createAssign(dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var, pos token.Pos) (*model.Assignment, error) {
+func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var, pos token.Pos) (*model.Assignment, error) {
 	name := dst.Name()
+
+	dstVarName := fmt.Sprintf("%v.%v", dstVar.Name, name)
+	if opts.shouldSkip(dstVarName) {
+		logger.Printf("%v: skip %v.%v [%v]",
+			p.fset.Position(dst.Pos()), dstVar.Name, dst.Name(), dst.Type().String())
+		return &model.Assignment{
+			LHS: dstVarName,
+			RHS: model.SkipField{},
+		}, nil
+	}
 
 	named, ok := srcType.(*types.Named)
 	if !ok {
@@ -265,8 +275,7 @@ func (p *Parser) createAssign(dst *types.Var, dstVar model.Var, srcType types.Ty
 	}
 
 	logger.Printf("%v: no assignment for %v.%v [%v]",
-		p.fset.Position(dst.Pos()),
-		dstVar.Name, dst.Name(), dst.Type().String())
+		p.fset.Position(dst.Pos()), dstVar.Name, dst.Name(), dst.Type().String())
 	return &model.Assignment{
 		LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
 		RHS: model.NoMatchField{},
