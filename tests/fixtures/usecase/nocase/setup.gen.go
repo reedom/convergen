@@ -12,15 +12,21 @@ type ModelA struct {
 	Name string
 }
 
+func (a *ModelA) name() string {
+	return a.Name
+}
+
 type ModelB struct {
 	id   uint64
 	name string
 }
 
+// AtoB demonstrates local to local copy with case-insensitive field matching.
+// It shows that a private getter precedence over its (exported) counterpart field.
 func AtoB(src *ModelA) (dst *ModelB) {
 	dst = &ModelB{}
 	dst.id = src.ID
-	dst.name = src.Name
+	dst.name = src.name()
 
 	return
 }

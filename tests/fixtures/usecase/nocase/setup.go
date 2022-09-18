@@ -11,6 +11,10 @@ type ModelA struct {
 	Name string
 }
 
+func (a *ModelA) name() string {
+	return a.Name
+}
+
 type ModelB struct {
 	id   uint64
 	name string
@@ -19,6 +23,8 @@ type ModelB struct {
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
 	// :case:off
+	// AtoB demonstrates local to local copy with case-insensitive field matching.
+	// It shows that a private getter precedence over its (exported) counterpart field.
 	AtoB(*ModelA) *ModelB
 	// :case:off
 	BtoA(*ModelB) *ModelA
