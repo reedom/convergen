@@ -4,9 +4,7 @@ import (
 	"fmt"
 )
 
-type PetStatus struct {
-	slug string
-}
+type PetStatus string
 
 func NewPetStatusFromValue(value string) (PetStatus, error) {
 	for _, s := range PetStatusValues {
@@ -14,17 +12,17 @@ func NewPetStatusFromValue(value string) (PetStatus, error) {
 			return s, nil
 		}
 	}
-	return PetStatus{}, fmt.Errorf("invalid value for PetStatus(%v)", value)
+	return PetStatus(""), fmt.Errorf("invalid value for PetStatus(%v)", value)
 }
 
 func (s PetStatus) String() string {
-	return s.slug
+	return string(s)
 }
 
 var (
-	PetAvailable = PetStatus{"available"}
-	PetPending   = PetStatus{"pending"}
-	PetSold      = PetStatus{"sold"}
+	PetAvailable = PetStatus("available")
+	PetPending   = PetStatus("pending")
+	PetSold      = PetStatus("sold")
 )
 
 var PetStatusValues = []PetStatus{

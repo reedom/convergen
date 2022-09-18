@@ -35,6 +35,10 @@ func TestUseCases(t *testing.T) {
 			source:   "fixtures/usecase/stringer/setup.go",
 			expected: "fixtures/usecase/stringer/setup.gen.go",
 		},
+		{
+			source:   "fixtures/usecase/typecast/setup.go",
+			expected: "fixtures/usecase/typecast/setup.gen.go",
+		},
 	}
 
 	for _, tt := range cases {

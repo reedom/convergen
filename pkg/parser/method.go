@@ -219,32 +219,45 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 			return
 		}
 
-		retType, ok := getMethodReturnTypes(m)
-		if ok && compliesGetter(retType, false) {
-			if isMethodAssignableTo(retType, dst.Type(), false) {
-				logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
-					p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
-					dstVar.Name, dst.Name(), dst.Type().String())
-				a = &model.Assignment{
-					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-					RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
-				}
-				return true, nil
-			}
+		retTypes, ok := getMethodReturnTypes(m)
+		if !ok || !compliesGetter(retTypes, false) {
+			return
+		}
 
-			// :stringer notation
-			if opts.stringer && supportsStringer(retType.At(0).Type(), dst.Type()) {
-				logger.Printf("%v: assignment found, %v.%v().String() to %v.%v [%v]",
-					p.fset.Position(dst.Pos()), srcVar.Name, m.Name(),
-					dstVar.Name, dst.Name(), dst.Type().String())
-				a = &model.Assignment{
-					LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-					RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v().String()", srcVar.Name, m.Name())},
-				}
-				return true, nil
+		retType := retTypes.At(0).Type()
+		if types.AssignableTo(retType, dst.Type()) {
+			logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
+				p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
+				dstVar.Name, dst.Name(), dst.Type().String())
+			a = &model.Assignment{
+				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
 			}
-			//types.AssignableTo(types.String, dst.Type())
+			return true, nil
+		}
 
+		// :stringer notation
+		if opts.stringer && supportsStringer(retType, dst.Type()) {
+			logger.Printf("%v: assignment found, %v.%v().String() to %v.%v [%v]",
+				p.fset.Position(dst.Pos()), srcVar.Name, m.Name(),
+				dstVar.Name, dst.Name(), dst.Type().String())
+			a = &model.Assignment{
+				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v().String()", srcVar.Name, m.Name())},
+			}
+			return true, nil
+		}
+
+		// :typecast notation
+		if opts.typecast && types.ConvertibleTo(retType, dst.Type()) {
+			logger.Printf("%v: assignment found, %v(%v.%v) to %v.%v",
+				p.fset.Position(dst.Pos()), dst.Type().String(), srcVar.Name, dstVar.Name, dst.Name(),
+				dstVar.Name, dst.Name())
+			a = &model.Assignment{
+				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+				RHS: model.SimpleField{Path: fmt.Sprintf("%v(%v.%v)", dst.Type().String(), srcVar.Name, m.Name())},
+			}
+			return true, nil
 		}
 
 		return
@@ -287,6 +300,18 @@ func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, sr
 			}
 			return true, nil
 		}
+
+		// :typecast notation
+		if opts.typecast && types.ConvertibleTo(f.Type(), dst.Type()) {
+			logger.Printf("%v: assignment found, %v(%v.%v) to %v.%v",
+				p.fset.Position(dst.Pos()), dst.Type().String(), srcVar.Name, f.Name(), f.Type().String(),
+				dstVar.Name, dst.Name())
+			a = &model.Assignment{
+				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
+				RHS: model.SimpleField{Path: fmt.Sprintf("%v(%v.%v)", dst.Type().String(), srcVar.Name, f.Name())},
+			}
+			return true, nil
+		}
 		return
 	})
 	if err == errNotFound {
@@ -312,15 +337,6 @@ func compliesGetter(retTypes *types.Tuple, returnsError bool) bool {
 		return false
 	}
 	return num == 1 || returnsError && isErrorType(retTypes.At(1).Type())
-}
-
-func isMethodAssignableTo(retTypes *types.Tuple, dst types.Type, returnsError bool) bool {
-	if !compliesGetter(retTypes, returnsError) {
-		return false
-	}
-
-	r := retTypes.At(0).Type()
-	return types.AssignableTo(r, dst)
 }
 
 var stringer *types.Interface
