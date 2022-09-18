@@ -26,10 +26,11 @@ type methodEntry struct {
 
 func (p *Parser) parseMethods(intf *intfEntry) ([]*model.Function, error) {
 	iface := intf.intf.Type().Underlying().(*types.Interface)
+	opts := intf.opts.copyForMethods()
 	mset := types.NewMethodSet(iface)
 	methods := make([]*methodEntry, 0)
 	for i := 0; i < mset.Len(); i++ {
-		method, err := p.extractMethodEntry(mset.At(i).Obj(), intf.opts)
+		method, err := p.extractMethodEntry(mset.At(i).Obj(), opts)
 		if err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err.Error())
 			continue
@@ -67,7 +68,7 @@ func (p *Parser) extractMethodEntry(method types.Object, opts options) (*methodE
 
 	docComment, cleanUp := getDocCommentOn(p.file, method)
 	notations := astExtractMatchComments(docComment, reNotation)
-	err := p.parseNotationInComments(notations, validOpsIntf, &opts)
+	err := p.parseNotationInComments(notations, validOpsMethod, &opts)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +113,14 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 
 	src := sig.Params().At(0)
 	dst := sig.Results().At(0)
+
 	srcVar := p.createVar(src, "src")
+	if m.opts.receiver != "" {
+		if srcVar.PkgName != "" {
+			return nil, logger.Errorf("%v: an external package type cannot be a receiver", p.fset.Position(m.method.Pos()))
+		}
+		srcVar.Name = m.opts.receiver
+	}
 	dstVar := p.createVar(dst, "dst")
 
 	assignments := make([]*model.Assignment, 0)

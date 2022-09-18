@@ -90,6 +90,6 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	if f.ReturnsError || f.DstVarStyle == model.DstVarReturn {
 		sb.WriteString("\nreturn\n")
 	}
-	sb.WriteString("}\n")
+	sb.WriteString("}\n\n")
 	return sb.String()
 }

@@ -3,20 +3,27 @@
 package simple
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/data/domain"
 	"github.com/reedom/convergen/tests/fixtures/data/model"
 )
 
+type Pet struct {
+	ID        uint64         `storage:"id"`
+	Category  model.Category `storage:"category"`
+	Name      string         `storage:"name"`
+	PhotoUrls []string       `storage:"photoUrls"`
+	Status    string         `storage:"status"`
+}
+
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
-	// convergen:opt:style arg
-	ArgToArg(pet *domain.Pet) *model.Pet
-	// convergen:opt:style return
-	ArgToReturn(pet *domain.Pet) *model.Pet
-	// convergen:rcv r
-	// convergen:opt:style arg
-	RecvToArg(pet *domain.Pet) *model.Pet
-	// convergen:rcv r
-	// convergen:opt:style arg
-	RecvToReturn(pet *domain.Pet) *model.Pet
+	// :style arg
+	ArgToArg(pet *Pet) *model.Pet
+	// :style return
+	ArgToReturn(pet *Pet) *model.Pet
+	// :rcv r
+	// :style arg
+	RcvToArg(pet *Pet) *model.Pet
+	// :rcv r
+	// :style arg
+	RcvToReturn(pet *Pet) *model.Pet
 }

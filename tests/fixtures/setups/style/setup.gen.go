@@ -4,13 +4,48 @@
 package simple
 
 import (
-	"github.com/reedom/convergen/pkg/tests/fixtures/data/domain"
-	"github.com/reedom/convergen/pkg/tests/fixtures/data/model"
+	"github.com/reedom/convergen/tests/fixtures/data/model"
 )
 
-func ToModel(src *domain.Pet) (dst *model.Pet) {
+type Pet struct {
+	ID        uint64         `storage:"id"`
+	Category  model.Category `storage:"category"`
+	Name      string         `storage:"name"`
+	PhotoUrls []string       `storage:"photoUrls"`
+	Status    string         `storage:"status"`
+}
+
+func ArgToArg(dst *model.Pet, pet *Pet) {
+	dst.ID = pet.ID
+	dst.Category = pet.Category
+	dst.Name = pet.Name
+	dst.PhotoUrls = pet.PhotoUrls
+	dst.Status = pet.Status
+}
+
+func ArgToReturn(pet *Pet) (dst *model.Pet) {
 	dst = &model.Pet{}
-	dst.ID = src.ID
+	dst.ID = pet.ID
+	dst.Category = pet.Category
+	dst.Name = pet.Name
+	dst.PhotoUrls = pet.PhotoUrls
+	dst.Status = pet.Status
 
 	return
+}
+
+func (r *Pet) RcvToArg(dst *model.Pet) {
+	dst.ID = r.ID
+	dst.Category = r.Category
+	dst.Name = r.Name
+	dst.PhotoUrls = r.PhotoUrls
+	dst.Status = r.Status
+}
+
+func (r *Pet) RcvToReturn(dst *model.Pet) {
+	dst.ID = r.ID
+	dst.Category = r.Category
+	dst.Name = r.Name
+	dst.PhotoUrls = r.PhotoUrls
+	dst.Status = r.Status
 }
