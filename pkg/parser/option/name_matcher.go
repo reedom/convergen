@@ -45,6 +45,14 @@ func (m *NameMatcher) Match(src, dst string, exactCase bool) bool {
 	return srcName != "" && srcName == dstName
 }
 
+func (m *NameMatcher) Src() *IdentMatcher {
+	return m.src
+}
+
+func (m *NameMatcher) Dst() *IdentMatcher {
+	return m.dst
+}
+
 func extractName(fullName string) string {
 	i := strings.LastIndex(fullName, ".")
 	return fullName[i+1:]
