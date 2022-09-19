@@ -15,6 +15,7 @@ import (
 )
 
 type dstFieldEntry struct {
+	parent *dstFieldEntry
 	model.Var
 	field *types.Var
 }
@@ -28,6 +29,9 @@ func (f dstFieldEntry) fieldType() types.Type {
 }
 
 func (f dstFieldEntry) lhsExpr() string {
+	if f.parent != nil {
+		return fmt.Sprintf("%v.%v", f.parent.lhsExpr(), f.fieldName())
+	}
 	return fmt.Sprintf("%v.%v", f.Name, f.fieldName())
 }
 
@@ -36,6 +40,8 @@ func (f dstFieldEntry) isFieldExported() bool {
 }
 
 type srcStructEntry struct {
+	parent *srcStructEntry
+	pfield types.Object
 	model.Var
 	strct *types.Var
 }
@@ -47,8 +53,14 @@ func (s srcStructEntry) strctType() types.Type {
 func (s srcStructEntry) rhsExpr(obj types.Object) string {
 	switch obj.(type) {
 	case *types.Var:
+		if s.parent != nil {
+			return fmt.Sprintf("%v.%v", s.parent.rhsExpr(s.pfield), obj.Name())
+		}
 		return fmt.Sprintf("%v.%v", s.Name, obj.Name())
 	case *types.Func:
+		if s.parent != nil {
+			return fmt.Sprintf("%v.%v()", s.parent.rhsExpr(s.pfield), obj.Name())
+		}
 		return fmt.Sprintf("%v.%v()", s.Name, obj.Name())
 	default:
 		panic(fmt.Sprintf("not implemented for %#v", obj))
@@ -56,22 +68,45 @@ func (s srcStructEntry) rhsExpr(obj types.Object) string {
 }
 
 type assignmentBuilder struct {
-	p         *FunctionBuilder
-	methodPos token.Pos
-	opts      option.Options
-	src       srcStructEntry
+	p           *FunctionBuilder
+	methodPos   token.Pos
+	opts        option.Options
+	assignments []*model.Assignment
 }
 
-func newAssignmentBuilder(p *FunctionBuilder, methodPos token.Pos, opts option.Options, src srcStructEntry) assignmentBuilder {
+func newAssignmentBuilder(p *FunctionBuilder, methodPos token.Pos, opts option.Options) assignmentBuilder {
 	return assignmentBuilder{
 		p:         p,
 		methodPos: methodPos,
 		opts:      opts,
-		src:       src,
 	}
 }
 
-func (b assignmentBuilder) create(dst dstFieldEntry) (*model.Assignment, error) {
+func (b assignmentBuilder) build(srcVar model.Var, src *types.Var, dstVar model.Var, dst types.Type) ([]*model.Assignment, error) {
+	srcStrct := srcStructEntry{
+		Var:   srcVar,
+		strct: src,
+	}
+
+	err := util.IterateFields(dst, func(t *types.Var) (done bool, err error) {
+		dstField := dstFieldEntry{
+			Var:   dstVar,
+			field: t,
+		}
+		a, err := b.create(srcStrct, dstField)
+		if err == util.ErrNotFound {
+			return false, nil
+		}
+		if err != nil {
+			return
+		}
+		b.assignments = append(b.assignments, a)
+		return
+	})
+	return b.assignments, err
+}
+
+func (b assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (*model.Assignment, error) {
 	lhs := dst.lhsExpr()
 
 	if !dst.isFieldExported() {
@@ -93,33 +128,32 @@ func (b assignmentBuilder) create(dst dstFieldEntry) (*model.Assignment, error) 
 	}
 
 	if conv != nil {
-		return b.createWithConverter(dst, conv)
+		return b.createWithConverter(src, dst, conv)
 	} else {
-		return b.createCommon(dst)
+		return b.createCommon(src, dst)
 	}
 }
 
-func (b assignmentBuilder) buildRHS(srcObj types.Object, srcType, dstType types.Type) (string, bool) {
+func (b assignmentBuilder) buildRHS(rhs string, srcType, dstType types.Type) (string, bool) {
 	if types.AssignableTo(srcType, dstType) {
-		return b.src.rhsExpr(srcObj), true
+		return rhs, true
 	}
 
 	if b.opts.Stringer && supportsStringer(srcType, dstType) {
-		return b.src.rhsExpr(srcObj) + ".String()", true
+		return rhs + ".String()", true
 	}
 
 	if b.opts.Typecast && types.ConvertibleTo(srcType, dstType) {
-		if rhs, ok := b.typeCast(dstType, b.src.rhsExpr(srcObj), b.methodPos); ok {
-			return rhs, true
+		if result, ok := b.typeCast(dstType, rhs, b.methodPos); ok {
+			return result, true
 		}
 	}
 	return "", false
 }
 
-func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, error) {
+func (b assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) (*model.Assignment, error) {
 	p := b.p
 	opts := b.opts
-	src := b.src
 	methodPos := b.methodPos
 	lhs := dst.lhsExpr()
 
@@ -156,7 +190,7 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 
 		retType := retTypes.At(0).Type()
 		returnsError := retTypes.Len() == 2 && util.IsErrorType(retTypes.At(1).Type())
-		if rhs, ok := b.buildRHS(m, retType, dst.fieldType()); ok {
+		if rhs, ok := b.buildRHS(src.rhsExpr(m), retType, dst.fieldType()); ok {
 			logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
 			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: returnsError}}
 			return true, nil
@@ -184,11 +218,23 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 				}
 			}
 
-			if rhs, ok := b.buildRHS(f, f.Type(), dst.fieldType()); ok {
+			if rhs, ok := b.buildRHS(src.rhsExpr(f), f.Type(), dst.fieldType()); ok {
 				logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
 				a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
 				return true, nil
 			}
+			//
+			//if util.IsStructType(dst.fieldType()) && util.IsStructType(f.Type()) {
+			//	childDst := dstFieldEntry{
+			//		parent: &dst,
+			//		Var: model.Var{
+			//			Name:    dst.field.Name(),
+			//			PkgName: dst.field.Pkg().Name(),
+			//			Type:    dst.fieldType().String(),
+			//		},
+			//		field: nil,
+			//	}
+			//}
 			return
 		})
 	}
@@ -200,15 +246,14 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
-func (b assignmentBuilder) createWithConverter(dst dstFieldEntry, converter *option.FieldConverter) (*model.Assignment, error) {
+func (b assignmentBuilder) createWithConverter(src srcStructEntry, dst dstFieldEntry, converter *option.FieldConverter) (*model.Assignment, error) {
 	p := b.p
 	opts := b.opts
-	src := b.src
 	methodPos := b.methodPos
 	lhs := dst.lhsExpr()
 
 	buildRHSWithConverter := func(srcObj types.Object, srcType types.Type) (string, bool) {
-		arg, ok := b.buildRHS(srcObj, srcType, converter.ArgType())
+		arg, ok := b.buildRHS(src.rhsExpr(srcObj), srcType, converter.ArgType())
 		if !ok {
 			return "", false
 		}

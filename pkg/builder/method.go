@@ -68,6 +68,13 @@ func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error
 	src := sig.Params().At(0)
 	dst := sig.Results().At(0)
 
+	if !util.IsStructType(util.DereferencePtr(src.Type())) {
+		return nil, logger.Errorf("%v: src type should be a struct but %v", p.fset.Position(dst.Pos()), src.Type().Underlying().String())
+	}
+	if !util.IsStructType(util.DereferencePtr(dst.Type())) {
+		return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().Underlying().String())
+	}
+
 	srcVar := p.createVar(src, "src")
 	if m.Opts.Receiver != "" {
 		if srcVar.PkgName != "" {
@@ -77,35 +84,10 @@ func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error
 	}
 	dstVar := p.createVar(dst, "dst")
 
-	assignments := make([]*model.Assignment, 0)
-	strct, ok := dst.Type().Underlying().(*types.Struct)
-	if !ok {
-		if ptr, ok := dst.Type().Underlying().(*types.Pointer); ok {
-			strct, ok = ptr.Elem().Underlying().(*types.Struct)
-			if !ok {
-				return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().String())
-			}
-		}
-	}
-
-	srcStrct := srcStructEntry{
-		Var:   srcVar,
-		strct: src,
-	}
-	builder := newAssignmentBuilder(p, m.Method.Pos(), m.Opts, srcStrct)
-	for i := 0; i < strct.NumFields(); i++ {
-		dstField := dstFieldEntry{
-			Var:   dstVar,
-			field: strct.Field(i),
-		}
-		a, err := builder.create(dstField)
-		if err == util.ErrNotFound {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		assignments = append(assignments, a)
+	builder := newAssignmentBuilder(p, m.Method.Pos(), m.Opts)
+	assignments, err := builder.build(srcVar, src, dstVar, dst.Type())
+	if err != nil {
+		return nil, err
 	}
 
 	fn := &model.Function{

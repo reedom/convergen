@@ -30,6 +30,18 @@ func IsErrorType(t types.Type) bool {
 	return t.String() == "error"
 }
 
+func IsStructType(t types.Type) bool {
+	_, ok := t.Underlying().(*types.Struct)
+	return ok
+}
+
+func DereferencePtr(t types.Type) types.Type {
+	if ptr, ok := t.(*types.Pointer); ok {
+		return ptr.Elem()
+	}
+	return t
+}
+
 func RemoveObject(file *ast.File, obj types.Object) {
 	nodes, _ := ToAstNode(file, obj)
 	for _, node := range nodes {
