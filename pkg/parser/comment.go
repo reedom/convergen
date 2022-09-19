@@ -171,7 +171,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
-			matcher, err := option.NewNameMatcher(args[0], args[1], opts.exactCase)
+			matcher, err := option.NewNameMatcher(args[0], args[1], opts.exactCase, n.Pos())
 			if err != nil {
 				return logger.Errorf("%v: invalid <field> arg", p.fset.Position(n.Pos()))
 			}

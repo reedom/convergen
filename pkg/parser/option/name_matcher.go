@@ -2,15 +2,17 @@ package option
 
 import (
 	"fmt"
+	"go/token"
 	"strings"
 )
 
 type NameMatcher struct {
 	src *IdentMatcher
 	dst *IdentMatcher
+	pos token.Pos
 }
 
-func NewNameMatcher(src, dst string, exactCase bool) (*NameMatcher, error) {
+func NewNameMatcher(src, dst string, exactCase bool, pos token.Pos) (*NameMatcher, error) {
 	srcM, err := NewIdentMatcher(src, exactCase)
 	if err != nil {
 		return nil, fmt.Errorf("src regexp is invalid")
@@ -24,7 +26,7 @@ func NewNameMatcher(src, dst string, exactCase bool) (*NameMatcher, error) {
 		}
 	}
 
-	return &NameMatcher{src: srcM, dst: dstM}, nil
+	return &NameMatcher{src: srcM, dst: dstM, pos: pos}, nil
 }
 
 func (m *NameMatcher) Match(src, dst string, exactCase bool) bool {
@@ -51,6 +53,10 @@ func (m *NameMatcher) Src() *IdentMatcher {
 
 func (m *NameMatcher) Dst() *IdentMatcher {
 	return m.dst
+}
+
+func (m *NameMatcher) Pos() token.Pos {
+	return m.pos
 }
 
 func extractName(fullName string) string {

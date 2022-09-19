@@ -9,6 +9,7 @@ import (
 
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/model"
+	"github.com/reedom/convergen/pkg/parser/option"
 	"golang.org/x/tools/go/loader"
 )
 
@@ -66,6 +67,14 @@ func (p *Parser) createAssign(methodPos token.Pos, opts options, dst dstFieldEnt
 		return &model.Assignment{LHS: lhs, RHS: model.SkipField{}}, nil
 	}
 
+	var mapper *option.NameMatcher
+	for _, m := range opts.nameMapper {
+		if m.Dst().Match(dst.fieldName(), opts.exactCase) {
+			// If there are more than one mapper exist for the dst, the last one wins.
+			mapper = m
+		}
+	}
+
 	var a *model.Assignment
 	var err error
 	inner := func(f types.Object, t types.Type) {
@@ -97,17 +106,22 @@ func (p *Parser) createAssign(methodPos token.Pos, opts options, dst dstFieldEnt
 
 	if opts.getter {
 		err = iterateMethods(src.strct.Type(), func(m *types.Func) (done bool, err error) {
-			if !opts.compareFieldName(dst.fieldName(), m.Name()) {
+			retTypes, ok := getMethodReturnTypes(m)
+			if !ok || !compliesGetter(retTypes, false) {
+				return
+			}
+
+			if mapper != nil {
+				if !mapper.Src().Match(m.Name()+"()", opts.exactCase) {
+					return
+				}
+			} else if !opts.compareFieldName(dst.fieldName(), m.Name()) {
 				return
 			}
 			if src.IsPkgExternal() && !ast.IsExported(m.Name()) {
 				return
 			}
 
-			retTypes, ok := getMethodReturnTypes(m)
-			if !ok || !compliesGetter(retTypes, false) {
-				return
-			}
 			retType := retTypes.At(0).Type()
 			inner(m, retType)
 			return a != nil, nil
@@ -119,9 +133,14 @@ func (p *Parser) createAssign(methodPos token.Pos, opts options, dst dstFieldEnt
 
 	if opts.rule == model.MatchRuleName {
 		err = iterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
-			if !opts.compareFieldName(dst.fieldName(), f.Name()) {
+			if mapper != nil {
+				if !mapper.Src().Match(f.Name(), opts.exactCase) {
+					return
+				}
+			} else if !opts.compareFieldName(dst.fieldName(), f.Name()) {
 				return
 			}
+
 			if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
 				return
 			}

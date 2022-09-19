@@ -9,6 +9,6 @@ type Pet struct {
 }
 
 type Category struct {
-	ID   uint64 `storage:"id"`
-	Name string `storage:"name"`
+	CategoryID uint64 `storage:"categoryId"`
+	Name       string `storage:"name"`
 }

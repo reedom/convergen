@@ -1,13 +1,17 @@
 package option
 
+import (
+	"go/token"
+)
+
 type FieldConverter struct {
 	m         *NameMatcher
 	converter string
 	hasError  bool
 }
 
-func NewFieldConverter(src, dst string, exactCase bool, converter string, hasError bool) (*FieldConverter, error) {
-	m, err := NewNameMatcher(src, dst, exactCase)
+func NewFieldConverter(src, dst string, exactCase bool, converter string, hasError bool, pos token.Pos) (*FieldConverter, error) {
+	m, err := NewNameMatcher(src, dst, exactCase, pos)
 	if err != nil {
 		return nil, err
 	}
@@ -29,4 +33,8 @@ func (c *FieldConverter) Converter() string {
 
 func (c *FieldConverter) HasError() bool {
 	return c.hasError
+}
+
+func (c *FieldConverter) Pos() token.Pos {
+	return c.m.pos
 }
