@@ -135,9 +135,16 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 		}
 	}
 
+	srcStrct := srcStructEntry{
+		Var:   srcVar,
+		strct: src,
+	}
 	for i := 0; i < strct.NumFields(); i++ {
-		f := strct.Field(i)
-		a, err := p.createAssign(m.opts, f, dstVar, src.Type(), srcVar, m.method.Pos())
+		dstField := dstFieldEntry{
+			Var:   dstVar,
+			field: strct.Field(i),
+		}
+		a, err := p.createAssign(m.method.Pos(), m.opts, dstField, srcStrct)
 		if err == errNotFound {
 			continue
 		}

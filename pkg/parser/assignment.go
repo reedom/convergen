@@ -12,99 +12,164 @@ import (
 	"golang.org/x/tools/go/loader"
 )
 
-func (p *Parser) createAssign(opts options, dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var, pos token.Pos) (*model.Assignment, error) {
-	name := dst.Name()
-	dstVarName := fmt.Sprintf("%v.%v", dstVar.Name, name)
+type dstFieldEntry struct {
+	model.Var
+	field *types.Var
+}
 
-	if dstVar.PkgName != "" && !ast.IsExported(name) {
-		logger.Printf("%v: skip %v.%v while it is not an exported field",
-			p.fset.Position(dst.Pos()), dstVar.Name, dst.Name())
+func (f dstFieldEntry) fieldName() string {
+	return f.field.Name()
+}
+
+func (f dstFieldEntry) fieldType() types.Type {
+	return f.field.Type()
+}
+
+func (f dstFieldEntry) lhsExpr() string {
+	return fmt.Sprintf("%v.%v", f.Name, f.fieldName())
+}
+
+func (f dstFieldEntry) isFieldExported() bool {
+	return f.PkgName == "" || ast.IsExported(f.fieldName())
+}
+
+type srcStructEntry struct {
+	model.Var
+	strct *types.Var
+}
+
+func (s srcStructEntry) strctType() types.Type {
+	return s.strct.Type()
+}
+
+func (s srcStructEntry) rhsExpr(obj types.Object) string {
+	switch obj.(type) {
+	case *types.Var:
+		return fmt.Sprintf("%v.%v", s.Name, obj.Name())
+	case *types.Func:
+		return fmt.Sprintf("%v.%v()", s.Name, obj.Name())
+	default:
+		panic(fmt.Sprintf("not implemented for %#v", obj))
+	}
+}
+
+func (p *Parser) createAssign(methodPos token.Pos, opts options, dst dstFieldEntry, src srcStructEntry) (*model.Assignment, error) {
+	lhs := dst.lhsExpr()
+
+	if !dst.isFieldExported() {
+		logger.Printf("%v: skip %v while it is not an exported field", p.fset.Position(methodPos), lhs)
 		return nil, errNotFound
 	}
 
-	// :skip notation
-	if opts.shouldSkip(dstVarName) {
-		logger.Printf("%v: skip %v.%v [%v]",
-			p.fset.Position(dst.Pos()), dstVar.Name, dst.Name(), dst.Type().String())
-		return &model.Assignment{
-			LHS: dstVarName,
-			RHS: model.SkipField{},
-		}, nil
+	if opts.shouldSkip(lhs) {
+		logger.Printf("%v: skip %v", p.fset.Position(methodPos), lhs)
+		return &model.Assignment{LHS: lhs, RHS: model.SkipField{}}, nil
 	}
 
-	// Handle getters
+	var a *model.Assignment
+	var err error
+	inner := func(f types.Object, t types.Type) {
+		if types.AssignableTo(t, dst.fieldType()) {
+			lhs := dst.lhsExpr()
+			rhs := src.rhsExpr(f)
+			logger.Printf("%v: assignment found, %v to %v [%v]", p.fset.Position(methodPos), rhs, lhs, dst.fieldType().String())
+			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
+			return
+		}
+
+		if opts.stringer && supportsStringer(t, dst.fieldType()) {
+			lhs := dst.lhsExpr()
+			rhs := src.rhsExpr(f) + ".String()"
+			logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
+			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
+			return
+		}
+
+		if opts.typecast && types.ConvertibleTo(t, dst.fieldType()) {
+			lhs := dst.lhsExpr()
+			if rhs, ok := p.typeCast(dst.fieldType(), src.rhsExpr(f), methodPos); ok {
+				logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
+				a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
+				return
+			}
+		}
+	}
+
 	if opts.getter {
-		a, err := p.createAssignFromGetters(opts, dst, dstVar, srcType, srcVar)
-		if err != nil && err != errNotFound {
-			return nil, err
-		}
-		if a != nil {
-			return a, nil
-		}
+		err = iterateMethods(src.strct.Type(), func(m *types.Func) (done bool, err error) {
+			if !opts.compareFieldName(dst.fieldName(), m.Name()) {
+				return
+			}
+			if src.IsPkgExternal() && !ast.IsExported(m.Name()) {
+				return
+			}
+
+			retTypes, ok := getMethodReturnTypes(m)
+			if !ok || !compliesGetter(retTypes, false) {
+				return
+			}
+			retType := retTypes.At(0).Type()
+			inner(m, retType)
+			return a != nil, nil
+		})
+	}
+	if a != nil || err != nil {
+		return a, err
 	}
 
-	// Field name mapping
 	if opts.rule == model.MatchRuleName {
-		a, err := p.createAssignFromFields(opts, dst, dstVar, srcType, srcVar)
-		if err != nil && err != errNotFound {
-			return nil, err
-		}
-		if a != nil {
-			return a, nil
-		}
+		err = iterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
+			if !opts.compareFieldName(dst.fieldName(), f.Name()) {
+				return
+			}
+			if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
+				return
+			}
+
+			inner(f, f.Type())
+			return a != nil, nil
+		})
+	}
+	if a != nil || err != nil {
+		return a, err
 	}
 
-	logger.Printf("%v: no assignment for %v.%v [%v]",
-		p.fset.Position(dst.Pos()), dstVar.Name, dst.Name(), dst.Type().String())
-	return &model.Assignment{
-		LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-		RHS: model.NoMatchField{},
-	}, nil
+	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, dst.field.Type().String())
+	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
-func (p *Parser) createAssignFromFields(opts options, dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var) (*model.Assignment, error) {
-	name := dst.Name()
+func (p *Parser) createAssignFromFields(methodPos token.Pos, opts options, dst dstFieldEntry, src srcStructEntry) (*model.Assignment, error) {
 	var a *model.Assignment
 
-	err := iterateFields(srcType, func(f *types.Var) (done bool, err error) {
-		if !opts.compareFieldName(name, f.Name()) {
+	err := iterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
+		if !opts.compareFieldName(dst.fieldName(), f.Name()) {
 			return
 		}
-		if srcVar.IsPkgExternal() && !ast.IsExported(f.Name()) {
+		if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
 			return
 		}
 
-		if types.AssignableTo(f.Type(), dst.Type()) {
-			logger.Printf("%v: assignment found, %v.%v [%v] to %v.%v [%v]",
-				p.fset.Position(dst.Pos()), srcVar.Name, f.Name(), f.Type().String(),
-				dstVar.Name, dst.Name(), dst.Type().String())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v", srcVar.Name, f.Name())},
-			}
+		if types.AssignableTo(f.Type(), dst.fieldType()) {
+			lhs := dst.lhsExpr()
+			rhs := src.rhsExpr(f)
+			logger.Printf("%v: assignment found, %v to %v [%v]", p.fset.Position(methodPos), rhs, lhs, dst.fieldType().String())
+			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
 			return true, nil
 		}
 
-		// :stringer notation
-		if opts.stringer && supportsStringer(f.Type(), dst.Type()) {
-			logger.Printf("%v: assignment found, %v.%v.String() to %v.%v [%v]",
-				p.fset.Position(dst.Pos()), srcVar.Name, f.Name(), f.Type().String(),
-				dstVar.Name, dst.Name(), dst.Type().String())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v.String()", srcVar.Name, f.Name())},
-			}
+		if opts.stringer && supportsStringer(f.Type(), dst.fieldType()) {
+			lhs := dst.lhsExpr()
+			rhs := src.rhsExpr(f) + ".String()"
+			logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
+			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
 			return true, nil
 		}
 
-		// :typecast notation
-		if opts.typecast && types.ConvertibleTo(f.Type(), dst.Type()) {
-			logger.Printf("%v: assignment found, %v(%v.%v) to %v.%v",
-				p.fset.Position(dst.Pos()), dst.Type().String(), srcVar.Name, f.Name(), f.Type().String(),
-				dstVar.Name, dst.Name())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v(%v.%v)", dst.Type().String(), srcVar.Name, f.Name())},
+		if opts.typecast && types.ConvertibleTo(f.Type(), dst.fieldType()) {
+			lhs := dst.lhsExpr()
+			if rhs, ok := p.typeCast(f.Type(), src.rhsExpr(f), methodPos); ok {
+				logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
+				a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
 			}
 			return true, nil
 		}
@@ -114,62 +179,29 @@ func (p *Parser) createAssignFromFields(opts options, dst *types.Var, dstVar mod
 	return a, err
 }
 
-func (p *Parser) createAssignFromGetters(opts options, dst *types.Var, dstVar model.Var, srcType types.Type, srcVar model.Var) (*model.Assignment, error) {
-	name := dst.Name()
-	var a *model.Assignment
-
-	err := iterateMethods(srcType, func(m *types.Func) (done bool, err error) {
-		if !opts.compareFieldName(name, m.Name()) {
-			return
+func (p *Parser) typeCast(t types.Type, inner string, pos token.Pos) (string, bool) {
+	switch typ := t.(type) {
+	case *types.Pointer:
+		return p.typeCast(typ.Elem(), inner, pos)
+	case *types.Named:
+		// If the type is defined within the current package.
+		if p.pkg.Types.Scope().Lookup(typ.Obj().Name()) != nil {
+			return fmt.Sprintf("%v(%v)", typ.Obj().Name(), inner), true
 		}
-		if srcVar.IsPkgExternal() && !ast.IsExported(m.Name()) {
-			return
+		if pkgName, ok := p.imports.lookupName(typ.Obj().Pkg().Path()); ok {
+			return fmt.Sprintf("%v(%v)", pkgName, inner), true
 		}
-
-		retTypes, ok := getMethodReturnTypes(m)
-		if !ok || !compliesGetter(retTypes, false) {
-			return
-		}
-
-		retType := retTypes.At(0).Type()
-		if types.AssignableTo(retType, dst.Type()) {
-			logger.Printf("%v: assignment found, %v.%v() [%v] to %v.%v [%v]",
-				p.fset.Position(dst.Pos()), srcVar.Name, m.Name(), m.Type().Underlying().String(),
-				dstVar.Name, dst.Name(), dst.Type().String())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v()", srcVar.Name, m.Name())},
-			}
-			return true, nil
-		}
-
-		// :stringer notation
-		if opts.stringer && supportsStringer(retType, dst.Type()) {
-			logger.Printf("%v: assignment found, %v.%v().String() to %v.%v [%v]",
-				p.fset.Position(dst.Pos()), srcVar.Name, m.Name(),
-				dstVar.Name, dst.Name(), dst.Type().String())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v.%v().String()", srcVar.Name, m.Name())},
-			}
-			return true, nil
-		}
-
-		// :typecast notation
-		if opts.typecast && types.ConvertibleTo(retType, dst.Type()) {
-			logger.Printf("%v: assignment found, %v(%v.%v) to %v.%v",
-				p.fset.Position(dst.Pos()), dst.Type().String(), srcVar.Name, dstVar.Name, dst.Name(),
-				dstVar.Name, dst.Name())
-			a = &model.Assignment{
-				LHS: fmt.Sprintf("%v.%v", dstVar.Name, name),
-				RHS: model.SimpleField{Path: fmt.Sprintf("%v(%v.%v)", dst.Type().String(), srcVar.Name, m.Name())},
-			}
-			return true, nil
-		}
-
-		return
-	})
-	return a, err
+		// TODO(reedom): add imports by code.
+		logger.Printf("%v: cannot typecast as %v(%v) while the package %v is not imported",
+			p.fset.Position(pos), typ.Obj().Name(), inner, typ.Obj().Pkg().Path())
+		return "", false
+	case *types.Basic:
+		return fmt.Sprintf("%v(%v)", t.String(), inner), true
+	default:
+		logger.Printf("%v: typecast for %v is not implemented(yet) for %v",
+			p.fset.Position(pos), t.String(), inner)
+		return "", false
+	}
 }
 
 func compliesGetter(retTypes *types.Tuple, returnsError bool) bool {
