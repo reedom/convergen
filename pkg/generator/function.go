@@ -85,7 +85,7 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	}
 
 	for i := range f.Assignments {
-		sb.WriteString(AssignmentToString(f.Assignments[i]))
+		sb.WriteString(AssignmentToString(f, f.Assignments[i]))
 	}
 	if f.ReturnsError || f.DstVarStyle == model.DstVarReturn {
 		sb.WriteString("\nreturn\n")

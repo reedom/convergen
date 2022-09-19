@@ -234,6 +234,81 @@ func (src *domain.Pet) ToModel(dst *model.Pet) (err error) {
 `,
 		},
 		{
+			name: "src:ptr,receiver/dst:ptr,return/error/rhs:simple",
+			fn: &model.Function{
+				Name:     "ToModel",
+				Receiver: "src",
+				Src: model.Var{
+					Name:    "src",
+					PkgName: "domain",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				Dst: model.Var{
+					Name:    "dst",
+					PkgName: "model",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				ReturnsError: true,
+				DstVarStyle:  model.DstVarReturn,
+				Assignments: []*model.Assignment{
+					{
+						LHS: "dst.ID",
+						RHS: model.SimpleField{Path: "src.ID()", Error: true},
+					},
+				},
+			},
+			expected: header + pre + `
+func (src *domain.Pet) ToModel() (dst *model.Pet, err error) {
+	dst := &model.Pet{}
+	dst.ID, err = src.ID()
+	if err != nil {
+		return nil, err
+	}
+
+	return
+}
+`,
+		},
+		{
+			name: "src:ptr,receiver/dst:val,return/error/rhs:simple",
+			fn: &model.Function{
+				Name:     "ToModel",
+				Receiver: "src",
+				Src: model.Var{
+					Name:    "src",
+					PkgName: "domain",
+					Type:    "Pet",
+					Pointer: true,
+				},
+				Dst: model.Var{
+					Name:    "dst",
+					PkgName: "model",
+					Type:    "Pet",
+					Pointer: false,
+				},
+				ReturnsError: true,
+				DstVarStyle:  model.DstVarReturn,
+				Assignments: []*model.Assignment{
+					{
+						LHS: "dst.ID",
+						RHS: model.SimpleField{Path: "src.ID()", Error: true},
+					},
+				},
+			},
+			expected: header + pre + `
+func (src *domain.Pet) ToModel() (dst model.Pet, err error) {
+	dst.ID, err = src.ID()
+	if err != nil {
+		return
+	}
+
+	return
+}
+`,
+		},
+		{
 			name: "src:ptr/dst:ptr,arg/error/rhs:skip",
 			fn: &model.Function{
 				Name: "ToModel",
@@ -267,7 +342,7 @@ func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
 `,
 		},
 		{
-			name: "src:ptr/dst:ptr,arg/error/rhs:nomatch",
+			name: "src:ptr/dst:ptr,return/error/rhs:nomatch",
 			fn: &model.Function{
 				Name: "ToModel",
 				Src: model.Var{
@@ -283,7 +358,7 @@ func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
 					Pointer: true,
 				},
 				ReturnsError: true,
-				DstVarStyle:  model.DstVarArg,
+				DstVarStyle:  model.DstVarReturn,
 				Assignments: []*model.Assignment{
 					{
 						LHS: "dst.ID",
@@ -292,10 +367,11 @@ func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
 				},
 			},
 			expected: header + pre + `
-func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
+func ToModel(src *domain.Pet) (dst *model.Pet, err error) {
+	dst := &model.Pet{}
 	// no match: dst.ID
 
-	return
+	return dst, nil
 }
 `,
 		},

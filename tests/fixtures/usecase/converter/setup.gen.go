@@ -27,7 +27,7 @@ func ModelToDomain(src *model.Pet) (dst *domain.Pet, err error) {
 	dst.PhotoUrls = stringsToURLs(src.PhotoUrls)
 	dst.Status, err = domain.NewPetStatusFromValue(src.Status)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	return

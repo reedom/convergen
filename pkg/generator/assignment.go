@@ -6,7 +6,7 @@ import (
 	"github.com/reedom/convergen/pkg/model"
 )
 
-func AssignmentToString(a *model.Assignment) string {
+func AssignmentToString(f *model.Function, a *model.Assignment) string {
 	var sb strings.Builder
 
 	switch a.RHS.(type) {
@@ -27,7 +27,11 @@ func AssignmentToString(a *model.Assignment) string {
 		sb.WriteString(a.RHS.String())
 		sb.WriteString("\n")
 		if a.RHS.ReturnsError() {
-			sb.WriteString("if err != nil {\nreturn\n}\n")
+			if f.DstVarStyle == model.DstVarReturn && f.Dst.Pointer {
+				sb.WriteString("if err != nil {\nreturn nil, err\n}\n")
+			} else {
+				sb.WriteString("if err != nil {\nreturn\n}\n")
+			}
 		}
 	}
 	return sb.String()
