@@ -139,12 +139,13 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 		Var:   srcVar,
 		strct: src,
 	}
+	builder := newAssignmentBuilder(p, m.method.Pos(), m.opts, srcStrct)
 	for i := 0; i < strct.NumFields(); i++ {
 		dstField := dstFieldEntry{
 			Var:   dstVar,
 			field: strct.Field(i),
 		}
-		a, err := p.createAssign(m.method.Pos(), m.opts, dstField, srcStrct)
+		a, err := builder.create(dstField)
 		if err == errNotFound {
 			continue
 		}

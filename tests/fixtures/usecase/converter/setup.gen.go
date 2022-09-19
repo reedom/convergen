@@ -4,30 +4,31 @@
 package converter
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/data/ddd/domain"
-	"github.com/reedom/convergen/tests/fixtures/data/ddd/model"
+	"github.com/reedom/convergen/tests/fixtures/data/domain"
+	"github.com/reedom/convergen/tests/fixtures/data/model"
 )
 
-// DomainToModel copies domain.Pet to model.Pet.
 func DomainToModel(pet *domain.Pet) (dst *model.Pet) {
 	dst = &model.Pet{}
-	dst.ID = pet.ID()
+	// no match: dst.ID
 	// no match: dst.Category
-	dst.Name = pet.Name()
-	// skip: dst.PhotoUrls
+	dst.Name = pet.Name
+	// no match: dst.PhotoUrls
 	// no match: dst.Status
 
 	return
 }
 
-// DomainToModelNoGetter copies domain.Pet to model.Pet but not using getters.
-func DomainToModelNoGetter(pet *domain.Pet) (dst *model.Pet) {
-	dst = &model.Pet{}
+func ModelToDomain(src *model.Pet) (dst *domain.Pet, err error) {
+	dst = &domain.Pet{}
 	// no match: dst.ID
 	// no match: dst.Category
-	// no match: dst.Name
+	dst.Name = src.Name
 	// no match: dst.PhotoUrls
-	// no match: dst.Status
+	dst.Status, err = domain.NewPetStatusFromValue(src.Status)
+	if err != nil {
+		return
+	}
 
 	return
 }

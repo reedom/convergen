@@ -23,9 +23,9 @@ func DomainToModel(pet *domain.Pet) (dst *model.Pet) {
 // DomainToModelNoGetter copies domain.Pet to model.Pet but not using getters.
 func DomainToModelNoGetter(pet *domain.Pet) (dst *model.Pet) {
 	dst = &model.Pet{}
-	// no match: dst.ID
+	dst.ID = pet.ID()
 	// no match: dst.Category
-	// no match: dst.Name
+	dst.Name = pet.Name()
 	// no match: dst.PhotoUrls
 	// no match: dst.Status
 

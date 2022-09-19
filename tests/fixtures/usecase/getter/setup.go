@@ -18,5 +18,6 @@ type Convergen interface {
 	DomainToModel(pet *domain.Pet) *model.Pet
 
 	// DomainToModelNoGetter copies domain.Pet to model.Pet but not using getters.
+	// :getter
 	DomainToModelNoGetter(pet *domain.Pet) *model.Pet
 }

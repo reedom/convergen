@@ -27,7 +27,7 @@ type options struct {
 	receiver    string
 	skipFields  []*option.IdentMatcher
 	nameMapper  []*option.NameMatcher
-	converters  []converter
+	converters  []*option.FieldConverter
 	postProcess string
 }
 
@@ -62,9 +62,6 @@ func (o options) compareFieldName(a, b string) bool {
 		return a == b
 	}
 	return strings.ToLower(a) == strings.ToLower(b)
-}
-
-type converter interface {
 }
 
 var validOpsIntf = map[string]struct{}{
@@ -180,10 +177,21 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
-			_, obj := p.lookupType(args[0], n.Pos())
-			if obj == nil {
-				return logger.Errorf("%v: function %v not found", p.fset.Position(n.Pos()), args[0])
+			argType, retType, returnsError, err := p.lookupConverterFunc(args[0], n.Pos())
+			if err != nil {
+				return err
 			}
+			src := args[1]
+			dst := src
+			if 3 <= len(args) {
+				dst = args[2]
+			}
+			converter, err := option.NewFieldConverter(args[0], src, dst,
+				argType, retType, returnsError, n.Pos())
+			if err != nil {
+				return logger.Errorf("%v: %v", p.fset.Position(n.Pos()), err.Error())
+			}
+			opts.converters = append(opts.converters, converter)
 		default:
 			fmt.Printf("@@@ notation %v\n", m[1])
 		}
@@ -210,4 +218,30 @@ func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types
 	scope := pkg.Types.Scope()
 	obj := scope.Lookup(names[1])
 	return scope, obj
+}
+
+func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, retType types.Type, returnsError bool, err error) {
+	_, obj := p.lookupType(funcName, pos)
+	if obj == nil {
+		err = logger.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
+		return
+	}
+	sig, ok := obj.Type().(*types.Signature)
+	if !ok {
+		err = logger.Errorf("%v: %v isn't a function", p.fset.Position(pos), funcName)
+		return
+	}
+	if sig.Params().Len() != 1 || sig.Results().Len() < 1 || 2 < sig.Results().Len() {
+		err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), funcName)
+		return
+	}
+	if sig.Results().Len() == 2 && !isErrorType(sig.Results().At(1).Type()) {
+		err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), funcName)
+		return
+	}
+
+	argType = sig.Params().At(0).Type()
+	retType = sig.Results().At(0).Type()
+	returnsError = sig.Results().Len() == 2 && isErrorType(sig.Results().At(1).Type())
+	return
 }
