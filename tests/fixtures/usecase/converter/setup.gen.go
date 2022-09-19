@@ -8,13 +8,12 @@ import (
 	"github.com/reedom/convergen/tests/fixtures/data/model"
 )
 
-func DomainToModel(pet *domain.Pet) (dst *model.Pet) {
+func DomainToModel(src *domain.Pet) (dst *model.Pet) {
 	dst = &model.Pet{}
 	// no match: dst.ID
-	// no match: dst.Category.CategoryID
-	dst.Category.Name = pet.Category.Name
-	dst.Name = pet.Name
-	// no match: dst.PhotoUrls
+	dst.Category = fromDomainCategory(src.Category)
+	dst.Name = src.Name
+	dst.PhotoUrls = urlsToStrings(src.PhotoUrls)
 	// no match: dst.Status
 
 	return
@@ -23,14 +22,43 @@ func DomainToModel(pet *domain.Pet) (dst *model.Pet) {
 func ModelToDomain(src *model.Pet) (dst *domain.Pet, err error) {
 	dst = &domain.Pet{}
 	// no match: dst.ID
-	// no match: dst.Category.ID
-	dst.Category.Name = src.Category.Name
+	dst.Category = toDomainCategory(src.Category)
 	dst.Name = src.Name
-	// no match: dst.PhotoUrls
+	dst.PhotoUrls = stringsToURLs(src.PhotoUrls)
 	dst.Status, err = domain.NewPetStatusFromValue(src.Status)
 	if err != nil {
 		return
 	}
 
 	return
+}
+
+func urlsToStrings(list []domain.URL) []string {
+	ret := make([]string, len(list))
+	for i, url := range list {
+		ret[i] = url.String()
+	}
+	return ret
+}
+
+func stringsToURLs(list []string) []domain.URL {
+	ret := make([]domain.URL, len(list))
+	for i, s := range list {
+		ret[i] = domain.NewURL(s)
+	}
+	return ret
+}
+
+func fromDomainCategory(cat domain.Category) model.Category {
+	return model.Category{
+		CategoryID: uint64(cat.ID),
+		Name:       cat.Name,
+	}
+}
+
+func toDomainCategory(cat model.Category) domain.Category {
+	return domain.Category{
+		ID:   uint(cat.CategoryID),
+		Name: cat.Name,
+	}
 }

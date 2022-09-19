@@ -9,3 +9,11 @@ type Pet struct {
 }
 
 type URL string
+
+func NewURL(s string) URL {
+	return URL(s)
+}
+
+func (u URL) String() string {
+	return string(u)
+}

@@ -9,5 +9,6 @@ import (
 
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
-	DomainToModel(pet *domain.Pet) *model.Pet
+	DomainToModel(*domain.Pet) *model.Pet
+	ModelToDomain(*model.Pet) *domain.Pet
 }
