@@ -1,43 +1,42 @@
-package parser
+package util_test
 
 import (
-	"fmt"
-	"go/types"
 	"testing"
 
+	"github.com/reedom/convergen/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestWalkStruct(t *testing.T) {
-	src := `
-package main
-
-type Model struct {
-  ID   int
-  Name string
-  Cat *Category
-}
-
-type Category struct {
-	ID   int
-	Name string
-}
-`
-
-	_, _, pkg := testLoadSrc(t, src)
-	obj := pkg.Scope().Lookup("Model")
-	opt := walkStructOpt{
-		exactCase:     true,
-		supportsError: false,
-	}
-	cb := func(pkg *types.Package, t types.Object, namePath string) (done bool, err error) {
-		fmt.Printf("[cb] pkg=%v, namePath=%v, t=%#v\n", pkg.Name(), namePath, t)
-		return
-	}
-
-	walkStruct("v", pkg, obj.Type(), cb, opt)
-}
+//func TestWalkStruct(t *testing.T) {
+//	src := `
+//package main
+//
+//type Model struct {
+//  ID   int
+//  Name string
+//  Cat *Category
+//}
+//
+//type Category struct {
+//	ID   int
+//	Name string
+//}
+//`
+//
+//	_, _, pkg := testLoadSrc(t, src)
+//	obj := pkg.Scope().Lookup("Model")
+//	opt := walkStructOpt{
+//		exactCase:     true,
+//		supportsError: false,
+//	}
+//	cb := func(pkg *types.Package, t types.Object, namePath string) (done bool, err error) {
+//		fmt.Printf("[cb] pkg=%v, namePath=%v, t=%#v\n", pkg.Name(), namePath, t)
+//		return
+//	}
+//
+//	walkStruct("v", pkg, obj.Type(), cb, opt)
+//}
 
 func TestPathMatch(t *testing.T) {
 	t.Parallel()
@@ -58,7 +57,7 @@ func TestPathMatch(t *testing.T) {
 	}
 
 	for i, tt := range cases {
-		actual, err := pathMatch(tt.pattern, tt.path, tt.exactCase)
+		actual, err := util.PathMatch(tt.pattern, tt.path, tt.exactCase)
 		require.Nil(t, err, `case %v has invalid pattern "%v"`, i, tt.pattern)
 		if tt.match {
 			assert.True(t, actual, `pattern "%v" against "%v" should match`)
@@ -77,8 +76,8 @@ var err2 ErrFoo`
 	_, _, pkg := testLoadSrc(t, src)
 
 	obj := pkg.Scope().Lookup("err")
-	assert.True(t, isErrorType(obj.Type()))
+	assert.True(t, util.IsErrorType(obj.Type()))
 
 	obj = pkg.Scope().Lookup("err2")
-	assert.False(t, isErrorType(obj.Type()))
+	assert.False(t, util.IsErrorType(obj.Type()))
 }

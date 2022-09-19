@@ -304,7 +304,7 @@ func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
 	for _, tt := range cases {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			code := &model.Code{
+			code := model.Code{
 				Pre:       pre,
 				Functions: []*model.Function{tt.fn},
 			}

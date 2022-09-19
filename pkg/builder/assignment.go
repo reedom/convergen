@@ -1,4 +1,4 @@
-package parser
+package builder
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/model"
 	"github.com/reedom/convergen/pkg/option"
+	"github.com/reedom/convergen/pkg/util"
 	"golang.org/x/tools/go/loader"
 )
 
@@ -55,13 +56,13 @@ func (s srcStructEntry) rhsExpr(obj types.Object) string {
 }
 
 type assignmentBuilder struct {
-	p         *Parser
+	p         *FunctionBuilder
 	methodPos token.Pos
 	opts      option.Options
 	src       srcStructEntry
 }
 
-func newAssignmentBuilder(p *Parser, methodPos token.Pos, opts option.Options, src srcStructEntry) assignmentBuilder {
+func newAssignmentBuilder(p *FunctionBuilder, methodPos token.Pos, opts option.Options, src srcStructEntry) assignmentBuilder {
 	return assignmentBuilder{
 		p:         p,
 		methodPos: methodPos,
@@ -75,7 +76,7 @@ func (b assignmentBuilder) create(dst dstFieldEntry) (*model.Assignment, error) 
 
 	if !dst.isFieldExported() {
 		logger.Printf("%v: skip %v while it is not an exported field", b.p.fset.Position(b.methodPos), lhs)
-		return nil, errNotFound
+		return nil, util.ErrNotFound
 	}
 
 	if b.opts.ShouldSkip(lhs) {
@@ -108,7 +109,7 @@ func (b assignmentBuilder) buildRHS(srcObj types.Object, srcType, dstType types.
 	}
 
 	if b.opts.Typecast && types.ConvertibleTo(srcType, dstType) {
-		if rhs, ok := b.p.typeCast(dstType, b.src.rhsExpr(srcObj), b.methodPos); ok {
+		if rhs, ok := b.typeCast(dstType, b.src.rhsExpr(srcObj), b.methodPos); ok {
 			return rhs, true
 		}
 	}
@@ -133,12 +134,12 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 	var a *model.Assignment
 	var err error
 
-	err = iterateMethods(src.strct.Type(), func(m *types.Func) (done bool, err error) {
+	err = util.IterateMethods(src.strct.Type(), func(m *types.Func) (done bool, err error) {
 		if src.IsPkgExternal() && !ast.IsExported(m.Name()) {
 			return
 		}
 
-		retTypes, ok := getMethodReturnTypes(m)
+		retTypes, ok := util.GetMethodReturnTypes(m)
 		if !ok || !compliesGetter(retTypes, false) {
 			return
 		}
@@ -154,7 +155,7 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 		}
 
 		retType := retTypes.At(0).Type()
-		returnsError := retTypes.Len() == 2 && isErrorType(retTypes.At(1).Type())
+		returnsError := retTypes.Len() == 2 && util.IsErrorType(retTypes.At(1).Type())
 		if rhs, ok := b.buildRHS(m, retType, dst.fieldType()); ok {
 			logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
 			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: returnsError}}
@@ -168,7 +169,7 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 	}
 
 	if opts.Rule == model.MatchRuleName {
-		err = iterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
+		err = util.IterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
 			if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
 				return
 			}
@@ -221,7 +222,7 @@ func (b assignmentBuilder) createWithConverter(dst dstFieldEntry, converter *opt
 		}
 
 		if opts.Typecast && types.ConvertibleTo(srcType, dst.fieldType()) {
-			if expr, ok := p.typeCast(dst.fieldType(), arg, methodPos); ok {
+			if expr, ok := b.typeCast(dst.fieldType(), arg, methodPos); ok {
 				return converter.RHSExpr(expr), true
 			}
 		}
@@ -231,12 +232,12 @@ func (b assignmentBuilder) createWithConverter(dst dstFieldEntry, converter *opt
 	var a *model.Assignment
 	var err error
 
-	err = iterateMethods(src.strct.Type(), func(m *types.Func) (done bool, err error) {
+	err = util.IterateMethods(src.strct.Type(), func(m *types.Func) (done bool, err error) {
 		if src.IsPkgExternal() && !ast.IsExported(m.Name()) {
 			return
 		}
 
-		retTypes, ok := getMethodReturnTypes(m)
+		retTypes, ok := util.GetMethodReturnTypes(m)
 		if !ok || !compliesGetter(retTypes, false) {
 			return
 		}
@@ -258,7 +259,7 @@ func (b assignmentBuilder) createWithConverter(dst dstFieldEntry, converter *opt
 	}
 
 	if opts.Rule == model.MatchRuleName {
-		err = iterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
+		err = util.IterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
 			if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
 				return
 			}
@@ -282,27 +283,27 @@ func (b assignmentBuilder) createWithConverter(dst dstFieldEntry, converter *opt
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
-func (p *Parser) typeCast(t types.Type, inner string, pos token.Pos) (string, bool) {
+func (b assignmentBuilder) typeCast(t types.Type, inner string, pos token.Pos) (string, bool) {
 	switch typ := t.(type) {
 	case *types.Pointer:
-		return p.typeCast(typ.Elem(), inner, pos)
+		return b.typeCast(typ.Elem(), inner, pos)
 	case *types.Named:
 		// If the type is defined within the current package.
-		if p.pkg.Types.Scope().Lookup(typ.Obj().Name()) != nil {
+		if b.p.pkg.Types.Scope().Lookup(typ.Obj().Name()) != nil {
 			return fmt.Sprintf("%v(%v)", typ.Obj().Name(), inner), true
 		}
-		if pkgName, ok := p.imports.lookupName(typ.Obj().Pkg().Path()); ok {
+		if pkgName, ok := b.p.imports.LookupName(typ.Obj().Pkg().Path()); ok {
 			return fmt.Sprintf("%v.%v(%v)", pkgName, typ.Obj().Name(), inner), true
 		}
 		// TODO(reedom): add imports by code.
 		logger.Printf("%v: cannot typecast as %v(%v) while the package %v is not imported",
-			p.fset.Position(pos), typ.Obj().Name(), inner, typ.Obj().Pkg().Path())
+			b.p.fset.Position(pos), typ.Obj().Name(), inner, typ.Obj().Pkg().Path())
 		return "", false
 	case *types.Basic:
 		return fmt.Sprintf("%v(%v)", t.String(), inner), true
 	default:
 		logger.Printf("%v: typecast for %v is not implemented(yet) for %v",
-			p.fset.Position(pos), t.String(), inner)
+			b.p.fset.Position(pos), t.String(), inner)
 		return "", false
 	}
 }
@@ -312,7 +313,7 @@ func compliesGetter(retTypes *types.Tuple, returnsError bool) bool {
 	if num == 0 || 2 < num {
 		return false
 	}
-	return num == 1 || returnsError && isErrorType(retTypes.At(1).Type())
+	return num == 1 || returnsError && util.IsErrorType(retTypes.At(1).Type())
 }
 
 var stringer *types.Interface

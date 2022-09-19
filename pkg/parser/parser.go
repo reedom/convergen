@@ -6,26 +6,27 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"io"
+	"go/types"
 	"regexp"
 	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid"
+	"github.com/reedom/convergen/pkg/builder"
 	"github.com/reedom/convergen/pkg/logger"
-	"github.com/reedom/convergen/pkg/model"
+	"github.com/reedom/convergen/pkg/option"
+	"github.com/reedom/convergen/pkg/util"
 	"golang.org/x/tools/go/packages"
 )
 
 const buildTag = "convergen"
 
 type Parser struct {
-	file *ast.File
-	fset *token.FileSet
-	pkg  *packages.Package
-	//opt     *option.GlobalOption
-	imports importNames
-
-	log io.Writer
+	file    *ast.File
+	fset    *token.FileSet
+	pkg     *packages.Package
+	opts    option.Options
+	imports util.ImportNames
+	intf    *types.TypeName
 }
 
 const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedDeps |
@@ -53,42 +54,34 @@ func NewParser(srcPath string) (*Parser, error) {
 	}
 
 	return &Parser{
-		fset: fileSet,
-		file: file,
-		pkg:  pkgs[0],
-		//opt:     option.NewGlobalOption(),
-		imports: newImportNames(file.Imports),
+		fset:    fileSet,
+		file:    file,
+		pkg:     pkgs[0],
+		opts:    option.NewOptions(),
+		imports: util.NewImportNames(file.Imports),
 	}, nil
 }
 
-func (p *Parser) Parse() (*model.Code, error) {
+func (p *Parser) Parse() ([]*builder.MethodEntry, error) {
 	intf, err := p.extractIntfEntry()
 	if err != nil {
 		return nil, err
 	}
 
-	functions, err := p.parseMethods(intf)
-	if err != nil {
-		return nil, err
-	}
-
-	astRemoveMatchComments(p.file, reGoBuildGen)
-	pre, post, err := p.generateBaseCode(intf)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.Code{
-		Pre:       pre,
-		Post:      post,
-		Functions: functions,
-	}, nil
+	p.intf = intf.intf
+	return p.parseMethods(intf)
 }
 
-func (p *Parser) generateBaseCode(intf *intfEntry) (pre string, post string, err error) {
+func (p *Parser) CreateBuilder() *builder.FunctionBuilder {
+	return builder.NewFunctionBuilder(p.file, p.fset, p.pkg, p.imports)
+}
+
+func (p *Parser) GenerateBaseCode() (pre string, post string, err error) {
+	util.RemoveMatchComments(p.file, reGoBuildGen)
+
 	// Remove doc comment of the interface.
 	// And also find the range pos of the interface in the code.
-	nodes, _ := toAstNode(p.file, intf.intf)
+	nodes, _ := util.ToAstNode(p.file, p.intf)
 	var minPos, maxPos token.Pos
 
 	for _, node := range nodes {
@@ -116,8 +109,8 @@ func (p *Parser) generateBaseCode(intf *intfEntry) (pre string, post string, err
 
 	// Insert markers.
 	marker, _ := gonanoid.Nanoid()
-	astInsertComment(p.file, marker, minPos)
-	astInsertComment(p.file, marker, maxPos)
+	util.InsertComment(p.file, marker, minPos)
+	util.InsertComment(p.file, marker, maxPos)
 
 	var buf bytes.Buffer
 	err = printer.Fprint(&buf, p.fset, p.file)

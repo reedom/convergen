@@ -11,10 +11,10 @@ import (
 )
 
 type Generator struct {
-	code *model.Code
+	code model.Code
 }
 
-func NewGenerator(code *model.Code) *Generator {
+func NewGenerator(code model.Code) *Generator {
 	return &Generator{
 		code: code,
 	}

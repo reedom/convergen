@@ -1,4 +1,4 @@
-package parser
+package util_test
 
 import (
 	"bytes"
@@ -11,9 +11,12 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/reedom/convergen/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var reGoBuildGen = regexp.MustCompile(`\s*//\s*(go:(generate\b|build convergen\b)|\+build convergen)`)
 
 func testLoadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Package) {
 	fset := token.NewFileSet()
@@ -52,7 +55,7 @@ func testLoadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Pa
 //	intf := findInterface(pkg.Scope(), "Convergen")
 //	require.NotNil(t, intf)
 //
-//	found := getDocCommentOn(file, intf)
+//	found := GetDocCommentOn(file, intf)
 //	require.NotNil(t, found)
 //	assert.Len(t, found.List, 3)
 //	assert.Equal(t, "// Comment I-1", found.List[0].Text)
@@ -79,7 +82,7 @@ func testLoadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Pa
 //	intf := findInterface(pkg.Scope(), "Convergen")
 //	require.NotNil(t, intf)
 //
-//	found := getDocCommentOn(file, intf)
+//	found := GetDocCommentOn(file, intf)
 //	assert.Nil(t, found)
 //}
 
@@ -110,7 +113,7 @@ var y = 1
 	re := regexp.MustCompile(`//\s*remove\b`)
 
 	file, fset, _ := testLoadSrc(t, src)
-	astRemoveMatchComments(file, re)
+	util.RemoveMatchComments(file, re)
 	buf := bytes.Buffer{}
 	require.Nil(t, printer.Fprint(&buf, fset, file))
 	assert.Equal(t, expected, buf.String())
@@ -135,7 +138,7 @@ var y = 1
 `
 
 	file, fset, _ := testLoadSrc(t, src)
-	astRemoveMatchComments(file, reGoBuildGen)
+	util.RemoveMatchComments(file, reGoBuildGen)
 	buf := bytes.Buffer{}
 	require.Nil(t, printer.Fprint(&buf, fset, file))
 	assert.Equal(t, expected, buf.String())

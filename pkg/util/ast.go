@@ -1,4 +1,4 @@
-package parser
+package util
 
 import (
 	"go/ast"
@@ -7,14 +7,14 @@ import (
 )
 
 // astRemoveMatchComments removes pattern matched comments from file.Comments.
-func astRemoveMatchComments(file *ast.File, pattern *regexp.Regexp) {
+func RemoveMatchComments(file *ast.File, pattern *regexp.Regexp) {
 	for _, group := range file.Comments {
-		_ = astExtractMatchComments(group, pattern)
+		_ = ExtractMatchComments(group, pattern)
 	}
 }
 
 // astExtractMatchComments removes pattern matched comments from commentGroup and return them.
-func astExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) []*ast.Comment {
+func ExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) []*ast.Comment {
 	if commentGroup == nil {
 		return nil
 	}
@@ -39,7 +39,7 @@ func astExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Reg
 	return removed
 }
 
-func astRemoveDecl(file *ast.File, name string) {
+func RemoveDecl(file *ast.File, name string) {
 	comparer := func(s string) bool {
 		return s == name
 	}
@@ -53,7 +53,7 @@ func astRemoveDecl(file *ast.File, name string) {
 	file.Decls = decls
 }
 
-func astRemoveDecl1(file *ast.File, fset *token.FileSet, node ast.Node) {
+func RemoveDecl1(file *ast.File, fset *token.FileSet, node ast.Node) {
 	decls := make([]ast.Decl, 0)
 	nodePos := fset.Position(node.Pos()).String()
 	for _, decl := range file.Decls {
@@ -64,7 +64,7 @@ func astRemoveDecl1(file *ast.File, fset *token.FileSet, node ast.Node) {
 	file.Decls = decls
 }
 
-func astInsertComment(file *ast.File, text string, pos token.Pos) {
+func InsertComment(file *ast.File, text string, pos token.Pos) {
 	comment := &ast.Comment{Slash: pos, Text: text}
 
 	for i := range file.Comments {

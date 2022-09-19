@@ -1,4 +1,4 @@
-package parser
+package util
 
 import (
 	"errors"
@@ -13,40 +13,40 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-var errNotFound = errors.New("not found")
+var ErrNotFound = errors.New("not found")
 
-type lookupFieldOpt struct {
-	exactCase     bool
-	supportsError bool
-	pattern       string
+type LookupFieldOpt struct {
+	ExactCase     bool
+	SupportsError bool
+	Pattern       string
 }
 
-// toAstNode converts types.Object to []ast.Node.
-func toAstNode(file *ast.File, obj types.Object) (path []ast.Node, exact bool) {
+// ToAstNode converts types.Object to []ast.Node.
+func ToAstNode(file *ast.File, obj types.Object) (path []ast.Node, exact bool) {
 	return astutil.PathEnclosingInterval(file, obj.Pos(), obj.Pos())
 }
 
-func isErrorType(t types.Type) bool {
+func IsErrorType(t types.Type) bool {
 	return t.String() == "error"
 }
 
-func removeObject(file *ast.File, obj types.Object) {
-	nodes, _ := toAstNode(file, obj)
+func RemoveObject(file *ast.File, obj types.Object) {
+	nodes, _ := ToAstNode(file, obj)
 	for _, node := range nodes {
 		switch n := node.(type) {
 		case *ast.GenDecl:
 			if n.Doc != nil {
 				n.Doc.List = nil
 			}
-			astRemoveDecl(file, obj.Name())
+			RemoveDecl(file, obj.Name())
 		}
 	}
 	return
 }
 
-// getDocCommentOn retrieves doc comments that relate to nodes.
-func getDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cleanUp func()) {
-	nodes, _ := toAstNode(file, obj)
+// GetDocCommentOn retrieves doc comments that relate to nodes.
+func GetDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cleanUp func()) {
+	nodes, _ := ToAstNode(file, obj)
 	if nodes == nil {
 		return nil, func() {}
 	}
@@ -98,17 +98,17 @@ func getDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cl
 	return nil, func() {}
 }
 
-func findField(fset *token.FileSet, pkg *types.Package, t types.Type, opt lookupFieldOpt) (types.Object, error) {
+func FindField(fset *token.FileSet, pkg *types.Package, t types.Type, opt LookupFieldOpt) (types.Object, error) {
 	switch typ := t.(type) {
 	case *types.Pointer:
-		return findField(fset, pkg, typ.Elem(), opt)
+		return FindField(fset, pkg, typ.Elem(), opt)
 	case *types.Named:
-		return findFieldInternal(fset, pkg, typ.Obj().Pkg(), typ.Underlying(), opt, strings.Split(opt.pattern, "."))
+		return findFieldInternal(fset, pkg, typ.Obj().Pkg(), typ.Underlying(), opt, strings.Split(opt.Pattern, "."))
 	}
-	return findFieldInternal(fset, pkg, pkg, t, opt, strings.Split(opt.pattern, "."))
+	return findFieldInternal(fset, pkg, pkg, t, opt, strings.Split(opt.Pattern, "."))
 }
 
-func findFieldInternal(fset *token.FileSet, pkg, typePkg *types.Package, t types.Type, opt lookupFieldOpt, pattern []string) (types.Object, error) {
+func findFieldInternal(fset *token.FileSet, pkg, typePkg *types.Package, t types.Type, opt LookupFieldOpt, pattern []string) (types.Object, error) {
 	if pattern[0] == "" {
 		return nil, fmt.Errorf("invalid pattern")
 	}
@@ -123,7 +123,7 @@ func findFieldInternal(fset *token.FileSet, pkg, typePkg *types.Package, t types
 				continue
 			}
 
-			ok, err := pathMatch(pattern[0], m.Name(), opt.exactCase)
+			ok, err := PathMatch(pattern[0], m.Name(), opt.ExactCase)
 			if err != nil {
 				return nil, err
 			}
@@ -143,7 +143,7 @@ func findFieldInternal(fset *token.FileSet, pkg, typePkg *types.Package, t types
 				continue
 			}
 
-			ok, err := pathMatch(pattern[0], e.Name(), opt.exactCase)
+			ok, err := PathMatch(pattern[0], e.Name(), opt.ExactCase)
 			if err != nil {
 				return nil, err
 			}
@@ -156,27 +156,27 @@ func findFieldInternal(fset *token.FileSet, pkg, typePkg *types.Package, t types
 			}
 		}
 	case *types.Basic:
-		logger.Printf("findField for *types.Basic is not implemented")
+		logger.Printf("FindField for *types.Basic is not implemented")
 	case *types.Array:
-		logger.Printf("findField for *types.Array is not implemented")
+		logger.Printf("FindField for *types.Array is not implemented")
 	case *types.Slice:
-		logger.Printf("findField for *types.Slice is not implemented")
+		logger.Printf("FindField for *types.Slice is not implemented")
 	case *types.Map:
-		logger.Printf("findField for *types.Map is not implemented")
+		logger.Printf("FindField for *types.Map is not implemented")
 	case *types.Chan:
-		logger.Printf("findField for *types.Chan is not implemented")
+		logger.Printf("FindField for *types.Chan is not implemented")
 	case *types.Interface:
-		logger.Printf("findField for *types.Interface is not implemented")
+		logger.Printf("FindField for *types.Interface is not implemented")
 	case *types.Tuple:
-		logger.Printf("findField for *types.Tuple is not implemented")
+		logger.Printf("FindField for *types.Tuple is not implemented")
 	case *types.Signature:
-		logger.Printf("findField for *types.Signature is not implemented")
+		logger.Printf("FindField for *types.Signature is not implemented")
 	}
 	logger.Printf("field pattern mismatch. pattern=%#v, t=%v\n", pattern, t)
-	return nil, errNotFound
+	return nil, ErrNotFound
 }
 
-func pathMatch(pattern, name string, exactCase bool) (bool, error) {
+func PathMatch(pattern, name string, exactCase bool) (bool, error) {
 	if exactCase {
 		return path.Match(pattern, name)
 	}
@@ -271,14 +271,14 @@ func walkStructInternal(typePkg *types.Package, t types.Type, opt walkStructOpt,
 	return nil
 }
 
-func iterateMethods(t types.Type, cb func(*types.Func) (done bool, err error)) error {
+func IterateMethods(t types.Type, cb func(*types.Func) (done bool, err error)) error {
 	if ptr, ok := t.(*types.Pointer); ok {
-		return iterateMethods(ptr.Elem(), cb)
+		return IterateMethods(ptr.Elem(), cb)
 	}
 
 	named, ok := t.(*types.Named)
 	if !ok {
-		return errNotFound
+		return ErrNotFound
 	}
 
 	for i := 0; i < named.NumMethods(); i++ {
@@ -291,17 +291,17 @@ func iterateMethods(t types.Type, cb func(*types.Func) (done bool, err error)) e
 	return nil
 }
 
-func iterateFields(t types.Type, cb func(*types.Var) (done bool, err error)) error {
+func IterateFields(t types.Type, cb func(*types.Var) (done bool, err error)) error {
 	if ptr, ok := t.(*types.Pointer); ok {
-		return iterateFields(ptr.Elem(), cb)
+		return IterateFields(ptr.Elem(), cb)
 	}
 	if named, ok := t.(*types.Named); ok {
-		return iterateFields(named.Underlying(), cb)
+		return IterateFields(named.Underlying(), cb)
 	}
 
 	strct, ok := t.Underlying().(*types.Struct)
 	if !ok {
-		return errNotFound
+		return ErrNotFound
 	}
 
 	for i := 0; i < strct.NumFields(); i++ {
@@ -314,7 +314,7 @@ func iterateFields(t types.Type, cb func(*types.Var) (done bool, err error)) err
 	return nil
 }
 
-func getMethodReturnTypes(m *types.Func) (*types.Tuple, bool) {
+func GetMethodReturnTypes(m *types.Func) (*types.Tuple, bool) {
 	sig := m.Type().(*types.Signature)
 	num := sig.Results().Len()
 	if num == 0 || 2 < num {

@@ -11,6 +11,7 @@ import (
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/model"
 	"github.com/reedom/convergen/pkg/option"
+	"github.com/reedom/convergen/pkg/util"
 )
 
 var reNotation = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
@@ -123,7 +124,7 @@ func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types
 		return inner.LookupParent(names[0], pos)
 	}
 
-	pkgPath, ok := p.imports.lookupPath(names[0])
+	pkgPath, ok := p.imports.LookupPath(names[0])
 	if !ok {
 		return nil, nil
 	}
@@ -152,13 +153,13 @@ func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, r
 		err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), funcName)
 		return
 	}
-	if sig.Results().Len() == 2 && !isErrorType(sig.Results().At(1).Type()) {
+	if sig.Results().Len() == 2 && !util.IsErrorType(sig.Results().At(1).Type()) {
 		err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), funcName)
 		return
 	}
 
 	argType = sig.Params().At(0).Type()
 	retType = sig.Results().At(0).Type()
-	returnsError = sig.Results().Len() == 2 && isErrorType(sig.Results().At(1).Type())
+	returnsError = sig.Results().Len() == 2 && util.IsErrorType(sig.Results().At(1).Type())
 	return
 }

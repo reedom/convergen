@@ -7,6 +7,7 @@ import (
 
 	"github.com/reedom/convergen/pkg/generator"
 	"github.com/reedom/convergen/pkg/logger"
+	"github.com/reedom/convergen/pkg/model"
 	"github.com/reedom/convergen/pkg/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,9 +63,20 @@ func TestUseCases(t *testing.T) {
 
 			p, err := parser.NewParser(tt.source)
 			require.Nil(t, err)
-			code, err := p.Parse()
+			methods, err := p.Parse()
+			require.Nil(t, err)
+			builder := p.CreateBuilder()
+			functions, err := builder.CreateFunctions(methods)
 			require.Nil(t, err)
 
+			pre, post, err := p.GenerateBaseCode()
+			require.Nil(t, err)
+
+			code := model.Code{
+				Pre:       pre,
+				Post:      post,
+				Functions: functions,
+			}
 			g := generator.NewGenerator(code)
 			actual, err := g.Generate(tt.source, false, true)
 			require.Nil(t, err)

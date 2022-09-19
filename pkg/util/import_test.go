@@ -1,8 +1,9 @@
-package parser
+package util_test
 
 import (
 	"testing"
 
+	"github.com/reedom/convergen/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,18 +26,18 @@ func main() {
 }
 `
 	file, _, _ := testLoadSrc(t, src)
-	names := newImportNames(file.Imports)
+	names := util.NewImportNames(file.Imports)
 	for path, expected := range map[string]string{
 		"fmt":           "fmt",
 		"encoding/json": "js",
 		"net/http":      "http",
 	} {
-		actual, ok := names.lookupName(path)
+		actual, ok := names.LookupName(path)
 		if assert.True(t, ok) {
 			assert.Equal(t, expected, actual)
 		}
 	}
 
-	_, ok := names.lookupName("unknown")
+	_, ok := names.LookupName("unknown")
 	assert.False(t, ok)
 }
