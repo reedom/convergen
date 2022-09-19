@@ -3,7 +3,6 @@ package option
 import (
 	"fmt"
 	"go/token"
-	"strings"
 )
 
 type NameMatcher struct {
@@ -19,7 +18,9 @@ func NewNameMatcher(src, dst string, exactCase bool, pos token.Pos) (*NameMatche
 	}
 
 	var dstM *IdentMatcher
-	if dst != "" {
+	if dst == "" {
+		dstM = srcM
+	} else {
 		dstM, err = NewIdentMatcher(dst, exactCase)
 		if err != nil {
 			return nil, fmt.Errorf("dst regexp is invalid")
@@ -30,21 +31,7 @@ func NewNameMatcher(src, dst string, exactCase bool, pos token.Pos) (*NameMatche
 }
 
 func (m *NameMatcher) Match(src, dst string, exactCase bool) bool {
-	if !m.src.Match(src, exactCase) {
-		return false
-	}
-	if m.dst != nil {
-		return m.dst.Match(dst, exactCase)
-	}
-
-	// If m.dst is nil, compare each name part of src and dst.
-	srcName := extractName(src)
-	dstName := extractName(dst)
-	if !exactCase {
-		srcName = strings.ToLower(srcName)
-		dstName = strings.ToLower(dstName)
-	}
-	return srcName != "" && srcName == dstName
+	return m.src.Match(src, exactCase) && m.dst.Match(dst, exactCase)
 }
 
 func (m *NameMatcher) Src() *IdentMatcher {
@@ -57,9 +44,4 @@ func (m *NameMatcher) Dst() *IdentMatcher {
 
 func (m *NameMatcher) Pos() token.Pos {
 	return m.pos
-}
-
-func extractName(fullName string) string {
-	i := strings.LastIndex(fullName, ".")
-	return fullName[i+1:]
 }

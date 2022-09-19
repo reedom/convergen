@@ -25,7 +25,7 @@ func TestIdentMatcher(t *testing.T) {
 		"/Field/": {
 			{ident: "Field", exactCase: true, matches: true},
 			{ident: "field", exactCase: true, matches: false},
-			{ident: "field", exactCase: false, matches: true},
+			{ident: "field", exactCase: false, matches: false},
 			{ident: "aField", exactCase: true, matches: true},
 			{ident: "Fields", exactCase: true, matches: true},
 			{ident: "Fiel", exactCase: true, matches: false},

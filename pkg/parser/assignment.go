@@ -69,7 +69,7 @@ func (p *Parser) createAssign(methodPos token.Pos, opts options, dst dstFieldEnt
 
 	var mapper *option.NameMatcher
 	for _, m := range opts.nameMapper {
-		if m.Dst().Match(dst.fieldName(), opts.exactCase) {
+		if m.Dst().Match(dst.fieldName(), true) {
 			// If there are more than one mapper exist for the dst, the last one wins.
 			mapper = m
 		}
@@ -112,7 +112,7 @@ func (p *Parser) createAssign(methodPos token.Pos, opts options, dst dstFieldEnt
 			}
 
 			if mapper != nil {
-				if !mapper.Src().Match(m.Name()+"()", opts.exactCase) {
+				if !mapper.Src().Match(m.Name()+"()", true) {
 					return
 				}
 			} else if !opts.compareFieldName(dst.fieldName(), m.Name()) {
@@ -134,7 +134,7 @@ func (p *Parser) createAssign(methodPos token.Pos, opts options, dst dstFieldEnt
 	if opts.rule == model.MatchRuleName {
 		err = iterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
 			if mapper != nil {
-				if !mapper.Src().Match(f.Name(), opts.exactCase) {
+				if !mapper.Src().Match(f.Name(), true) {
 					return
 				}
 			} else if !opts.compareFieldName(dst.fieldName(), f.Name()) {

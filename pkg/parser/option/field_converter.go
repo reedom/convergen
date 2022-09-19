@@ -7,10 +7,9 @@ import (
 type FieldConverter struct {
 	m         *NameMatcher
 	converter string
-	hasError  bool
 }
 
-func NewFieldConverter(src, dst string, exactCase bool, converter string, hasError bool, pos token.Pos) (*FieldConverter, error) {
+func NewFieldConverter(converter, src, dst string, exactCase bool, pos token.Pos) (*FieldConverter, error) {
 	m, err := NewNameMatcher(src, dst, exactCase, pos)
 	if err != nil {
 		return nil, err
@@ -19,7 +18,6 @@ func NewFieldConverter(src, dst string, exactCase bool, converter string, hasErr
 	return &FieldConverter{
 		m:         m,
 		converter: converter,
-		hasError:  hasError,
 	}, nil
 }
 
@@ -31,8 +29,12 @@ func (c *FieldConverter) Converter() string {
 	return c.converter
 }
 
-func (c *FieldConverter) HasError() bool {
-	return c.hasError
+func (m *FieldConverter) Src() *IdentMatcher {
+	return m.m.src
+}
+
+func (m *FieldConverter) Dst() *IdentMatcher {
+	return m.m.dst
 }
 
 func (c *FieldConverter) Pos() token.Pos {

@@ -12,6 +12,11 @@ type IdentMatcher struct {
 	exactCase bool
 }
 
+// NewIdentMatcher creates a new IdentMatcher instance.
+// If pattern is wrapped with slashes like "/……/", the instance will use regexp match. Otherwise it will be
+// an exact word match.
+// With the latter and if exactCase is false, it will apply a case-insensitive match. (For regexp patterns
+// exactCase won't take effect.)
 func NewIdentMatcher(pattern string, exactCase bool) (*IdentMatcher, error) {
 	re, err := compileRegexp(pattern, exactCase)
 	if err != nil {
@@ -43,9 +48,9 @@ func compileRegexp(pattern string, exactCase bool) (*regexp.Regexp, error) {
 		expr = pattern[1 : len(pattern)-1]
 	} else {
 		expr = fmt.Sprintf("^%v$", regexp.QuoteMeta(pattern))
-	}
-	if !exactCase {
-		expr = strings.ToLower(expr)
+		if !exactCase {
+			expr = strings.ToLower(expr)
+		}
 	}
 	re, err := regexp.Compile(expr)
 	if err != nil {
