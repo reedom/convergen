@@ -9,7 +9,7 @@ import (
 
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/model"
-	"github.com/reedom/convergen/pkg/parser/option"
+	"github.com/reedom/convergen/pkg/option"
 	"golang.org/x/tools/go/loader"
 )
 
@@ -57,11 +57,11 @@ func (s srcStructEntry) rhsExpr(obj types.Object) string {
 type assignmentBuilder struct {
 	p         *Parser
 	methodPos token.Pos
-	opts      options
+	opts      option.Options
 	src       srcStructEntry
 }
 
-func newAssignmentBuilder(p *Parser, methodPos token.Pos, opts options, src srcStructEntry) assignmentBuilder {
+func newAssignmentBuilder(p *Parser, methodPos token.Pos, opts option.Options, src srcStructEntry) assignmentBuilder {
 	return assignmentBuilder{
 		p:         p,
 		methodPos: methodPos,
@@ -78,13 +78,13 @@ func (b assignmentBuilder) create(dst dstFieldEntry) (*model.Assignment, error) 
 		return nil, errNotFound
 	}
 
-	if b.opts.shouldSkip(lhs) {
+	if b.opts.ShouldSkip(lhs) {
 		logger.Printf("%v: skip %v", b.p.fset.Position(b.methodPos), lhs)
 		return &model.Assignment{LHS: lhs, RHS: model.SkipField{}}, nil
 	}
 
 	var conv *option.FieldConverter
-	for _, m := range b.opts.converters {
+	for _, m := range b.opts.Converters {
 		if m.Dst().Match(dst.fieldName(), true) {
 			// If there are more than one converter exist for the dst, the last one wins.
 			conv = m
@@ -103,11 +103,11 @@ func (b assignmentBuilder) buildRHS(srcObj types.Object, srcType, dstType types.
 		return b.src.rhsExpr(srcObj), true
 	}
 
-	if b.opts.stringer && supportsStringer(srcType, dstType) {
+	if b.opts.Stringer && supportsStringer(srcType, dstType) {
 		return b.src.rhsExpr(srcObj) + ".String()", true
 	}
 
-	if b.opts.typecast && types.ConvertibleTo(srcType, dstType) {
+	if b.opts.Typecast && types.ConvertibleTo(srcType, dstType) {
 		if rhs, ok := b.p.typeCast(dstType, b.src.rhsExpr(srcObj), b.methodPos); ok {
 			return rhs, true
 		}
@@ -123,7 +123,7 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 	lhs := dst.lhsExpr()
 
 	var mapper *option.NameMatcher
-	for _, m := range opts.nameMapper {
+	for _, m := range opts.NameMapper {
 		if m.Dst().Match(dst.fieldName(), true) {
 			// If there are more than one mapper exist for the dst, the last one wins.
 			mapper = m
@@ -148,7 +148,7 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 				return
 			}
 		} else {
-			if !opts.getter || !opts.compareFieldName(dst.fieldName(), m.Name()) {
+			if !opts.Getter || !opts.CompareFieldName(dst.fieldName(), m.Name()) {
 				return
 			}
 		}
@@ -167,7 +167,7 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 		return a, err
 	}
 
-	if opts.rule == model.MatchRuleName {
+	if opts.Rule == model.MatchRuleName {
 		err = iterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
 			if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
 				return
@@ -178,7 +178,7 @@ func (b assignmentBuilder) createCommon(dst dstFieldEntry) (*model.Assignment, e
 					return
 				}
 			} else {
-				if !opts.compareFieldName(dst.fieldName(), f.Name()) {
+				if !opts.CompareFieldName(dst.fieldName(), f.Name()) {
 					return
 				}
 			}
@@ -216,11 +216,11 @@ func (b assignmentBuilder) createWithConverter(dst dstFieldEntry, converter *opt
 			return converter.RHSExpr(arg), true
 		}
 
-		if opts.stringer && supportsStringer(converter.RetType(), dst.fieldType()) {
+		if opts.Stringer && supportsStringer(converter.RetType(), dst.fieldType()) {
 			return converter.RHSExpr(arg + ".String()"), true
 		}
 
-		if opts.typecast && types.ConvertibleTo(srcType, dst.fieldType()) {
+		if opts.Typecast && types.ConvertibleTo(srcType, dst.fieldType()) {
 			if expr, ok := p.typeCast(dst.fieldType(), arg, methodPos); ok {
 				return converter.RHSExpr(expr), true
 			}
@@ -257,7 +257,7 @@ func (b assignmentBuilder) createWithConverter(dst dstFieldEntry, converter *opt
 		return a, err
 	}
 
-	if opts.rule == model.MatchRuleName {
+	if opts.Rule == model.MatchRuleName {
 		err = iterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
 			if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
 				return

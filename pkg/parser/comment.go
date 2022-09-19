@@ -10,95 +10,12 @@ import (
 
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/model"
-	"github.com/reedom/convergen/pkg/parser/option"
+	"github.com/reedom/convergen/pkg/option"
 )
 
 var reNotation = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
 
-type options struct {
-	Style model.DstVarStyle
-	rule  model.MatchRule
-
-	exactCase bool
-	getter    bool
-	stringer  bool
-	typecast  bool
-
-	receiver    string
-	skipFields  []*option.IdentMatcher
-	nameMapper  []*option.NameMatcher
-	converters  []*option.FieldConverter
-	postProcess string
-}
-
-func newOptions() options {
-	return options{
-		Style:     model.DstVarReturn,
-		rule:      model.MatchRuleName,
-		exactCase: true,
-		getter:    true,
-		stringer:  false,
-		typecast:  false,
-	}
-}
-
-func (o options) copyForMethods() options {
-	newOpt := o
-	newOpt.receiver = ""
-	return newOpt
-}
-
-func (o options) shouldSkip(fieldName string) bool {
-	for _, skip := range o.skipFields {
-		if skip.Match(fieldName, o.exactCase) {
-			return true
-		}
-	}
-	return false
-}
-
-func (o options) compareFieldName(a, b string) bool {
-	if o.exactCase {
-		return a == b
-	}
-	return strings.ToLower(a) == strings.ToLower(b)
-}
-
-var validOpsIntf = map[string]struct{}{
-	"style":        {},
-	"match":        {},
-	"case":         {},
-	"case:off":     {},
-	"getter":       {},
-	"getter:off":   {},
-	"stringer":     {},
-	"stringer:off": {},
-	"typecast":     {},
-	"typecast:off": {},
-}
-
-var validOpsMethod = map[string]struct{}{
-	"style":        {},
-	"match":        {},
-	"case":         {},
-	"case:off":     {},
-	"getter":       {},
-	"getter:off":   {},
-	"stringer":     {},
-	"stringer:off": {},
-	"typecast":     {},
-	"typecast:off": {},
-	"rcv":          {},
-	"skip":         {},
-	"map":          {},
-	"tag":          {},
-	"conv":         {},
-	"conv:type":    {},
-	"conv:with":    {},
-	"postprocess":  {},
-}
-
-func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[string]struct{}, opts *options) error {
+func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[string]struct{}, opts *option.Options) error {
 	for _, n := range notations {
 		m := reNotation.FindStringSubmatch(n.Text)
 		if m == nil || len(m) < 2 {
@@ -130,40 +47,40 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			} else if rule, ok := model.NewMatchRuleFromValue(args[0]); !ok {
 				return logger.Errorf("%v: invalid <algorithm> arg", p.fset.Position(n.Pos()))
 			} else {
-				opts.rule = rule
+				opts.Rule = rule
 			}
 		case "case":
-			opts.exactCase = true
+			opts.ExactCase = true
 		case "case:off":
-			opts.exactCase = false
+			opts.ExactCase = false
 		case "getter":
-			opts.getter = true
+			opts.Getter = true
 		case "getter:off":
-			opts.getter = false
+			opts.Getter = false
 		case "stringer":
-			opts.stringer = true
+			opts.Stringer = true
 		case "stringer:off":
-			opts.stringer = false
+			opts.Stringer = false
 		case "typecast":
-			opts.typecast = true
+			opts.Typecast = true
 		case "typecast:off":
-			opts.typecast = false
+			opts.Typecast = false
 		case "rcv":
 			if args == nil {
 				return logger.Errorf("%v: needs name for the receiver", p.fset.Position(n.Pos()))
 			} else if !isValidIdentifier(args[0]) {
 				return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
 			}
-			opts.receiver = args[0]
+			opts.Receiver = args[0]
 		case "skip":
 			if args == nil {
 				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
 			}
-			matcher, err := option.NewIdentMatcher(args[0], opts.exactCase)
+			matcher, err := option.NewIdentMatcher(args[0], opts.ExactCase)
 			if err != nil {
 				return logger.Errorf("%v: invalid <field> arg", p.fset.Position(n.Pos()))
 			}
-			opts.skipFields = append(opts.skipFields, matcher)
+			opts.SkipFields = append(opts.SkipFields, matcher)
 		case "map":
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
@@ -172,7 +89,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if err != nil {
 				return logger.Errorf("%v: %v", p.fset.Position(n.Pos()), err.Error())
 			}
-			opts.nameMapper = append(opts.nameMapper, matcher)
+			opts.NameMapper = append(opts.NameMapper, matcher)
 		case "conv":
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
@@ -191,7 +108,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if err != nil {
 				return logger.Errorf("%v: %v", p.fset.Position(n.Pos()), err.Error())
 			}
-			opts.converters = append(opts.converters, converter)
+			opts.Converters = append(opts.Converters, converter)
 		default:
 			fmt.Printf("@@@ notation %v\n", m[1])
 		}

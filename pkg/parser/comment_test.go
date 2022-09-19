@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/reedom/convergen/pkg/model"
+	"github.com/reedom/convergen/pkg/option"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,13 +14,13 @@ import (
 func TestNotations(t *testing.T) {
 	t.Parallel()
 
-	t.Run("common with validOpsIntf", func(t *testing.T) {
+	t.Run("common with ValidOpsIntf", func(t *testing.T) {
 		t.Parallel()
-		testCommonNotations(t, validOpsIntf)
+		testCommonNotations(t, option.ValidOpsIntf)
 	})
-	t.Run("common with validOpsMethod", func(t *testing.T) {
+	t.Run("common with ValidOpsMethod", func(t *testing.T) {
 		t.Parallel()
-		testCommonNotations(t, validOpsMethod)
+		testCommonNotations(t, option.ValidOpsMethod)
 	})
 	t.Run("methods", func(t *testing.T) {
 		t.Parallel()
@@ -30,69 +31,69 @@ func TestNotations(t *testing.T) {
 func testCommonNotations(t *testing.T, validOpts map[string]struct{}) {
 	cases := []struct {
 		notation string
-		expected func(*options)
+		expected func(options *option.Options)
 	}{
 		{
 			notation: ":style arg",
-			expected: func(opt *options) { opt.Style = model.DstVarArg },
+			expected: func(opt *option.Options) { opt.Style = model.DstVarArg },
 		},
 		{
 			notation: ":style return",
-			expected: func(opt *options) { opt.Style = model.DstVarReturn },
+			expected: func(opt *option.Options) { opt.Style = model.DstVarReturn },
 		},
 		{
 			notation: ":match tag",
-			expected: func(opt *options) { opt.rule = model.MatchRuleTag },
+			expected: func(opt *option.Options) { opt.Rule = model.MatchRuleTag },
 		},
 		{
 			notation: ":match name",
-			expected: func(opt *options) { opt.rule = model.MatchRuleName },
+			expected: func(opt *option.Options) { opt.Rule = model.MatchRuleName },
 		},
 		{
 			notation: ":match none",
-			expected: func(opt *options) { opt.rule = model.MatchRuleNone },
+			expected: func(opt *option.Options) { opt.Rule = model.MatchRuleNone },
 		},
 		{
 			notation: ":case:off",
-			expected: func(opt *options) { opt.exactCase = false },
+			expected: func(opt *option.Options) { opt.ExactCase = false },
 		},
 		{
 			notation: ":case",
-			expected: func(opt *options) { opt.exactCase = true },
+			expected: func(opt *option.Options) { opt.ExactCase = true },
 		},
 		{
 			notation: ":getter:off",
-			expected: func(opt *options) { opt.getter = false },
+			expected: func(opt *option.Options) { opt.Getter = false },
 		},
 		{
 			notation: ":getter",
-			expected: func(opt *options) { opt.getter = true },
+			expected: func(opt *option.Options) { opt.Getter = true },
 		},
 		{
 			notation: ":stringer",
-			expected: func(opt *options) { opt.stringer = true },
+			expected: func(opt *option.Options) { opt.Stringer = true },
 		},
 		{
 			notation: ":stringer:off",
-			expected: func(opt *options) { opt.stringer = false },
+			expected: func(opt *option.Options) { opt.Stringer = false },
 		},
 		{
 			notation: ":typecast",
-			expected: func(opt *options) { opt.typecast = true },
+			expected: func(opt *option.Options) { opt.Typecast = true },
 		},
 		{
 			notation: ":typecast:off",
-			expected: func(opt *options) { opt.typecast = false },
+			expected: func(opt *option.Options) { opt.Typecast = false },
 		},
 	}
 
 	p, err := NewParser("../../tests/fixtures/usecase/getter/setup.go")
 	require.Nil(t, err)
 
-	expected := newOptions()
+	expected := option.NewOptions()
 	for _, tt := range cases {
 		notations := []*ast.Comment{{Text: "// " + tt.notation}}
-		actual := expected.copyForMethods()
+		actual := expected
 		err := p.parseNotationInComments(notations, validOpts, &actual)
 		assert.Nil(t, err)
 
@@ -104,19 +105,19 @@ func testCommonNotations(t *testing.T, validOpts map[string]struct{}) {
 func testMethodNotations(t *testing.T) {
 	cases := []struct {
 		notation  string
-		validator func(options) bool
+		validator func(options option.Options) bool
 	}{
 		{
 			notation:  ":rcv r",
-			validator: func(opt options) bool { return opt.receiver == "r" },
+			validator: func(opt option.Options) bool { return opt.Receiver == "r" },
 		},
 		{
 			notation:  ":skip Name",
-			validator: func(opt options) bool { return len(opt.skipFields) == 1 },
+			validator: func(opt option.Options) bool { return len(opt.SkipFields) == 1 },
 		},
 		{
 			notation:  ":map ID UserID",
-			validator: func(opt options) bool { return len(opt.nameMapper) == 1 },
+			validator: func(opt option.Options) bool { return len(opt.NameMapper) == 1 },
 		},
 	}
 
@@ -124,19 +125,19 @@ func testMethodNotations(t *testing.T) {
 	require.Nil(t, err)
 
 	for _, tt := range cases {
-		actual := newOptions()
+		actual := option.NewOptions()
 		notations := []*ast.Comment{{Text: "// " + tt.notation}}
-		err := p.parseNotationInComments(notations, validOpsMethod, &actual)
+		err := p.parseNotationInComments(notations, option.ValidOpsMethod, &actual)
 		assert.Nil(t, err)
 
 		assert.True(t, tt.validator(actual))
 	}
 }
 
-func assertOptionsEquals(t *testing.T, a, b options, msg string) {
+func assertOptionsEquals(t *testing.T, a, b option.Options, msg string) {
 	t.Helper()
 	cmpOpts := []cmp.Option{
-		cmp.AllowUnexported(options{}),
+		cmp.AllowUnexported(option.Options{}),
 	}
 
 	assert.True(

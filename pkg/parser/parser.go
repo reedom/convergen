@@ -13,17 +13,16 @@ import (
 	gonanoid "github.com/matoous/go-nanoid"
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/model"
-	"github.com/reedom/convergen/pkg/parser/option"
 	"golang.org/x/tools/go/packages"
 )
 
 const buildTag = "convergen"
 
 type Parser struct {
-	file    *ast.File
-	fset    *token.FileSet
-	pkg     *packages.Package
-	opt     *option.GlobalOption
+	file *ast.File
+	fset *token.FileSet
+	pkg  *packages.Package
+	//opt     *option.GlobalOption
 	imports importNames
 
 	log io.Writer
@@ -54,10 +53,10 @@ func NewParser(srcPath string) (*Parser, error) {
 	}
 
 	return &Parser{
-		fset:    fileSet,
-		file:    file,
-		pkg:     pkgs[0],
-		opt:     option.NewGlobalOption(),
+		fset: fileSet,
+		file: file,
+		pkg:  pkgs[0],
+		//opt:     option.NewGlobalOption(),
 		imports: newImportNames(file.Imports),
 	}, nil
 }

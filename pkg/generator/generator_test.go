@@ -261,6 +261,8 @@ func (src *domain.Pet) ToModel(dst *model.Pet) (err error) {
 			expected: header + pre + `
 func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
 	// skip: dst.ID
+
+	return
 }
 `,
 		},

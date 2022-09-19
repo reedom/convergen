@@ -10,6 +10,7 @@ import (
 
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/model"
+	"github.com/reedom/convergen/pkg/option"
 )
 
 var reGoBuildGen = regexp.MustCompile(`\s*//\s*(go:(generate\b|build convergen\b)|\+build convergen)`)
@@ -17,7 +18,7 @@ var ErrAbort = errors.New("abort")
 
 type methodEntry struct {
 	method     types.Object // Also a *types.Signature
-	opts       options
+	opts       option.Options
 	docComment *ast.CommentGroup
 	src        *types.Tuple
 	dst        *types.Tuple
@@ -25,11 +26,10 @@ type methodEntry struct {
 
 func (p *Parser) parseMethods(intf *intfEntry) ([]*model.Function, error) {
 	iface := intf.intf.Type().Underlying().(*types.Interface)
-	opts := intf.opts.copyForMethods()
 	mset := types.NewMethodSet(iface)
 	methods := make([]*methodEntry, 0)
 	for i := 0; i < mset.Len(); i++ {
-		method, err := p.extractMethodEntry(mset.At(i).Obj(), opts)
+		method, err := p.extractMethodEntry(mset.At(i).Obj(), intf.opts)
 		if err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err.Error())
 			continue
@@ -52,7 +52,7 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*model.Function, error) {
 	return functions, nil
 }
 
-func (p *Parser) extractMethodEntry(method types.Object, opts options) (*methodEntry, error) {
+func (p *Parser) extractMethodEntry(method types.Object, opts option.Options) (*methodEntry, error) {
 	signature, ok := method.Type().(*types.Signature)
 	if !ok {
 		return nil, logger.Errorf(`%v: expected signature but %#v`, p.fset.Position(method.Pos()), method)
@@ -67,7 +67,7 @@ func (p *Parser) extractMethodEntry(method types.Object, opts options) (*methodE
 
 	docComment, cleanUp := getDocCommentOn(p.file, method)
 	notations := astExtractMatchComments(docComment, reNotation)
-	err := p.parseNotationInComments(notations, validOpsMethod, &opts)
+	err := p.parseNotationInComments(notations, option.ValidOpsMethod, &opts)
 	if err != nil {
 		return nil, err
 	}
@@ -116,11 +116,11 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 	dst := sig.Results().At(0)
 
 	srcVar := p.createVar(src, "src")
-	if m.opts.receiver != "" {
+	if m.opts.Receiver != "" {
 		if srcVar.PkgName != "" {
 			return nil, logger.Errorf("%v: an external package type cannot be a receiver", p.fset.Position(m.method.Pos()))
 		}
-		srcVar.Name = m.opts.receiver
+		srcVar.Name = m.opts.Receiver
 	}
 	dstVar := p.createVar(dst, "dst")
 
@@ -158,7 +158,7 @@ func (p *Parser) CreateFunction(m *methodEntry) (*model.Function, error) {
 	fn := &model.Function{
 		Name:         m.method.Name(),
 		Comments:     comments,
-		Receiver:     m.opts.receiver,
+		Receiver:     m.opts.Receiver,
 		Src:          srcVar,
 		Dst:          dstVar,
 		DstVarStyle:  m.opts.Style,

@@ -7,13 +7,14 @@ import (
 	"unicode"
 
 	"github.com/reedom/convergen/pkg/logger"
+	"github.com/reedom/convergen/pkg/option"
 )
 
 const intfName = "Convergen"
 
 type intfEntry struct {
 	intf *types.TypeName
-	opts options
+	opts option.Options
 }
 
 type funcEntry struct {
@@ -34,8 +35,8 @@ func (p *Parser) extractIntfEntry() (*intfEntry, error) {
 	docComment.List = nil
 	cleanUp()
 
-	opts := newOptions()
-	err = p.parseNotationInComments(notations, validOpsIntf, &opts)
+	opts := option.NewOptions()
+	err = p.parseNotationInComments(notations, option.ValidOpsIntf, &opts)
 	if err != nil {
 		return nil, err
 	}
