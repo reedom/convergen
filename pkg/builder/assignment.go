@@ -41,7 +41,6 @@ func (f dstFieldEntry) isFieldExported() bool {
 
 type srcStructEntry struct {
 	parent *srcStructEntry
-	pfield types.Object
 	model.Var
 	strct *types.Var
 }
@@ -54,12 +53,12 @@ func (s srcStructEntry) rhsExpr(obj types.Object) string {
 	switch obj.(type) {
 	case *types.Var:
 		if s.parent != nil {
-			return fmt.Sprintf("%v.%v", s.parent.rhsExpr(s.pfield), obj.Name())
+			return fmt.Sprintf("%v.%v", s.parent.rhsExpr(s.strct), obj.Name())
 		}
 		return fmt.Sprintf("%v.%v", s.Name, obj.Name())
 	case *types.Func:
 		if s.parent != nil {
-			return fmt.Sprintf("%v.%v()", s.parent.rhsExpr(s.pfield), obj.Name())
+			return fmt.Sprintf("%v.%v()", s.parent.rhsExpr(s.strct), obj.Name())
 		}
 		return fmt.Sprintf("%v.%v()", s.Name, obj.Name())
 	default:
@@ -74,15 +73,16 @@ type assignmentBuilder struct {
 	assignments []*model.Assignment
 }
 
-func newAssignmentBuilder(p *FunctionBuilder, methodPos token.Pos, opts option.Options) assignmentBuilder {
-	return assignmentBuilder{
-		p:         p,
-		methodPos: methodPos,
-		opts:      opts,
+func newAssignmentBuilder(p *FunctionBuilder, methodPos token.Pos, opts option.Options) *assignmentBuilder {
+	return &assignmentBuilder{
+		p:           p,
+		methodPos:   methodPos,
+		opts:        opts,
+		assignments: make([]*model.Assignment, 0),
 	}
 }
 
-func (b assignmentBuilder) build(srcVar model.Var, src *types.Var, dstVar model.Var, dst types.Type) ([]*model.Assignment, error) {
+func (b *assignmentBuilder) build(srcVar model.Var, src *types.Var, dstVar model.Var, dst types.Type) ([]*model.Assignment, error) {
 	srcStrct := srcStructEntry{
 		Var:   srcVar,
 		strct: src,
@@ -106,7 +106,45 @@ func (b assignmentBuilder) build(srcVar model.Var, src *types.Var, dstVar model.
 	return b.assignments, err
 }
 
-func (b assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (*model.Assignment, error) {
+func (b *assignmentBuilder) buildNested(srcParent srcStructEntry, srcChild *types.Var, dstParent dstFieldEntry) (bool, error) {
+	srcStrct := srcStructEntry{
+		parent: &srcParent,
+		Var: model.Var{
+			Name:    srcChild.Name(),
+			PkgName: srcChild.Pkg().Name(),
+			Type:    srcChild.Type().String(),
+			Pointer: false,
+		},
+		strct: srcChild,
+	}
+
+	handled := false
+	err := util.IterateFields(dstParent.field.Type(), func(t *types.Var) (done bool, err error) {
+		dstField := dstFieldEntry{
+			parent: &dstParent,
+			Var: model.Var{
+				Name:    t.Name(),
+				PkgName: t.Pkg().Name(),
+				Type:    t.Type().String(),
+				Pointer: false,
+			},
+			field: t,
+		}
+		a, err := b.create(srcStrct, dstField)
+		if err == util.ErrNotFound {
+			return false, nil
+		}
+		if err != nil {
+			return
+		}
+		b.assignments = append(b.assignments, a)
+		handled = true
+		return
+	})
+	return handled, err
+}
+
+func (b *assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (*model.Assignment, error) {
 	lhs := dst.lhsExpr()
 
 	if !dst.isFieldExported() {
@@ -134,7 +172,7 @@ func (b assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (*model
 	}
 }
 
-func (b assignmentBuilder) buildRHS(rhs string, srcType, dstType types.Type) (string, bool) {
+func (b *assignmentBuilder) buildRHS(rhs string, srcType, dstType types.Type) (string, bool) {
 	if types.AssignableTo(srcType, dstType) {
 		return rhs, true
 	}
@@ -151,7 +189,7 @@ func (b assignmentBuilder) buildRHS(rhs string, srcType, dstType types.Type) (st
 	return "", false
 }
 
-func (b assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) (*model.Assignment, error) {
+func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) (*model.Assignment, error) {
 	p := b.p
 	opts := b.opts
 	methodPos := b.methodPos
@@ -202,42 +240,36 @@ func (b assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) (
 		return a, err
 	}
 
-	if opts.Rule == model.MatchRuleName {
-		err = util.IterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
-			if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
+	err = util.IterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
+		if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
+			return
+		}
+
+		if mapper != nil {
+			if !mapper.Src().Match(f.Name(), true) {
 				return
 			}
-
-			if mapper != nil {
-				if !mapper.Src().Match(f.Name(), true) {
-					return
-				}
-			} else {
-				if !opts.CompareFieldName(dst.fieldName(), f.Name()) {
-					return
-				}
+		} else {
+			if opts.Rule != model.MatchRuleName || !opts.CompareFieldName(dst.fieldName(), f.Name()) {
+				return
 			}
+		}
 
-			if rhs, ok := b.buildRHS(src.rhsExpr(f), f.Type(), dst.fieldType()); ok {
-				logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
-				a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
-				return true, nil
+		if rhs, ok := b.buildRHS(src.rhsExpr(f), f.Type(), dst.fieldType()); ok {
+			logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
+			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
+			return true, nil
+		}
+
+		if util.IsStructType(dst.fieldType()) && util.IsStructType(f.Type()) {
+			handled, err := b.buildNested(src, f, dst)
+			if handled {
+				return true, util.ErrNotFound
 			}
-			//
-			//if util.IsStructType(dst.fieldType()) && util.IsStructType(f.Type()) {
-			//	childDst := dstFieldEntry{
-			//		parent: &dst,
-			//		Var: model.Var{
-			//			Name:    dst.field.Name(),
-			//			PkgName: dst.field.Pkg().Name(),
-			//			Type:    dst.fieldType().String(),
-			//		},
-			//		field: nil,
-			//	}
-			//}
-			return
-		})
-	}
+			return false, err
+		}
+		return
+	})
 	if a != nil || err != nil {
 		return a, err
 	}
@@ -246,7 +278,7 @@ func (b assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) (
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
-func (b assignmentBuilder) createWithConverter(src srcStructEntry, dst dstFieldEntry, converter *option.FieldConverter) (*model.Assignment, error) {
+func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstFieldEntry, converter *option.FieldConverter) (*model.Assignment, error) {
 	p := b.p
 	opts := b.opts
 	methodPos := b.methodPos
@@ -303,23 +335,21 @@ func (b assignmentBuilder) createWithConverter(src srcStructEntry, dst dstFieldE
 		return a, err
 	}
 
-	if opts.Rule == model.MatchRuleName {
-		err = util.IterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
-			if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
-				return
-			}
-
-			if !converter.Src().Match(f.Name(), true) {
-				return
-			}
-			if rhs, ok := buildRHSWithConverter(f, f.Type()); ok {
-				logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
-				a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.ReturnsError()}}
-				return true, nil
-			}
+	err = util.IterateFields(src.strctType(), func(f *types.Var) (done bool, err error) {
+		if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
 			return
-		})
-	}
+		}
+
+		if !converter.Src().Match(f.Name(), true) {
+			return
+		}
+		if rhs, ok := buildRHSWithConverter(f, f.Type()); ok {
+			logger.Printf("%v: assignment found, %v to %v", p.fset.Position(methodPos), rhs, lhs)
+			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.ReturnsError()}}
+			return true, nil
+		}
+		return
+	})
 	if a != nil || err != nil {
 		return a, err
 	}
@@ -328,7 +358,7 @@ func (b assignmentBuilder) createWithConverter(src srcStructEntry, dst dstFieldE
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
-func (b assignmentBuilder) typeCast(t types.Type, inner string, pos token.Pos) (string, bool) {
+func (b *assignmentBuilder) typeCast(t types.Type, inner string, pos token.Pos) (string, bool) {
 	switch typ := t.(type) {
 	case *types.Pointer:
 		return b.typeCast(typ.Elem(), inner, pos)

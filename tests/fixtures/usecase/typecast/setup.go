@@ -1,7 +1,7 @@
 //go:build convergen
 // +build convergen
 
-package stringer
+package typecast
 
 import (
 	"github.com/reedom/convergen/tests/fixtures/data/domain"

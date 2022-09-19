@@ -8,8 +8,14 @@ import (
 	"github.com/reedom/convergen/tests/fixtures/data/model"
 )
 
-func ToModel(src *domain.Pet) (dst *model.Pet) {
+func DomainToModel(pet *domain.Pet) (dst *model.Pet) {
 	dst = &model.Pet{}
+	// no match: dst.ID
+	// no match: dst.Category.CategoryID
+	dst.Category.Name = pet.Category.Name
+	dst.Name = pet.Name
+	// no match: dst.PhotoUrls
+	// no match: dst.Status
 
 	return
 }

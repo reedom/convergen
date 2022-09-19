@@ -11,7 +11,8 @@ import (
 func DomainToModel(pet *domain.Pet) (dst *model.Pet) {
 	dst = &model.Pet{}
 	// no match: dst.ID
-	// no match: dst.Category
+	// no match: dst.Category.CategoryID
+	dst.Category.Name = pet.Category.Name
 	dst.Name = pet.Name
 	// no match: dst.PhotoUrls
 	// no match: dst.Status
@@ -22,7 +23,8 @@ func DomainToModel(pet *domain.Pet) (dst *model.Pet) {
 func ModelToDomain(src *model.Pet) (dst *domain.Pet, err error) {
 	dst = &domain.Pet{}
 	// no match: dst.ID
-	// no match: dst.Category
+	// no match: dst.Category.ID
+	dst.Category.Name = src.Category.Name
 	dst.Name = src.Name
 	// no match: dst.PhotoUrls
 	dst.Status, err = domain.NewPetStatusFromValue(src.Status)

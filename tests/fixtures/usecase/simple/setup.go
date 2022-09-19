@@ -8,6 +8,6 @@ import (
 )
 
 //go:generate go run github.com/reedom/convergen
-type convergen interface {
+type Convergen interface {
 	DomainToModel(pet *domain.Pet) *model.Pet
 }
