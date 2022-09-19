@@ -11,5 +11,7 @@ import (
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
 	// :typecast
-	LocalToModel(pet *domain.Pet) *model.Pet
+	DomainToModel(*domain.Pet) *model.Pet
+	// :typecast
+	ModelToDomain(*model.Pet) *domain.Pet
 }

@@ -208,7 +208,7 @@ func (p *Parser) typeCast(t types.Type, inner string, pos token.Pos) (string, bo
 			return fmt.Sprintf("%v(%v)", typ.Obj().Name(), inner), true
 		}
 		if pkgName, ok := p.imports.lookupName(typ.Obj().Pkg().Path()); ok {
-			return fmt.Sprintf("%v(%v)", pkgName, inner), true
+			return fmt.Sprintf("%v.%v(%v)", pkgName, typ.Obj().Name(), inner), true
 		}
 		// TODO(reedom): add imports by code.
 		logger.Printf("%v: cannot typecast as %v(%v) while the package %v is not imported",

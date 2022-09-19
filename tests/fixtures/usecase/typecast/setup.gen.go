@@ -8,13 +8,24 @@ import (
 	"github.com/reedom/convergen/tests/fixtures/data/model"
 )
 
-func LocalToModel(pet *domain.Pet) (dst *model.Pet) {
+func DomainToModel(src *domain.Pet) (dst *model.Pet) {
 	dst = &model.Pet{}
-	dst.ID = uint64(pet.ID)
+	dst.ID = uint64(src.ID)
 	// no match: dst.Category
-	dst.Name = pet.Name
+	dst.Name = src.Name
 	// no match: dst.PhotoUrls
-	dst.Status = string(pet.Status)
+	dst.Status = string(src.Status)
+
+	return
+}
+
+func ModelToDomain(src *model.Pet) (dst *domain.Pet) {
+	dst = &domain.Pet{}
+	dst.ID = uint(src.ID)
+	// no match: dst.Category
+	dst.Name = src.Name
+	// no match: dst.PhotoUrls
+	dst.Status = domain.PetStatus(src.Status)
 
 	return
 }
