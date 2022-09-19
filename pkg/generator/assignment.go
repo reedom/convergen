@@ -21,13 +21,13 @@ func AssignmentToString(a *model.Assignment) string {
 	default:
 		sb.WriteString(a.LHS)
 		if a.RHS.ReturnsError() {
-			sb.WriteString("err")
+			sb.WriteString(", err")
 		}
 		sb.WriteString(" = ")
 		sb.WriteString(a.RHS.String())
 		sb.WriteString("\n")
 		if a.RHS.ReturnsError() {
-			sb.WriteString("if err != nil {\nreturn err\n}\n")
+			sb.WriteString("if err != nil {\nreturn\n}\n")
 		}
 	}
 	return sb.String()

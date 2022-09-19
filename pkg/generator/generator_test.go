@@ -197,7 +197,7 @@ func (src *domain.Pet) ToModel(dst *model.Pet) {
 `,
 		},
 		{
-			name: "src:ptr,receiver/dst:ptr,arg error/rhs:simple",
+			name: "src:ptr,receiver/dst:ptr,arg/error/rhs:simple",
 			fn: &model.Function{
 				Name:     "ToModel",
 				Receiver: "src",
@@ -218,20 +218,23 @@ func (src *domain.Pet) ToModel(dst *model.Pet) {
 				Assignments: []*model.Assignment{
 					{
 						LHS: "dst.ID",
-						RHS: model.SimpleField{Path: "src.ID"},
+						RHS: model.SimpleField{Path: "src.ID()", Error: true},
 					},
 				},
 			},
 			expected: header + pre + `
 func (src *domain.Pet) ToModel(dst *model.Pet) (err error) {
-	dst.ID = src.ID
+	dst.ID, err = src.ID()
+	if err != nil {
+		return
+	}
 
 	return
 }
 `,
 		},
 		{
-			name: "src:ptr/dst:ptr,arg error/rhs:skip",
+			name: "src:ptr/dst:ptr,arg/error/rhs:skip",
 			fn: &model.Function{
 				Name: "ToModel",
 				Src: model.Var{
@@ -246,7 +249,7 @@ func (src *domain.Pet) ToModel(dst *model.Pet) (err error) {
 					Type:    "Pet",
 					Pointer: true,
 				},
-				ReturnsError: false,
+				ReturnsError: true,
 				DstVarStyle:  model.DstVarArg,
 				Assignments: []*model.Assignment{
 					{
@@ -256,13 +259,13 @@ func (src *domain.Pet) ToModel(dst *model.Pet) (err error) {
 				},
 			},
 			expected: header + pre + `
-func ToModel(dst *model.Pet, src *domain.Pet) {
+func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
 	// skip: dst.ID
 }
 `,
 		},
 		{
-			name: "src:ptr/dst:ptr,arg error/rhs:nomatch",
+			name: "src:ptr/dst:ptr,arg/error/rhs:nomatch",
 			fn: &model.Function{
 				Name: "ToModel",
 				Src: model.Var{
@@ -277,7 +280,7 @@ func ToModel(dst *model.Pet, src *domain.Pet) {
 					Type:    "Pet",
 					Pointer: true,
 				},
-				ReturnsError: false,
+				ReturnsError: true,
 				DstVarStyle:  model.DstVarArg,
 				Assignments: []*model.Assignment{
 					{
@@ -287,8 +290,10 @@ func ToModel(dst *model.Pet, src *domain.Pet) {
 				},
 			},
 			expected: header + pre + `
-func ToModel(dst *model.Pet, src *domain.Pet) {
+func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
 	// no match: dst.ID
+
+	return
 }
 `,
 		},

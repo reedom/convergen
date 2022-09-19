@@ -41,7 +41,8 @@ func (s NoMatchField) ReturnsError() bool {
 
 // SimpleField represents an RHS expression.
 type SimpleField struct {
-	Path string
+	Path  string
+	Error bool
 }
 
 func (s SimpleField) String() string {
@@ -49,7 +50,7 @@ func (s SimpleField) String() string {
 }
 
 func (s SimpleField) ReturnsError() bool {
-	return false
+	return s.Error
 }
 
 // Converter represents an RHS expression that uses a converter function.
