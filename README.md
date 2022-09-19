@@ -25,7 +25,7 @@ Notations
 | :conv:with &lt;_func_> &lt;_dst field_>            | method           | Specify a src-struct-to-field converter.                |
 | :postprocess &lt;_func_>                           | method           | Specify a post-process func.                            |
 
-### `:style &lt;style>`
+### `:style <style>`
 
 Set the style of the assignee variable input/output.
 
@@ -87,7 +87,7 @@ with receiver:
 func (src *domain.Pet) ToModel(dst *model.Pet) {
 ```
 
-### `:match &lt;algorithm>`
+### `:match <algorithm>`
 
 Set the field matcher algorithm.
 
