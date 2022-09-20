@@ -13,15 +13,39 @@ type ImportNames map[string]string
 // NewImportNames creates a new ImportNames instance.
 func NewImportNames(specs []*ast.ImportSpec) ImportNames {
 	imports := make(ImportNames)
+	var noNames []string
+
 	for _, spec := range specs {
 		pkgPath := strings.ReplaceAll(spec.Path.Value, `"`, "")
+		var name string
 		if spec.Name != nil {
-			imports[pkgPath] = spec.Name.Name
+			name = spec.Name.Name
 		} else {
 			i := strings.LastIndex(pkgPath, "/")
-			imports[pkgPath] = pkgPath[i+1:]
+			name = pkgPath[i+1:]
+		}
+		imports[pkgPath] = name
+		if name == "_" {
+			noNames = append(noNames, pkgPath)
 		}
 	}
+
+	for _, pkgPath := range noNames {
+		i := strings.LastIndex(pkgPath, "/")
+		name := pkgPath[i+1:]
+
+		dup := false
+		for p, n := range imports {
+			if n == name && p != pkgPath {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			imports[pkgPath] = name
+		}
+	}
+
 	return imports
 }
 

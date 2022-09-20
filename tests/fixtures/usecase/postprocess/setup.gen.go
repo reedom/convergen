@@ -6,6 +6,8 @@ package postprocess
 import (
 	"github.com/reedom/convergen/tests/fixtures/data/domain"
 	"github.com/reedom/convergen/tests/fixtures/data/model"
+	"github.com/reedom/convergen/tests/fixtures/usecase/postprocess/local"
+	_ "github.com/reedom/convergen/tests/fixtures/usecase/postprocess/local"
 )
 
 func DomainToModel(src *domain.Pet) (dst *model.Pet) {
@@ -21,7 +23,7 @@ func DomainToModel(src *domain.Pet) (dst *model.Pet) {
 	return
 }
 
-func ModelToDomain(src *model.Pet) (dst *domain.Pet) {
+func ModelToDomain(src *model.Pet) (dst *domain.Pet, err error) {
 	dst = &domain.Pet{}
 	// no match: dst.ID
 	// no match: dst.Category.ID
@@ -29,6 +31,10 @@ func ModelToDomain(src *model.Pet) (dst *domain.Pet) {
 	dst.Name = src.Name
 	// no match: dst.PhotoUrls
 	// no match: dst.Status
+	err = local.PostModelToDomain(dst, src)
+	if err != nil {
+		return
+	}
 
 	return
 }
