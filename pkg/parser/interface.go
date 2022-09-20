@@ -26,7 +26,9 @@ func (p *Parser) extractIntfEntry() (*intfEntry, error) {
 
 	docComment, cleanUp := util.GetDocCommentOn(p.file, intf)
 	notations := util.ExtractMatchComments(docComment, reNotation)
-	docComment.List = nil
+	if docComment != nil {
+		docComment.List = nil
+	}
 	cleanUp()
 
 	opts := p.opts

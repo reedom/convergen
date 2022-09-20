@@ -7,6 +7,7 @@ import (
 	"go/printer"
 	"go/token"
 	"go/types"
+	"os"
 	"regexp"
 	"strings"
 
@@ -34,13 +35,33 @@ const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedD
 
 func NewParser(srcPath string) (*Parser, error) {
 	fileSet := token.NewFileSet()
-	file, err := parser.ParseFile(fileSet, srcPath, nil, parser.ParseComments)
+	var fileSrc *ast.File
+
+	srcStat, err := os.Stat(srcPath)
 	if err != nil {
-		return nil, logger.Errorf("failed to parse the source file: %v\n%w", srcPath, err)
+		return nil, err
 	}
 
-	cfg := &packages.Config{Mode: parserLoadMode, BuildFlags: []string{"-tags", buildTag}, Fset: fileSet}
-	pkgs, err := packages.Load(cfg, srcPath)
+	cfg := &packages.Config{
+		Mode:       parserLoadMode,
+		BuildFlags: []string{"-tags", buildTag},
+		Fset:       fileSet,
+		ParseFile: func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
+			file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
+			if err != nil {
+				return nil, err
+			}
+			stat, err := os.Stat(filename)
+			if err != nil {
+				return nil, err
+			}
+			if os.SameFile(stat, srcStat) {
+				fileSrc = file
+			}
+			return file, err
+		},
+	}
+	pkgs, err := packages.Load(cfg, "file="+srcPath)
 	if err != nil {
 		return nil, logger.Errorf("%v: failed to load type information: \n%w", srcPath, err)
 	}
@@ -49,16 +70,12 @@ func NewParser(srcPath string) (*Parser, error) {
 		return nil, logger.Errorf("%v: failed to load package information: \n%w", srcPath, err)
 	}
 
-	if 0 < len(pkgs[0].Syntax) {
-		file = pkgs[0].Syntax[0]
-	}
-
 	return &Parser{
 		fset:    fileSet,
-		file:    file,
+		file:    fileSrc,
 		pkg:     pkgs[0],
 		opts:    option.NewOptions(),
-		imports: util.NewImportNames(file.Imports),
+		imports: util.NewImportNames(fileSrc.Imports),
 	}, nil
 }
 
