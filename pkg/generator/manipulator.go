@@ -18,13 +18,17 @@ func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var
 	sb.WriteString(m.Name)
 	sb.WriteString("(")
 
-	if !dst.Pointer {
-		sb.WriteString("&")
+	if dst.Pointer != m.IsDstPtr {
+		if dst.Pointer {
+			sb.WriteString("*")
+		} else {
+			sb.WriteString("&")
+		}
 	}
 	sb.WriteString(dst.Name)
 	sb.WriteString(", ")
 
-	if src.Pointer != m.Src.Pointer {
+	if src.Pointer != m.IsSrcPtr {
 		if src.Pointer {
 			sb.WriteString("*")
 		} else {

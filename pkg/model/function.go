@@ -12,11 +12,3 @@ type Function struct {
 	PreProcess   *Manipulator
 	PostProcess  *Manipulator
 }
-
-type Manipulator struct {
-	Pkg          string
-	Name         string
-	Dst          Var
-	Src          Var
-	ReturnsError bool
-}

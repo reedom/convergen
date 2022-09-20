@@ -259,15 +259,15 @@ func ToModel(src *domain.Pet) (dst *model.Pet, err error) {
 				},
 				PreProcess: &model.Manipulator{
 					Name:         "PreProcess",
-					Src:          model.Var{Name: "rhs", Pointer: true},
-					Dst:          model.Var{Name: "lhs", Pointer: true},
+					IsSrcPtr:     true,
+					IsDstPtr:     true,
 					ReturnsError: false,
 				},
 				PostProcess: &model.Manipulator{
 					Pkg:          "domain",
 					Name:         "PostProcess",
-					Src:          model.Var{Name: "rhs", Pointer: true},
-					Dst:          model.Var{Name: "lhs", Pointer: true},
+					IsSrcPtr:     true,
+					IsDstPtr:     true,
 					ReturnsError: false,
 				},
 			},
@@ -280,7 +280,7 @@ func ToModel(dst *model.Pet, src *domain.Pet) {
 `,
 		},
 		{
-			name: "postprocess/dst,val/src,val/rhs,ptr/error",
+			name: "postprocess/dst,val/src,val/lhs,ptr/rhs,ptr/error",
 			fn: &model.Function{
 				Name:         "ToModel",
 				Receiver:     "",
@@ -290,8 +290,8 @@ func ToModel(dst *model.Pet, src *domain.Pet) {
 				DstVarStyle:  model.DstVarReturn,
 				PostProcess: &model.Manipulator{
 					Name:         "PostProcess",
-					Src:          model.Var{Name: "rhs", Pointer: true},
-					Dst:          model.Var{Name: "lhs", Pointer: true},
+					IsSrcPtr:     true,
+					IsDstPtr:     true,
 					ReturnsError: true,
 				},
 			},
@@ -307,24 +307,25 @@ func ToModel(src domain.Pet) (dst model.Pet, err error) {
 `,
 		},
 		{
-			name: "postprocess/dst,val/src,ptr/rhs,val/error",
+			name: "postprocess/dst,ptr/src,ptr/lhs,val/rhs,val/error",
 			fn: &model.Function{
 				Name:         "ToModel",
 				Receiver:     "",
 				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
-				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: false},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				ReturnsError: true,
 				DstVarStyle:  model.DstVarReturn,
 				PostProcess: &model.Manipulator{
 					Name:         "PostProcess",
-					Src:          model.Var{Name: "rhs", Pointer: false},
-					Dst:          model.Var{Name: "lhs", Pointer: true},
+					IsSrcPtr:     false,
+					IsDstPtr:     false,
 					ReturnsError: true,
 				},
 			},
 			expected: header + pre + `
-func ToModel(src *domain.Pet) (dst model.Pet, err error) {
-	err = PostProcess(&dst, *src)
+func ToModel(src *domain.Pet) (dst *model.Pet, err error) {
+	dst = &model.Pet{}
+	err = PostProcess(*dst, *src)
 	if err != nil {
 		return
 	}
