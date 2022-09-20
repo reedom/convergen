@@ -84,8 +84,14 @@ func (g *Generator) FuncToString(f *model.Function) string {
 		}
 	}
 
+	if f.PreProcess != nil {
+		sb.WriteString(g.ManipulatorToString(f.PreProcess, f.Src, f.Dst))
+	}
 	for i := range f.Assignments {
 		sb.WriteString(AssignmentToString(f, f.Assignments[i]))
+	}
+	if f.PostProcess != nil {
+		sb.WriteString(g.ManipulatorToString(f.PostProcess, f.Src, f.Dst))
 	}
 	if f.ReturnsError || f.DstVarStyle == model.DstVarReturn {
 		sb.WriteString("\nreturn\n")

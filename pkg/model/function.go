@@ -9,11 +9,14 @@ type Function struct {
 	ReturnsError bool
 	DstVarStyle  DstVarStyle
 	Assignments  []*Assignment
-	PreProcess   Manipulator
-	PostProcess  Manipulator
+	PreProcess   *Manipulator
+	PostProcess  *Manipulator
 }
 
 type Manipulator struct {
-	Name  string
-	Error bool
+	Pkg          string
+	Name         string
+	Dst          Var
+	Src          Var
+	ReturnsError bool
 }

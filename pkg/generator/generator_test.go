@@ -29,28 +29,15 @@ import (
 		{
 			name: "src:ptr/dst:ptr,arg/rhs:simple",
 			fn: &model.Function{
-				Comments: []string{"// comment 1", "// comment 2"},
-				Name:     "ToModel",
-				Receiver: "",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: true,
-				},
+				Comments:     []string{"// comment 1", "// comment 2"},
+				Name:         "ToModel",
+				Receiver:     "",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				ReturnsError: false,
 				DstVarStyle:  model.DstVarArg,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.SimpleField{Path: "src.ID"},
-					},
+					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
 				},
 			},
 			expected: header + pre + `
@@ -64,27 +51,14 @@ func ToModel(dst *model.Pet, src *domain.Pet) {
 		{
 			name: "src:ptr/dst:ptr,return/rhs:simple",
 			fn: &model.Function{
-				Name:     "ToModel",
-				Receiver: "",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: true,
-				},
+				Name:         "ToModel",
+				Receiver:     "",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				ReturnsError: false,
 				DstVarStyle:  model.DstVarReturn,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.SimpleField{Path: "src.ID"},
-					},
+					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
 				},
 			},
 			expected: header + pre + `
@@ -99,27 +73,14 @@ func ToModel(src *domain.Pet) (dst *model.Pet) {
 		{
 			name: "src:ptr/dst:copy,return/rhs:simple",
 			fn: &model.Function{
-				Name:     "ToModel",
-				Receiver: "",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: false,
-				},
+				Name:         "ToModel",
+				Receiver:     "",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: false},
 				ReturnsError: false,
 				DstVarStyle:  model.DstVarReturn,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.SimpleField{Path: "src.ID"},
-					},
+					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
 				},
 			},
 			expected: header + pre + `
@@ -133,27 +94,14 @@ func ToModel(src *domain.Pet) (dst model.Pet) {
 		{
 			name: "src:ptr,receiver/dst:copy,return/rhs:simple",
 			fn: &model.Function{
-				Name:     "ToModel",
-				Receiver: "src",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: false,
-				},
+				Name:         "ToModel",
+				Receiver:     "src",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: false},
 				ReturnsError: false,
 				DstVarStyle:  model.DstVarReturn,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.SimpleField{Path: "src.ID"},
-					},
+					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
 				},
 			},
 			expected: header + pre + `
@@ -167,27 +115,14 @@ func (src *domain.Pet) ToModel() (dst model.Pet) {
 		{
 			name: "src:ptr,receiver/dst:ptr,arg/rhs:simple",
 			fn: &model.Function{
-				Name:     "ToModel",
-				Receiver: "src",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: true,
-				},
+				Name:         "ToModel",
+				Receiver:     "src",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				ReturnsError: false,
 				DstVarStyle:  model.DstVarArg,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.SimpleField{Path: "src.ID"},
-					},
+					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
 				},
 			},
 			expected: header + pre + `
@@ -199,27 +134,14 @@ func (src *domain.Pet) ToModel(dst *model.Pet) {
 		{
 			name: "src:ptr,receiver/dst:ptr,arg/error/rhs:simple",
 			fn: &model.Function{
-				Name:     "ToModel",
-				Receiver: "src",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: true,
-				},
+				Name:         "ToModel",
+				Receiver:     "src",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				ReturnsError: true,
 				DstVarStyle:  model.DstVarArg,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.SimpleField{Path: "src.ID()", Error: true},
-					},
+					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID()", Error: true}},
 				},
 			},
 			expected: header + pre + `
@@ -236,32 +158,19 @@ func (src *domain.Pet) ToModel(dst *model.Pet) (err error) {
 		{
 			name: "src:ptr,receiver/dst:ptr,return/error/rhs:simple",
 			fn: &model.Function{
-				Name:     "ToModel",
-				Receiver: "src",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: true,
-				},
+				Name:         "ToModel",
+				Receiver:     "src",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				ReturnsError: true,
 				DstVarStyle:  model.DstVarReturn,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.SimpleField{Path: "src.ID()", Error: true},
-					},
+					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID()", Error: true}},
 				},
 			},
 			expected: header + pre + `
 func (src *domain.Pet) ToModel() (dst *model.Pet, err error) {
-	dst := &model.Pet{}
+	dst = &model.Pet{}
 	dst.ID, err = src.ID()
 	if err != nil {
 		return nil, err
@@ -274,27 +183,14 @@ func (src *domain.Pet) ToModel() (dst *model.Pet, err error) {
 		{
 			name: "src:ptr,receiver/dst:val,return/error/rhs:simple",
 			fn: &model.Function{
-				Name:     "ToModel",
-				Receiver: "src",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: false,
-				},
+				Name:         "ToModel",
+				Receiver:     "src",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: false},
 				ReturnsError: true,
 				DstVarStyle:  model.DstVarReturn,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.SimpleField{Path: "src.ID()", Error: true},
-					},
+					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID()", Error: true}},
 				},
 			},
 			expected: header + pre + `
@@ -311,26 +207,13 @@ func (src *domain.Pet) ToModel() (dst model.Pet, err error) {
 		{
 			name: "src:ptr/dst:ptr,arg/error/rhs:skip",
 			fn: &model.Function{
-				Name: "ToModel",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: true,
-				},
+				Name:         "ToModel",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				ReturnsError: true,
 				DstVarStyle:  model.DstVarArg,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.SkipField{},
-					},
+					{LHS: "dst.ID", RHS: model.SkipField{}},
 				},
 			},
 			expected: header + pre + `
@@ -344,34 +227,109 @@ func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
 		{
 			name: "src:ptr/dst:ptr,return/error/rhs:nomatch",
 			fn: &model.Function{
-				Name: "ToModel",
-				Src: model.Var{
-					Name:    "src",
-					PkgName: "domain",
-					Type:    "Pet",
-					Pointer: true,
-				},
-				Dst: model.Var{
-					Name:    "dst",
-					PkgName: "model",
-					Type:    "Pet",
-					Pointer: true,
-				},
+				Name:         "ToModel",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				ReturnsError: true,
 				DstVarStyle:  model.DstVarReturn,
 				Assignments: []*model.Assignment{
-					{
-						LHS: "dst.ID",
-						RHS: model.NoMatchField{},
-					},
+					{LHS: "dst.ID", RHS: model.NoMatchField{}},
 				},
 			},
 			expected: header + pre + `
 func ToModel(src *domain.Pet) (dst *model.Pet, err error) {
-	dst := &model.Pet{}
+	dst = &model.Pet{}
 	// no match: dst.ID
 
-	return dst, nil
+	return
+}
+`,
+		},
+		{
+			name: "preprocess/postprocess",
+			fn: &model.Function{
+				Name:         "ToModel",
+				Receiver:     "",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
+				ReturnsError: false,
+				DstVarStyle:  model.DstVarArg,
+				Assignments: []*model.Assignment{
+					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
+				},
+				PreProcess: &model.Manipulator{
+					Name:         "PreProcess",
+					Src:          model.Var{Name: "rhs", Pointer: true},
+					Dst:          model.Var{Name: "lhs", Pointer: true},
+					ReturnsError: false,
+				},
+				PostProcess: &model.Manipulator{
+					Pkg:          "domain",
+					Name:         "PostProcess",
+					Src:          model.Var{Name: "rhs", Pointer: true},
+					Dst:          model.Var{Name: "lhs", Pointer: true},
+					ReturnsError: false,
+				},
+			},
+			expected: header + pre + `
+func ToModel(dst *model.Pet, src *domain.Pet) {
+	PreProcess(dst, src)
+	dst.ID = src.ID
+	domain.PostProcess(dst, src)
+}
+`,
+		},
+		{
+			name: "postprocess/dst,val/src,val/rhs,ptr/error",
+			fn: &model.Function{
+				Name:         "ToModel",
+				Receiver:     "",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: false},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: false},
+				ReturnsError: true,
+				DstVarStyle:  model.DstVarReturn,
+				PostProcess: &model.Manipulator{
+					Name:         "PostProcess",
+					Src:          model.Var{Name: "rhs", Pointer: true},
+					Dst:          model.Var{Name: "lhs", Pointer: true},
+					ReturnsError: true,
+				},
+			},
+			expected: header + pre + `
+func ToModel(src domain.Pet) (dst model.Pet, err error) {
+	err = PostProcess(&dst, &src)
+	if err != nil {
+		return
+	}
+
+	return
+}
+`,
+		},
+		{
+			name: "postprocess/dst,val/src,ptr/rhs,val/error",
+			fn: &model.Function{
+				Name:         "ToModel",
+				Receiver:     "",
+				Src:          model.Var{Name: "src", PkgName: "domain", Type: "Pet", Pointer: true},
+				Dst:          model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: false},
+				ReturnsError: true,
+				DstVarStyle:  model.DstVarReturn,
+				PostProcess: &model.Manipulator{
+					Name:         "PostProcess",
+					Src:          model.Var{Name: "rhs", Pointer: false},
+					Dst:          model.Var{Name: "lhs", Pointer: true},
+					ReturnsError: true,
+				},
+			},
+			expected: header + pre + `
+func ToModel(src *domain.Pet) (dst model.Pet, err error) {
+	err = PostProcess(&dst, *src)
+	if err != nil {
+		return
+	}
+
+	return
 }
 `,
 		},
