@@ -9,14 +9,14 @@ import (
 )
 
 func main() {
-	var conf config.convergenConfig
+	var conf config.Config
 	if err := conf.ParseArgs(); err != nil {
-		fmt.Println(err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
 	if err := runner.Run(conf); err != nil {
-		fmt.Println(err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 }

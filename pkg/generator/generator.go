@@ -44,7 +44,7 @@ func (g *Generator) Generate(outPath string, output, dryRun bool) ([]byte, error
 
 	if dryRun {
 		if output {
-			fmt.Println(string(content))
+			fmt.Println(string(formatted))
 		}
 		return formatted, nil
 	}
