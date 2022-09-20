@@ -47,15 +47,16 @@ func NewParser(srcPath string) (*Parser, error) {
 		BuildFlags: []string{"-tags", buildTag},
 		Fset:       fileSet,
 		ParseFile: func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
-			file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
-			if err != nil {
-				return nil, err
-			}
 			stat, err := os.Stat(filename)
 			if err != nil {
 				return nil, err
 			}
-			if os.SameFile(stat, srcStat) {
+			if !os.SameFile(stat, srcStat) {
+				return parser.ParseFile(fset, filename, src, 0)
+			}
+
+			file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
+			if err == nil {
 				fileSrc = file
 			}
 			return file, err
