@@ -1,7 +1,9 @@
 package util
 
 import (
+	"fmt"
 	"go/ast"
+	"go/types"
 	"strings"
 )
 
@@ -39,4 +41,20 @@ func (i ImportNames) LookupPath(pkgName string) (path string, ok bool) {
 		}
 	}
 	return
+}
+
+func (i ImportNames) TypeName(t types.Type) string {
+	switch typ := t.(type) {
+	case *types.Pointer:
+		return "*" + i.TypeName(typ.Elem())
+	case *types.Basic:
+		return typ.Name()
+	case *types.Named:
+		if pkgName, ok := i[typ.Obj().Pkg().Path()]; ok {
+			return fmt.Sprintf("%v.%v", pkgName, typ.Obj().Name())
+		}
+		return typ.Obj().Name()
+	default:
+		return t.String()
+	}
 }

@@ -110,6 +110,15 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 				return logger.Errorf("%v: %v", p.fset.Position(n.Pos()), err.Error())
 			}
 			opts.Converters = append(opts.Converters, converter)
+		case "postprocess":
+			if len(args) < 1 {
+				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
+			}
+			pp, err := p.lookupPostprocessFunc(args[0], n.Pos())
+			if err != nil {
+				return err
+			}
+			opts.PostProcess = pp
 		default:
 			fmt.Printf("@@@ notation %v\n", m[1])
 		}
@@ -162,4 +171,29 @@ func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, r
 	retType = sig.Results().At(0).Type()
 	returnsError = sig.Results().Len() == 2 && util.IsErrorType(sig.Results().At(1).Type())
 	return
+}
+
+func (p *Parser) lookupPostprocessFunc(funcName string, pos token.Pos) (*option.Postprocess, error) {
+	_, obj := p.lookupType(funcName, pos)
+	if obj == nil {
+		return nil, logger.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
+	}
+	sig, ok := obj.Type().(*types.Signature)
+	if !ok {
+		return nil, logger.Errorf("%v: %v isn't a function", p.fset.Position(pos), funcName)
+	}
+
+	if sig.Params().Len() != 2 ||
+		1 < sig.Results().Len() ||
+		(sig.Results().Len() == 1 && !util.IsErrorType(sig.Results().At(0).Type())) {
+		return nil, logger.Errorf("%v: function %v cannot use for postprocess func", p.fset.Position(pos), funcName)
+	}
+
+	return &option.Postprocess{
+		Func:         obj,
+		DstSide:      sig.Params().At(0).Type(),
+		SrcSide:      sig.Params().At(1).Type(),
+		ReturnsError: sig.Results().Len() == 1 && util.IsErrorType(sig.Results().At(0).Type()),
+		Pos:          pos,
+	}, nil
 }

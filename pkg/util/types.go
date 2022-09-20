@@ -35,6 +35,11 @@ func IsStructType(t types.Type) bool {
 	return ok
 }
 
+func IsPtr(t types.Type) bool {
+	_, ok := t.(*types.Pointer)
+	return ok
+}
+
 func DereferencePtr(t types.Type) types.Type {
 	if ptr, ok := t.(*types.Pointer); ok {
 		return ptr.Elem()

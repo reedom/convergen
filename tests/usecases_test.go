@@ -37,6 +37,10 @@ func TestUseCases(t *testing.T) {
 			expected: "fixtures/usecase/mapname/setup.gen.go",
 		},
 		{
+			source:   "fixtures/usecase/postprocess/setup.go",
+			expected: "fixtures/usecase/postprocess/setup.gen.go",
+		},
+		{
 			source:   "fixtures/usecase/simple/setup.go",
 			expected: "fixtures/usecase/simple/setup.gen.go",
 		},

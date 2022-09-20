@@ -19,7 +19,7 @@ type Options struct {
 	SkipFields  []*IdentMatcher
 	NameMapper  []*NameMatcher
 	Converters  []*FieldConverter
-	PostProcess string
+	PostProcess *Postprocess
 }
 
 func NewOptions() Options {

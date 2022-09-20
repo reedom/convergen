@@ -55,7 +55,7 @@ func (p *FunctionBuilder) CreateFunctions(methods []*MethodEntry) ([]*model.Func
 
 func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error) {
 	sig := m.Method.Type().(*types.Signature)
-	hasError := 1 < sig.Results().Len() &&
+	returnsError := 1 < sig.Results().Len() &&
 		util.IsErrorType(sig.Results().At(sig.Results().Len()-1).Type())
 
 	var comments []string
@@ -90,6 +90,11 @@ func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error
 		return nil, err
 	}
 
+	postProcess, err := p.buildPostProcess(m, src, dst, returnsError)
+	if err != nil {
+		return nil, err
+	}
+
 	fn := &model.Function{
 		Name:         m.Method.Name(),
 		Comments:     comments,
@@ -97,8 +102,9 @@ func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error
 		Src:          srcVar,
 		Dst:          dstVar,
 		DstVarStyle:  m.Opts.Style,
-		ReturnsError: hasError,
+		ReturnsError: returnsError,
 		Assignments:  assignments,
+		PostProcess:  postProcess,
 	}
 
 	return fn, nil
