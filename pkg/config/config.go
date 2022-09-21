@@ -8,6 +8,15 @@ import (
 	"strings"
 )
 
+func Usage() {
+	var sb strings.Builder
+	sb.WriteString("\nUsage: convergen [flags] <input path>\n\n")
+	sb.WriteString("By default, the generated code is written to <input path>.gen.go\n\n")
+	sb.WriteString("Flags:\n")
+	_, _ = fmt.Fprintf(os.Stderr, sb.String())
+	flag.PrintDefaults()
+}
+
 type Config struct {
 	// Input is the input file path.
 	Input string
@@ -38,39 +47,34 @@ func (c *Config) ParseArgs() error {
 	output := flag.String("out", "", "output file path")
 	logs := flag.Bool("log", false, "write log to <output path>.log")
 	dryRun := flag.Bool("dry", false, "dry run")
-	prints := flag.Bool("print", false, "print result to STDOUT as well")
+	prints := flag.Bool("print", false, "print result code to STDOUT as well")
+
+	flag.Usage = Usage
 	flag.Parse()
 
-	err := c.populateDefaults()
-	if err != nil {
-		return err
+	inputPath := flag.Arg(0)
+	if inputPath == "" {
+		inputPath = os.Getenv("GOFILE")
 	}
+	if inputPath == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
+	c.Input = inputPath
 
 	if *output != "" {
 		c.Output = *output
+	} else {
+		ext := path.Ext(inputPath)
+		c.Output = inputPath[0:len(inputPath)-len(ext)] + ".gen" + ext
 	}
+
 	if *logs {
 		ext := path.Ext(c.Output)
 		c.Log = c.Output[0:len(c.Output)-len(ext)] + ".log"
 	}
 	c.DryRun = *dryRun
 	c.Prints = *prints
-
-	return nil
-}
-
-func (c *Config) populateDefaults() error {
-	inputPath := flag.Arg(0)
-	if inputPath == "" {
-		inputPath = os.Getenv("GOFILE")
-	}
-	if inputPath == "" {
-		return fmt.Errorf("ERR: no input path specified")
-	}
-
-	c.Input = inputPath
-	ext := path.Ext(inputPath)
-	c.Output = inputPath[0:len(inputPath)-len(ext)] + ".gen" + ext
 
 	return nil
 }
