@@ -57,6 +57,8 @@ func DerefPtr(typ types.Type) types.Type {
 
 func PkgOf(t types.Type) *types.Package {
 	switch typ := t.(type) {
+	case *types.Pointer:
+		return PkgOf(typ.Elem())
 	case *types.Named:
 		return typ.Obj().Pkg()
 	default:

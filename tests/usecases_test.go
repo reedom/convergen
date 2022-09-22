@@ -26,6 +26,10 @@ func TestUseCases(t *testing.T) {
 			expected: "fixtures/usecase/converter/setup.gen.go",
 		},
 		{
+			source:   "fixtures/usecase/embedded/setup.go",
+			expected: "fixtures/usecase/embedded/setup.gen.go",
+		},
+		{
 			source:   "fixtures/usecase/getter/setup.go",
 			expected: "fixtures/usecase/getter/setup.gen.go",
 		},
@@ -66,7 +70,7 @@ func TestUseCases(t *testing.T) {
 			expected, err := os.ReadFile(tt.expected)
 			require.Nil(t, err)
 
-			if tt.source == "fixtures/usecase/xxx/setup.go" {
+			if tt.source == "fixtures/usecase/embedded/setup.go" {
 				log.SetFlags(log.Llongfile)
 				logger.SetupLogger(logger.Enable())
 			}

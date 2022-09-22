@@ -256,16 +256,10 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 
 	logger.Printf("%v: lookup assignment for %v = %v.*", p.fset.Position(methodPos), lhs, src.rhsExpr(nil))
 
-	var mapper *option.NameMatcher
-	for _, m := range opts.NameMapper {
-		if m.Dst().Match(dst.fieldPath(), true) {
-			// If there are more than one mapper exist for the dst, the last one wins.
-			mapper = m
-		}
-	}
-
 	var a *model.Assignment
 	var err error
+	// To prevent logging "no assignment for d.NestedData"…
+	nested := false
 
 	err = util.IterateMethods(src.strct.Type(), func(m *types.Func) (done bool, err error) {
 		if src.IsPkgExternal() && !ast.IsExported(m.Name()) {
@@ -277,14 +271,8 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 			return
 		}
 
-		if mapper != nil {
-			if !mapper.Src().Match(src.fieldPath(m)+"()", true) {
-				return
-			}
-		} else {
-			if !opts.Getter || !opts.CompareFieldName(dst.fieldName(), m.Name()) {
-				return
-			}
+		if !opts.Getter || !opts.CompareFieldName(dst.fieldName(), m.Name()) {
+			return
 		}
 
 		retType := retTypes.At(0).Type()
@@ -306,14 +294,8 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 			return
 		}
 
-		if mapper != nil {
-			if !mapper.Src().Match(src.fieldPath(f), true) {
-				return
-			}
-		} else {
-			if opts.Rule != model.MatchRuleName || !opts.CompareFieldName(dst.fieldName(), f.Name()) {
-				return
-			}
+		if opts.Rule != model.MatchRuleName || !opts.CompareFieldName(dst.fieldName(), f.Name()) {
+			return
 		}
 
 		if rhs, ok := b.buildRHS(src.rhsExpr(f), f.Type(), dst.fieldType()); ok {
@@ -323,6 +305,7 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 		}
 
 		if util.IsStructType(dst.fieldType()) && util.IsStructType(f.Type()) {
+			nested = true
 			handled, err := b.buildNested(src, f, dst)
 			if handled {
 				return true, util.ErrNotFound
@@ -335,7 +318,10 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 		return a, err
 	}
 
-	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, dst.fieldType().String())
+	if nested {
+		return nil, util.ErrNotFound
+	}
+	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, b.p.imports.TypeName(dst.fieldType()))
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
@@ -415,7 +401,7 @@ func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstField
 		return a, err
 	}
 
-	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, dst.field.Type().String())
+	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, b.p.imports.TypeName(dst.field.Type()))
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
@@ -426,7 +412,7 @@ func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEnt
 
 	expr, obj, ok := b.resolveExpr(mapper.Src(), src.root().strct)
 	if !ok {
-		logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, dst.field.Type().String())
+		logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
 		return nil, util.ErrNotFound
 	}
 
@@ -456,7 +442,7 @@ func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEnt
 		return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}, nil
 	}
 
-	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, dst.field.Type().String())
+	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
 	return nil, util.ErrNotFound
 }
 
@@ -480,7 +466,7 @@ func (b *assignmentBuilder) typeCast(t types.Type, inner string, pos token.Pos) 
 		return fmt.Sprintf("%v(%v)", t.String(), inner), true
 	default:
 		logger.Printf("%v: typecast for %v is not implemented(yet) for %v",
-			b.p.fset.Position(pos), t.String(), inner)
+			b.p.fset.Position(pos), b.p.imports.TypeName(t), inner)
 		return "", false
 	}
 }
