@@ -100,7 +100,7 @@ func (b *assignmentBuilder) buildNested(srcParent srcStructEntry, srcChild *type
 func (b *assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (*model.Assignment, error) {
 	lhs := dst.lhsExpr()
 
-	if !dst.isFieldExported() {
+	if !dst.isFieldAccessible() {
 		logger.Printf("%v: skip %v while it is not an exported field", b.p.fset.Position(b.methodPos), lhs)
 		return nil, util.ErrNotFound
 	}
