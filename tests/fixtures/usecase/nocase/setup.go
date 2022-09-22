@@ -23,6 +23,7 @@ type ModelB struct {
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
 	// :case:off
+	// :getter
 	// AtoB demonstrates local to local copy with case-insensitive field matching.
 	// It shows that a private getter precedence over its (exported) counterpart field.
 	AtoB(*ModelA) *ModelB

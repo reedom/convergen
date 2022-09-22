@@ -10,8 +10,10 @@ import (
 
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
+	// :getter
 	// :typecast
 	DomainToModel(s *domain.Concrete) (d *model.Concrete)
+	// :getter
 	// :typecast
 	ModelToDomain(*model.Concrete) (*domain.Concrete, error)
 }

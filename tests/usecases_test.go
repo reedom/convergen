@@ -70,7 +70,7 @@ func TestUseCases(t *testing.T) {
 			expected, err := os.ReadFile(tt.expected)
 			require.Nil(t, err)
 
-			if tt.source == "fixtures/usecase/embedded/setup.go" {
+			if tt.source == "fixtures/usecase/xxx/setup.go" {
 				log.SetFlags(log.Llongfile)
 				logger.SetupLogger(logger.Enable())
 			}

@@ -11,9 +11,8 @@ import (
 
 // DomainToModel converts domain.User to model.User.
 // typecast works:
-//   - int <-> int64
-//   - enums.Status <-> string
-//     "enums" package will be imported automatically in the generated code.
+// - int64 -> int
+// - enums.Status -> string
 func DomainToModel(src *domain.User) (dst *model.User) {
 	dst = &model.User{}
 	dst.ID = int64(src.ID)
@@ -23,6 +22,11 @@ func DomainToModel(src *domain.User) (dst *model.User) {
 	return
 }
 
+// ModelToDomain converts model.User to domain.User.
+// typecast works:
+//   - int -> int64
+//   - string -> enums.Status
+//     "enums" package will be imported automatically in the generated code!
 func ModelToDomain(src *model.User) (dst *domain.User) {
 	dst = &domain.User{}
 	dst.ID = int(src.ID)

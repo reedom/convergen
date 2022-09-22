@@ -12,8 +12,8 @@ Notation Table
 | :match &lt;`name` &#124; `tag` &#124; `none`>            | interface,method | Set the field matcher algorithm (default: `name`).                       |
 | :case                                                    | interface,method | Set case-sensitive for name or tag match (default).                      |
 | :case:off                                                | interface,method | Set case-insensitive for name or tag match.                              |
-| :getter                                                  | interface,method | Include getters for name or tag match (default).                         |
-| :getter:off                                              | interface,method | Exclude getters for name or tag match.                                   |
+| :getter                                                  | interface,method | Include getters for name or tag match.                                   |
+| :getter:off                                              | interface,method | Exclude getters for name or tag match (default).                         |
 | :stringer                                                | interface,method | Call String() if appropriate in name or tag match.                       |
 | :stringer:off                                            | interface,method | Call String() if appropriate in name or tag match (default).             |
 | :typecast                                                | interface,method | Allow type casting if appropriate in name or tag match.                  |

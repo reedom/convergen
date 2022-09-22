@@ -11,5 +11,6 @@ import (
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
 	// :stringer
+	// :getter
 	LocalToModel(pet *local.Pet) *model.Pet
 }

@@ -27,7 +27,7 @@ func NewOptions() Options {
 		Style:     model.DstVarReturn,
 		Rule:      model.MatchRuleName,
 		ExactCase: true,
-		Getter:    true,
+		Getter:    false,
 		Stringer:  false,
 		Typecast:  false,
 	}
