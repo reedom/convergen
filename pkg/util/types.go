@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"go/ast"
 	"go/types"
 	"path"
@@ -9,8 +8,6 @@ import (
 
 	"golang.org/x/tools/go/ast/astutil"
 )
-
-var ErrNotFound = errors.New("not found")
 
 type LookupFieldOpt struct {
 	ExactCase     bool
@@ -155,7 +152,7 @@ func FindMethod(t types.Type, name string, exactCase bool) (method *types.Func) 
 		name = strings.ToLower(name)
 	}
 
-	_ = IterateMethods(t, func(m *types.Func) (done bool, err error) {
+	IterateMethods(t, func(m *types.Func) (done bool) {
 		found := false
 		if exactCase {
 			found = m.Name() == name
@@ -164,31 +161,25 @@ func FindMethod(t types.Type, name string, exactCase bool) (method *types.Func) 
 		}
 		if found {
 			method = m
-			return true, nil
 		}
-		return
+		return found
 	})
 	return
 }
 
-func IterateMethods(t types.Type, cb func(*types.Func) (done bool, err error)) error {
-	if ptr, ok := t.(*types.Pointer); ok {
-		return IterateMethods(ptr.Elem(), cb)
-	}
-
-	named, ok := t.(*types.Named)
+func IterateMethods(t types.Type, cb func(*types.Func) (done bool)) {
+	typ := DerefPtr(t)
+	named, ok := typ.(*types.Named)
 	if !ok {
-		return ErrNotFound
+		return
 	}
 
 	for i := 0; i < named.NumMethods(); i++ {
 		m := named.Method(i)
-		done, err := cb(m)
-		if done || err != nil {
-			return err
+		if cb(m) {
+			return
 		}
 	}
-	return nil
 }
 
 func FindField(t types.Type, name string, exactCase bool) (field *types.Var) {
@@ -196,7 +187,7 @@ func FindField(t types.Type, name string, exactCase bool) (field *types.Var) {
 		name = strings.ToLower(name)
 	}
 
-	_ = IterateFields(t, func(f *types.Var) (done bool, err error) {
+	IterateFields(t, func(f *types.Var) (done bool) {
 		found := false
 		if exactCase {
 			found = f.Name() == name
@@ -205,34 +196,29 @@ func FindField(t types.Type, name string, exactCase bool) (field *types.Var) {
 		}
 		if found {
 			field = f
-			return true, nil
 		}
-		return
+		return found
 	})
 	return
 }
 
-func IterateFields(t types.Type, cb func(*types.Var) (done bool, err error)) error {
-	if ptr, ok := t.(*types.Pointer); ok {
-		return IterateFields(ptr.Elem(), cb)
-	}
-	if named, ok := t.(*types.Named); ok {
-		return IterateFields(named.Underlying(), cb)
+func IterateFields(t types.Type, cb func(*types.Var) (done bool)) {
+	typ := DerefPtr(t)
+	if named, ok := typ.(*types.Named); ok {
+		typ = named.Underlying()
 	}
 
-	strct, ok := t.Underlying().(*types.Struct)
+	strct, ok := typ.Underlying().(*types.Struct)
 	if !ok {
-		return ErrNotFound
+		return
 	}
 
 	for i := 0; i < strct.NumFields(); i++ {
 		m := strct.Field(i)
-		done, err := cb(m)
-		if done || err != nil {
-			return err
+		if cb(m) {
+			return
 		}
 	}
-	return nil
 }
 
 func GetMethodReturnTypes(m *types.Func) (*types.Tuple, bool) {
