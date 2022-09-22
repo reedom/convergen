@@ -306,10 +306,7 @@ func (b *assignmentBuilder) typeCast(t types.Type, inner string, pos token.Pos) 
 		if pkgName, ok := b.p.imports.LookupName(typ.Obj().Pkg().Path()); ok {
 			return fmt.Sprintf("%v.%v(%v)", pkgName, typ.Obj().Name(), inner), true
 		}
-		// TODO(reedom): add imports by code.
-		logger.Printf("%v: cannot typecast as %v(%v) while the package %v is not imported",
-			b.p.fset.Position(pos), typ.Obj().Name(), inner, typ.Obj().Pkg().Path())
-		return "", false
+		return fmt.Sprintf("%v.%v(%v)", typ.Obj().Pkg().Name(), typ.Obj().Name(), inner), true
 	case *types.Basic:
 		return fmt.Sprintf("%v(%v)", t.String(), inner), true
 	default:

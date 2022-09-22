@@ -4,30 +4,30 @@
 package typecast
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/data/domain"
-	"github.com/reedom/convergen/tests/fixtures/data/model"
+	"github.com/reedom/convergen/tests/fixtures/usecase/typecast/domain"
+	"github.com/reedom/convergen/tests/fixtures/usecase/typecast/enums"
+	"github.com/reedom/convergen/tests/fixtures/usecase/typecast/model"
 )
 
-func DomainToModel(src *domain.Pet) (dst *model.Pet) {
-	dst = &model.Pet{}
-	dst.ID = uint64(src.ID)
-	// no match: dst.Category.CategoryID
-	dst.Category.Name = src.Category.Name
+// DomainToModel converts domain.User to model.User.
+// typecast works:
+//   - int <-> int64
+//   - enums.Status <-> string
+//     "enums" package will be imported automatically in the generated code.
+func DomainToModel(src *domain.User) (dst *model.User) {
+	dst = &model.User{}
+	dst.ID = int64(src.ID)
 	dst.Name = src.Name
-	// no match: dst.PhotoUrls
 	dst.Status = string(src.Status)
 
 	return
 }
 
-func ModelToDomain(src *model.Pet) (dst *domain.Pet) {
-	dst = &domain.Pet{}
-	dst.ID = uint(src.ID)
-	// no match: dst.Category.ID
-	dst.Category.Name = src.Category.Name
+func ModelToDomain(src *model.User) (dst *domain.User) {
+	dst = &domain.User{}
+	dst.ID = int(src.ID)
 	dst.Name = src.Name
-	// no match: dst.PhotoUrls
-	dst.Status = domain.PetStatus(src.Status)
+	dst.Status = enums.Status(src.Status)
 
 	return
 }
