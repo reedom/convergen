@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestIdentMatcher(t *testing.T) {
@@ -22,15 +21,6 @@ func TestIdentMatcher(t *testing.T) {
 			{ident: "aField", exactCase: true, matches: false},
 			{ident: "Fields", exactCase: true, matches: false},
 		},
-		"/Field/": {
-			{ident: "Field", exactCase: true, matches: true},
-			{ident: "field", exactCase: true, matches: false},
-			{ident: "field", exactCase: false, matches: false},
-			{ident: "aField", exactCase: true, matches: true},
-			{ident: "Fields", exactCase: true, matches: true},
-			{ident: "Fiel", exactCase: true, matches: false},
-			{ident: "ield", exactCase: true, matches: false},
-		},
 		"model.Pet.Name": {
 			{ident: "model.Pet.Name", exactCase: true, matches: true},
 			{ident: "model.Pet.name", exactCase: false, matches: true},
@@ -40,8 +30,7 @@ func TestIdentMatcher(t *testing.T) {
 
 	for pattern, ttList := range cases {
 		for _, tt := range ttList {
-			m, err := NewIdentMatcher(pattern, tt.exactCase)
-			require.Nil(t, err, `test pattern "%v" is invalid`, pattern)
+			m := NewIdentMatcher(pattern)
 			assert.Equal(t, tt.matches, m.Match(tt.ident, tt.exactCase),
 				`pattern "%v" against "%v" (case-sensitive=%v)`, pattern, tt.ident, tt.exactCase)
 		}

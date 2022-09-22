@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNameMatcher(t *testing.T) {
@@ -29,20 +28,13 @@ func TestNameMatcher(t *testing.T) {
 				{src: "Field", dst: "Label", exactCase: true, matches: true},
 				{src: "Field", dst: "domain.Label", exactCase: true, matches: false},
 			},
-			`/.*\.Label$/`: {
-				{src: "Field", dst: "domain.Label", exactCase: true, matches: true},
-				{src: "Field", dst: "domain.Labels", exactCase: true, matches: false},
-				{src: "Field", dst: "domain.label", exactCase: true, matches: false},
-				{src: "Field", dst: "domain.label", exactCase: false, matches: false},
-			},
 		},
 	}
 
 	for srcPtn, ttMap := range cases {
 		for dstPtn, ttList := range ttMap {
 			for _, tt := range ttList {
-				m, err := NewNameMatcher(srcPtn, dstPtn, tt.exactCase, 0)
-				require.Nil(t, err, `test pattern src="%v", dst="%v"`, srcPtn, dstPtn)
+				m := NewNameMatcher(srcPtn, dstPtn, 0)
 				assert.Equal(t, tt.matches, m.Match(tt.src, tt.dst, tt.exactCase),
 					`pattern src="%v", dst="%v" against src="%v", dst="%v" (case-sensitive=%v)`,
 					srcPtn, dstPtn, tt.src, tt.dst, tt.exactCase)

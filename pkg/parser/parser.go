@@ -66,9 +66,8 @@ func NewParser(srcPath string) (*Parser, error) {
 	if err != nil {
 		return nil, logger.Errorf("%v: failed to load type information: \n%w", srcPath, err)
 	}
-
 	if len(pkgs) == 0 {
-		return nil, logger.Errorf("%v: failed to load package information: \n%w", srcPath, err)
+		return nil, logger.Errorf("%v: failed to load package information", srcPath)
 	}
 
 	return &Parser{

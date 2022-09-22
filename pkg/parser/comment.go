@@ -77,19 +77,13 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if args == nil {
 				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
 			}
-			matcher, err := option.NewIdentMatcher(args[0], opts.ExactCase)
-			if err != nil {
-				return logger.Errorf("%v: invalid <field> arg", p.fset.Position(n.Pos()))
-			}
+			matcher := option.NewIdentMatcher(args[0])
 			opts.SkipFields = append(opts.SkipFields, matcher)
 		case "map":
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
-			matcher, err := option.NewNameMatcher(args[0], args[1], true, n.Pos())
-			if err != nil {
-				return logger.Errorf("%v: %v", p.fset.Position(n.Pos()), err.Error())
-			}
+			matcher := option.NewNameMatcher(args[0], args[1], n.Pos())
 			opts.NameMapper = append(opts.NameMapper, matcher)
 		case "conv":
 			if len(args) < 2 {
@@ -104,11 +98,8 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if 3 <= len(args) {
 				dst = args[2]
 			}
-			converter, err := option.NewFieldConverter(args[0], src, dst,
+			converter := option.NewFieldConverter(args[0], src, dst,
 				argType, retType, returnsError, n.Pos())
-			if err != nil {
-				return logger.Errorf("%v: %v", p.fset.Position(n.Pos()), err.Error())
-			}
 			opts.Converters = append(opts.Converters, converter)
 		case "postprocess":
 			if len(args) < 1 {

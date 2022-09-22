@@ -28,11 +28,11 @@ func (p *FunctionBuilder) buildPostProcess(m *MethodEntry, src *types.Var, dst *
 		return nil, logger.Errorf("%v: cannot use postprocess function %v due to mismatch of returning error", p.fset.Position(pp.Pos), ret.FuncName())
 	}
 
-	if !types.AssignableTo(util.DereferencePtr(pp.DstSide), util.DereferencePtr(dst.Type())) {
+	if !types.AssignableTo(util.DerefPtr(pp.DstSide), util.DerefPtr(dst.Type())) {
 		return nil, logger.Errorf("%v: postprocess function %v 1st arg type mismatch", p.fset.Position(pp.Pos), ret.FuncName())
 	}
 
-	if !types.AssignableTo(util.DereferencePtr(pp.SrcSide), util.DereferencePtr(src.Type())) {
+	if !types.AssignableTo(util.DerefPtr(pp.SrcSide), util.DerefPtr(src.Type())) {
 		return nil, logger.Errorf("%v: postprocess function %v 2nd arg type mismatch", p.fset.Position(pp.Pos), ret.FuncName())
 	}
 

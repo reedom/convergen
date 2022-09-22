@@ -6,55 +6,61 @@ import (
 	"strings"
 )
 
+var reFromParen = regexp.MustCompile(`\(.*`)
+
 type IdentMatcher struct {
-	pattern   string
-	re        *regexp.Regexp
-	exactCase bool
+	pattern string
+	paths   []string
 }
 
 // NewIdentMatcher creates a new IdentMatcher instance.
-// If pattern is wrapped with slashes like "/……/", the instance will use regexp match. Otherwise it will be
-// an exact word match.
-// With the latter and if exactCase is false, it will apply a case-insensitive match. (For regexp patterns
-// exactCase won't take effect.)
-func NewIdentMatcher(pattern string, exactCase bool) (*IdentMatcher, error) {
-	re, err := compileRegexp(pattern, exactCase)
-	if err != nil {
-		return nil, err
-	}
+func NewIdentMatcher(pattern string) *IdentMatcher {
 	return &IdentMatcher{
-		pattern:   pattern,
-		re:        re,
-		exactCase: exactCase,
-	}, nil
+		pattern: pattern,
+		paths:   strings.Split(pattern, "."),
+	}
 }
 
 func (m *IdentMatcher) Match(ident string, exactCase bool) bool {
-	if m.exactCase != exactCase {
-		m.re, _ = compileRegexp(m.pattern, exactCase)
-		m.exactCase = exactCase
+	if exactCase {
+		return m.pattern == ident
 	}
-
-	s := ident
-	if !exactCase {
-		s = strings.ToLower(s)
-	}
-	return m.re.MatchString(s)
+	return strings.ToLower(m.pattern) == strings.ToLower(ident)
 }
 
-func compileRegexp(pattern string, exactCase bool) (*regexp.Regexp, error) {
-	var expr string
-	if strings.HasPrefix(pattern, "/") && strings.HasSuffix(pattern, "/") && 2 <= len(pattern) {
-		expr = pattern[1 : len(pattern)-1]
-	} else {
-		expr = fmt.Sprintf("^%v$", regexp.QuoteMeta(pattern))
-		if !exactCase {
-			expr = strings.ToLower(expr)
-		}
+func (m *IdentMatcher) PartialMatch(ident string, exactCase bool) bool {
+	partial := m.paths[0]
+	for i := 1; i < len(m.paths) && len(partial)+len(m.paths[i]) < len(ident); i++ {
+		partial += "."
+		partial += m.paths[i]
 	}
-	re, err := regexp.Compile(expr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid regexp")
+
+	if exactCase {
+		return strings.HasPrefix(ident, partial)
 	}
-	return re, nil
+
+	return strings.HasPrefix(strings.ToLower(ident), strings.ToLower(partial))
+}
+
+func (m *IdentMatcher) ForGetter(at int) bool {
+	return strings.HasSuffix(m.paths[at], "()")
+}
+
+// ExprAt returns an expression at the path index.
+// If it is of a method, it should contain parens like "GetValue()".
+func (m *IdentMatcher) ExprAt(at int) string {
+	return m.paths[at]
+}
+
+// NameAt returns a name of field or method at the path index.
+func (m *IdentMatcher) NameAt(at int) string {
+	return reFromParen.ReplaceAllString(m.paths[at], "")
+}
+
+func (m *IdentMatcher) PathLen() int {
+	return len(m.paths)
+}
+
+func (m *IdentMatcher) String() string {
+	return fmt.Sprintf(`IdentMatcher{pattern: "%v"}`, m.pattern)
 }

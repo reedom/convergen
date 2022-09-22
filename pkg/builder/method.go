@@ -68,10 +68,10 @@ func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error
 	src := sig.Params().At(0)
 	dst := sig.Results().At(0)
 
-	if !util.IsStructType(util.DereferencePtr(src.Type())) {
+	if !util.IsStructType(util.DerefPtr(src.Type())) {
 		return nil, logger.Errorf("%v: src type should be a struct but %v", p.fset.Position(dst.Pos()), src.Type().Underlying().String())
 	}
-	if !util.IsStructType(util.DereferencePtr(dst.Type())) {
+	if !util.IsStructType(util.DerefPtr(dst.Type())) {
 		return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().Underlying().String())
 	}
 

@@ -10,7 +10,8 @@ import (
 
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
-	// :map ID CategoryID
+	// :map Category.ID Category.CategoryID
+	// :map Status.String() Status
 	// :typecast
-	DomainToModel(cat *domain.Category) *model.Category
+	DomainToModel(*domain.Pet) *model.Pet
 }

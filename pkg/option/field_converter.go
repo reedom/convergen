@@ -15,19 +15,14 @@ type FieldConverter struct {
 	returnsError bool
 }
 
-func NewFieldConverter(converter, src, dst string, argType, retType types.Type, returnError bool, pos token.Pos) (*FieldConverter, error) {
-	m, err := NewNameMatcher(src, dst, true, pos)
-	if err != nil {
-		return nil, err
-	}
-
+func NewFieldConverter(converter, src, dst string, argType, retType types.Type, returnError bool, pos token.Pos) *FieldConverter {
 	return &FieldConverter{
-		m:            m,
+		m:            NewNameMatcher(src, dst, pos),
 		converter:    converter,
 		argType:      argType,
 		retType:      retType,
 		returnsError: returnError,
-	}, nil
+	}
 }
 
 func (c *FieldConverter) Match(src, dst string) bool {

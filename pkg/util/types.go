@@ -2,14 +2,11 @@ package util
 
 import (
 	"errors"
-	"fmt"
 	"go/ast"
-	"go/token"
 	"go/types"
 	"path"
 	"strings"
 
-	"github.com/reedom/convergen/pkg/logger"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
@@ -35,16 +32,45 @@ func IsStructType(t types.Type) bool {
 	return ok
 }
 
+func IsNamedType(t types.Type) bool {
+	_, ok := t.(*types.Named)
+	return ok
+}
+
+func IsFunc(obj types.Object) bool {
+	_, ok := obj.(*types.Func)
+	return ok
+}
+
 func IsPtr(t types.Type) bool {
 	_, ok := t.(*types.Pointer)
 	return ok
 }
 
-func DereferencePtr(t types.Type) types.Type {
-	if ptr, ok := t.(*types.Pointer); ok {
+// DerefPtr dereferences typ if it is a *Pointer and returns its base.
+func DerefPtr(typ types.Type) types.Type {
+	if ptr, ok := typ.(*types.Pointer); ok {
 		return ptr.Elem()
 	}
-	return t
+	return typ
+}
+
+func PkgOf(t types.Type) *types.Package {
+	switch typ := t.(type) {
+	case *types.Named:
+		return typ.Obj().Pkg()
+	default:
+		return nil
+	}
+}
+
+// Deref dereferences typ if it is a *Pointer and returns its base and true.
+// Otherwise it returns (typ, false).
+func Deref(typ types.Type) (types.Type, bool) {
+	if ptr, ok := typ.(*types.Pointer); ok {
+		return ptr.Elem(), true
+	}
+	return typ, false
 }
 
 func RemoveObject(file *ast.File, obj types.Object) {
@@ -115,84 +141,6 @@ func GetDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cl
 	return nil, func() {}
 }
 
-func FindField(fset *token.FileSet, pkg *types.Package, t types.Type, opt LookupFieldOpt) (types.Object, error) {
-	switch typ := t.(type) {
-	case *types.Pointer:
-		return FindField(fset, pkg, typ.Elem(), opt)
-	case *types.Named:
-		return findFieldInternal(fset, pkg, typ.Obj().Pkg(), typ.Underlying(), opt, strings.Split(opt.Pattern, "."))
-	}
-	return findFieldInternal(fset, pkg, pkg, t, opt, strings.Split(opt.Pattern, "."))
-}
-
-func findFieldInternal(fset *token.FileSet, pkg, typePkg *types.Package, t types.Type, opt LookupFieldOpt, pattern []string) (types.Object, error) {
-	if pattern[0] == "" {
-		return nil, fmt.Errorf("invalid pattern")
-	}
-
-	switch typ := t.(type) {
-	case *types.Pointer:
-		return findFieldInternal(fset, pkg, typePkg, typ.Elem(), opt, pattern)
-	case *types.Named:
-		for i := 0; i < typ.NumMethods(); i++ {
-			m := typ.Method(i)
-			if pkg.Name() != typePkg.Name() && !m.Exported() {
-				continue
-			}
-
-			ok, err := PathMatch(pattern[0], m.Name(), opt.ExactCase)
-			if err != nil {
-				return nil, err
-			}
-			if ok {
-				if len(pattern) == 1 {
-					return m, nil
-				} else {
-					return findFieldInternal(fset, pkg, typePkg, m.Type(), opt, pattern[1:])
-				}
-			}
-		}
-		return findFieldInternal(fset, pkg, typ.Obj().Pkg(), typ.Underlying(), opt, pattern)
-	case *types.Struct:
-		for i := 0; i < typ.NumFields(); i++ {
-			e := typ.Field(i)
-			if pkg.Name() != typePkg.Name() && !e.Exported() {
-				continue
-			}
-
-			ok, err := PathMatch(pattern[0], e.Name(), opt.ExactCase)
-			if err != nil {
-				return nil, err
-			}
-			if ok {
-				if len(pattern) == 1 {
-					return e, nil
-				} else {
-					return findFieldInternal(fset, pkg, typePkg, e.Type(), opt, pattern[1:])
-				}
-			}
-		}
-	case *types.Basic:
-		logger.Printf("FindField for *types.Basic is not implemented")
-	case *types.Array:
-		logger.Printf("FindField for *types.Array is not implemented")
-	case *types.Slice:
-		logger.Printf("FindField for *types.Slice is not implemented")
-	case *types.Map:
-		logger.Printf("FindField for *types.Map is not implemented")
-	case *types.Chan:
-		logger.Printf("FindField for *types.Chan is not implemented")
-	case *types.Interface:
-		logger.Printf("FindField for *types.Interface is not implemented")
-	case *types.Tuple:
-		logger.Printf("FindField for *types.Tuple is not implemented")
-	case *types.Signature:
-		logger.Printf("FindField for *types.Signature is not implemented")
-	}
-	logger.Printf("field pattern mismatch. pattern=%#v, t=%v\n", pattern, t)
-	return nil, ErrNotFound
-}
-
 func PathMatch(pattern, name string, exactCase bool) (bool, error) {
 	if exactCase {
 		return path.Match(pattern, name)
@@ -200,92 +148,25 @@ func PathMatch(pattern, name string, exactCase bool) (bool, error) {
 	return path.Match(strings.ToLower(pattern), strings.ToLower(name))
 }
 
-type walkStructCallback = func(pkg *types.Package, obj types.Object, namePath string) (done bool, err error)
-
-type walkStructOpt struct {
-	exactCase     bool
-	supportsError bool
-}
-
-type walkStructWork struct {
-	varName   string
-	pkg       *types.Package
-	cb        walkStructCallback
-	isPointer bool
-	namePath  namePathType
-	done      *bool
-}
-
-type namePathType string
-
-func (n namePathType) String() string {
-	return string(n)
-}
-
-func (n namePathType) add(name string) namePathType {
-	return namePathType(n.String() + "." + name)
-}
-
-func (w walkStructWork) withNamePath(namePath namePathType) walkStructWork {
-	work := w
-	work.namePath = namePath
-	return work
-}
-
-func walkStruct(varName string, pkg *types.Package, t types.Type, cb walkStructCallback, opt walkStructOpt) error {
-	done := false
-	work := walkStructWork{
-		varName:   varName,
-		pkg:       pkg,
-		cb:        cb,
-		isPointer: false,
-		namePath:  namePathType(varName),
-		done:      &done,
+func FindMethod(t types.Type, name string, exactCase bool) (method *types.Func) {
+	if !exactCase {
+		name = strings.ToLower(name)
 	}
 
-	switch typ := t.(type) {
-	case *types.Pointer:
-		return walkStruct(varName, pkg, typ.Elem(), cb, opt)
-	case *types.Named:
-		return walkStructInternal(typ.Obj().Pkg(), typ.Underlying(), opt, work)
-	}
-
-	return walkStructInternal(pkg, t, opt, work)
-}
-
-func walkStructInternal(typePkg *types.Package, t types.Type, opt walkStructOpt, work walkStructWork) error {
-	//isPointer := work.isPointer
-	work.isPointer = false
-
-	switch typ := t.(type) {
-	case *types.Pointer:
-		work.isPointer = true
-		return walkStructInternal(typePkg, typ.Elem(), opt, work)
-	case *types.Named:
-		return walkStructInternal(typ.Obj().Pkg(), typ.Underlying(), opt, work)
-	case *types.Struct:
-		for i := 0; i < typ.NumFields(); i++ {
-			f := typ.Field(i)
-			namePath := work.namePath.add(f.Name())
-			done, err := work.cb(typePkg, f, namePath.String())
-			if err != nil {
-				return err
-			}
-			if done {
-				continue
-			}
-
-			// Down to the f.Type() hierarchy.
-			err = walkStructInternal(typePkg, f.Type(), opt, work.withNamePath(namePath))
-			if err != nil {
-				return err
-			}
+	_ = IterateMethods(t, func(m *types.Func) (done bool, err error) {
+		found := false
+		if exactCase {
+			found = m.Name() == name
+		} else {
+			found = strings.ToLower(m.Name()) == name
 		}
-		return nil
-	}
-
-	fmt.Printf("@@@ %#v\n", t)
-	return nil
+		if found {
+			method = m
+			return true, nil
+		}
+		return
+	})
+	return
 }
 
 func IterateMethods(t types.Type, cb func(*types.Func) (done bool, err error)) error {
@@ -306,6 +187,27 @@ func IterateMethods(t types.Type, cb func(*types.Func) (done bool, err error)) e
 		}
 	}
 	return nil
+}
+
+func FindField(t types.Type, name string, exactCase bool) (field *types.Var) {
+	if !exactCase {
+		name = strings.ToLower(name)
+	}
+
+	_ = IterateFields(t, func(f *types.Var) (done bool, err error) {
+		found := false
+		if exactCase {
+			found = f.Name() == name
+		} else {
+			found = strings.ToLower(f.Name()) == name
+		}
+		if found {
+			field = f
+			return true, nil
+		}
+		return
+	})
+	return
 }
 
 func IterateFields(t types.Type, cb func(*types.Var) (done bool, err error)) error {
@@ -339,4 +241,19 @@ func GetMethodReturnTypes(m *types.Func) (*types.Tuple, bool) {
 	}
 
 	return sig.Results(), true
+}
+
+func ParseGetterReturnTypes(m *types.Func) (ret types.Type, returnsError, ok bool) {
+	sig := m.Type().(*types.Signature)
+	num := sig.Results().Len()
+	if num == 0 || 2 < num {
+		return
+	}
+	if num == 2 {
+		if !IsErrorType(sig.Results().At(1).Type()) {
+			return
+		}
+	}
+
+	return sig.Results().At(0).Type(), num == 2, true
 }
