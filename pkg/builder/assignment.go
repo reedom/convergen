@@ -210,11 +210,11 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstFieldEntry, converter *option.FieldConverter) (*model.Assignment, error) {
 	p := b.p
 	opts := b.opts
-	methodPos := b.methodPos
+	pos := converter.Pos()
 	lhs := dst.lhsExpr()
-
-	buildRHSWithConverter := func(srcObj types.Object, srcType types.Type) (string, bool) {
-		arg, ok := b.buildRHS(src.rhsExpr(srcObj), srcType, converter.ArgType())
+	buildRHSWithConverter := func(expr string, srcType types.Type) (string, bool) {
+		rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
+		arg, ok := b.buildRHS(rhsExpr, srcType, converter.ArgType())
 		if !ok {
 			return "", false
 		}
@@ -228,62 +228,36 @@ func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstField
 		}
 
 		if opts.Typecast && types.ConvertibleTo(srcType, dst.fieldType()) {
-			if expr, ok := b.typeCast(dst.fieldType(), arg, methodPos); ok {
-				return converter.RHSExpr(expr), true
+			if typecastExpr, ok := b.typeCast(dst.fieldType(), arg, pos); ok {
+				return converter.RHSExpr(typecastExpr), true
 			}
 		}
 		return "", false
 	}
 
-	var a *model.Assignment
-	var err error
-
-	util.IterateMethods(src.strct.Type(), func(m *types.Func) (done bool) {
-		if src.IsPkgExternal() && !ast.IsExported(m.Name()) {
-			return
+	expr, obj, ok := b.resolveExpr(converter.Src(), src.root().strct)
+	if ok {
+		switch typ := obj.(type) {
+		case *types.Func:
+			if ret, returnsError, ok := util.ParseGetterReturnTypes(typ); ok && !returnsError {
+				if rhs, ok := buildRHSWithConverter(expr, ret); ok {
+					logger.Printf("%v: assignment found: %v = %v, err", p.fset.Position(pos), lhs, rhs)
+					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.ReturnsError()}}, nil
+				}
+			}
+			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
+			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
+		case *types.Var:
+			if rhs, ok := buildRHSWithConverter(expr, typ.Type()); ok {
+				logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
+				return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.ReturnsError()}}, nil
+			}
+			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
+			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 		}
-
-		retTypes, ok := util.GetMethodReturnTypes(m)
-		if !ok || !compliesGetter(retTypes, false) {
-			return
-		}
-
-		retType := retTypes.At(0).Type()
-		if !converter.Src().Match(m.Name()+"()", true) {
-			return
-		}
-
-		if rhs, ok := buildRHSWithConverter(m, retType); ok {
-			logger.Printf("%v: assignment found: %v = %v", p.fset.Position(methodPos), lhs, rhs)
-			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.ReturnsError()}}
-			return true
-		}
-		return
-	})
-	if a != nil || err != nil {
-		return a, err
 	}
 
-	util.IterateFields(src.strctType(), func(f *types.Var) (done bool) {
-		if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
-			return
-		}
-
-		if !converter.Src().Match(f.Name(), true) {
-			return
-		}
-		if rhs, ok := buildRHSWithConverter(f, f.Type()); ok {
-			logger.Printf("%v: assignment found: %v = %v", p.fset.Position(methodPos), lhs, rhs)
-			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.ReturnsError()}}
-			return true
-		}
-		return
-	})
-	if a != nil || err != nil {
-		return a, err
-	}
-
-	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, b.p.imports.TypeName(dst.field.Type()))
+	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
@@ -294,11 +268,10 @@ func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEnt
 
 	expr, obj, ok := b.resolveExpr(mapper.Src(), src.root().strct)
 	if ok {
-		rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
-
 		switch typ := obj.(type) {
 		case *types.Func:
 			if ret, returnsError, ok := util.ParseGetterReturnTypes(typ); ok {
+				rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
 				if rhs, ok := b.buildRHS(rhsExpr, ret, dst.fieldType()); ok {
 					logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
 					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: returnsError}}, nil
@@ -307,6 +280,7 @@ func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEnt
 			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
 			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 		case *types.Var:
+			rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
 			if rhs, ok := b.buildRHS(rhsExpr, typ.Type(), dst.fieldType()); ok {
 				logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
 				return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}, nil
