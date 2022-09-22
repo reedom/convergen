@@ -149,8 +149,6 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 
 	var a *model.Assignment
 	var err error
-	// To prevent logging "no assignment for d.NestedData"…
-	nested := false
 
 	util.IterateMethods(src.strct.Type(), func(m *types.Func) (done bool) {
 		if src.IsPkgExternal() && !ast.IsExported(m.Name()) {
@@ -178,6 +176,8 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 		return a, err
 	}
 
+	// To prevent logging "no assignment for d.NestedData"…
+	nested := false
 	util.IterateFields(src.strctType(), func(f *types.Var) (done bool) {
 		if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
 			return
