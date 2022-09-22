@@ -100,7 +100,7 @@ func (b *assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (*mode
 		return nil, nil
 	}
 
-	if b.opts.ShouldSkip(lhs) {
+	if b.opts.ShouldSkip(dst.fieldPath()) {
 		logger.Printf("%v: skip %v", b.p.fset.Position(b.methodPos), lhs)
 		return &model.Assignment{LHS: lhs, RHS: model.SkipField{}}, nil
 	}
