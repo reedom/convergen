@@ -19,7 +19,7 @@ Notation Table
 | :typecast                                                | interface,method | Allow type casting if appropriate in name or tag match.                  |
 | :typecast:off                                            | interface,method | Suppress type casting if appropriate in name or tag match (default).     |
 | :recv &lt;_var_>                                         | method           | Specify the source value as a receiver of the generated function.        |
-| :recv:rev &lt;_var_>                                     | method           | Specify the destination value as a receiver of the generated function.   |
+| :reverse                                                 | method           | Reverse copy direction. Might be useful with receiver form.              |
 | :skip &lt;_dst field_>                                   | method           | Specify field(s) to omit.                                                |
 | :map &lt;_src field_> &lt;_dst field_>                   | method           | Specify field mapping rule.                                              |
 | [TBD] :tag &lt;_src tag_> [_to tag_]                     | method           | Specify tag mapping rule.                                                |

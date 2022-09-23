@@ -49,3 +49,19 @@ func (r *Pet) RcvToReturn(dst *model.Pet) {
 	dst.PhotoUrls = r.PhotoUrls
 	dst.Status = r.Status
 }
+
+func (r *Pet) RevRcvFromArgPtr(pet *model.Pet) {
+	r.ID = pet.ID
+	r.Category = pet.Category
+	r.Name = pet.Name
+	r.PhotoUrls = pet.PhotoUrls
+	r.Status = pet.Status
+}
+
+func (r *Pet) RevRcvFromArgVal(src *model.Pet) {
+	r.ID = src.ID
+	r.Category = src.Category
+	r.Name = src.Name
+	r.PhotoUrls = src.PhotoUrls
+	r.Status = src.Status
+}

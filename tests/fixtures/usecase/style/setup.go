@@ -26,4 +26,16 @@ type Convergen interface {
 	// :recv r
 	// :style arg
 	RcvToReturn(pet *Pet) *model.Pet
+	// :recv r
+	// :reverse
+	// :style arg
+	RevRcvFromArgVal(*Pet) model.Pet
+	// :recv r
+	// :reverse
+	// :style arg
+	RevRcvFromArgPtr(*Pet) (pet *model.Pet)
+	// It is illegal to specify :recv:rev and :style return.
+	//// :recv:rev m
+	//// :style return
+	//RcvFromReturn(*model.Pet) *Pet
 }

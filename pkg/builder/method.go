@@ -69,17 +69,30 @@ func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error
 		return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().Underlying().String())
 	}
 
-	srcVar := p.createVar(src, "src")
+	srcDefName := "src"
+	dstDefName := "dst"
+	if m.Opts.Reverse {
+		srcDefName, dstDefName = dstDefName, srcDefName
+	}
+
+	srcVar := p.createVar(src, srcDefName)
+	dstVar := p.createVar(dst, dstDefName)
+
 	if m.Opts.Receiver != "" {
-		if srcVar.PkgName != "" {
+		if srcVar.IsPkgExternal() {
 			return nil, logger.Errorf("%v: an external package type cannot be a receiver", p.fset.Position(m.Method.Pos()))
 		}
 		srcVar.Name = m.Opts.Receiver
 	}
-	dstVar := p.createVar(dst, "dst")
 
 	builder := newAssignmentBuilder(p, m.Method.Pos(), m.Opts)
-	assignments, err := builder.build(srcVar, src, dstVar, dst.Type())
+	var assignments []*model.Assignment
+	var err error
+	if m.Opts.Reverse {
+		assignments, err = builder.build(dstVar, dst, srcVar, src.Type())
+	} else {
+		assignments, err = builder.build(srcVar, src, dstVar, dst.Type())
+	}
 	if err != nil {
 		return nil, err
 	}

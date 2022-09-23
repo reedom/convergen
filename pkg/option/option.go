@@ -16,7 +16,7 @@ type Options struct {
 	Typecast  bool
 
 	Receiver    string
-	ReceiverRev bool
+	Reverse     bool
 	SkipFields  []*IdentMatcher
 	NameMapper  []*NameMatcher
 	Converters  []*FieldConverter
@@ -75,7 +75,7 @@ var ValidOpsMethod = map[string]struct{}{
 	"typecast":     {},
 	"typecast:off": {},
 	"recv":         {},
-	"recv:rev":     {},
+	"reverse":      {},
 	"skip":         {},
 	"map":          {},
 	"tag":          {},

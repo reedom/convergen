@@ -17,7 +17,7 @@ import (
 var reNotation = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
 
 func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[string]struct{}, opts *option.Options) error {
-	var recvRevPos token.Pos
+	var posReverse token.Pos
 
 	for _, n := range notations {
 		m := reNotation.FindStringSubmatch(n.Text)
@@ -75,16 +75,9 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 				return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
 			}
 			opts.Receiver = args[0]
-			opts.ReceiverRev = false
-		case "recv:rev":
-			if len(args) == 0 {
-				return logger.Errorf("%v: needs name for the receiver", p.fset.Position(n.Pos()))
-			} else if !isValidIdentifier(args[0]) {
-				return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
-			}
-			opts.Receiver = args[0]
-			opts.ReceiverRev = true
-			recvRevPos = n.Pos()
+		case "reverse":
+			opts.Reverse = true
+			posReverse = n.Pos()
 		case "skip":
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
@@ -128,8 +121,8 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 	}
 
 	// validation
-	if opts.ReceiverRev && opts.Style == model.DstVarReturn {
-		return logger.Errorf(`%v: to use ":recv:rev", style must be ":style arg"`, p.fset.Position(recvRevPos))
+	if opts.Reverse && opts.Style == model.DstVarReturn {
+		return logger.Errorf(`%v: to use ":reverse", style must be ":style arg"`, p.fset.Position(posReverse))
 	}
 
 	return nil
