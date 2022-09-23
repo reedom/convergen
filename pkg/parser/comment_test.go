@@ -108,7 +108,7 @@ func testMethodNotations(t *testing.T) {
 		validator func(options option.Options) bool
 	}{
 		{
-			notation:  ":rcv r",
+			notation:  ":recv r",
 			validator: func(opt option.Options) bool { return opt.Receiver == "r" },
 		},
 		{
@@ -130,7 +130,7 @@ func testMethodNotations(t *testing.T) {
 		err := p.parseNotationInComments(notations, option.ValidOpsMethod, &actual)
 		assert.Nil(t, err)
 
-		assert.True(t, tt.validator(actual))
+		assert.True(t, tt.validator(actual), tt.notation)
 	}
 }
 

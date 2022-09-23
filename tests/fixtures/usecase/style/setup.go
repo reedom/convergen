@@ -20,10 +20,10 @@ type Convergen interface {
 	ArgToArg(pet *Pet) *model.Pet
 	// :style return
 	ArgToReturn(pet *Pet) *model.Pet
-	// :rcv r
+	// :recv r
 	// :style arg
 	RcvToArg(pet *Pet) *model.Pet
-	// :rcv r
+	// :recv r
 	// :style arg
 	RcvToReturn(pet *Pet) *model.Pet
 }

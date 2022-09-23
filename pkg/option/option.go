@@ -73,7 +73,7 @@ var ValidOpsMethod = map[string]struct{}{
 	"stringer:off": {},
 	"typecast":     {},
 	"typecast:off": {},
-	"rcv":          {},
+	"recv":         {},
 	"skip":         {},
 	"map":          {},
 	"tag":          {},

@@ -18,7 +18,8 @@ Notation Table
 | :stringer:off                                            | interface,method | Call String() if appropriate in name or tag match (default).             |
 | :typecast                                                | interface,method | Allow type casting if appropriate in name or tag match.                  |
 | :typecast:off                                            | interface,method | Suppress type casting if appropriate in name or tag match (default).     |
-| :rcv &lt;_var_>                                          | method           | Specify to generate in method form.                                      |
+| :recv &lt;_var_>                                         | method           | Specify the source value as a receiver of the generated function.        |
+| :recv:rev &lt;_var_>                                     | method           | Specify the destination value as a receiver of the generated function.   |
 | :skip &lt;_dst field_>                                   | method           | Specify field(s) to omit.                                                |
 | :map &lt;_src field_> &lt;_dst field_>                   | method           | Specify field mapping rule.                                              |
 | [TBD] :tag &lt;_src tag_> [_to tag_]                     | method           | Specify tag mapping rule.                                                |

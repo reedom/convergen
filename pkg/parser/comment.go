@@ -66,7 +66,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			opts.Typecast = true
 		case "typecast:off":
 			opts.Typecast = false
-		case "rcv":
+		case "recv":
 			if args == nil {
 				return logger.Errorf("%v: needs name for the receiver", p.fset.Position(n.Pos()))
 			} else if !isValidIdentifier(args[0]) {
