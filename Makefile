@@ -27,4 +27,5 @@ lint:
 .PHONY: test
 test: ## Run all tests
 test:
-	go test ./...
+	go test github.com/reedom/convergen/tests && \
+	go test github.com/reedom/convergen/pkg/...
