@@ -4,6 +4,7 @@ import (
 	"go/types"
 	"unicode"
 
+	gonanoid "github.com/matoous/go-nanoid"
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
@@ -12,49 +13,62 @@ import (
 const intfName = "Convergen"
 
 type intfEntry struct {
-	intf *types.TypeName
-	opts option.Options
+	intf   types.Object
+	opts   option.Options
+	marker string
 }
 
-// extractIntfEntry looks up the setup interface with the name of intfName("Convergen") and also
-// parses convergen notations from the interface's doc comment.
-func (p *Parser) extractIntfEntry() (*intfEntry, error) {
-	intf, err := p.findIntfEntry(p.pkg.Types.Scope(), intfName)
-	if err != nil {
-		return nil, err
-	}
-
-	docComment, cleanUp := util.GetDocCommentOn(p.file, intf)
-	notations := util.ExtractMatchComments(docComment, reNotation)
-	if docComment != nil {
-		docComment.List = nil
-	}
-	cleanUp()
-
-	opts := p.opts
-	err = p.parseNotationInComments(notations, option.ValidOpsIntf, &opts)
-	if err != nil {
-		return nil, err
-	}
-
-	return &intfEntry{
-		intf: intf,
-		opts: p.opts,
-	}, nil
-}
-
-// findIntfEntry looks up the setup interface with the specific name and returns it.
-func (p *Parser) findIntfEntry(scope *types.Scope, name string) (*types.TypeName, error) {
-	if typ := scope.Lookup(name); typ != nil {
-		if intf, ok := typ.(*types.TypeName); ok {
-			if _, ok = intf.Type().Underlying().(*types.Interface); ok {
-				logger.Printf("%v: %v interface found", p.fset.Position(intf.Pos()), name)
-				return intf, nil
-			}
-			return nil, logger.Errorf("%v: %v it not interface", p.fset.Position(intf.Pos()), name)
+// findConvergenEntries collects convergen interfaces from the setup file.
+// The target interface form either in the name of "Convergen" or having ":convergen" notation in its Doc comments.
+// For them, this function also parses notations in their doc comments.
+func (p *Parser) findConvergenEntries() ([]*intfEntry, error) {
+	entries := make([]*intfEntry, 0)
+	scope := p.pkg.Types.Scope()
+	for _, name := range scope.Names() {
+		obj := scope.Lookup(name)
+		_, ok := obj.Type().Underlying().(*types.Interface)
+		if !ok {
+			continue
 		}
+		if p.srcPath != p.fset.Position(obj.Pos()).Filename {
+			continue
+		}
+
+		docComment, cleanUp := util.GetDocCommentOn(p.file, obj)
+
+		isTarget := obj.Name() == intfName || util.MatchComments(docComment, reConvergen)
+		if !isTarget {
+			continue
+		}
+
+		logger.Printf("%v: target interface found: %v", p.fset.Position(obj.Pos()), obj.Name())
+
+		notations := util.ExtractMatchComments(docComment, reNotation)
+		if docComment != nil {
+			docComment.List = nil
+		}
+		cleanUp()
+
+		opts := p.opts
+		err := p.parseNotationInComments(notations, option.ValidOpsIntf, &opts)
+		if err != nil {
+			return nil, err
+		}
+
+		marker, _ := gonanoid.Nanoid()
+		entry := &intfEntry{
+			intf:   obj,
+			opts:   p.opts,
+			marker: marker,
+		}
+		entries = append(entries, entry)
 	}
-	return nil, logger.Errorf("%v: %v interface not found", p.fset.Position(p.file.Package), name)
+
+	if len(entries) == 0 {
+		return nil, logger.Errorf("%v: %v interface not found", p.fset.Position(p.file.Package), intfName)
+	}
+
+	return entries, nil
 }
 
 func isValidIdentifier(id string) bool {

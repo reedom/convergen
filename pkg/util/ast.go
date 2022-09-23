@@ -13,9 +13,23 @@ func RemoveMatchComments(file *ast.File, pattern *regexp.Regexp) {
 	}
 }
 
+// MatchComments reports whether any comment line contains any match of the regular expression pattern.
+func MatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) bool {
+	if commentGroup == nil || len(commentGroup.List) == 0 {
+		return false
+	}
+
+	for _, c := range commentGroup.List {
+		if pattern.MatchString(c.Text) {
+			return true
+		}
+	}
+	return false
+}
+
 // ExtractMatchComments removes pattern matched comments from commentGroup and return them.
 func ExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) []*ast.Comment {
-	if commentGroup == nil {
+	if commentGroup == nil || len(commentGroup.List) == 0 {
 		return nil
 	}
 

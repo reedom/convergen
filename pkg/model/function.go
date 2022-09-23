@@ -1,5 +1,10 @@
 package model
 
+type FunctionsBlock struct {
+	Marker    string
+	Functions []*Function
+}
+
 type Function struct {
 	Comments     []string
 	Name         string

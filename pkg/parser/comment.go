@@ -15,6 +15,7 @@ import (
 )
 
 var reNotation = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
+var reConvergen = regexp.MustCompile(`^\s*//\s*:convergen\b`)
 
 func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[string]struct{}, opts *option.Options) error {
 	var posReverse token.Pos

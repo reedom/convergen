@@ -51,6 +51,7 @@ func (o Options) CompareFieldName(a, b string) bool {
 }
 
 var ValidOpsIntf = map[string]struct{}{
+	"convergen":    {},
 	"style":        {},
 	"match":        {},
 	"case":         {},

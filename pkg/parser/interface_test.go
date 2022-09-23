@@ -10,7 +10,7 @@ import (
 func TestNoConvergenInterface(t *testing.T) {
 	c, err := NewParser("../../tests/fixtures/usecase/nointf/setup.go")
 	require.Nil(t, err)
-	_, err = c.extractIntfEntry()
+	_, err = c.findConvergenEntries()
 	require.NotNil(t, err)
 	assert.ErrorContains(t, err, "nointf/setup.go:1:1: Convergen interface not found")
 }
