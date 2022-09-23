@@ -14,4 +14,4 @@ build: $(TARGET)
 
 $(TARGET): $(SRC)
 	@mkdir -p build
-	go build -o build/convergen cmd/convergen/main.go
+	go build -o build/convergen main.go
