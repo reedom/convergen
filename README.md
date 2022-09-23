@@ -8,6 +8,7 @@ Notation Table
 
 | notation                                                 | location         | summary                                                                  |
 |----------------------------------------------------------|------------------|--------------------------------------------------------------------------|
+| :convergen                                               | interface        | Mark the interface as a converter definition.                            |
 | :style &lt;`return` &#124; `arg`>                        | interface,method | Set the style of the assignee variable input/output (default: `return`). |
 | :match &lt;`name` &#124; `tag` &#124; `none`>            | interface,method | Set the field matcher algorithm (default: `name`).                       |
 | :case                                                    | interface,method | Set case-sensitive for name or tag match (default).                      |
