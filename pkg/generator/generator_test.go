@@ -340,8 +340,13 @@ func ToModel(src *domain.Pet) (dst *model.Pet, err error) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			code := model.Code{
-				Pre:       pre,
-				Functions: []*model.Function{tt.fn},
+				BaseCode: pre + "xxxxx",
+				FunctionBlocks: []model.FunctionsBlock{
+					{
+						Marker:    "xxxxx",
+						Functions: []*model.Function{tt.fn},
+					},
+				},
 			}
 			g := generator.NewGenerator(code)
 			actual, err := g.Generate("temp.gen.go", false, true)
