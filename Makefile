@@ -15,3 +15,16 @@ build: $(TARGET)
 $(TARGET): $(SRC)
 	@mkdir -p build
 	go build -o build/convergen main.go
+
+.PHONY: lint
+lint: ## Run linter
+lint:
+	docker run --rm --platform=linux/amd64 \
+		-v "${PWD}:/src" -w /src \
+		--rm \
+		golangci/golangci-lint:latest golangci-lint --go=1.19 run
+
+.PHONY: test
+test: ## Run all tests
+test:
+	go test ./...
