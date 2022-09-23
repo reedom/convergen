@@ -55,16 +55,10 @@ func (p *FunctionBuilder) CreateFunctions(methods []*MethodEntry) ([]*model.Func
 
 func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error) {
 	sig := m.Method.Type().(*types.Signature)
+	comments := util.ToTextList(m.DocComment)
 	returnsError := 1 < sig.Results().Len() &&
 		util.IsErrorType(sig.Results().At(sig.Results().Len()-1).Type())
 
-	var comments []string
-	if m.DocComment != nil {
-		comments = make([]string, len(m.DocComment.List))
-		for i := range m.DocComment.List {
-			comments[i] = m.DocComment.List[i].Text
-		}
-	}
 	src := sig.Params().At(0)
 	dst := sig.Results().At(0)
 

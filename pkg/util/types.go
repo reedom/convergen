@@ -139,6 +139,18 @@ func GetDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cl
 	return nil, func() {}
 }
 
+func ToTextList(doc *ast.CommentGroup) []string {
+	if doc == nil || len(doc.List) == 0 {
+		return []string{}
+	}
+
+	list := make([]string, len(doc.List))
+	for i := range doc.List {
+		list[i] = doc.List[i].Text
+	}
+	return list
+}
+
 func PathMatch(pattern, name string, exactCase bool) (bool, error) {
 	if exactCase {
 		return path.Match(pattern, name)
