@@ -33,11 +33,6 @@ func NewFunctionBuilder(
 	}
 }
 
-type BlockEntry struct {
-	Marker  string
-	Methods []*MethodEntry
-}
-
 type MethodEntry struct {
 	Method     types.Object // Also a *types.Signature
 	Opts       option.Options

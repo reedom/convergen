@@ -37,6 +37,8 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 		}
 
 		switch m[1] {
+		case "convergen":
+			// do nothing
 		case "style":
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <style> arg", p.fset.Position(n.Pos()))
@@ -117,7 +119,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			}
 			opts.PostProcess = pp
 		default:
-			fmt.Printf("@@@ notation %v\n", m[1])
+			fmt.Printf("%v: unknown notation %v\n", p.fset.Position(n.Pos()), m[1])
 		}
 	}
 

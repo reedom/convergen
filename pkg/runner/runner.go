@@ -30,20 +30,28 @@ func Run(conf config.Config) error {
 	}
 
 	builder := p.CreateBuilder()
-	functions, err := builder.CreateFunctions(methods)
-	if err != nil {
-		return err
+
+	var funcBlocks []model.FunctionsBlock
+	for _, info := range methods {
+		functions, err := builder.CreateFunctions(info.Methods)
+		if err != nil {
+			return err
+		}
+		block := model.FunctionsBlock{
+			Marker:    info.Marker,
+			Functions: functions,
+		}
+		funcBlocks = append(funcBlocks, block)
 	}
 
-	pre, post, err := p.GenerateBaseCode()
+	baseCode, err := p.GenerateBaseCode()
 	if err != nil {
 		return err
 	}
 
 	code := model.Code{
-		Pre:       pre,
-		Post:      post,
-		Functions: functions,
+		BaseCode:       baseCode,
+		FunctionBlocks: funcBlocks,
 	}
 
 	g := generator.NewGenerator(code)

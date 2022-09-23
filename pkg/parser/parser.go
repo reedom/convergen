@@ -2,16 +2,14 @@ package parser
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"go/types"
 	"os"
 	"regexp"
-	"strings"
 
-	gonanoid "github.com/matoous/go-nanoid"
 	"github.com/reedom/convergen/pkg/builder"
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/option"
@@ -22,12 +20,18 @@ import (
 const buildTag = "convergen"
 
 type Parser struct {
-	file    *ast.File
-	fset    *token.FileSet
-	pkg     *packages.Package
-	opts    option.Options
-	imports util.ImportNames
-	intf    *types.TypeName
+	srcPath     string
+	file        *ast.File
+	fset        *token.FileSet
+	pkg         *packages.Package
+	opts        option.Options
+	imports     util.ImportNames
+	intfEntries []*intfEntry
+}
+
+type MethodsInfo struct {
+	Marker  string
+	Methods []*builder.MethodEntry
 }
 
 const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedDeps |
@@ -71,6 +75,7 @@ func NewParser(srcPath string) (*Parser, error) {
 	}
 
 	return &Parser{
+		srcPath: fileSet.Position(fileSrc.Pos()).Filename,
 		fset:    fileSet,
 		file:    fileSrc,
 		pkg:     pkgs[0],
@@ -79,88 +84,94 @@ func NewParser(srcPath string) (*Parser, error) {
 	}, nil
 }
 
-func (p *Parser) Parse() ([]*builder.MethodEntry, error) {
-	intf, err := p.extractIntfEntry()
+func (p *Parser) Parse() ([]*MethodsInfo, error) {
+	entries, err := p.findConvergenEntries()
 	if err != nil {
 		return nil, err
 	}
 
-	p.intf = intf.intf
-	return p.parseMethods(intf)
+	list := make([]*MethodsInfo, 0)
+	for _, entry := range entries {
+		methods, err := p.parseMethods(entry)
+		if err != nil {
+			return nil, err
+		}
+		info := &MethodsInfo{
+			Marker:  entry.marker,
+			Methods: methods,
+		}
+		list = append(list, info)
+	}
+
+	p.intfEntries = entries
+	return list, nil
 }
 
 func (p *Parser) CreateBuilder() *builder.FunctionBuilder {
 	return builder.NewFunctionBuilder(p.file, p.fset, p.pkg, p.imports)
 }
 
-func (p *Parser) GenerateBaseCode() (pre string, post string, err error) {
+func (p *Parser) GenerateBaseCode() (code string, err error) {
 	util.RemoveMatchComments(p.file, reGoBuildGen)
 
 	// Remove doc comment of the interface.
 	// And also find the range pos of the interface in the code.
-	nodes, _ := util.ToAstNode(p.file, p.intf)
-	var minPos, maxPos token.Pos
+	for _, entry := range p.intfEntries {
+		nodes, _ := util.ToAstNode(p.file, entry.intf)
+		var minPos, maxPos token.Pos
 
-	for _, node := range nodes {
-		switch n := node.(type) {
-		case *ast.GenDecl:
-			ast.Inspect(n, func(node ast.Node) bool {
-				if node == nil {
-					return true
-				}
-				if f, ok := node.(*ast.FieldList); ok {
-					if minPos == 0 {
-						minPos = f.Pos()
-						maxPos = f.Closing
-					} else if f.Pos() < minPos {
-						minPos = f.Pos()
-					} else if maxPos < f.Closing {
-						maxPos = f.Closing
+		for _, node := range nodes {
+			switch n := node.(type) {
+			case *ast.GenDecl:
+				ast.Inspect(n, func(node ast.Node) bool {
+					if node == nil {
+						return true
 					}
-				}
-				return true
-			})
+					if f, ok := node.(*ast.FieldList); ok {
+						if minPos == 0 {
+							minPos = f.Pos()
+							maxPos = f.Closing
+						} else if f.Pos() < minPos {
+							minPos = f.Pos()
+						} else if maxPos < f.Closing {
+							maxPos = f.Closing
+						}
+					}
+					return true
+				})
+			}
 		}
-	}
 
-	// Insert markers.
-	marker, _ := gonanoid.Nanoid()
-	util.InsertComment(p.file, marker, minPos)
-	util.InsertComment(p.file, marker, maxPos)
+		// Insert markers.
+		util.InsertComment(p.file, entry.marker, minPos)
+		util.InsertComment(p.file, entry.marker, maxPos)
+	}
 
 	var buf bytes.Buffer
 	err = printer.Fprint(&buf, p.fset, p.file)
 	if err != nil {
 		return
 	}
-	base := buf.String()
 
-	// Now "base" contains code like this:
+	base := buf.String()
+	// Now each interfaces is marked with two <<marker>>s like below:
 	//
-	//    package simple
-	//
-	//	  import (
-	//	    mx "github.com/reedom/convergen/pkg/fixtures/data/ddd/model"
-	//    )
-	//
-	//	  type Convergen <<marker>>interface {
-	//	    DomainToModel(pet *mx.Pet) *mx.Pet
-	//    }   <<marker>>
+	//	    type Convergen <<marker>>interface {
+	//	      DomainToModel(pet *mx.Pet) *mx.Pet
+	//      }   <<marker>>
 	//
 	// And then we're going to convert it to:
 	//
-	//    package simple
-	//
-	//	  import (
-	//	    mx "github.com/reedom/convergen/pkg/fixtures/data/ddd/model"
-	//    )
-	//
-	//	  <<marker>>
+	//	    <<marker>>
 
-	reMarker := regexp.QuoteMeta(marker)
-	re := regexp.MustCompile(`.+` + reMarker + ".*(\n|.)*?" + reMarker)
-	base = re.ReplaceAllString(base, marker)
+	for _, entry := range p.intfEntries {
+		reMarker := regexp.QuoteMeta(entry.marker)
+		re := regexp.MustCompile(`.+` + reMarker + ".*(\n|.)*?" + reMarker)
+		if !re.MatchString(base) {
+			fmt.Printf("@@@ NOT MATCH %v\n", entry.marker)
+		}
+		base = re.ReplaceAllString(base, entry.marker)
+	}
 
-	pre, post, _ = strings.Cut(base, marker)
-	return
+	return base, nil
 }

@@ -31,6 +31,7 @@ func (p *Parser) findConvergenEntries() ([]*intfEntry, error) {
 			continue
 		}
 		if p.srcPath != p.fset.Position(obj.Pos()).Filename {
+			// Skip other than the entry file.
 			continue
 		}
 

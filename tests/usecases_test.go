@@ -42,6 +42,10 @@ func TestUseCases(t *testing.T) {
 			expected: "fixtures/usecase/mapname/setup.gen.go",
 		},
 		{
+			source:   "fixtures/usecase/multi_intf/setup.go",
+			expected: "fixtures/usecase/multi_intf/setup.gen.go",
+		},
+		{
 			source:   "fixtures/usecase/postprocess/setup.go",
 			expected: "fixtures/usecase/postprocess/setup.gen.go",
 		},
@@ -70,7 +74,7 @@ func TestUseCases(t *testing.T) {
 			expected, err := os.ReadFile(tt.expected)
 			require.Nil(t, err)
 
-			if tt.source == "fixtures/usecase/xxx/setup.go" {
+			if tt.source == "fixtures/usecase/xxxx/setup.go" {
 				log.SetFlags(log.Llongfile)
 				logger.SetupLogger(logger.Enable())
 			}
@@ -79,18 +83,26 @@ func TestUseCases(t *testing.T) {
 			require.Nil(t, err)
 			methods, err := p.Parse()
 			require.Nil(t, err)
+
+			var funcBlocks []model.FunctionsBlock
 			builder := p.CreateBuilder()
-			functions, err := builder.CreateFunctions(methods)
-			require.Nil(t, err)
-
-			pre, post, err := p.GenerateBaseCode()
-			require.Nil(t, err)
-
-			code := model.Code{
-				Pre:       pre,
-				Post:      post,
-				Functions: functions,
+			for _, info := range methods {
+				functions, err := builder.CreateFunctions(info.Methods)
+				require.Nil(t, err)
+				block := model.FunctionsBlock{
+					Marker:    info.Marker,
+					Functions: functions,
+				}
+				funcBlocks = append(funcBlocks, block)
 			}
+
+			baseCode, err := p.GenerateBaseCode()
+			require.Nil(t, err)
+			code := model.Code{
+				BaseCode:       baseCode,
+				FunctionBlocks: funcBlocks,
+			}
+
 			g := generator.NewGenerator(code)
 			actual, err := g.Generate(tt.source, false, true)
 			require.Nil(t, err)
