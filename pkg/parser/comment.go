@@ -17,6 +17,8 @@ import (
 var reNotation = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
 
 func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[string]struct{}, opts *option.Options) error {
+	var recvRevPos token.Pos
+
 	for _, n := range notations {
 		m := reNotation.FindStringSubmatch(n.Text)
 		if m == nil || len(m) < 2 {
@@ -35,7 +37,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 
 		switch m[1] {
 		case "style":
-			if args == nil {
+			if len(args) == 0 {
 				return logger.Errorf("%v: needs <style> arg", p.fset.Position(n.Pos()))
 			} else if style, ok := model.NewDstVarStyleFromValue(args[0]); !ok {
 				return logger.Errorf("%v: invalid <style> arg", p.fset.Position(n.Pos()))
@@ -43,7 +45,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 				opts.Style = style
 			}
 		case "match":
-			if args == nil {
+			if len(args) == 0 {
 				return logger.Errorf("%v: needs <algorithm> arg", p.fset.Position(n.Pos()))
 			} else if rule, ok := model.NewMatchRuleFromValue(args[0]); !ok {
 				return logger.Errorf("%v: invalid <algorithm> arg", p.fset.Position(n.Pos()))
@@ -67,14 +69,24 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 		case "typecast:off":
 			opts.Typecast = false
 		case "recv":
-			if args == nil {
+			if len(args) == 0 {
 				return logger.Errorf("%v: needs name for the receiver", p.fset.Position(n.Pos()))
 			} else if !isValidIdentifier(args[0]) {
 				return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
 			}
 			opts.Receiver = args[0]
+			opts.ReceiverRev = false
+		case "recv:rev":
+			if len(args) == 0 {
+				return logger.Errorf("%v: needs name for the receiver", p.fset.Position(n.Pos()))
+			} else if !isValidIdentifier(args[0]) {
+				return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
+			}
+			opts.Receiver = args[0]
+			opts.ReceiverRev = true
+			recvRevPos = n.Pos()
 		case "skip":
-			if args == nil {
+			if len(args) == 0 {
 				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
 			}
 			matcher := option.NewIdentMatcher(args[0])
@@ -114,6 +126,12 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			fmt.Printf("@@@ notation %v\n", m[1])
 		}
 	}
+
+	// validation
+	if opts.ReceiverRev && opts.Style == model.DstVarReturn {
+		return logger.Errorf(`%v: to use ":recv:rev", style must be ":style arg"`, p.fset.Position(recvRevPos))
+	}
+
 	return nil
 }
 
