@@ -25,7 +25,7 @@ func (m *IdentMatcher) Match(ident string, exactCase bool) bool {
 	if exactCase {
 		return m.pattern == ident
 	}
-	return strings.ToLower(m.pattern) == strings.ToLower(ident)
+	return strings.EqualFold(m.pattern, ident)
 }
 
 func (m *IdentMatcher) PartialMatch(ident string, exactCase bool) bool {

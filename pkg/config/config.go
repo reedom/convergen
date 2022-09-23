@@ -13,7 +13,7 @@ func Usage() {
 	sb.WriteString("\nUsage: convergen [flags] <input path>\n\n")
 	sb.WriteString("By default, the generated code is written to <input path>.gen.go\n\n")
 	sb.WriteString("Flags:\n")
-	_, _ = fmt.Fprintf(os.Stderr, sb.String())
+	_, _ = fmt.Fprint(os.Stderr, sb.String())
 	flag.PrintDefaults()
 }
 

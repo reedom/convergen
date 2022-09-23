@@ -120,7 +120,6 @@ func (p *Parser) GenerateBaseCode() (pre string, post string, err error) {
 				}
 				return true
 			})
-			break
 		}
 	}
 

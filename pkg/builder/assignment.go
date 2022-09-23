@@ -3,7 +3,6 @@ package builder
 import (
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/token"
 	"go/types"
 	"strings"
@@ -12,7 +11,7 @@ import (
 	"github.com/reedom/convergen/pkg/model"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
-	"golang.org/x/tools/go/loader"
+	"golang.org/x/tools/go/packages"
 )
 
 type assignmentBuilder struct {
@@ -406,10 +405,12 @@ func supportsStringer(src types.Type, dst types.Type) bool {
 	}
 
 	if stringer == nil {
-		conf := loader.Config{ParserMode: parser.ParseComments}
-		conf.Import("fmt")
-		lprog, _ := conf.Load()
-		t := lprog.Package("fmt").Pkg.Scope().Lookup("Stringer").Type()
+		cfg := &packages.Config{Mode: packages.NeedTypes}
+		pkgs, err := packages.Load(cfg, "fmt")
+		if err != nil {
+			panic(err)
+		}
+		t := pkgs[0].Types.Scope().Lookup("Stringer").Type()
 		stringer = t.Underlying().(*types.Interface)
 	}
 

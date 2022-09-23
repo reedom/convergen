@@ -6,14 +6,14 @@ import (
 	"regexp"
 )
 
-// astRemoveMatchComments removes pattern matched comments from file.Comments.
+// RemoveMatchComments removes pattern matched comments from file.Comments.
 func RemoveMatchComments(file *ast.File, pattern *regexp.Regexp) {
 	for _, group := range file.Comments {
 		_ = ExtractMatchComments(group, pattern)
 	}
 }
 
-// astExtractMatchComments removes pattern matched comments from commentGroup and return them.
+// ExtractMatchComments removes pattern matched comments from commentGroup and return them.
 func ExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) []*ast.Comment {
 	if commentGroup == nil {
 		return nil
@@ -48,17 +48,6 @@ func RemoveDecl(file *ast.File, name string) {
 	for _, decl := range file.Decls {
 		if !ast.FilterDecl(decl, comparer) {
 			decls = append(decls, decl)
-		}
-	}
-	file.Decls = decls
-}
-
-func RemoveDecl1(file *ast.File, fset *token.FileSet, node ast.Node) {
-	decls := make([]ast.Decl, 0)
-	nodePos := fset.Position(node.Pos()).String()
-	for _, decl := range file.Decls {
-		if fset.Position(decl.Pos()).String() != nodePos {
-			decls = append(decls)
 		}
 	}
 	file.Decls = decls

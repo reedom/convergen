@@ -83,7 +83,6 @@ func RemoveObject(file *ast.File, obj types.Object) {
 			RemoveDecl(file, obj.Name())
 		}
 	}
-	return
 }
 
 // GetDocCommentOn retrieves doc comments that relate to nodes.

@@ -46,7 +46,7 @@ func (o Options) CompareFieldName(a, b string) bool {
 	if o.ExactCase {
 		return a == b
 	}
-	return strings.ToLower(a) == strings.ToLower(b)
+	return strings.EqualFold(a, b)
 }
 
 var ValidOpsIntf = map[string]struct{}{

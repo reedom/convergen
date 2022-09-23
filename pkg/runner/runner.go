@@ -36,6 +36,10 @@ func Run(conf config.Config) error {
 	}
 
 	pre, post, err := p.GenerateBaseCode()
+	if err != nil {
+		return err
+	}
+
 	code := model.Code{
 		Pre:       pre,
 		Post:      post,
