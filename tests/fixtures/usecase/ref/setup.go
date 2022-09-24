@@ -15,5 +15,5 @@ type Convergen interface {
 
 	// :map ID CategoryID
 	// :typecast
-	CatDomainToModel(domain.Category) model.Category
+	CatDomainToModel(*domain.Category) model.Category
 }

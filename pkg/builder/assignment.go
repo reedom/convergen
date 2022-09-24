@@ -215,7 +215,14 @@ func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstField
 		rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
 		arg, ok := b.buildRHS(rhsExpr, srcType, converter.ArgType())
 		if !ok {
-			return "", false
+			if !util.IsPtr(converter.ArgType()) {
+				return "", false
+			}
+			arg, ok = b.buildRHS(rhsExpr, srcType, util.DerefPtr(converter.ArgType()))
+			if !ok {
+				return "", false
+			}
+			arg = "&" + arg
 		}
 
 		if types.AssignableTo(converter.RetType(), dst.fieldType()) {
