@@ -6,25 +6,25 @@ A type-to-type copy function code generator.
 Notation Table
 --------------
 
-| notation                                                 | location         | summary                                                                  |
-|----------------------------------------------------------|------------------|--------------------------------------------------------------------------|
-| :convergen                                               | interface        | Mark the interface as a converter definition.                            |
-| :style &lt;`return` &#124; `arg`>                        | interface,method | Set the style of the assignee variable input/output (default: `return`). |
-| :match &lt;`name` &#124; `none`>                         | interface,method | Set the field matcher algorithm (default: `name`).                       |
-| :case                                                    | interface,method | Set case-sensitive for name or tag match (default).                      |
-| :case:off                                                | interface,method | Set case-insensitive for name or tag match.                              |
-| :getter                                                  | interface,method | Include getters for name or tag match.                                   |
-| :getter:off                                              | interface,method | Exclude getters for name or tag match (default).                         |
-| :stringer                                                | interface,method | Call String() if appropriate in name or tag match.                       |
-| :stringer:off                                            | interface,method | Call String() if appropriate in name or tag match (default).             |
-| :typecast                                                | interface,method | Allow type casting if appropriate in name or tag match.                  |
-| :typecast:off                                            | interface,method | Suppress type casting if appropriate in name or tag match (default).     |
-| :recv &lt;_var_>                                         | method           | Specify the source value as a receiver of the generated function.        |
-| :reverse                                                 | method           | Reverse copy direction. Might be useful with receiver form.              |
-| :skip &lt;_dst field_>                                   | method           | Specify field(s) to omit.                                                |
-| :map &lt;_src field_> &lt;_dst field_>                   | method           | Specify field mapping rule.                                              |
-| :conv &lt;_func_> &lt;_src field_> [_to field_]          | method           | Specify a converter for field(s).                                        |
-| :postprocess &lt;_func_>                                 | method           | Specify a post-process func.                                             |
+| notation                                          | location         | summary                                                                  |
+|---------------------------------------------------|------------------|--------------------------------------------------------------------------|
+| :convergen                                        | interface        | Mark the interface as a converter definition.                            |
+| :style &lt;`return` &#124; `arg`>                 | interface,method | Set the style of the assignee variable input/output (default: `return`). |
+| :match &lt;`name` &#124; `none`>                  | interface,method | Set the field matcher algorithm (default: `name`).                       |
+| :case                                             | interface,method | Set case-sensitive for name match (default).                             |
+| :case:off                                         | interface,method | Set case-insensitive for name match.                                     |
+| :getter                                           | interface,method | Include getters for name match.                                          |
+| :getter:off                                       | interface,method | Exclude getters for name match (default).                                |
+| :stringer                                         | interface,method | Call String() if appropriate in name match.                              |
+| :stringer:off                                     | interface,method | Call String() if appropriate in name match (default).                    |
+| :typecast                                         | interface,method | Allow type casting if appropriate in name match.                         |
+| :typecast:off                                     | interface,method | Suppress type casting if appropriate in name match (default).            |
+| :recv &lt;_var_>                                  | method           | Specify the source value as a receiver of the generated function.        |
+| :reverse                                          | method           | Reverse copy direction. Might be useful with receiver form.              |
+| :skip &lt;_dst field_>                            | method           | Specify field(s) to omit.                                                |
+| :map &lt;_src field_> &lt;_dst field_>            | method           | Specify field mapping rule.                                              |
+| :conv &lt;_func_> &lt;_src field_> [_to field_]   | method           | Specify a converter for field(s).                                        |
+| :postprocess &lt;_func_>                          | method           | Specify a post-process func.                                             |
 
 Sample
 ------
@@ -42,19 +42,15 @@ import (
     "time"
 
     "github.com/sample/myapp/domain"
-    "github.com/sample/myapp/model"
+    "github.com/sample/myapp/storage"
 )
 
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
     // :typecast
     // :stringer
-    // :conv toTimestamp Created
-    DomainToModel(*domain.User) *model.User
-}
-
-func toTimestamp(tm time.Time) int64 {
-    return tm.UnixMilli()
+    // :map Created.UnixMilli() Created
+    DomainToStorage(*domain.User) *storage.User
 }
 ```
 
@@ -70,21 +66,17 @@ import (
     "time"
 
     "github.com/sample/myapp/domain"
-    "github.com/sample/myapp/model"
+    "github.com/sample/myapp/storage"
 )
 
-func DomainToModel(src *domain.User) (dst *model.User) {
-    dst = &model.User{}
+func DomainToStorage(src *domain.User) (dst *storage.User) {
+    dst = &storage.User{}
     dst.ID = int64(src.ID)
     dst.Name = src.Name
     dst.Status = src.Status.String()
-    dst.Created = toTimestamp(src.Created)
+    dst.Created = src.Created.UnixMilli()
 
     return
-}
-
-func toTimestamp(tm time.Time) int64 {
-    return tm.UnixMilli()
 }
 ```
 
@@ -112,7 +104,7 @@ func (s Status) String() string {
 ```
 
 ```go
-package model
+package storage
 
 type User struct {
     ID      int64
@@ -177,6 +169,42 @@ Flags:
 Notations
 ---------
 
+### `:convergen`
+
+Mark the interface as a converter definition.
+
+By default, Convergen look for only an interface named "Convergen" as a converter definition block.
+By marking with `:convergen` notation, let Convergen recognize them. This is useful especially if you want
+to define same name methods but having different receivers.
+
+__Available locations__
+
+interface
+
+__Format__
+
+```text
+":convergen"
+```
+
+__Examples__
+
+```go
+// :convergen
+type TransportConvergen struct {
+    // :recv t
+    ToDomain(*trans.Model) *domain.Model 
+}
+
+// :convergen
+type PersistentConvergen struct {
+    // :recv t
+    ToDomain(*persistent.Model) *domain.Model 
+}
+
+```
+
+
 ### `:style <style>`
 
 Set the style of the assignee variable input/output.
@@ -204,19 +232,19 @@ Examples of `return` style.
 basic:
 
 ```go
-func ToModel(src *domain.Pet) (dst *model.Pet) {
+func ToStorage(src *domain.Pet) (dst *storage.Pet) {
 ```
 
 with error:
 
 ```go
-func ToModel(src *domain.Pet) (dst *model.Pet, err error) {
+func ToStorage(src *domain.Pet) (dst *storage.Pet, err error) {
 ```
 
 with receiver:
 
 ```go
-func (src *domain.Pet) ToModel() (dst *model.Pet) {
+func (src *domain.Pet) ToStorage() (dst *storage.Pet) {
 ```
 
 Examples of `arg` style.
@@ -224,19 +252,19 @@ Examples of `arg` style.
 basic:
 
 ```go
-func ToModel(dst *model.Pet, src *domain.Pet) {
+func ToStorage(dst *storage.Pet, src *domain.Pet) {
 ```
 
 with error:
 
 ```go
-func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
+func ToStorage(dst *storage.Pet, src *domain.Pet) (err error) {
 ```
 
 with receiver:
 
 ```go
-func (src *domain.Pet) ToModel(dst *model.Pet) {
+func (src *domain.Pet) ToStorage(dst *storage.Pet) {
 ```
 
 ### `:match <algorithm>`
@@ -256,7 +284,7 @@ __Format__
 ```text
 ":match" <algorithm>
 
-algorithm = "name" | "tag" | "none"
+algorithm = "name" | none"
 ```
 
 __Examples__
@@ -270,7 +298,8 @@ type User struct {
   ID   int
   Name string
 }
-
+```
+```go
 package web
 
 type User struct {
@@ -281,18 +310,19 @@ type User struct {
 func (u *User) ID() int {
   return u.id
 }
-
+```
+```go
 // :match name 
 type Convergen interface {
-  ToModel(*User) *model.User
+  ToStorage(*User) *storage.User
 }
 ```
 
 Convergen generates:
 
 ```go
-func ToModel(src *User) (dst *model.User) {
-  dst := &model.User{}
+func ToStorage(src *User) (dst *storage.User) {
+  dst := &storage.User{}
   dst.ID = src.ID()
   dst.Name = src.name
   
@@ -300,46 +330,316 @@ func ToModel(src *User) (dst *model.User) {
 }
 ```
 
-With `tag` match, the generator matches up with tag and its first part (and their types).
-Convergen also needs a `tag` notation.
+With `none` match, it only processes explicitly specified fields or getters via `:map` and `:conv`. 
+
+### `:case` / `:case:off`
+
+Control case-sensitive match or case-insensitive match.
+
+The notification takes effect in `:match name`, `:getter` and `:skip`.  
+Other notations, namely `:map`, `:conv`, keep case-sensitive match.
+
+__Default__
+
+":case"
+
+__Available locations__
+
+interface, method
+
+__Format__
 
 ```go
-package model
+":case"
+":case:off"
+```
+
+__Examples__
+
+// interface level notation makes ":case:off" as default.
+// :case:off
+type Convergen struct {
+    // Turn on case-sensitive match for names.
+    // :case
+    ToUserModel(*domain.User) storage.User
+
+    // Adopt the default, case-insensitive match in this case.
+    ToCategoryModel(*domain.Category) storage.Category
+}
+
+### `:getter` / `:getter:off`
+
+Include getters for name match.
+
+__Default__
+
+`:getter:off`
+
+__Available locations__
+
+interface, method
+
+__Format__
+
+```text
+":getter"
+":getter:off"
+```
+
+__Examples__
+
+With those models:
+
+```go
+package domain
 
 type User struct {
-  UserID   int      `spanner:"userId"`
-  Name     string   `spanner:"name,omitempty"`
+    name string
 }
 
-package web
-
-type User struct {
-  userID   int      `json:"userId"`
-  name     string   `json:"name"`
-}
-
-func (u *User) UserID() int {
-  return u.userID
-}
-
-// :match tag
-// :tag json spanner
-type Convergen interface {
-  ToModel(*User) *model.User
+func (u *User) Name() string {
+    return u.name
 }
 ```
 
-Convergen generates:
-
 ```go
-func ToModel(src *User) (dst *model.User) {
-  dst := &model.User{}
-  dst.ID = src.userID
-  dst.Name = src.name
-  
-  return
+package storage
+
+type User struct {
+    Name string
 }
 ```
+
+The default Convergen behaviour can't find the private `name` and won't notice the getter.  
+So, with the following we'll get…
+
+```go
+type Convergen struct {
+    ToStorageUser(*domain.User) *storage.User
+}
+````
+
+```go
+func ToStorageUser(src *domain.User) (dst *storage.User)
+    dst = &storage.User{}
+	  // no match: dst.Name
+
+    return
+}
+```
+
+And with `:getter` we'll have…
+
+```go
+type Convergen struct {
+    // :getter
+    ToStorageUser(*domain.User) *storage.User
+}
+````
+
+```go
+func ToStorageUser(src *domain.User) (dst *storage.User)
+    dst = &storage.User{}
+	  dst.Name = src.Name()
+
+    return
+}
+```
+
+Alternatively, you can get the same result with `:map`.  
+This is worth to learn since `:getter` affects the entire method - `:map` allows you to get
+the result selectively. 
+
+```go
+type Convergen struct {
+    // :map Name() Name
+    ToStorageUser(*domain.User) *storage.User
+}
+```
+
+### `:stringer` / `:stringer:off`
+
+Call String() if appropriate in name match.
+
+__Default__
+
+`:stringer:off`
+
+__Available locations__
+
+interface, method
+
+__Format__
+
+```text
+":stringer"
+":stringer:off"
+```
+
+__Examples__
+
+With those models:
+
+```go
+package domain
+
+type User struct {
+    Status Status
+}
+
+type Status struct {
+    status string
+}
+
+func (s Status) String() string {
+    return string(s)
+}
+
+var (
+    NotVerified = Status{"notVerified"}
+    Verified    = Status{"verified"}
+    Invalidated = Status{"invalidated"}
+)
+```
+
+```go
+package storage
+
+type User struct {
+    String string
+}
+```
+
+For `status` field, Convergen has no idea how to assign `Status` type to `string` by default.  
+Letting it to lookup `String()` methods by chance, it will employ while the method is appropriate to the assignee. 
+
+```go
+type Convergen struct {
+    // :stringer
+    ToStorageUser(*domain.User) *storage.User
+}
+````
+
+```go
+func ToStorageUser(src *domain.User) (dst *storage.User)
+    dst = &storage.User{}
+	  dst.Status = src.Status.String()
+
+    return
+}
+```
+
+Alternatively, you can get the same result with `:map`.  
+This is worth to learn since `:stringer` affects the entire method - `:map` allows you to get
+the result selectively.
+
+```go
+type Convergen struct {
+    // :map Status.String() Name
+    ToStorageUser(*domain.User) *storage.User
+}
+```
+
+### `:typecast`
+
+Allow type casting if appropriate in name match.
+
+__Default__
+
+`:typecast:off`
+
+__Available locations__
+
+interface, method
+
+__Format__
+
+```text
+":typecast"
+":typecast:off"
+```
+
+__Examples__
+
+With those models:
+
+```go
+package domain
+
+type User struct {
+    ID     int
+    Name   string
+    Status Status
+}
+
+type Status string
+
+```
+
+```go
+package storage
+
+type User struct {
+    ID     int64	
+    Name   string
+    Status string
+}
+```
+
+Convergen respect types strictly. So that it will give up copying fields if their types does not match.  
+To note, Convergen relies on [types.AssignableTo(V, T Type) bool](https://pkg.go.dev/go/types#AssignableTo) method
+from the standard packages. It means that the judge is done by the type system of Go itself, not by a dumb string type name match. 
+
+Without `:typecast` turning on…
+```go
+type Convergen struct {
+    ToDomainUser(*storage.User) *domain.User
+}
+````
+
+We'll get:
+
+```go
+func ToDomainUser(src *storage.User) (dst *domain.User)
+    dst = &domain.User{}
+    // no match: dst.ID
+    dst.Name = src.Name
+    // no match: dst.Status
+
+    return
+}
+```
+
+With `:typecast` it turns to:
+
+```go
+func ToDomainUser(src *storage.User) (dst *domain.User)
+    dst = &domain.User{}
+	  dst.ID = int(src.ID)
+    dst.Name = src.Name
+    dst.Status = domain.Status(src.Status)
+
+    return
+}
+```
+
+### `:convergen`
+
+Mark the interface as a converter definition.
+
+__Default__
+
+__Available locations__
+
+interface, method
+
+__Format__
+
+```text
+":convergen"
+```
+
+__Examples__
 
 TBD
 
