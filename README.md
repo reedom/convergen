@@ -10,7 +10,7 @@ Notation Table
 |----------------------------------------------------------|------------------|--------------------------------------------------------------------------|
 | :convergen                                               | interface        | Mark the interface as a converter definition.                            |
 | :style &lt;`return` &#124; `arg`>                        | interface,method | Set the style of the assignee variable input/output (default: `return`). |
-| :match &lt;`name` &#124; `tag` &#124; `none`>            | interface,method | Set the field matcher algorithm (default: `name`).                       |
+| :match &lt;`name` &#124; `none`>                         | interface,method | Set the field matcher algorithm (default: `name`).                       |
 | :case                                                    | interface,method | Set case-sensitive for name or tag match (default).                      |
 | :case:off                                                | interface,method | Set case-insensitive for name or tag match.                              |
 | :getter                                                  | interface,method | Include getters for name or tag match.                                   |
@@ -23,10 +23,7 @@ Notation Table
 | :reverse                                                 | method           | Reverse copy direction. Might be useful with receiver form.              |
 | :skip &lt;_dst field_>                                   | method           | Specify field(s) to omit.                                                |
 | :map &lt;_src field_> &lt;_dst field_>                   | method           | Specify field mapping rule.                                              |
-| [TBD] :tag &lt;_src tag_> [_to tag_]                     | method           | Specify tag mapping rule.                                                |
 | :conv &lt;_func_> &lt;_src field_> [_to field_]          | method           | Specify a converter for field(s).                                        |
-| [TBD] :conv:type &lt;_func_> &lt;_src type_> [_to type_] | method           | Specify a converter for type(s).                                         |
-| [TBD] :conv:with &lt;_func_> &lt;_dst field_>            | method           | Specify a src-struct-to-field converter.                                 |
 | :postprocess &lt;_func_>                                 | method           | Specify a post-process func.                                             |
 
 Sample
