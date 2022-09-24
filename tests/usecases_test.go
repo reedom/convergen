@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/reedom/convergen/pkg/generator"
+	"github.com/reedom/convergen/pkg/generator/model"
 	"github.com/reedom/convergen/pkg/logger"
-	"github.com/reedom/convergen/pkg/model"
 	"github.com/reedom/convergen/pkg/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,6 +50,10 @@ func TestUseCases(t *testing.T) {
 			expected: "fixtures/usecase/postprocess/setup.gen.go",
 		},
 		{
+			source:   "fixtures/usecase/ref/setup.go",
+			expected: "fixtures/usecase/ref/generated/setup.gen.go",
+		},
+		{
 			source:   "fixtures/usecase/simple/setup.go",
 			expected: "fixtures/usecase/simple/setup.gen.go",
 		},
@@ -74,7 +78,7 @@ func TestUseCases(t *testing.T) {
 			expected, err := os.ReadFile(tt.expected)
 			require.Nil(t, err)
 
-			if tt.source == "fixtures/usecase/xxxx/setup.go" {
+			if tt.source == "fixtures/usecase/ref/setup.go" {
 				log.SetFlags(log.Llongfile)
 				logger.SetupLogger(logger.Enable())
 			}

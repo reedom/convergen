@@ -86,7 +86,9 @@ func (p *Parser) Parse() ([]*model.MethodsInfo, error) {
 		return nil, err
 	}
 
-	list := make([]*model.MethodsInfo, 0)
+	var allMethods []*model.MethodEntry
+
+	var list []*model.MethodsInfo
 	for _, entry := range entries {
 		methods, err := p.parseMethods(entry)
 		if err != nil {
@@ -97,6 +99,19 @@ func (p *Parser) Parse() ([]*model.MethodsInfo, error) {
 			Methods: methods,
 		}
 		list = append(list, info)
+		allMethods = append(allMethods, methods...)
+	}
+
+	// Resolve converters.
+	// Some converters may refer to-be-generated functions that go/types doesn't contain
+	// so that they are needed to be resolved manually.
+	for _, method := range allMethods {
+		for _, conv := range method.Opts.Converters {
+			err = p.resolveConverters(allMethods, conv)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	p.intfEntries = entries

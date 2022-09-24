@@ -21,7 +21,7 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*model.MethodEntry, error) {
 	mset := types.NewMethodSet(iface)
 	methods := make([]*model.MethodEntry, 0)
 	for i := 0; i < mset.Len(); i++ {
-		method, err := p.extractMethodEntry(mset.At(i).Obj(), intf.opts)
+		method, err := p.parseMethod(mset.At(i).Obj(), intf.opts)
 		if err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err.Error())
 			continue
@@ -35,7 +35,7 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*model.MethodEntry, error) {
 	return methods, nil
 }
 
-func (p *Parser) extractMethodEntry(method types.Object, opts option.Options) (*model.MethodEntry, error) {
+func (p *Parser) parseMethod(method types.Object, opts option.Options) (*model.MethodEntry, error) {
 	signature, ok := method.Type().(*types.Signature)
 	if !ok {
 		return nil, logger.Errorf(`%v: expected signature but %#v`, p.fset.Position(method.Pos()), method)

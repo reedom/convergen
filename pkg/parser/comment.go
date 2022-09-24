@@ -8,7 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/reedom/convergen/pkg/generator/model"
+	bmodel "github.com/reedom/convergen/pkg/builder/model"
+	gmodel "github.com/reedom/convergen/pkg/generator/model"
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
@@ -42,7 +43,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 		case "style":
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <style> arg", p.fset.Position(n.Pos()))
-			} else if style, ok := model.NewDstVarStyleFromValue(args[0]); !ok {
+			} else if style, ok := gmodel.NewDstVarStyleFromValue(args[0]); !ok {
 				return logger.Errorf("%v: invalid <style> arg", p.fset.Position(n.Pos()))
 			} else {
 				opts.Style = style
@@ -50,7 +51,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 		case "match":
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <algorithm> arg", p.fset.Position(n.Pos()))
-			} else if rule, ok := model.NewMatchRuleFromValue(args[0]); !ok {
+			} else if rule, ok := gmodel.NewMatchRuleFromValue(args[0]); !ok {
 				return logger.Errorf("%v: invalid <algorithm> arg", p.fset.Position(n.Pos()))
 			} else {
 				opts.Rule = rule
@@ -97,17 +98,12 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
-			argType, retType, retError, err := p.lookupConverterFunc(args[0], n.Pos())
-			if err != nil {
-				return err
-			}
 			src := args[1]
 			dst := src
 			if 3 <= len(args) {
 				dst = args[2]
 			}
-			converter := option.NewFieldConverter(args[0], src, dst,
-				argType, retType, retError, n.Pos())
+			converter := option.NewFieldConverter(args[0], src, dst, n.Pos())
 			opts.Converters = append(opts.Converters, converter)
 		case "postprocess":
 			if len(args) < 1 {
@@ -124,7 +120,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 	}
 
 	// validation
-	if opts.Reverse && opts.Style == model.DstVarReturn {
+	if opts.Reverse && opts.Style == gmodel.DstVarReturn {
 		return logger.Errorf(`%v: to use ":reverse", style must be ":style arg"`, p.fset.Position(posReverse))
 	}
 
@@ -150,6 +146,38 @@ func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types
 	scope := pkg.Types.Scope()
 	obj := scope.Lookup(names[1])
 	return scope, obj
+}
+
+func (p *Parser) resolveConverters(generatingMethods []*bmodel.MethodEntry, conv *option.FieldConverter) error {
+	name := conv.Converter()
+	pos := conv.Pos()
+	argType, retType, retError, err := p.lookupConverterFunc(name, pos)
+	if err == nil {
+		conv.Set(argType, retType, retError)
+		return nil
+	}
+
+	for _, method := range generatingMethods {
+		if method.Name() != name {
+			continue
+		}
+		if method.Opts.Style != gmodel.DstVarReturn {
+			err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), name)
+			continue
+		}
+		if method.Recv() != nil {
+			// TODO(reedom): we may accept a method as a converter.
+			err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), name)
+			continue
+		}
+		conv.Set(method.SrcVar().Type(), method.DstVar().Type(), method.RetError())
+		return nil
+	}
+
+	if err == nil {
+		err = logger.Errorf("%v: function %v not found", p.fset.Position(pos), name)
+	}
+	return err
 }
 
 func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, retType types.Type, retError bool, err error) {
