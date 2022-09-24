@@ -7,7 +7,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/reedom/convergen/pkg/builder"
+	"github.com/reedom/convergen/pkg/builder/model"
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
@@ -16,10 +16,10 @@ import (
 var reGoBuildGen = regexp.MustCompile(`\s*//\s*(go:(generate\b|build convergen\b)|\+build convergen)`)
 var errAbort = errors.New("abort")
 
-func (p *Parser) parseMethods(intf *intfEntry) ([]*builder.MethodEntry, error) {
+func (p *Parser) parseMethods(intf *intfEntry) ([]*model.MethodEntry, error) {
 	iface := intf.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
-	methods := make([]*builder.MethodEntry, 0)
+	methods := make([]*model.MethodEntry, 0)
 	for i := 0; i < mset.Len(); i++ {
 		method, err := p.extractMethodEntry(mset.At(i).Obj(), intf.opts)
 		if err != nil {
@@ -35,7 +35,7 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*builder.MethodEntry, error) {
 	return methods, nil
 }
 
-func (p *Parser) extractMethodEntry(method types.Object, opts option.Options) (*builder.MethodEntry, error) {
+func (p *Parser) extractMethodEntry(method types.Object, opts option.Options) (*model.MethodEntry, error) {
 	signature, ok := method.Type().(*types.Signature)
 	if !ok {
 		return nil, logger.Errorf(`%v: expected signature but %#v`, p.fset.Position(method.Pos()), method)
@@ -57,7 +57,7 @@ func (p *Parser) extractMethodEntry(method types.Object, opts option.Options) (*
 
 	cleanUp()
 
-	return &builder.MethodEntry{
+	return &model.MethodEntry{
 		Method:     method,
 		Opts:       opts,
 		DocComment: docComment,

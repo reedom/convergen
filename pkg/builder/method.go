@@ -5,9 +5,9 @@ import (
 	"go/token"
 	"go/types"
 
-	"github.com/reedom/convergen/pkg/generator/model"
+	bmodel "github.com/reedom/convergen/pkg/builder/model"
+	gmodel "github.com/reedom/convergen/pkg/generator/model"
 	"github.com/reedom/convergen/pkg/logger"
-	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
 	"golang.org/x/tools/go/packages"
 )
@@ -33,16 +33,8 @@ func NewFunctionBuilder(
 	}
 }
 
-type MethodEntry struct {
-	Method     types.Object // Also a *types.Signature
-	Opts       option.Options
-	DocComment *ast.CommentGroup
-	Src        *types.Tuple
-	Dst        *types.Tuple
-}
-
-func (p *FunctionBuilder) CreateFunctions(methods []*MethodEntry) ([]*model.Function, error) {
-	functions := make([]*model.Function, len(methods))
+func (p *FunctionBuilder) CreateFunctions(methods []*bmodel.MethodEntry) ([]*gmodel.Function, error) {
+	functions := make([]*gmodel.Function, len(methods))
 	var err error
 	for i, method := range methods {
 		functions[i], err = p.CreateFunction(method)
@@ -53,7 +45,7 @@ func (p *FunctionBuilder) CreateFunctions(methods []*MethodEntry) ([]*model.Func
 	return functions, nil
 }
 
-func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error) {
+func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Function, error) {
 	sig := m.Method.Type().(*types.Signature)
 	comments := util.ToTextList(m.DocComment)
 	returnsError := 1 < sig.Results().Len() &&
@@ -86,7 +78,7 @@ func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error
 	}
 
 	builder := newAssignmentBuilder(p, m.Method.Pos(), m.Opts)
-	var assignments []*model.Assignment
+	var assignments []*gmodel.Assignment
 	var err error
 	if m.Opts.Reverse {
 		assignments, err = builder.build(dstVar, dst, srcVar, src.Type())
@@ -102,7 +94,7 @@ func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error
 		return nil, err
 	}
 
-	fn := &model.Function{
+	fn := &gmodel.Function{
 		Name:         m.Method.Name(),
 		Comments:     comments,
 		Receiver:     m.Opts.Receiver,
@@ -117,8 +109,8 @@ func (p *FunctionBuilder) CreateFunction(m *MethodEntry) (*model.Function, error
 	return fn, nil
 }
 
-func (p *FunctionBuilder) createVar(v *types.Var, defName string) model.Var {
-	mv := model.Var{Name: v.Name()}
+func (p *FunctionBuilder) createVar(v *types.Var, defName string) gmodel.Var {
+	mv := gmodel.Var{Name: v.Name()}
 	if mv.Name == "" {
 		mv.Name = defName
 	}
@@ -127,7 +119,7 @@ func (p *FunctionBuilder) createVar(v *types.Var, defName string) model.Var {
 	return mv
 }
 
-func (p *FunctionBuilder) parseVarType(t types.Type, varModel *model.Var) {
+func (p *FunctionBuilder) parseVarType(t types.Type, varModel *gmodel.Var) {
 	switch typ := t.(type) {
 	case *types.Pointer:
 		varModel.Pointer = true

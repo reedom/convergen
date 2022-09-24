@@ -3,19 +3,20 @@ package builder
 import (
 	"go/types"
 
-	"github.com/reedom/convergen/pkg/generator/model"
+	bmodel "github.com/reedom/convergen/pkg/builder/model"
+	gmodel "github.com/reedom/convergen/pkg/generator/model"
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/util"
 )
 
-func (p *FunctionBuilder) buildPostProcess(m *MethodEntry, src *types.Var, dst *types.Var, returnsError bool) (*model.Manipulator, error) {
+func (p *FunctionBuilder) buildPostProcess(m *bmodel.MethodEntry, src *types.Var, dst *types.Var, returnsError bool) (*gmodel.Manipulator, error) {
 	if m.Opts.PostProcess == nil {
 		return nil, nil
 	}
 
 	pp := m.Opts.PostProcess
 
-	ret := &model.Manipulator{}
+	ret := &gmodel.Manipulator{}
 	ret.Pkg, _ = p.imports.LookupName(pp.Func.Pkg().Path())
 	ret.Name = pp.Func.Name()
 	ret.ReturnsError = pp.ReturnsError

@@ -11,6 +11,7 @@ import (
 	"regexp"
 
 	"github.com/reedom/convergen/pkg/builder"
+	"github.com/reedom/convergen/pkg/builder/model"
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
@@ -27,11 +28,6 @@ type Parser struct {
 	opts        option.Options
 	imports     util.ImportNames
 	intfEntries []*intfEntry
-}
-
-type MethodsInfo struct {
-	Marker  string
-	Methods []*builder.MethodEntry
 }
 
 const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedDeps |
@@ -84,19 +80,19 @@ func NewParser(srcPath string) (*Parser, error) {
 	}, nil
 }
 
-func (p *Parser) Parse() ([]*MethodsInfo, error) {
+func (p *Parser) Parse() ([]*model.MethodsInfo, error) {
 	entries, err := p.findConvergenEntries()
 	if err != nil {
 		return nil, err
 	}
 
-	list := make([]*MethodsInfo, 0)
+	list := make([]*model.MethodsInfo, 0)
 	for _, entry := range entries {
 		methods, err := p.parseMethods(entry)
 		if err != nil {
 			return nil, err
 		}
-		info := &MethodsInfo{
+		info := &model.MethodsInfo{
 			Marker:  entry.marker,
 			Methods: methods,
 		}
