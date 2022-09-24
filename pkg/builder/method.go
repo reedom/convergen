@@ -46,13 +46,9 @@ func (p *FunctionBuilder) CreateFunctions(methods []*bmodel.MethodEntry) ([]*gmo
 }
 
 func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Function, error) {
-	sig := m.Method.Type().(*types.Signature)
 	comments := util.ToTextList(m.DocComment)
-	retError := 1 < sig.Results().Len() &&
-		util.IsErrorType(sig.Results().At(sig.Results().Len()-1).Type())
-
-	src := sig.Params().At(0)
-	dst := sig.Results().At(0)
+	src := m.SrcVar()
+	dst := m.DstVar()
 
 	if !util.IsStructType(util.DerefPtr(src.Type())) {
 		return nil, logger.Errorf("%v: src type should be a struct but %v", p.fset.Position(dst.Pos()), src.Type().Underlying().String())
@@ -89,7 +85,7 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 		return nil, err
 	}
 
-	postProcess, err := p.buildPostProcess(m, src, dst, retError)
+	postProcess, err := p.buildPostProcess(m, src, dst, m.RetError())
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +97,7 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 		Src:         srcVar,
 		Dst:         dstVar,
 		DstVarStyle: m.Opts.Style,
-		RetError:    retError,
+		RetError:    m.RetError(),
 		Assignments: assignments,
 		PostProcess: postProcess,
 	}

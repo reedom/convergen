@@ -61,7 +61,5 @@ func (p *Parser) extractMethodEntry(method types.Object, opts option.Options) (*
 		Method:     method,
 		Opts:       opts,
 		DocComment: docComment,
-		Src:        signature.Params(),
-		Dst:        signature.Results(),
 	}, nil
 }
