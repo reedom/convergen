@@ -342,3 +342,16 @@ func ToModel(src *User) (dst *model.User) {
 ```
 
 TBD
+
+Contributing
+------------
+
+I highly appreciate any kind of contributions!
+
+Like:
+
+- Report bugs.
+- Report a use case that the current implementation seems not fulfill. 
+- implement new features by making a pull-request.
+- Add or improve the document or examples.
+- Create a project's logo.
