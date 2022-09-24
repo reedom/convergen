@@ -57,7 +57,7 @@ func (g *Generator) FuncToString(f *model.Function) string {
 		sb.WriteString(f.Dst.Name)
 		sb.WriteString(" ")
 		sb.WriteString(f.Dst.FullType())
-		if f.ReturnsError {
+		if f.RetError {
 			// "func Name(src *SrcModel) (dst *DstModel, err error"
 			sb.WriteString(", err error")
 		}
@@ -75,7 +75,7 @@ func (g *Generator) FuncToString(f *model.Function) string {
 			sb.WriteString("{}\n")
 		}
 	} else {
-		if f.ReturnsError {
+		if f.RetError {
 			// "func Name(dst *DstModel, src *SrcModel) (err error) {"
 			sb.WriteString("(err error) {\n")
 		} else {
@@ -93,7 +93,7 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	if f.PostProcess != nil {
 		sb.WriteString(g.ManipulatorToString(f.PostProcess, f.Src, f.Dst))
 	}
-	if f.ReturnsError || f.DstVarStyle == model.DstVarReturn {
+	if f.RetError || f.DstVarStyle == model.DstVarReturn {
 		sb.WriteString("\nreturn\n")
 	}
 	sb.WriteString("}\n\n")

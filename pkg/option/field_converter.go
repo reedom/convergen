@@ -10,18 +10,18 @@ type FieldConverter struct {
 	m         *NameMatcher
 	converter string
 
-	argType      types.Type
-	retType      types.Type
-	returnsError bool
+	argType  types.Type
+	retType  types.Type
+	retError bool
 }
 
 func NewFieldConverter(converter, src, dst string, argType, retType types.Type, returnError bool, pos token.Pos) *FieldConverter {
 	return &FieldConverter{
-		m:            NewNameMatcher(src, dst, pos),
-		converter:    converter,
-		argType:      argType,
-		retType:      retType,
-		returnsError: returnError,
+		m:         NewNameMatcher(src, dst, pos),
+		converter: converter,
+		argType:   argType,
+		retType:   retType,
+		retError:  returnError,
 	}
 }
 
@@ -53,8 +53,8 @@ func (c *FieldConverter) RetType() types.Type {
 	return c.retType
 }
 
-func (c *FieldConverter) ReturnsError() bool {
-	return c.returnsError
+func (c *FieldConverter) RetError() bool {
+	return c.retError
 }
 
 func (c *FieldConverter) RHSExpr(arg string) string {

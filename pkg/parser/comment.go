@@ -97,7 +97,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
-			argType, retType, returnsError, err := p.lookupConverterFunc(args[0], n.Pos())
+			argType, retType, retError, err := p.lookupConverterFunc(args[0], n.Pos())
 			if err != nil {
 				return err
 			}
@@ -107,7 +107,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 				dst = args[2]
 			}
 			converter := option.NewFieldConverter(args[0], src, dst,
-				argType, retType, returnsError, n.Pos())
+				argType, retType, retError, n.Pos())
 			opts.Converters = append(opts.Converters, converter)
 		case "postprocess":
 			if len(args) < 1 {
@@ -152,7 +152,7 @@ func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types
 	return scope, obj
 }
 
-func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, retType types.Type, returnsError bool, err error) {
+func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, retType types.Type, retError bool, err error) {
 	_, obj := p.lookupType(funcName, pos)
 	if obj == nil {
 		err = logger.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
@@ -174,7 +174,7 @@ func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, r
 
 	argType = sig.Params().At(0).Type()
 	retType = sig.Results().At(0).Type()
-	returnsError = sig.Results().Len() == 2 && util.IsErrorType(sig.Results().At(1).Type())
+	retError = sig.Results().Len() == 2 && util.IsErrorType(sig.Results().At(1).Type())
 	return
 }
 
@@ -195,10 +195,10 @@ func (p *Parser) lookupPostprocessFunc(funcName string, pos token.Pos) (*option.
 	}
 
 	return &option.Postprocess{
-		Func:         obj,
-		DstSide:      sig.Params().At(0).Type(),
-		SrcSide:      sig.Params().At(1).Type(),
-		ReturnsError: sig.Results().Len() == 1 && util.IsErrorType(sig.Results().At(0).Type()),
-		Pos:          pos,
+		Func:     obj,
+		DstSide:  sig.Params().At(0).Type(),
+		SrcSide:  sig.Params().At(1).Type(),
+		RetError: sig.Results().Len() == 1 && util.IsErrorType(sig.Results().At(0).Type()),
+		Pos:      pos,
 	}, nil
 }

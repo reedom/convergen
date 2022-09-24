@@ -9,7 +9,7 @@ import (
 	"github.com/reedom/convergen/pkg/util"
 )
 
-func (p *FunctionBuilder) buildPostProcess(m *bmodel.MethodEntry, src *types.Var, dst *types.Var, returnsError bool) (*gmodel.Manipulator, error) {
+func (p *FunctionBuilder) buildPostProcess(m *bmodel.MethodEntry, src *types.Var, dst *types.Var, retError bool) (*gmodel.Manipulator, error) {
 	if m.Opts.PostProcess == nil {
 		return nil, nil
 	}
@@ -19,13 +19,13 @@ func (p *FunctionBuilder) buildPostProcess(m *bmodel.MethodEntry, src *types.Var
 	ret := &gmodel.Manipulator{}
 	ret.Pkg, _ = p.imports.LookupName(pp.Func.Pkg().Path())
 	ret.Name = pp.Func.Name()
-	ret.ReturnsError = pp.ReturnsError
+	ret.RetError = pp.RetError
 
 	if ret.Pkg != "" && !pp.Func.Exported() {
 		return nil, logger.Errorf("%v: postprocess function %v is not exported", p.fset.Position(pp.Pos), ret.FuncName())
 	}
 
-	if pp.ReturnsError != returnsError {
+	if pp.RetError != retError {
 		return nil, logger.Errorf("%v: cannot use postprocess function %v due to mismatch of returning error", p.fset.Position(pp.Pos), ret.FuncName())
 	}
 

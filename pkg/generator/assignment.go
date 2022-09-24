@@ -20,13 +20,13 @@ func AssignmentToString(f *model.Function, a *model.Assignment) string {
 		sb.WriteString("\n")
 	default:
 		sb.WriteString(a.LHS)
-		if a.RHS.ReturnsError() {
+		if a.RHS.RetError() {
 			sb.WriteString(", err")
 		}
 		sb.WriteString(" = ")
 		sb.WriteString(a.RHS.String())
 		sb.WriteString("\n")
-		if a.RHS.ReturnsError() {
+		if a.RHS.RetError() {
 			if f.DstVarStyle == model.DstVarReturn && f.Dst.Pointer {
 				sb.WriteString("if err != nil {\nreturn nil, err\n}\n")
 			} else {

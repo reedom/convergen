@@ -164,10 +164,10 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 		}
 
 		retType := retTypes.At(0).Type()
-		returnsError := retTypes.Len() == 2 && util.IsErrorType(retTypes.At(1).Type())
+		retError := retTypes.Len() == 2 && util.IsErrorType(retTypes.At(1).Type())
 		if rhs, ok := b.buildRHS(src.rhsExpr(m), retType, dst.fieldType()); ok {
 			logger.Printf("%v: assignment found: %v = %v", p.fset.Position(methodPos), lhs, rhs)
-			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: returnsError}}
+			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: retError}}
 		}
 		return true
 	})
@@ -238,10 +238,10 @@ func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstField
 	if ok {
 		switch typ := obj.(type) {
 		case *types.Func:
-			if ret, returnsError, ok := util.ParseGetterReturnTypes(typ); ok && !returnsError {
+			if ret, retError, ok := util.ParseGetterReturnTypes(typ); ok && !retError {
 				if rhs, ok := buildRHSWithConverter(expr, ret); ok {
 					logger.Printf("%v: assignment found: %v = %v, err", p.fset.Position(pos), lhs, rhs)
-					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.ReturnsError()}}, nil
+					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.RetError()}}, nil
 				}
 			}
 			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
@@ -249,7 +249,7 @@ func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstField
 		case *types.Var:
 			if rhs, ok := buildRHSWithConverter(expr, typ.Type()); ok {
 				logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
-				return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.ReturnsError()}}, nil
+				return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.RetError()}}, nil
 			}
 			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
 			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
@@ -269,11 +269,11 @@ func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEnt
 	if ok {
 		switch typ := obj.(type) {
 		case *types.Func:
-			if ret, returnsError, ok := util.ParseGetterReturnTypes(typ); ok {
+			if ret, retError, ok := util.ParseGetterReturnTypes(typ); ok {
 				rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
 				if rhs, ok := b.buildRHS(rhsExpr, ret, dst.fieldType()); ok {
 					logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
-					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: returnsError}}, nil
+					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: retError}}, nil
 				}
 			}
 			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
@@ -349,7 +349,7 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, strct *typ
 				return
 			}
 
-			ret, returnsError, valid := util.ParseGetterReturnTypes(method)
+			ret, retError, valid := util.ParseGetterReturnTypes(method)
 			if !valid {
 				return
 			}
@@ -360,7 +360,7 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, strct *typ
 				ok = true
 				return
 			} else {
-				if returnsError {
+				if retError {
 					// It should be a simple getter, otherwise it cannot be a part of method chain.
 					return
 				}
@@ -388,12 +388,12 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, strct *typ
 	return
 }
 
-func compliesGetter(retTypes *types.Tuple, returnsError bool) bool {
+func compliesGetter(retTypes *types.Tuple, retError bool) bool {
 	num := retTypes.Len()
 	if num == 0 || 2 < num {
 		return false
 	}
-	return num == 1 || returnsError && util.IsErrorType(retTypes.At(1).Type())
+	return num == 1 || retError && util.IsErrorType(retTypes.At(1).Type())
 }
 
 var stringer *types.Interface

@@ -242,7 +242,7 @@ func GetMethodReturnTypes(m *types.Func) (*types.Tuple, bool) {
 	return sig.Results(), true
 }
 
-func ParseGetterReturnTypes(m *types.Func) (ret types.Type, returnsError, ok bool) {
+func ParseGetterReturnTypes(m *types.Func) (ret types.Type, retError, ok bool) {
 	sig := m.Type().(*types.Signature)
 	num := sig.Results().Len()
 	if num == 0 || 2 < num {

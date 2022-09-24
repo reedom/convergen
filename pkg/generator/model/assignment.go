@@ -12,7 +12,7 @@ type Assignment struct {
 
 type AssignmentRHS interface {
 	String() string
-	ReturnsError() bool
+	RetError() bool
 }
 
 // SkipField indicates that the field is skipped due to a :skip notation.
@@ -23,7 +23,7 @@ func (s SkipField) String() string {
 	return ""
 }
 
-func (s SkipField) ReturnsError() bool {
+func (s SkipField) RetError() bool {
 	return false
 }
 
@@ -35,7 +35,7 @@ func (s NoMatchField) String() string {
 	return ""
 }
 
-func (s NoMatchField) ReturnsError() bool {
+func (s NoMatchField) RetError() bool {
 	return false
 }
 
@@ -49,7 +49,7 @@ func (s SimpleField) String() string {
 	return s.Path
 }
 
-func (s SimpleField) ReturnsError() bool {
+func (s SimpleField) RetError() bool {
 	return s.Error
 }
 
@@ -64,7 +64,7 @@ func (c Converter) String() string {
 	return fmt.Sprintf("%v(%v)", c.Func, c.Arg)
 }
 
-func (c Converter) ReturnsError() bool {
+func (c Converter) RetError() bool {
 	return c.Error
 }
 
@@ -81,6 +81,6 @@ func (c StructAssignment) String() string {
 	return sb.String()
 }
 
-func (c StructAssignment) ReturnsError() bool {
+func (c StructAssignment) RetError() bool {
 	return false
 }

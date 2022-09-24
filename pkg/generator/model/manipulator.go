@@ -5,11 +5,11 @@ import (
 )
 
 type Manipulator struct {
-	Pkg          string
-	Name         string
-	IsDstPtr     bool
-	IsSrcPtr     bool
-	ReturnsError bool
+	Pkg      string
+	Name     string
+	IsDstPtr bool
+	IsSrcPtr bool
+	RetError bool
 }
 
 func (m *Manipulator) FuncName() string {

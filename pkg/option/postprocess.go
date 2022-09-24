@@ -6,9 +6,9 @@ import (
 )
 
 type Postprocess struct {
-	Func         types.Object
-	DstSide      types.Type
-	SrcSide      types.Type
-	ReturnsError bool
-	Pos          token.Pos
+	Func     types.Object
+	DstSide  types.Type
+	SrcSide  types.Type
+	RetError bool
+	Pos      token.Pos
 }

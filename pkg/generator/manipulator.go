@@ -8,7 +8,7 @@ import (
 
 func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var) string {
 	var sb strings.Builder
-	if m.ReturnsError {
+	if m.RetError {
 		sb.WriteString("err = ")
 	}
 	if m.Pkg != "" {
@@ -38,7 +38,7 @@ func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var
 	sb.WriteString(src.Name)
 	sb.WriteString(")\n")
 
-	if m.ReturnsError {
+	if m.RetError {
 		sb.WriteString("if err != nil {\nreturn\n}\n")
 	}
 
