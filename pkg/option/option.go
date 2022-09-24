@@ -3,7 +3,7 @@ package option
 import (
 	"strings"
 
-	"github.com/reedom/convergen/pkg/model"
+	"github.com/reedom/convergen/pkg/generator/model"
 )
 
 type Options struct {

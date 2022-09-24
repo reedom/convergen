@@ -3,7 +3,7 @@ package generator
 import (
 	"strings"
 
-	"github.com/reedom/convergen/pkg/model"
+	"github.com/reedom/convergen/pkg/generator/model"
 )
 
 func (g *Generator) FuncToString(f *model.Function) string {

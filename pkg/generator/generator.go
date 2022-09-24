@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/reedom/convergen/pkg/model"
+	"github.com/reedom/convergen/pkg/generator/model"
 	"golang.org/x/tools/imports"
 )
 

@@ -5,7 +5,7 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/reedom/convergen/pkg/model"
+	"github.com/reedom/convergen/pkg/generator/model"
 )
 
 // dstFieldEntry contains assignment LHS(left hand side) information.

@@ -7,8 +7,8 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/reedom/convergen/pkg/generator/model"
 	"github.com/reedom/convergen/pkg/logger"
-	"github.com/reedom/convergen/pkg/model"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
 	"golang.org/x/tools/go/packages"

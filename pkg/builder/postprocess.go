@@ -3,8 +3,8 @@ package builder
 import (
 	"go/types"
 
+	"github.com/reedom/convergen/pkg/generator/model"
 	"github.com/reedom/convergen/pkg/logger"
-	"github.com/reedom/convergen/pkg/model"
 	"github.com/reedom/convergen/pkg/util"
 )
 
