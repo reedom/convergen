@@ -9,8 +9,10 @@ Notation Table
 | notation                                          | location         | summary                                                                  |
 |---------------------------------------------------|------------------|--------------------------------------------------------------------------|
 | :convergen                                        | interface        | Mark the interface as a converter definition.                            |
-| :style &lt;`return` &#124; `arg`>                 | interface,method | Set the style of the assignee variable input/output (default: `return`). |
 | :match &lt;`name` &#124; `none`>                  | interface,method | Set the field matcher algorithm (default: `name`).                       |
+| :style &lt;`return` &#124; `arg`>                 | interface,method | Set the style of the assignee variable input/output (default: `return`). |
+| :recv &lt;_var_>                                  | method           | Specify the source value as a receiver of the generated function.        |
+| :reverse                                          | method           | Reverse copy direction. Might be useful with receiver form.              |
 | :case                                             | interface,method | Set case-sensitive for name match (default).                             |
 | :case:off                                         | interface,method | Set case-insensitive for name match.                                     |
 | :getter                                           | interface,method | Include getters for name match.                                          |
@@ -19,8 +21,6 @@ Notation Table
 | :stringer:off                                     | interface,method | Call String() if appropriate in name match (default).                    |
 | :typecast                                         | interface,method | Allow type casting if appropriate in name match.                         |
 | :typecast:off                                     | interface,method | Suppress type casting if appropriate in name match (default).            |
-| :recv &lt;_var_>                                  | method           | Specify the source value as a receiver of the generated function.        |
-| :reverse                                          | method           | Reverse copy direction. Might be useful with receiver form.              |
 | :skip &lt;_dst field_>                            | method           | Specify field(s) to omit.                                                |
 | :map &lt;_src field_> &lt;_dst field_>            | method           | Specify field mapping rule.                                              |
 | :conv &lt;_func_> &lt;_src field_> [_to field_]   | method           | Specify a converter for field(s).                                        |
@@ -205,6 +205,71 @@ type PersistentConvergen struct {
 ```
 
 
+### `:match <algorithm>`
+
+Set the field matcher algorithm.
+
+__Default__
+
+`:match name`
+
+__Available locations__
+
+interface,method
+
+__Format__
+
+```text
+":match" <algorithm>
+
+algorithm = "name" | none"
+```
+
+__Examples__
+
+With `name` match, the generator matches up with fields or getters names (and their types).
+
+```go
+package model
+
+type User struct {
+    ID   int
+    Name string
+}
+```
+```go
+package web
+
+type User struct {
+    id   int
+    name string
+}
+
+func (u *User) ID() int {
+  return u.id
+}
+```
+```go
+// :match name 
+type Convergen interface {
+    ToStorage(*User) *storage.User
+}
+```
+
+Convergen generates:
+
+```go
+func ToStorage(src *User) (dst *storage.User) {
+    dst := &storage.User{}
+    dst.ID = src.ID()
+    dst.Name = src.name
+
+    return
+}
+```
+
+With `none` match, it only processes explicitly specified fields or getters via `:map` and `:conv`. 
+
 ### `:style <style>`
 
 Set the style of the assignee variable input/output.
@@ -267,70 +332,129 @@ with receiver:
 func (src *domain.Pet) ToStorage(dst *storage.Pet) {
 ```
 
-### `:match <algorithm>`
+### `:recv <var>`
 
-Set the field matcher algorithm.
+Specify the source value as a receiver of the generated function.
+
+By the Go language specification, the receiver type must be defined in the same package to
+where the Convergen generates.  
+By convention, &lt;_var_> should be the same identifier with what the methods of the type defines.
 
 __Default__
 
-`:match name`
+No receiver to be used.
 
 __Available locations__
 
-interface,method
+method
 
 __Format__
 
 ```text
-":match" <algorithm>
+":recv" var
 
-algorithm = "name" | none"
+var = variable-identifier 
 ```
 
 __Examples__
 
-With `name` match, the generator matches up with fields or getters names (and their types).
+In the following example, it assumes `domain.User` is defined in other file under the same directory(package).  
+And also assumes that other methods choose `u` as their receiver variable name. So the same comes.
+
+To clarify, either is okay that to define types in a Convergen setup file or in separated files.  
+
 
 ```go
-package model
+package domain
 
-type User struct {
-  ID   int
-  Name string
-}
-```
-```go
-package web
+import (
+    "github.com/sample/myapp/storage"
+)
 
-type User struct {
-  id   int
-  name string
-}
-
-func (u *User) ID() int {
-  return u.id
-}
-```
-```go
-// :match name 
 type Convergen interface {
-  ToStorage(*User) *storage.User
+    // :recv u
+    ToStorage(*User) *storage.User	
 }
 ```
 
-Convergen generates:
+Will have:
 
 ```go
-func ToStorage(src *User) (dst *storage.User) {
-  dst := &storage.User{}
-  dst.ID = src.ID()
-  dst.Name = src.name
-  
-  return
+package domain
+
+import (
+    "github.com/sample/myapp/storage"
+)
+
+type User struct {
+    ID   int
+    Name string
+}
+
+func (u *User) ToStorage() (dst *storage.User) {
+    dst = &storage.User{}
+    dst.ID = int64(u.ID)	
+    dst.Name = u.Name
+
+    return
 }
 ```
 
-With `none` match, it only processes explicitly specified fields or getters via `:map` and `:conv`. 
+### `:reverse <var>`
+
+Reverse copy direction. Might be useful with receiver form.  
+To use `:reverse`, `:style arg` is required. (Otherwise it can't have any data source to copy from.)
+
+__Default__
+
+Copy in normal direction. In receiver form, receiver to a variable in argument.
+
+__Available locations__
+
+method
+
+__Format__
+
+```text
+":reverse"
+```
+
+__Examples__
+
+```go
+package domain
+
+import (
+    "github.com/sample/myapp/storage"
+)
+
+type Convergen interface {
+    // :style arg
+    // :recv u
+	  // :reverse
+    FromStorage(*User) *storage.User	
+}
+```
+
+Will have:
+
+```go
+package domain
+
+import (
+    "github.com/sample/myapp/storage"
+)
+
+type User struct {
+    ID   int
+    Name string
+}
+
+func (u *User) FromStorage(src *storage.User) {
+    u.ID = int(src.User)	
+    u.Name = src.Name
+}
+```
 
 ### `:case` / `:case:off`
 
@@ -422,7 +546,7 @@ type Convergen struct {
 ```go
 func ToStorageUser(src *domain.User) (dst *storage.User)
     dst = &storage.User{}
-	  // no match: dst.Name
+    // no match: dst.Name
 
     return
 }
@@ -440,7 +564,7 @@ type Convergen struct {
 ```go
 func ToStorageUser(src *domain.User) (dst *storage.User)
     dst = &storage.User{}
-	  dst.Name = src.Name()
+    dst.Name = src.Name()
 
     return
 }
@@ -523,7 +647,7 @@ type Convergen struct {
 ```go
 func ToStorageUser(src *domain.User) (dst *storage.User)
     dst = &storage.User{}
-	  dst.Status = src.Status.String()
+    dst.Status = src.Status.String()
 
     return
 }
@@ -580,7 +704,7 @@ type Status string
 package storage
 
 type User struct {
-    ID     int64	
+    ID     int64  
     Name   string
     Status string
 }
@@ -615,7 +739,7 @@ With `:typecast` it turns to:
 ```go
 func ToDomainUser(src *storage.User) (dst *domain.User)
     dst = &domain.User{}
-	  dst.ID = int(src.ID)
+    dst.ID = int(src.ID)
     dst.Name = src.Name
     dst.Status = domain.Status(src.Status)
 
