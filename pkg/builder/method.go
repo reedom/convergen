@@ -51,10 +51,18 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	dst := m.DstVar()
 
 	if !util.IsStructType(util.DerefPtr(src.Type())) {
-		return nil, logger.Errorf("%v: src type should be a struct but %v", p.fset.Position(dst.Pos()), src.Type().Underlying().String())
+		if util.IsInvalidType(src.Type()) {
+			return nil, logger.Errorf("%v: src type is not defined. make sure to be imported", p.fset.Position(dst.Pos()))
+		} else {
+			return nil, logger.Errorf("%v: src type should be a struct but %v", p.fset.Position(dst.Pos()), src.Type().Underlying().String())
+		}
 	}
 	if !util.IsStructType(util.DerefPtr(dst.Type())) {
-		return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().Underlying().String())
+		if util.IsInvalidType(src.Type()) {
+			return nil, logger.Errorf("%v: dst type is not defined. make sure to be imported", p.fset.Position(dst.Pos()))
+		} else {
+			return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().Underlying().String())
+		}
 	}
 
 	srcDefName := "src"

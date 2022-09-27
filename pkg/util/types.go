@@ -24,6 +24,13 @@ func IsErrorType(t types.Type) bool {
 	return t.String() == "error"
 }
 
+func IsInvalidType(t types.Type) bool {
+	if typ, ok := DerefPtr(t).Underlying().(*types.Basic); ok {
+		return typ.Kind() == types.Invalid
+	}
+	return false
+}
+
 func IsStructType(t types.Type) bool {
 	_, ok := t.Underlying().(*types.Struct)
 	return ok
