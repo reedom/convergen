@@ -6,25 +6,25 @@ A type-to-type copy function code generator.
 Notation Table
 --------------
 
-| notation                                  | location         | summary                                                                  |
-|-------------------------------------------|------------------|--------------------------------------------------------------------------|
-| :convergen                                | interface        | Mark the interface as a converter definition.                            |
-| :match &lt;`name` &#124; `none`>          | interface,method | Set the field matcher algorithm (default: `name`).                       |
-| :style &lt;`return` &#124; `arg`>         | interface,method | Set the style of the assignee variable input/output (default: `return`). |
-| :recv &lt;_var_>                          | method           | Specify the source value as a receiver of the generated function.        |
-| :reverse                                  | method           | Reverse copy direction. Might be useful with receiver form.              |
-| :case                                     | interface,method | Set case-sensitive for name match (default).                             |
-| :case:off                                 | interface,method | Set case-insensitive for name match.                                     |
-| :getter                                   | interface,method | Include getters for name match.                                          |
-| :getter:off                               | interface,method | Exclude getters for name match (default).                                |
-| :stringer                                 | interface,method | Call String() if appropriate in name match.                              |
-| :stringer:off                             | interface,method | Call String() if appropriate in name match (default).                    |
-| :typecast                                 | interface,method | Allow type casting if appropriate in name match.                         |
-| :typecast:off                             | interface,method | Suppress type casting if appropriate in name match (default).            |
-| :skip &lt;_dst field_>                    | method           | Mark a destination field to skip copying.                                |
-| :map &lt;_src_> &lt;_dst field_>          | method           | Map two pair as assign source and destination.                           |
-| :conv &lt;_func_> &lt;_src_> [_to field_] | method           | Apply a converter to source value and assign the result to destination.  |
-| :postprocess &lt;_func_>                  | method           | Call a function at the end.                           |
+| notation                                  | location         | summary                                                                   |
+|-------------------------------------------|------------------|---------------------------------------------------------------------------|
+| :convergen                                | interface        | Mark the interface as a converter definition.                             |
+| :match &lt;`name` &#124; `none`>          | interface,method | Set the field matcher algorithm (default: `name`).                        |
+| :style &lt;`return` &#124; `arg`>         | interface,method | Set the style of the assignee variable input/output (default: `return`).  |
+| :recv &lt;_var_>                          | method           | Specify the source value as a receiver of the generated function.         |
+| :reverse                                  | method           | Reverse copy direction. Might be useful with receiver form.               |
+| :case                                     | interface,method | Set case-sensitive for name match (default).                              |
+| :case:off                                 | interface,method | Set case-insensitive for name match.                                      |
+| :getter                                   | interface,method | Include getters for name match.                                           |
+| :getter:off                               | interface,method | Exclude getters for name match (default).                                 |
+| :stringer                                 | interface,method | Call String() if appropriate in name match.                               |
+| :stringer:off                             | interface,method | Call String() if appropriate in name match (default).                     |
+| :typecast                                 | interface,method | Allow type casting if appropriate in name match.                          |
+| :typecast:off                             | interface,method | Suppress type casting if appropriate in name match (default).             |
+| :skip &lt;_dst field pattern_>            | method           | Mark a destination field to skip copying. Regex is allowed in /…/ syntax. |
+| :map &lt;_src_> &lt;_dst field_>          | method           | Map two pair as assign source and destination.                            |
+| :conv &lt;_func_> &lt;_src_> [_to field_] | method           | Apply a converter to source value and assign the result to destination.   |
+| :postprocess &lt;_func_>                  | method           | Call a function at the end.                                               |
 
 Sample
 ------
@@ -747,12 +747,15 @@ func ToDomainUser(src *storage.User) (dst *domain.User)
 }
 ```
 
-### `:skip <dst field>`
+### `:skip <dst field pattern>`
 
 Mark a destination field to skip copying.  
 
-A method can have multiple `:skip` lines that enable to skip multiple fields.
+A method can have multiple `:skip` lines that enable to skip multiple fields.  
+Other than field-path match, it accepts [regular expression][] match. To specify, wrap the expression with `/`.  
 `:case` / `:case:off` affect to `:skip`.
+
+[regular expression]: https://github.com/google/re2/wiki/Syntax
 
 __Available locations__
 
@@ -761,10 +764,11 @@ method
 __Format__
 
 ```text
-":skip" dst-field
+":skip" dst-field-pattern
 
-dst-field    = field-path
-field-path   = { identifier "." } identifier 
+dst-field-pattern  = field-path | regexp
+field-path         = { identifier "." } identifier
+regexp             = "/" regular-expression "/" 
 ```
 
 __Examples__
@@ -772,8 +776,7 @@ __Examples__
 ```go
 type Convergen interface {
     // :skip Name
-    // :skip Status
-    // :skip Created
+    // :skip /^(Status|Created)$/
     ToStorage(*domain.User) *storage.User
 }
 ```

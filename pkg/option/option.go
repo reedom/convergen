@@ -17,7 +17,7 @@ type Options struct {
 
 	Receiver    string
 	Reverse     bool
-	SkipFields  []*IdentMatcher
+	SkipFields  []*PatternMatcher
 	NameMapper  []*NameMatcher
 	Converters  []*FieldConverter
 	PostProcess *Postprocess

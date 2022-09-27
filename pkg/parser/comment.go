@@ -86,7 +86,10 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
 			}
-			matcher := option.NewIdentMatcher(args[0])
+			matcher, err := option.NewPatternMatcher(args[0], opts.ExactCase)
+			if err != nil {
+				return logger.Errorf("%v: invalid regexp", p.fset.Position(n.Pos()))
+			}
 			opts.SkipFields = append(opts.SkipFields, matcher)
 		case "map":
 			if len(args) < 2 {
