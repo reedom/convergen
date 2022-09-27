@@ -202,7 +202,7 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 		return a, err
 	}
 
-	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, b.p.imports.TypeName(dst.fieldType()))
+	logger.Warnf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, b.p.imports.TypeName(dst.fieldType()))
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
@@ -263,7 +263,7 @@ func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstField
 		}
 	}
 
-	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
+	logger.Warnf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
@@ -296,7 +296,7 @@ func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEnt
 		}
 	}
 
-	logger.Printf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
+	logger.Warnf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
 	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 }
 
@@ -316,7 +316,7 @@ func (b *assignmentBuilder) typeCast(t types.Type, inner string, pos token.Pos) 
 	case *types.Basic:
 		return fmt.Sprintf("%v(%v)", t.String(), inner), true
 	default:
-		logger.Printf("%v: typecast for %v is not implemented(yet) for %v",
+		logger.Warnf("%v: typecast for %v is not implemented(yet) for %v",
 			b.p.fset.Position(pos), b.p.imports.TypeName(t), inner)
 		return "", false
 	}

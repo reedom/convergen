@@ -14,7 +14,8 @@ type option struct {
 	out     io.Writer
 }
 
-var logger *log.Logger = log.New(io.Discard, "", 0)
+var logger = log.New(io.Discard, "", 0)
+var elogger = log.New(os.Stderr, "", 0)
 
 func Enable() loggerOpt {
 	return func(opt *option) {
@@ -36,21 +37,30 @@ func SetupLogger(options ...loggerOpt) {
 
 	if !opt.enabled {
 		logger = log.New(io.Discard, "", 0)
+		elogger = log.New(os.Stderr, "", 0)
 	} else if opt.out != nil {
 		//f, err := os.OpenFile(opt.outputPath, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0644)
 		//if err != nil {
 		//	return err
 		//}
 		logger = log.New(opt.out, "", log.LstdFlags)
+		elogger = log.New(os.Stderr, "", 0)
 	} else {
 		logger = log.New(os.Stdout, "", log.LstdFlags)
+		elogger = log.New(io.Discard, "", 0)
 	}
 }
 
 func Errorf(format string, a ...any) error {
 	err := fmt.Errorf(format, a...)
 	logger.Println(err.Error())
+	elogger.Println(err.Error())
 	return err
+}
+
+func Warnf(format string, a ...any) {
+	logger.Printf(format, a...)
+	elogger.Printf(format, a...)
 }
 
 func Printf(format string, a ...any) {
