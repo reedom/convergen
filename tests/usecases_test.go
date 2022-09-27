@@ -2,7 +2,6 @@ package testing
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"testing"
 
@@ -71,6 +70,8 @@ func TestUseCases(t *testing.T) {
 		},
 	}
 
+	logger.SetupLogger(logger.ForTest())
+
 	for _, tt := range cases {
 		tt := tt
 		t.Run(tt.source, func(t *testing.T) {
@@ -78,10 +79,8 @@ func TestUseCases(t *testing.T) {
 			expected, err := os.ReadFile(tt.expected)
 			require.Nil(t, err)
 
-			if tt.source == "fixtures/usecase/ref/setup.go" {
-				log.SetFlags(log.Llongfile)
-				logger.SetupLogger(logger.Enable())
-			}
+			//log.SetFlags(log.Llongfile)
+			//logger.SetupLogger(logger.Enable())
 
 			p, err := parser.NewParser(tt.source)
 			require.Nil(t, err)

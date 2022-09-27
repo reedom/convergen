@@ -11,6 +11,7 @@ type loggerOpt func(*option)
 
 type option struct {
 	enabled bool
+	forTest bool
 	out     io.Writer
 }
 
@@ -26,6 +27,12 @@ func Enable() loggerOpt {
 func Output(out io.Writer) loggerOpt {
 	return func(opt *option) {
 		opt.out = out
+	}
+}
+
+func ForTest() loggerOpt {
+	return func(opt *option) {
+		opt.forTest = true
 	}
 }
 
@@ -47,6 +54,10 @@ func SetupLogger(options ...loggerOpt) {
 		elogger = log.New(os.Stderr, "", 0)
 	} else {
 		logger = log.New(os.Stdout, "", log.LstdFlags)
+		elogger = log.New(io.Discard, "", 0)
+	}
+
+	if opt.forTest {
 		elogger = log.New(io.Discard, "", 0)
 	}
 }
