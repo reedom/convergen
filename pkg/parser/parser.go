@@ -2,7 +2,6 @@ package parser
 
 import (
 	"bytes"
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
@@ -178,9 +177,6 @@ func (p *Parser) GenerateBaseCode() (code string, err error) {
 	for _, entry := range p.intfEntries {
 		reMarker := regexp.QuoteMeta(entry.marker)
 		re := regexp.MustCompile(`.+` + reMarker + ".*(\n|.)*?" + reMarker)
-		if !re.MatchString(base) {
-			fmt.Printf("@@@ NOT MATCH %v\n", entry.marker)
-		}
 		base = re.ReplaceAllString(base, entry.marker)
 	}
 

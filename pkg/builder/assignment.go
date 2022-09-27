@@ -410,19 +410,16 @@ func supportsStringer(src types.Type, dst types.Type) bool {
 
 	named, ok := util.DerefPtr(src).(*types.Named)
 	if !ok {
-		fmt.Printf("@@@ 1")
 		return false
 	}
 
 	obj, _, _ := types.LookupFieldOrMethod(named, false, named.Obj().Pkg(), "String")
 	if obj == nil {
-		fmt.Printf("@@@ 2")
 		return false
 	}
 
 	sig, ok := obj.Type().(*types.Signature)
 	if !ok {
-		fmt.Printf("@@@ 3")
 		return false
 	}
 
