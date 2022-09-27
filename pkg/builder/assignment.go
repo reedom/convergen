@@ -11,7 +11,6 @@ import (
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
-	"golang.org/x/tools/go/packages"
 )
 
 type assignmentBuilder struct {
@@ -403,23 +402,31 @@ func compliesGetter(retTypes *types.Tuple, retError bool) bool {
 	return num == 1 || retError && util.IsErrorType(retTypes.At(1).Type())
 }
 
-var stringer *types.Interface
-
 func supportsStringer(src types.Type, dst types.Type) bool {
 	strType := types.Universe.Lookup("string").Type()
 	if !types.AssignableTo(strType, dst) {
 		return false
 	}
 
-	if stringer == nil {
-		cfg := &packages.Config{Mode: packages.NeedTypes}
-		pkgs, err := packages.Load(cfg, "fmt")
-		if err != nil {
-			panic(err)
-		}
-		t := pkgs[0].Types.Scope().Lookup("Stringer").Type()
-		stringer = t.Underlying().(*types.Interface)
+	named, ok := util.DerefPtr(src).(*types.Named)
+	if !ok {
+		fmt.Printf("@@@ 1")
+		return false
 	}
 
-	return types.Implements(src, stringer)
+	obj, _, _ := types.LookupFieldOrMethod(named, false, named.Obj().Pkg(), "String")
+	if obj == nil {
+		fmt.Printf("@@@ 2")
+		return false
+	}
+
+	sig, ok := obj.Type().(*types.Signature)
+	if !ok {
+		fmt.Printf("@@@ 3")
+		return false
+	}
+
+	return sig.Params().Len() == 0 &&
+		sig.Results().Len() == 1 &&
+		sig.Results().At(0).Type().String() == "string"
 }
