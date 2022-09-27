@@ -128,7 +128,7 @@ $ go get -u github.com/reedom/convergen@latest
 then write a generator as:
 
 ```go
-//go:generate go run github.com/reedom/convergen@v0.4.0
+//go:generate go run github.com/reedom/convergen@v0.4.1
 type Convergen interface {
     …
 }
