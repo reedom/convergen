@@ -251,14 +251,14 @@ func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstField
 					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.RetError()}}, nil
 				}
 			}
-			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
+			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
 			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 		case *types.Var:
 			if rhs, ok := buildRHSWithConverter(expr, typ.Type()); ok {
 				logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
 				return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.RetError()}}, nil
 			}
-			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
+			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
 			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 		}
 	}
@@ -283,7 +283,7 @@ func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEnt
 					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: retError}}, nil
 				}
 			}
-			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
+			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
 			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 		case *types.Var:
 			rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
@@ -291,7 +291,7 @@ func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEnt
 				logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
 				return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}, nil
 			}
-			logger.Printf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
+			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
 			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
 		}
 	}
