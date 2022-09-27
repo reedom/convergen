@@ -45,7 +45,7 @@ import (
     "github.com/sample/myapp/storage"
 )
 
-//go:generate go run github.com/reedom/convergen@v0.3.2
+//go:generate go run github.com/reedom/convergen@v0.4.0
 type Convergen interface {
     // :typecast
     // :stringer
@@ -128,7 +128,7 @@ $ go get -u github.com/reedom/convergen@latest
 then write a generator as:
 
 ```go
-//go:generate go run github.com/reedom/convergen@v0.3.2
+//go:generate go run github.com/reedom/convergen@v0.4.0
 type Convergen interface {
     …
 }
