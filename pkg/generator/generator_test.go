@@ -36,8 +36,8 @@ import (
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				RetError:    false,
 				DstVarStyle: model.DstVarArg,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID"},
 				},
 			},
 			expected: header + pre + `
@@ -57,8 +57,8 @@ func ToModel(dst *model.Pet, src *domain.Pet) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				RetError:    false,
 				DstVarStyle: model.DstVarReturn,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID"},
 				},
 			},
 			expected: header + pre + `
@@ -79,8 +79,8 @@ func ToModel(src *domain.Pet) (dst *model.Pet) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: false},
 				RetError:    false,
 				DstVarStyle: model.DstVarReturn,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID"},
 				},
 			},
 			expected: header + pre + `
@@ -100,8 +100,8 @@ func ToModel(src *domain.Pet) (dst model.Pet) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: false},
 				RetError:    false,
 				DstVarStyle: model.DstVarReturn,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID"},
 				},
 			},
 			expected: header + pre + `
@@ -121,8 +121,8 @@ func (src *domain.Pet) ToModel() (dst model.Pet) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				RetError:    false,
 				DstVarStyle: model.DstVarArg,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID"},
 				},
 			},
 			expected: header + pre + `
@@ -140,8 +140,8 @@ func (src *domain.Pet) ToModel(dst *model.Pet) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				RetError:    true,
 				DstVarStyle: model.DstVarArg,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID()", Error: true}},
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID()", Error: true},
 				},
 			},
 			expected: header + pre + `
@@ -164,8 +164,8 @@ func (src *domain.Pet) ToModel(dst *model.Pet) (err error) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				RetError:    true,
 				DstVarStyle: model.DstVarReturn,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID()", Error: true}},
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID()", Error: true},
 				},
 			},
 			expected: header + pre + `
@@ -189,8 +189,8 @@ func (src *domain.Pet) ToModel() (dst *model.Pet, err error) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: false},
 				RetError:    true,
 				DstVarStyle: model.DstVarReturn,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID()", Error: true}},
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID()", Error: true},
 				},
 			},
 			expected: header + pre + `
@@ -212,8 +212,8 @@ func (src *domain.Pet) ToModel() (dst model.Pet, err error) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				RetError:    true,
 				DstVarStyle: model.DstVarArg,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SkipField{}},
+				Assignments: []model.Assignment{
+					model.SkipField{LHS: "dst.ID"},
 				},
 			},
 			expected: header + pre + `
@@ -232,8 +232,8 @@ func ToModel(dst *model.Pet, src *domain.Pet) (err error) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				RetError:    true,
 				DstVarStyle: model.DstVarReturn,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.NoMatchField{}},
+				Assignments: []model.Assignment{
+					model.NoMatchField{LHS: "dst.ID"},
 				},
 			},
 			expected: header + pre + `
@@ -254,8 +254,8 @@ func ToModel(src *domain.Pet) (dst *model.Pet, err error) {
 				Dst:         model.Var{Name: "dst", PkgName: "model", Type: "Pet", Pointer: true},
 				RetError:    false,
 				DstVarStyle: model.DstVarArg,
-				Assignments: []*model.Assignment{
-					{LHS: "dst.ID", RHS: model.SimpleField{Path: "src.ID"}},
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID"},
 				},
 				PreProcess: &model.Manipulator{
 					Name:     "PreProcess",

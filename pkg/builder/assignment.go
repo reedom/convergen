@@ -17,7 +17,7 @@ type assignmentBuilder struct {
 	p           *FunctionBuilder
 	methodPos   token.Pos
 	opts        option.Options
-	assignments []*model.Assignment
+	assignments []model.Assignment
 }
 
 func newAssignmentBuilder(p *FunctionBuilder, methodPos token.Pos, opts option.Options) *assignmentBuilder {
@@ -25,18 +25,18 @@ func newAssignmentBuilder(p *FunctionBuilder, methodPos token.Pos, opts option.O
 		p:           p,
 		methodPos:   methodPos,
 		opts:        opts,
-		assignments: make([]*model.Assignment, 0),
+		assignments: make([]model.Assignment, 0),
 	}
 }
 
-func (b *assignmentBuilder) build(srcVar model.Var, src *types.Var, dstVar model.Var, dst types.Type) ([]*model.Assignment, error) {
+func (b *assignmentBuilder) build(srcVar model.Var, src *types.Var, dstVar model.Var, dst types.Type) ([]model.Assignment, error) {
 	srcStrct := srcStructEntry{
 		Var:   srcVar,
 		strct: src,
 	}
 
 	var err error
-	var a *model.Assignment
+	var a model.Assignment
 	util.IterateFields(dst, func(t *types.Var) (done bool) {
 		dstField := dstFieldEntry{
 			Var:   dstVar,
@@ -68,7 +68,7 @@ func (b *assignmentBuilder) buildNested(srcParent srcStructEntry, srcChild *type
 	}
 
 	var err error
-	var a *model.Assignment
+	var a model.Assignment
 	util.IterateFields(dstParent.field.Type(), func(t *types.Var) (done bool) {
 		dstField := dstFieldEntry{
 			parent: &dstParent,
@@ -90,7 +90,7 @@ func (b *assignmentBuilder) buildNested(srcParent srcStructEntry, srcChild *type
 	return err
 }
 
-func (b *assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (*model.Assignment, error) {
+func (b *assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (model.Assignment, error) {
 	lhs := dst.lhsExpr()
 
 	if !dst.isFieldAccessible() {
@@ -100,7 +100,7 @@ func (b *assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (*mode
 
 	if b.opts.ShouldSkip(dst.fieldPath()) {
 		logger.Printf("%v: skip %v", b.p.fset.Position(b.methodPos), lhs)
-		return &model.Assignment{LHS: lhs, RHS: model.SkipField{}}, nil
+		return model.SkipField{LHS: lhs}, nil
 	}
 
 	for _, converter := range b.opts.Converters {
@@ -137,7 +137,7 @@ func (b *assignmentBuilder) buildRHS(rhs string, srcType, dstType types.Type) (s
 	return "", false
 }
 
-func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) (*model.Assignment, error) {
+func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) (model.Assignment, error) {
 	p := b.p
 	opts := b.opts
 	methodPos := b.methodPos
@@ -145,7 +145,7 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 
 	logger.Printf("%v: lookup assignment for %v = %v.*", p.fset.Position(methodPos), lhs, src.rhsExpr(nil))
 
-	var a *model.Assignment
+	var a model.Assignment
 	var err error
 
 	util.IterateMethods(src.strct.Type(), func(m *types.Func) (done bool) {
@@ -166,7 +166,7 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 		retError := retTypes.Len() == 2 && util.IsErrorType(retTypes.At(1).Type())
 		if rhs, ok := b.buildRHS(src.rhsExpr(m), retType, dst.fieldType()); ok {
 			logger.Printf("%v: assignment found: %v = %v", p.fset.Position(methodPos), lhs, rhs)
-			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: retError}}
+			a = model.SimpleField{LHS: lhs, RHS: rhs, Error: retError}
 		}
 		return true
 	})
@@ -187,7 +187,7 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 
 		if rhs, ok := b.buildRHS(src.rhsExpr(f), f.Type(), dst.fieldType()); ok {
 			logger.Printf("%v: assignment found: %v = %v", p.fset.Position(methodPos), lhs, rhs)
-			a = &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}
+			a = model.SimpleField{LHS: lhs, RHS: rhs}
 			return true
 		}
 
@@ -202,10 +202,10 @@ func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) 
 	}
 
 	logger.Warnf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, b.p.imports.TypeName(dst.fieldType()))
-	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
+	return model.NoMatchField{LHS: lhs}, nil
 }
 
-func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstFieldEntry, converter *option.FieldConverter) (*model.Assignment, error) {
+func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstFieldEntry, converter *option.FieldConverter) (model.Assignment, error) {
 	p := b.p
 	opts := b.opts
 	pos := converter.Pos()
@@ -247,26 +247,26 @@ func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstField
 			if ret, retError, ok := util.ParseGetterReturnTypes(typ); ok && !retError {
 				if rhs, ok := buildRHSWithConverter(expr, ret); ok {
 					logger.Printf("%v: assignment found: %v = %v, err", p.fset.Position(pos), lhs, rhs)
-					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.RetError()}}, nil
+					return model.SimpleField{LHS: lhs, RHS: rhs, Error: converter.RetError()}, nil
 				}
 			}
 			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
-			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
+			return model.NoMatchField{LHS: lhs}, nil
 		case *types.Var:
 			if rhs, ok := buildRHSWithConverter(expr, typ.Type()); ok {
 				logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
-				return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: converter.RetError()}}, nil
+				return model.SimpleField{LHS: lhs, RHS: rhs, Error: converter.RetError()}, nil
 			}
 			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
-			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
+			return model.NoMatchField{LHS: lhs}, nil
 		}
 	}
 
 	logger.Warnf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
-	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
+	return model.NoMatchField{LHS: lhs}, nil
 }
 
-func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEntry, mapper *option.NameMatcher) (*model.Assignment, error) {
+func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEntry, mapper *option.NameMatcher) (model.Assignment, error) {
 	p := b.p
 	lhs := dst.lhsExpr()
 	pos := mapper.Pos()
@@ -279,24 +279,24 @@ func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEnt
 				rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
 				if rhs, ok := b.buildRHS(rhsExpr, ret, dst.fieldType()); ok {
 					logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
-					return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs, Error: retError}}, nil
+					return model.SimpleField{LHS: lhs, RHS: rhs, Error: retError}, nil
 				}
 			}
 			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
-			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
+			return model.NoMatchField{LHS: lhs}, nil
 		case *types.Var:
 			rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
 			if rhs, ok := b.buildRHS(rhsExpr, typ.Type(), dst.fieldType()); ok {
 				logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
-				return &model.Assignment{LHS: lhs, RHS: model.SimpleField{Path: rhs}}, nil
+				return model.SimpleField{LHS: lhs, RHS: rhs}, nil
 			}
 			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
-			return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
+			return model.NoMatchField{LHS: lhs}, nil
 		}
 	}
 
 	logger.Warnf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
-	return &model.Assignment{LHS: lhs, RHS: model.NoMatchField{}}, nil
+	return model.NoMatchField{LHS: lhs}, nil
 }
 
 func (b *assignmentBuilder) typeCast(t types.Type, inner string, pos token.Pos) (string, bool) {

@@ -13,7 +13,7 @@ type Function struct {
 	Dst         Var
 	RetError    bool
 	DstVarStyle DstVarStyle
-	Assignments []*Assignment
+	Assignments []Assignment
 	PreProcess  *Manipulator
 	PostProcess *Manipulator
 }

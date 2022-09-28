@@ -82,7 +82,7 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	}
 
 	builder := newAssignmentBuilder(p, m.Method.Pos(), m.Opts)
-	var assignments []*gmodel.Assignment
+	var assignments []gmodel.Assignment
 	var err error
 	if m.Opts.Reverse {
 		assignments, err = builder.build(dstVar, dst, srcVar, src.Type())
