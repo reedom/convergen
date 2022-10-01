@@ -50,19 +50,17 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	src := m.SrcVar()
 	dst := m.DstVar()
 
+	if util.IsInvalidType(src.Type()) {
+		return nil, logger.Errorf("%v: src type is not defined. make sure to be imported", p.fset.Position(src.Pos()))
+	}
+	if util.IsInvalidType(src.Type()) {
+		return nil, logger.Errorf("%v: dst type is not defined. make sure to be imported", p.fset.Position(dst.Pos()))
+	}
 	if !util.IsStructType(util.DerefPtr(src.Type())) {
-		if util.IsInvalidType(src.Type()) {
-			return nil, logger.Errorf("%v: src type is not defined. make sure to be imported", p.fset.Position(dst.Pos()))
-		} else {
-			return nil, logger.Errorf("%v: src type should be a struct but %v", p.fset.Position(dst.Pos()), src.Type().Underlying().String())
-		}
+		return nil, logger.Errorf("%v: src type should be a struct but %v", p.fset.Position(dst.Pos()), src.Type().Underlying().String())
 	}
 	if !util.IsStructType(util.DerefPtr(dst.Type())) {
-		if util.IsInvalidType(src.Type()) {
-			return nil, logger.Errorf("%v: dst type is not defined. make sure to be imported", p.fset.Position(dst.Pos()))
-		} else {
-			return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().Underlying().String())
-		}
+		return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().Underlying().String())
 	}
 
 	srcDefName := "src"
