@@ -124,23 +124,18 @@ func (p *FunctionBuilder) createVar(v *types.Var, defName string) gmodel.Var {
 		mv.Name = defName
 	}
 
-	p.parseVarType(v.Type(), &mv)
-	return mv
-}
-
-func (p *FunctionBuilder) parseVarType(t types.Type, varModel *gmodel.Var) {
-	switch typ := t.(type) {
-	case *types.Pointer:
-		varModel.Pointer = true
-		p.parseVarType(typ.Elem(), varModel)
+	typ, isPtr := util.Deref(v.Type())
+	mv.Pointer = isPtr
+	switch t := typ.(type) {
 	case *types.Named:
-		if pkgName, ok := p.imports[typ.Obj().Pkg().Path()]; ok {
-			varModel.PkgName = pkgName
+		mv.Type = t.Obj().Name()
+		if pkgName, ok := p.imports[t.Obj().Pkg().Path()]; ok {
+			mv.PkgName = pkgName
 		}
-		varModel.Type = typ.Obj().Name()
 	case *types.Basic:
-		varModel.Type = typ.Name()
+		mv.Type = t.Name()
 	default:
-		panic(t)
+		panic(typ)
 	}
+	return mv
 }
