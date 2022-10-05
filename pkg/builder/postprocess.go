@@ -23,7 +23,7 @@ func (p *FunctionBuilder) buildManipulator(m *option.Manipulator, src *types.Var
 		return nil, logger.Errorf("%v: postprocess function %v is not exported", p.fset.Position(m.Pos), ret.FuncName())
 	}
 
-	if m.RetError != retError {
+	if m.RetError && !retError {
 		return nil, logger.Errorf("%v: cannot use postprocess function %v due to mismatch of returning error", p.fset.Position(m.Pos), ret.FuncName())
 	}
 

@@ -10,7 +10,7 @@ import (
 	_ "github.com/reedom/convergen/tests/fixtures/usecase/postprocess/local"
 )
 
-func DomainToModel(src *domain.Pet) (dst *model.Pet) {
+func DomainToModel(src *domain.Pet) (dst *model.Pet, err error) {
 	dst = &model.Pet{}
 	PreDomainToModel(dst, *src)
 	// no match: dst.ID
@@ -19,7 +19,10 @@ func DomainToModel(src *domain.Pet) (dst *model.Pet) {
 	dst.Name = src.Name
 	// no match: dst.PhotoUrls
 	// no match: dst.Status
-	PostDomainToModel(dst, *src)
+	err = PostDomainToModel(dst, *src)
+	if err != nil {
+		return
+	}
 
 	return
 }
@@ -41,9 +44,8 @@ func ModelToDomain(src *model.Pet) (dst *domain.Pet, err error) {
 }
 
 func PreDomainToModel(lhs *model.Pet, rhs domain.Pet) {
-
 }
 
-func PostDomainToModel(lhs *model.Pet, rhs domain.Pet) {
-
+func PostDomainToModel(lhs *model.Pet, rhs domain.Pet) error {
+	return nil
 }
