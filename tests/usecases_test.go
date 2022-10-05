@@ -82,7 +82,7 @@ func TestUseCases(t *testing.T) {
 			//log.SetFlags(log.Llongfile)
 			//logger.SetupLogger(logger.Enable())
 
-			p, err := parser.NewParser(tt.source)
+			p, err := parser.NewParser(tt.source, tt.expected)
 			require.Nil(t, err)
 			methods, err := p.Parse()
 			require.Nil(t, err)

@@ -32,7 +32,7 @@ type Parser struct {
 const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedDeps |
 	packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo
 
-func NewParser(srcPath string) (*Parser, error) {
+func NewParser(srcPath, dstPath string) (*Parser, error) {
 	fileSet := token.NewFileSet()
 	var fileSrc *ast.File
 
@@ -40,6 +40,8 @@ func NewParser(srcPath string) (*Parser, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	dstStat, _ := os.Stat(dstPath)
 
 	cfg := &packages.Config{
 		Mode:       parserLoadMode,
@@ -50,6 +52,12 @@ func NewParser(srcPath string) (*Parser, error) {
 			if err != nil {
 				return nil, err
 			}
+
+			// If previously generation target file exists, skip reading it.
+			if os.SameFile(stat, dstStat) {
+				return nil, nil
+			}
+
 			if !os.SameFile(stat, srcStat) {
 				return parser.ParseFile(fset, filename, src, 0)
 			}

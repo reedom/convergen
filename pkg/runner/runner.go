@@ -19,7 +19,7 @@ func Run(conf config.Config) error {
 		logger.SetupLogger(logger.Enable(), logger.Output(f))
 	}
 
-	p, err := parser.NewParser(conf.Input)
+	p, err := parser.NewParser(conf.Input, conf.Output)
 	if err != nil {
 		return err
 	}
