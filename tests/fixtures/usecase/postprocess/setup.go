@@ -10,10 +10,15 @@ import (
 
 //go:generate go run github.com/reedom/convergen
 type Convergen interface {
+	// :preprocess PreDomainToModel
 	// :postprocess PostDomainToModel
 	DomainToModel(*domain.Pet) *model.Pet
 	// :postprocess local.PostModelToDomain
 	ModelToDomain(*model.Pet) (*domain.Pet, error)
+}
+
+func PreDomainToModel(lhs *model.Pet, rhs domain.Pet) {
+
 }
 
 func PostDomainToModel(lhs *model.Pet, rhs domain.Pet) {

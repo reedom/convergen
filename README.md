@@ -24,6 +24,7 @@ Notation Table
 | :skip &lt;_dst field pattern_>            | method           | Mark a destination field to skip copying. Regex is allowed in /…/ syntax. |
 | :map &lt;_src_> &lt;_dst field_>          | method           | Map two pair as assign source and destination.                            |
 | :conv &lt;_func_> &lt;_src_> [_to field_] | method           | Apply a converter to source value and assign the result to destination.   |
+| :preprocess &lt;_func_>                   | method           | Call a function at the beginning.                                         |
 | :postprocess &lt;_func_>                  | method           | Call a function at the end.                                               |
 
 Sample
@@ -1021,9 +1022,9 @@ func ToStorage(src *storage.User) (dst *domain.User, err error) {
 }
 ```
 
-### `:postprocess <func>`
+### `:preprocess <func>` / `:postprocess <func>`
 
-Call a function at the end.
+Call a function at the beginning(`preprocess`) or at the end(`postprocess`).
 
 __Available locations__
 
@@ -1032,6 +1033,7 @@ method
 __Format__
 
 ```text
+":preprocess"  func
 ":postprocess" func
 
 func  = identifier
@@ -1041,7 +1043,7 @@ __Examples__
 
 ```go
 type Convergen interface {
-    // :postprocess
+    // :preprocess
     FromStorage(*storage.User) *domain.User()
 }
 

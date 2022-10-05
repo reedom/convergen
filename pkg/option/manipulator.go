@@ -5,7 +5,7 @@ import (
 	"go/types"
 )
 
-type Postprocess struct {
+type Manipulator struct {
 	Func     types.Object
 	DstSide  types.Type
 	SrcSide  types.Type

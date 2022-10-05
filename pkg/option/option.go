@@ -20,7 +20,8 @@ type Options struct {
 	SkipFields  []*PatternMatcher
 	NameMapper  []*NameMatcher
 	Converters  []*FieldConverter
-	PostProcess *Postprocess
+	PreProcess  *Manipulator
+	PostProcess *Manipulator
 }
 
 func NewOptions() Options {
@@ -83,5 +84,6 @@ var ValidOpsMethod = map[string]struct{}{
 	"conv":         {},
 	"conv:type":    {},
 	"conv:with":    {},
+	"preprocess":   {},
 	"postprocess":  {},
 }

@@ -93,7 +93,11 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 		return nil, err
 	}
 
-	postProcess, err := p.buildPostProcess(m, src, dst, m.RetError())
+	preProcess, err := p.buildManipulator(m.Opts.PreProcess, src, dst, m.RetError())
+	if err != nil {
+		return nil, err
+	}
+	postProcess, err := p.buildManipulator(m.Opts.PostProcess, src, dst, m.RetError())
 	if err != nil {
 		return nil, err
 	}
@@ -107,6 +111,7 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 		DstVarStyle: m.Opts.Style,
 		RetError:    m.RetError(),
 		Assignments: assignments,
+		PreProcess:  preProcess,
 		PostProcess: postProcess,
 	}
 

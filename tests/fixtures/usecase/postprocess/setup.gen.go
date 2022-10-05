@@ -12,6 +12,7 @@ import (
 
 func DomainToModel(src *domain.Pet) (dst *model.Pet) {
 	dst = &model.Pet{}
+	PreDomainToModel(dst, *src)
 	// no match: dst.ID
 	// no match: dst.Category.CategoryID
 	dst.Category.Name = src.Category.Name
@@ -37,6 +38,10 @@ func ModelToDomain(src *model.Pet) (dst *domain.Pet, err error) {
 	}
 
 	return
+}
+
+func PreDomainToModel(lhs *model.Pet, rhs domain.Pet) {
+
 }
 
 func PostDomainToModel(lhs *model.Pet, rhs domain.Pet) {

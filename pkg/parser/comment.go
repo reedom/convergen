@@ -108,11 +108,20 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			}
 			converter := option.NewFieldConverter(args[0], src, dst, n.Pos())
 			opts.Converters = append(opts.Converters, converter)
+		case "preprocess":
+			if len(args) < 1 {
+				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
+			}
+			pp, err := p.lookupManipulatorFunc(args[0], "preprocess", n.Pos())
+			if err != nil {
+				return err
+			}
+			opts.PreProcess = pp
 		case "postprocess":
 			if len(args) < 1 {
 				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
 			}
-			pp, err := p.lookupPostprocessFunc(args[0], n.Pos())
+			pp, err := p.lookupManipulatorFunc(args[0], "postprocess", n.Pos())
 			if err != nil {
 				return err
 			}
@@ -209,7 +218,7 @@ func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, r
 	return
 }
 
-func (p *Parser) lookupPostprocessFunc(funcName string, pos token.Pos) (*option.Postprocess, error) {
+func (p *Parser) lookupManipulatorFunc(funcName, optName string, pos token.Pos) (*option.Manipulator, error) {
 	_, obj := p.lookupType(funcName, pos)
 	if obj == nil {
 		return nil, logger.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
@@ -222,10 +231,10 @@ func (p *Parser) lookupPostprocessFunc(funcName string, pos token.Pos) (*option.
 	if sig.Params().Len() != 2 ||
 		1 < sig.Results().Len() ||
 		(sig.Results().Len() == 1 && !util.IsErrorType(sig.Results().At(0).Type())) {
-		return nil, logger.Errorf("%v: function %v cannot use for postprocess func", p.fset.Position(pos), funcName)
+		return nil, logger.Errorf("%v: function %v cannot use for %v func", p.fset.Position(pos), funcName, optName)
 	}
 
-	return &option.Postprocess{
+	return &option.Manipulator{
 		Func:     obj,
 		DstSide:  sig.Params().At(0).Type(),
 		SrcSide:  sig.Params().At(1).Type(),
