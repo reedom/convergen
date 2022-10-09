@@ -73,19 +73,20 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	dstVar := p.createVar(dst, dstDefName)
 
 	if m.Opts.Receiver != "" {
-		if srcVar.IsPkgExternal() {
+		if srcVar.External {
 			return nil, logger.Errorf("%v: an external package type cannot be a receiver", p.fset.Position(m.Method.Pos()))
 		}
 		srcVar.Name = m.Opts.Receiver
 	}
 
-	builder := newAssignmentBuilder(p, m.Method.Pos(), m.Opts)
 	var assignments []gmodel.Assignment
 	var err error
 	if m.Opts.Reverse {
-		assignments, err = builder.build(dstVar, dst, srcVar, src.Type())
+		builder := newAssignmentBuilder(p, m, srcVar, dstVar)
+		assignments, err = builder.build(src, dst)
 	} else {
-		assignments, err = builder.build(srcVar, src, dstVar, dst.Type())
+		builder := newAssignmentBuilder(p, m, dstVar, srcVar)
+		assignments, err = builder.build(dst, src)
 	}
 	if err != nil {
 		return nil, err
@@ -117,23 +118,16 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 }
 
 func (p *FunctionBuilder) createVar(v *types.Var, defName string) gmodel.Var {
-	mv := gmodel.Var{Name: v.Name()}
-	if mv.Name == "" {
-		mv.Name = defName
+	name := v.Name()
+	if name == "" {
+		name = defName
 	}
 
 	typ, isPtr := util.Deref(v.Type())
-	mv.Pointer = isPtr
-	switch t := typ.(type) {
-	case *types.Named:
-		mv.Type = t.Obj().Name()
-		if pkgName, ok := p.imports[t.Obj().Pkg().Path()]; ok {
-			mv.PkgName = pkgName
-		}
-	case *types.Basic:
-		mv.Type = t.Name()
-	default:
-		panic(typ)
+	return gmodel.Var{
+		Name:     name,
+		Type:     p.imports.TypeName(typ),
+		Pointer:  isPtr,
+		External: p.imports.IsExternal(typ),
 	}
-	return mv
 }

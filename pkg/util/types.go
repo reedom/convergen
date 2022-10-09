@@ -263,3 +263,34 @@ func ParseGetterReturnTypes(m *types.Func) (ret types.Type, retError, ok bool) {
 
 	return sig.Results().At(0).Type(), num == 2, true
 }
+
+func StringType() types.Type {
+	return types.Universe.Lookup("string").Type()
+}
+
+func CompliesGetter(m *types.Func) bool {
+	sig := m.Type().(*types.Signature)
+	num := sig.Results().Len()
+	return num == 1 && !IsErrorType(sig.Results().At(0).Type())
+}
+
+func CompliesStringer(src types.Type) bool {
+	named, ok := DerefPtr(src).(*types.Named)
+	if !ok {
+		return false
+	}
+
+	obj, _, _ := types.LookupFieldOrMethod(named, false, named.Obj().Pkg(), "String")
+	if obj == nil {
+		return false
+	}
+
+	sig, ok := obj.Type().(*types.Signature)
+	if !ok {
+		return false
+	}
+
+	return sig.Params().Len() == 0 &&
+		sig.Results().Len() == 1 &&
+		sig.Results().At(0).Type().String() == "string"
+}

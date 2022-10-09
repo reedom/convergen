@@ -5,342 +5,286 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"strings"
 
-	"github.com/reedom/convergen/pkg/generator/model"
+	bmodel "github.com/reedom/convergen/pkg/builder/model"
+	gmodel "github.com/reedom/convergen/pkg/generator/model"
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
+	"golang.org/x/tools/go/packages"
 )
 
 type assignmentBuilder struct {
-	p           *FunctionBuilder
-	methodPos   token.Pos
-	opts        option.Options
-	assignments []model.Assignment
+	file    *ast.File
+	fset    *token.FileSet
+	pkg     *packages.Package
+	imports util.ImportNames
+
+	methodPos token.Pos
+	opts      option.Options
+	lhsVar    gmodel.Var
+	rhsVar    gmodel.Var
+
+	funcName string
+	copiers  []*bmodel.Copier
 }
 
-func newAssignmentBuilder(p *FunctionBuilder, methodPos token.Pos, opts option.Options) *assignmentBuilder {
+func newAssignmentBuilder(p *FunctionBuilder, m *bmodel.MethodEntry, lhsVar, rhsVar gmodel.Var) *assignmentBuilder {
 	return &assignmentBuilder{
-		p:           p,
-		methodPos:   methodPos,
-		opts:        opts,
-		assignments: make([]model.Assignment, 0),
+		file:      p.file,
+		fset:      p.fset,
+		pkg:       p.pkg,
+		imports:   p.imports,
+		methodPos: m.Method.Pos(),
+		opts:      m.Opts,
+		lhsVar:    lhsVar,
+		rhsVar:    rhsVar,
+		funcName:  m.Name(),
 	}
 }
 
-func (b *assignmentBuilder) build(srcVar model.Var, src *types.Var, dstVar model.Var, dst types.Type) ([]model.Assignment, error) {
-	srcStrct := srcStructEntry{
-		Var:   srcVar,
-		strct: src,
+func (b *assignmentBuilder) build(lhs, rhs *types.Var) ([]gmodel.Assignment, error) {
+	rootCopier := bmodel.NewCopier("", lhs.Type(), rhs.Type())
+	rootCopier.IsRoot = true
+	if b.opts.Receiver != "" {
+		rootCopier.Name = fmt.Sprintf("%v.%v", b.lhsVar.Name, b.funcName)
+	} else {
+		rootCopier.Name = b.funcName
+	}
+	b.copiers = append(b.copiers, rootCopier)
+
+	rootLHS := bmodel.NewRootNode(b.lhsVar.Name, lhs.Type())
+	rootRHS := bmodel.NewRootNode(b.rhsVar.Name, rhs.Type())
+	return b.dispatch(rootLHS, rootRHS)
+}
+
+func (b *assignmentBuilder) dispatch(lhs, rhs bmodel.Node) ([]gmodel.Assignment, error) {
+	lhsType := util.DerefPtr(lhs.ExprType())
+	rhsType := util.DerefPtr(rhs.ExprType())
+	if util.IsStructType(lhsType) && util.IsStructType(rhsType) {
+		return b.structToStruct(lhs, rhs)
 	}
 
+	logger.Warnf("%v: no assignment %T to %T", b.fset.Position(b.methodPos), rhs.ExprType(), lhs.ExprType())
+	return []gmodel.Assignment{gmodel.NoMatchField{LHS: lhs.AssignExpr()}}, nil
+}
+
+func (b *assignmentBuilder) structToStruct(lhsStruct, rhsStruct bmodel.Node) ([]gmodel.Assignment, error) {
 	var err error
-	var a model.Assignment
-	util.IterateFields(dst, func(t *types.Var) (done bool) {
-		dstField := dstFieldEntry{
-			Var:   dstVar,
-			field: t,
+	var assignments []gmodel.Assignment
+	bmodel.IterateStructFields(lhsStruct, func(lhsField bmodel.Node) (done bool) {
+		if !b.isStructFieldAccessible(lhsStruct, lhsField.ObjName()) {
+			return
 		}
-		a, err = b.create(srcStrct, dstField)
+
+		var a gmodel.Assignment
+		a, err = b.matchStructFieldAndStruct(lhsField, rhsStruct)
 		if err == nil && a != nil {
-			b.assignments = append(b.assignments, a)
+			assignments = append(assignments, a)
 		}
 		return
 	})
-	return b.assignments, err
+	return assignments, err
 }
 
-func (b *assignmentBuilder) buildNested(srcParent srcStructEntry, srcChild *types.Var, dstParent dstFieldEntry) error {
-	if srcParent.isRecursive(srcChild) {
-		return nil
-	}
-
-	srcStrct := srcStructEntry{
-		parent: &srcParent,
-		Var: model.Var{
-			Name:    srcChild.Name(),
-			PkgName: srcChild.Pkg().Name(),
-			Type:    srcChild.Type().String(),
-			Pointer: false,
-		},
-		strct: srcChild,
-	}
-
-	var err error
-	var a model.Assignment
-	util.IterateFields(dstParent.field.Type(), func(t *types.Var) (done bool) {
-		dstField := dstFieldEntry{
-			parent: &dstParent,
-			Var: model.Var{
-				Name:    t.Name(),
-				PkgName: t.Pkg().Name(),
-				Type:    t.Type().String(),
-				Pointer: false,
-			},
-			field: t,
-		}
-
-		a, err = b.create(srcStrct, dstField)
-		if err == nil && a != nil {
-			b.assignments = append(b.assignments, a)
-		}
-		return
-	})
-	return err
-}
-
-func (b *assignmentBuilder) create(src srcStructEntry, dst dstFieldEntry) (model.Assignment, error) {
-	lhs := dst.lhsExpr()
-
-	if !dst.isFieldAccessible() {
-		logger.Printf("%v: skip %v while it is not an exported field", b.p.fset.Position(b.methodPos), lhs)
-		return nil, nil
-	}
-
-	if b.opts.ShouldSkip(dst.fieldPath()) {
-		logger.Printf("%v: skip %v", b.p.fset.Position(b.methodPos), lhs)
-		return model.SkipField{LHS: lhs}, nil
+func (b *assignmentBuilder) matchStructFieldAndStruct(lhs bmodel.Node, rhs bmodel.Node) (gmodel.Assignment, error) {
+	if b.opts.ShouldSkip(lhs.MatcherExpr()) {
+		logger.Printf("%v: skip %v", b.fset.Position(b.methodPos), lhs.AssignExpr())
+		return gmodel.SkipField{LHS: lhs.AssignExpr()}, nil
 	}
 
 	for _, converter := range b.opts.Converters {
-		if converter.Dst().Match(dst.fieldName(), true) {
-			// If there are more than one converter exist for the dst, the first one wins.
-			return b.createWithConverter(src, dst, converter)
+		if converter.Dst().Match(lhs.MatcherExpr(), true) {
+			// If there are more than one converter exist for the lhs, the first one wins.
+			return b.createWithConverter(lhs, rhs, converter)
 		}
 	}
 
 	for _, mapper := range b.opts.NameMapper {
-		if mapper.Dst().Match(dst.fieldPath(), true) {
-			// If there are more than one mapper exist for the dst, the first one wins.
-			return b.createWithMapper(src, dst, mapper)
+		if mapper.Dst().Match(lhs.MatcherExpr(), true) {
+			// If there are more than one mapper exist for the lhs, the first one wins.
+			return b.createWithMapper(lhs, rhs, mapper)
 		}
 	}
 
-	return b.createCommon(src, dst)
+	return b.structFieldAndStructGettersAndFields(lhs, rhs)
 }
 
-func (b *assignmentBuilder) buildRHS(rhs string, srcType, dstType types.Type) (string, bool) {
-	if types.AssignableTo(srcType, dstType) {
-		return rhs, true
-	}
-
-	if b.opts.Stringer && supportsStringer(srcType, dstType) {
-		return rhs + ".String()", true
-	}
-
-	if b.opts.Typecast && types.ConvertibleTo(srcType, dstType) {
-		if result, ok := b.typeCast(dstType, rhs, b.methodPos); ok {
-			return result, true
-		}
-	}
-	return "", false
-}
-
-func (b *assignmentBuilder) createCommon(src srcStructEntry, dst dstFieldEntry) (model.Assignment, error) {
-	p := b.p
+func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node, rhsStruct bmodel.Node) (gmodel.Assignment, error) {
 	opts := b.opts
-	methodPos := b.methodPos
-	lhs := dst.lhsExpr()
+	methodPosStr := b.fset.Position(b.methodPos)
+	lhsExpr := lhs.AssignExpr()
 
-	logger.Printf("%v: lookup assignment for %v = %v.*", p.fset.Position(methodPos), lhs, src.rhsExpr(nil))
+	logger.Printf("%v: lookup assignment for %v = %v.*", methodPosStr, lhsExpr, rhsStruct.AssignExpr())
 
-	var a model.Assignment
+	var a gmodel.Assignment
 	var err error
-
-	util.IterateMethods(src.strct.Type(), func(m *types.Func) (done bool) {
-		if src.IsPkgExternal() && !ast.IsExported(m.Name()) {
-			return
-		}
-
-		retTypes, ok := util.GetMethodReturnTypes(m)
-		if !ok || !compliesGetter(retTypes, false) {
-			return
-		}
-
-		if !opts.Getter || !opts.CompareFieldName(dst.fieldName(), m.Name()) {
-			return
-		}
-
-		retType := retTypes.At(0).Type()
-		retError := retTypes.Len() == 2 && util.IsErrorType(retTypes.At(1).Type())
-		if rhs, ok := b.buildRHS(src.rhsExpr(m), retType, dst.fieldType()); ok {
-			logger.Printf("%v: assignment found: %v = %v", p.fset.Position(methodPos), lhs, rhs)
-			a = model.SimpleField{LHS: lhs, RHS: rhs, Error: retError}
-		}
-		return true
-	})
-	if a != nil || err != nil {
-		return a, err
-	}
-
 	// To prevent logging "no assignment for d.NestedData"…
 	nested := false
-	util.IterateFields(src.strctType(), func(f *types.Var) (done bool) {
-		if src.IsPkgExternal() && !ast.IsExported(f.Name()) {
+
+	handler := func(rhs bmodel.Node) (done bool) {
+		if !b.isStructFieldAccessible(rhsStruct, rhs.ObjName()) ||
+			!opts.CompareFieldName(lhs.ObjName(), rhs.ObjName()) {
 			return
 		}
 
-		if opts.Rule != model.MatchRuleName || !opts.CompareFieldName(dst.fieldName(), f.Name()) {
-			return
-		}
-
-		if rhs, ok := b.buildRHS(src.rhsExpr(f), f.Type(), dst.fieldType()); ok {
-			logger.Printf("%v: assignment found: %v = %v", p.fset.Position(methodPos), lhs, rhs)
-			a = model.SimpleField{LHS: lhs, RHS: rhs}
+		if c, ok := b.castNode(lhs.ExprType(), rhs); ok {
+			rhsExpr := c.AssignExpr()
+			logger.Printf("%v: assignment found: %v = %v", methodPosStr, lhsExpr, rhsExpr)
+			a = gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: c.ReturnsError()}
 			return true
 		}
 
-		if util.IsStructType(dst.fieldType()) && util.IsStructType(f.Type()) {
+		if util.IsStructType(lhs.ExprType()) &&
+			util.IsStructType(rhs.ExprType()) {
 			nested = true
-			err = b.buildNested(src, f, dst)
+			nestStruct := gmodel.NestStruct{}
+			if util.IsPtr(lhs.ExprType()) {
+				nestStruct.InitExpr = fmt.Sprintf("%v = %v{}", lhs.AssignExpr(), b.imports.TypeName(lhs.ExprType()))
+			}
+			if rhs.ObjNullable() {
+				nestStruct.NullCheckExpr = rhs.NullCheckExpr()
+			}
+			nestStruct.Contents, err = b.structToStruct(lhs, rhs)
+			if err == nil && 0 < len(nestStruct.Contents) {
+				a = nestStruct
+			}
 		}
 		return true
-	})
-	if a != nil || err != nil || nested {
-		return a, err
 	}
 
-	logger.Warnf("%v: no assignment for %v [%v]", p.fset.Position(methodPos), lhs, b.p.imports.TypeName(dst.fieldType()))
-	return model.NoMatchField{LHS: lhs}, nil
+	if opts.Getter {
+		bmodel.IterateStructMethods(rhsStruct, handler)
+		if a != nil || err != nil {
+			return a, err
+		}
+	}
+
+	if opts.Rule == gmodel.MatchRuleName {
+		bmodel.IterateStructFields(rhsStruct, handler)
+		if a != nil || err != nil || nested {
+			return a, err
+		}
+	}
+
+	logger.Warnf("%v: no assignment for %v [%v]", methodPosStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
+	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
-func (b *assignmentBuilder) createWithConverter(src srcStructEntry, dst dstFieldEntry, converter *option.FieldConverter) (model.Assignment, error) {
-	p := b.p
-	opts := b.opts
-	pos := converter.Pos()
-	lhs := dst.lhsExpr()
-	buildRHSWithConverter := func(expr string, srcType types.Type) (string, bool) {
-		rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
-		arg, ok := b.buildRHS(rhsExpr, srcType, converter.ArgType())
+func (b *assignmentBuilder) createWithConverter(lhs, rhs bmodel.Node, converter *option.FieldConverter) (gmodel.Assignment, error) {
+	converterNode := func() bmodel.Node {
+		root := rhs
+		for ; root.Parent() != nil; root = root.Parent() {
+		}
+
+		rhsNode, ok := b.resolveExpr(converter.Src(), root)
+		if !ok {
+			return nil
+		}
+
+		argNode, ok := b.castNode(converter.ArgType(), rhsNode)
 		if !ok {
 			if !util.IsPtr(converter.ArgType()) {
-				return "", false
+				return nil
 			}
-			arg, ok = b.buildRHS(rhsExpr, srcType, util.DerefPtr(converter.ArgType()))
+			argNode, ok = b.castNode(util.DerefPtr(converter.ArgType()), rhsNode)
 			if !ok {
-				return "", false
-			}
-			arg = "&" + arg
-		}
-
-		if types.AssignableTo(converter.RetType(), dst.fieldType()) {
-			return converter.RHSExpr(arg), true
-		}
-
-		if opts.Stringer && supportsStringer(converter.RetType(), dst.fieldType()) {
-			return converter.RHSExpr(arg + ".String()"), true
-		}
-
-		if opts.Typecast && types.ConvertibleTo(srcType, dst.fieldType()) {
-			if typecastExpr, ok := b.typeCast(dst.fieldType(), arg, pos); ok {
-				return converter.RHSExpr(typecastExpr), true
+				return nil
 			}
 		}
-		return "", false
+		convNode := bmodel.NewConverterNode(argNode, converter)
+		casted, _ := b.castNode(lhs.ExprType(), convNode)
+		return casted
+	}()
+
+	lhsExpr := lhs.AssignExpr()
+	posStr := b.fset.Position(converter.Pos())
+
+	if converterNode != nil {
+		rhsExpr := converterNode.AssignExpr()
+		logger.Printf("%v: assignment found: %v = %v, err", posStr, lhsExpr, rhsExpr)
+		return gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: converter.RetError()}, nil
 	}
 
-	expr, obj, ok := b.resolveExpr(converter.Src(), src.root().strct)
-	if ok {
-		switch typ := obj.(type) {
-		case *types.Func:
-			if ret, retError, ok := util.ParseGetterReturnTypes(typ); ok && !retError {
-				if rhs, ok := buildRHSWithConverter(expr, ret); ok {
-					logger.Printf("%v: assignment found: %v = %v, err", p.fset.Position(pos), lhs, rhs)
-					return model.SimpleField{LHS: lhs, RHS: rhs, Error: converter.RetError()}, nil
-				}
-			}
-			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
-			return model.NoMatchField{LHS: lhs}, nil
-		case *types.Var:
-			if rhs, ok := buildRHSWithConverter(expr, typ.Type()); ok {
-				logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
-				return model.SimpleField{LHS: lhs, RHS: rhs, Error: converter.RetError()}, nil
-			}
-			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
-			return model.NoMatchField{LHS: lhs}, nil
-		}
-	}
-
-	logger.Warnf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
-	return model.NoMatchField{LHS: lhs}, nil
+	logger.Warnf("%v: no assignment for %v [%v]", posStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
+	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
-func (b *assignmentBuilder) createWithMapper(src srcStructEntry, dst dstFieldEntry, mapper *option.NameMatcher) (model.Assignment, error) {
-	p := b.p
-	lhs := dst.lhsExpr()
-	pos := mapper.Pos()
-
-	expr, obj, ok := b.resolveExpr(mapper.Src(), src.root().strct)
-	if ok {
-		switch typ := obj.(type) {
-		case *types.Func:
-			if ret, retError, ok := util.ParseGetterReturnTypes(typ); ok {
-				rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
-				if rhs, ok := b.buildRHS(rhsExpr, ret, dst.fieldType()); ok {
-					logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
-					return model.SimpleField{LHS: lhs, RHS: rhs, Error: retError}, nil
-				}
-			}
-			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
-			return model.NoMatchField{LHS: lhs}, nil
-		case *types.Var:
-			rhsExpr := fmt.Sprintf("%v.%v", src.root().Name, expr)
-			if rhs, ok := b.buildRHS(rhsExpr, typ.Type(), dst.fieldType()); ok {
-				logger.Printf("%v: assignment found: %v = %v", p.fset.Position(pos), lhs, rhs)
-				return model.SimpleField{LHS: lhs, RHS: rhs}, nil
-			}
-			logger.Warnf("%v: return value mismatch: %v = %v.%v", p.fset.Position(pos), lhs, src.Name, expr)
-			return model.NoMatchField{LHS: lhs}, nil
+func (b *assignmentBuilder) createWithMapper(lhs, rhs bmodel.Node, mapper *option.NameMatcher) (gmodel.Assignment, error) {
+	mappedNode := func() bmodel.Node {
+		root := rhs
+		for ; root.Parent() != nil; root = root.Parent() {
 		}
+
+		rhsNode, ok := b.resolveExpr(mapper.Src(), root)
+		if !ok {
+			return nil
+		}
+
+		casted, _ := b.castNode(lhs.ExprType(), rhsNode)
+		return casted
+	}()
+
+	lhsExpr := lhs.AssignExpr()
+	posStr := b.fset.Position(mapper.Pos())
+
+	if mappedNode != nil {
+		rhsExpr := mappedNode.AssignExpr()
+		logger.Printf("%v: assignment found: %v = %v", posStr, lhs, rhs)
+		return gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: mappedNode.ReturnsError()}, nil
 	}
 
-	logger.Warnf("%v: no assignment for %v [%v]", p.fset.Position(pos), lhs, b.p.imports.TypeName(dst.field.Type()))
-	return model.NoMatchField{LHS: lhs}, nil
+	logger.Warnf("%v: no assignment for %v [%v]", posStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
+	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
-func (b *assignmentBuilder) typeCast(t types.Type, inner string, pos token.Pos) (string, bool) {
-	switch typ := t.(type) {
-	case *types.Pointer:
-		return b.typeCast(typ.Elem(), inner, pos)
-	case *types.Named:
-		// If the type is defined within the current package.
-		if b.p.pkg.Types.Scope().Lookup(typ.Obj().Name()) != nil {
-			return fmt.Sprintf("%v(%v)", typ.Obj().Name(), inner), true
-		}
-		if pkgName, ok := b.p.imports.LookupName(typ.Obj().Pkg().Path()); ok {
-			return fmt.Sprintf("%v.%v(%v)", pkgName, typ.Obj().Name(), inner), true
-		}
-		return fmt.Sprintf("%v.%v(%v)", typ.Obj().Pkg().Name(), typ.Obj().Name(), inner), true
-	case *types.Basic:
-		return fmt.Sprintf("%v(%v)", t.String(), inner), true
-	default:
-		logger.Warnf("%v: typecast for %v is not implemented(yet) for %v",
-			b.p.fset.Position(pos), b.p.imports.TypeName(t), inner)
-		return "", false
+func (b *assignmentBuilder) castNode(lhsType types.Type, rhs bmodel.Node) (c bmodel.Node, ok bool) {
+	if types.AssignableTo(rhs.ExprType(), lhsType) {
+		return rhs, true
 	}
+
+	if b.opts.Stringer && types.AssignableTo(util.StringType(), lhsType) && util.CompliesStringer(rhs.ExprType()) {
+		return b.castNode(lhsType, bmodel.NewStringer(rhs))
+	}
+
+	if b.opts.Typecast && types.ConvertibleTo(rhs.ExprType(), lhsType) {
+		c, ok = bmodel.NewTypecast(b.pkg.Types.Scope(), b.imports, lhsType, rhs)
+		if !ok {
+			logger.Warnf("%v: typecast for %v is not implemented(yet) for %v",
+				b.fset.Position(b.methodPos), b.imports.TypeName(lhsType), rhs.AssignExpr())
+		}
+		return
+	}
+	return nil, false
 }
 
-func (b *assignmentBuilder) isFieldOrMethodAccessible(rcv types.Object, fieldOrMethod types.Object) bool {
-	return !b.isExternalPkg(rcv.Pkg()) || ast.IsExported(fieldOrMethod.Name())
+func (b *assignmentBuilder) isStructFieldAccessible(structNode bmodel.Node, leafName string) bool {
+	structType := util.DerefPtr(structNode.ExprType())
+	if !util.IsStructType(structType) {
+		return false
+	}
+	if named, ok := structType.(*types.Named); ok {
+		return !b.isExternalPkg(named.Obj().Pkg()) || ast.IsExported(leafName)
+	}
+	return true
+
 }
 
 func (b *assignmentBuilder) isExternalPkg(pkg *types.Package) bool {
 	if pkg == nil {
 		return false
 	}
-	return b.p.pkg.PkgPath != pkg.Path()
+	return b.pkg.PkgPath != pkg.Path()
 }
 
-func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, strct *types.Var) (expr string, obj types.Object, ok bool) {
-	var names []string
-	typ := strct.Type()
-
+func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmodel.Node) (node bmodel.Node, ok bool) {
+	node = root
+	typ := root.ExprType()
 	for i := 0; i < matcher.PathLen(); i++ {
 		isLast := matcher.PathLen() == i+1
 		pkg := util.PkgOf(typ)
 
-		obj, _, _ = types.LookupFieldOrMethod(typ, false, pkg, matcher.NameAt(i))
+		obj, _, _ := types.LookupFieldOrMethod(typ, false, pkg, matcher.NameAt(i))
 		if obj == nil {
 			return
 		}
@@ -360,18 +304,16 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, strct *typ
 				return
 			}
 
-			names = append(names, method.Name()+"()")
+			node = bmodel.NewStructMethodNode(node, method)
 			if isLast {
-				expr = strings.Join(names, ".")
-				ok = true
-				return
-			} else {
-				if retError {
-					// It should be a simple getter, otherwise it cannot be a part of method chain.
-					return
-				}
-				typ = ret
+				return node, true
 			}
+
+			if retError {
+				// It should be a simple getter, otherwise it cannot be a part of method chain.
+				return
+			}
+			typ = ret
 		} else {
 			field, valid := obj.(*types.Var)
 			if !valid {
@@ -381,49 +323,13 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, strct *typ
 				return
 			}
 
-			names = append(names, field.Name())
+			node = bmodel.NewStructFieldNode(node, field)
 			if isLast {
-				expr = strings.Join(names, ".")
-				ok = true
-				return
-			} else {
-				typ = field.Type()
+				return node, true
 			}
+
+			typ = field.Type()
 		}
 	}
 	return
-}
-
-func compliesGetter(retTypes *types.Tuple, retError bool) bool {
-	num := retTypes.Len()
-	if num == 0 || 2 < num {
-		return false
-	}
-	return num == 1 || retError && util.IsErrorType(retTypes.At(1).Type())
-}
-
-func supportsStringer(src types.Type, dst types.Type) bool {
-	strType := types.Universe.Lookup("string").Type()
-	if !types.AssignableTo(strType, dst) {
-		return false
-	}
-
-	named, ok := util.DerefPtr(src).(*types.Named)
-	if !ok {
-		return false
-	}
-
-	obj, _, _ := types.LookupFieldOrMethod(named, false, named.Obj().Pkg(), "String")
-	if obj == nil {
-		return false
-	}
-
-	sig, ok := obj.Type().(*types.Signature)
-	if !ok {
-		return false
-	}
-
-	return sig.Params().Len() == 0 &&
-		sig.Results().Len() == 1 &&
-		sig.Results().At(0).Type().String() == "string"
 }
