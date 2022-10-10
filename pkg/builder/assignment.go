@@ -128,6 +128,14 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 			return
 		}
 
+		if util.IsSliceType(lhs.ExprType()) && util.IsSliceType(rhs.ExprType()) {
+			a, err = b.sliceToSlice(lhs, rhs)
+			if a != nil || err != nil {
+				logger.Printf("%v: assignment found: sliceCopy(%v, %v)", methodPosStr, lhsExpr, rhs.AssignExpr())
+				return true
+			}
+		}
+
 		if c, ok := b.castNode(lhs.ExprType(), rhs); ok {
 			rhsExpr := c.AssignExpr()
 			logger.Printf("%v: assignment found: %v = %v", methodPosStr, lhsExpr, rhsExpr)
@@ -331,5 +339,32 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmode
 			typ = field.Type()
 		}
 	}
+	return
+}
+
+func (b *assignmentBuilder) sliceToSlice(lhs, rhs bmodel.Node) (a gmodel.Assignment, err error) {
+	lhsElem := util.SliceElement(lhs.ExprType())
+	rhsElem := util.SliceElement(rhs.ExprType())
+	if lhsElem == nil || rhsElem == nil {
+		return
+	}
+
+	if types.AssignableTo(rhsElem, lhsElem) {
+		if util.IsBasicType(rhsElem) {
+			a = gmodel.SliceAssignment{
+				LHS: lhs.AssignExpr(),
+				RHS: rhs.AssignExpr(),
+				Typ: "[]" + lhsElem.String(),
+			}
+		} else {
+			a = gmodel.SliceLoopAssignment{
+				LHS: lhs.AssignExpr(),
+				RHS: rhs.AssignExpr(),
+				Typ: "[]" + b.imports.TypeName(lhsElem),
+			}
+		}
+		return
+	}
+
 	return
 }

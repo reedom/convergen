@@ -124,3 +124,31 @@ func (c SliceAssignment) String() string {
 func (c SliceAssignment) RetError() bool {
 	return false
 }
+
+type SliceLoopAssignment struct {
+	LHS string
+	RHS string
+	Typ string
+}
+
+func (c SliceLoopAssignment) String() string {
+	var sb strings.Builder
+	sb.WriteString("if ")
+	sb.WriteString(c.RHS)
+	sb.WriteString(" != nil {\n")
+	sb.WriteString(c.LHS)
+	sb.WriteString(" = make(")
+	sb.WriteString(c.Typ)
+	sb.WriteString(", len(")
+	sb.WriteString(c.RHS)
+	sb.WriteString("))\nfor i, e := range ")
+	sb.WriteString(c.RHS)
+	sb.WriteString("{\n")
+	sb.WriteString(c.LHS)
+	sb.WriteString("[i] = e\n}\n}\n")
+	return sb.String()
+}
+
+func (c SliceLoopAssignment) RetError() bool {
+	return false
+}

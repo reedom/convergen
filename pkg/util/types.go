@@ -31,6 +31,16 @@ func IsInvalidType(t types.Type) bool {
 	return false
 }
 
+func IsSliceType(t types.Type) bool {
+	_, ok := t.(*types.Slice)
+	return ok
+}
+
+func IsBasicType(t types.Type) bool {
+	_, ok := t.(*types.Basic)
+	return ok
+}
+
 func IsStructType(t types.Type) bool {
 	_, ok := t.Underlying().(*types.Struct)
 	return ok
@@ -77,6 +87,13 @@ func Deref(typ types.Type) (types.Type, bool) {
 		return ptr.Elem(), true
 	}
 	return typ, false
+}
+
+func SliceElement(t types.Type) types.Type {
+	if slice, ok := t.(*types.Slice); ok {
+		return slice.Elem()
+	}
+	return nil
 }
 
 func RemoveObject(file *ast.File, obj types.Object) {
