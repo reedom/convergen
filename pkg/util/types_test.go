@@ -35,7 +35,7 @@ import (
 //		return
 //	}
 //
-//	walkStruct("v", pkg, obj.Type(), cb, opt)
+//	walkStruct("v", pkg, obj.structObj(), cb, opt)
 //}
 
 func TestPathMatch(t *testing.T) {

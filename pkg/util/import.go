@@ -82,3 +82,13 @@ func (i ImportNames) TypeName(t types.Type) string {
 		return t.String()
 	}
 }
+
+func (i ImportNames) IsExternal(t types.Type) bool {
+	switch typ := DerefPtr(t).(type) {
+	case *types.Named:
+		_, ok := i[typ.Obj().Pkg().Path()]
+		return ok
+	default:
+		return false
+	}
+}
