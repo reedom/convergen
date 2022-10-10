@@ -366,5 +366,14 @@ func (b *assignmentBuilder) sliceToSlice(lhs, rhs bmodel.Node) (a gmodel.Assignm
 		return
 	}
 
+	if b.opts.Typecast && types.ConvertibleTo(rhsElem, lhsElem) {
+		a = gmodel.SliceTypecastAssignment{
+			LHS:  lhs.AssignExpr(),
+			RHS:  rhs.AssignExpr(),
+			Typ:  "[]" + b.imports.TypeName(lhsElem),
+			Cast: b.imports.TypeName(lhsElem),
+		}
+		return
+	}
 	return
 }

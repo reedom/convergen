@@ -4,16 +4,20 @@
 package slice
 
 type SrcType struct {
-	IntSlice  []int
-	DataSlice []Data
+	IntSlice    []int
+	DataSlice   []Data
+	StatusSlice []int
 }
 
 type DstType struct {
-	IntSlice  []int
-	DataSlice []Data
+	IntSlice    []int
+	DataSlice   []Data
+	StatusSlice []Status
 }
 
 type Data struct{}
+
+type Status int
 
 func Copy(src *SrcType) (dst *DstType) {
 	dst = &DstType{}
@@ -25,6 +29,12 @@ func Copy(src *SrcType) (dst *DstType) {
 		dst.DataSlice = make([]Data, len(src.DataSlice))
 		for i, e := range src.DataSlice {
 			dst.DataSlice[i] = e
+		}
+	}
+	if src.StatusSlice != nil {
+		dst.StatusSlice = make([]Status, len(src.StatusSlice))
+		for i, e := range src.StatusSlice {
+			dst.StatusSlice[i] = Status(e)
 		}
 	}
 
