@@ -292,7 +292,7 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmode
 		isLast := matcher.PathLen() == i+1
 		pkg := util.PkgOf(typ)
 
-		obj, _, _ := types.LookupFieldOrMethod(typ, false, pkg, matcher.NameAt(i))
+		obj, _, _ := types.LookupFieldOrMethod(typ, true, pkg, matcher.NameAt(i))
 		if obj == nil {
 			return
 		}
