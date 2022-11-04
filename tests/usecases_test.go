@@ -72,6 +72,10 @@ func TestUseCases(t *testing.T) {
 			source:   "fixtures/usecase/typecast/setup.go",
 			expected: "fixtures/usecase/typecast/setup.gen.go",
 		},
+		{
+			source:   "fixtures/usecase/maps/setup.go",
+			expected: "fixtures/usecase/maps/setup.gen.go",
+		},
 	}
 
 	logger.SetupLogger(logger.ForTest())
