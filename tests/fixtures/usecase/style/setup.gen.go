@@ -19,7 +19,10 @@ func ArgToArg(dst *model.Pet, pet *Pet) {
 	dst.ID = pet.ID
 	dst.Category = pet.Category
 	dst.Name = pet.Name
-	dst.PhotoUrls = pet.PhotoUrls
+	if pet.PhotoUrls != nil {
+		dst.PhotoUrls = make([]string, len(pet.PhotoUrls))
+		copy(dst.PhotoUrls, pet.PhotoUrls)
+	}
 	dst.Status = pet.Status
 }
 
@@ -28,7 +31,10 @@ func ArgToReturn(pet *Pet) (dst *model.Pet) {
 	dst.ID = pet.ID
 	dst.Category = pet.Category
 	dst.Name = pet.Name
-	dst.PhotoUrls = pet.PhotoUrls
+	if pet.PhotoUrls != nil {
+		dst.PhotoUrls = make([]string, len(pet.PhotoUrls))
+		copy(dst.PhotoUrls, pet.PhotoUrls)
+	}
 	dst.Status = pet.Status
 
 	return
@@ -38,7 +44,10 @@ func (r *Pet) RcvToArg(dst *model.Pet) {
 	dst.ID = r.ID
 	dst.Category = r.Category
 	dst.Name = r.Name
-	dst.PhotoUrls = r.PhotoUrls
+	if r.PhotoUrls != nil {
+		dst.PhotoUrls = make([]string, len(r.PhotoUrls))
+		copy(dst.PhotoUrls, r.PhotoUrls)
+	}
 	dst.Status = r.Status
 }
 
@@ -46,7 +55,10 @@ func (r *Pet) RcvToReturn(dst *model.Pet) {
 	dst.ID = r.ID
 	dst.Category = r.Category
 	dst.Name = r.Name
-	dst.PhotoUrls = r.PhotoUrls
+	if r.PhotoUrls != nil {
+		dst.PhotoUrls = make([]string, len(r.PhotoUrls))
+		copy(dst.PhotoUrls, r.PhotoUrls)
+	}
 	dst.Status = r.Status
 }
 
@@ -54,7 +66,10 @@ func (r *Pet) RevRcvFromArgPtr(pet *model.Pet) {
 	r.ID = pet.ID
 	r.Category = pet.Category
 	r.Name = pet.Name
-	r.PhotoUrls = pet.PhotoUrls
+	if pet.PhotoUrls != nil {
+		r.PhotoUrls = make([]string, len(pet.PhotoUrls))
+		copy(r.PhotoUrls, pet.PhotoUrls)
+	}
 	r.Status = pet.Status
 }
 
@@ -62,6 +77,9 @@ func (r *Pet) RevRcvFromArgVal(src *model.Pet) {
 	r.ID = src.ID
 	r.Category = src.Category
 	r.Name = src.Name
-	r.PhotoUrls = src.PhotoUrls
+	if src.PhotoUrls != nil {
+		r.PhotoUrls = make([]string, len(src.PhotoUrls))
+		copy(r.PhotoUrls, src.PhotoUrls)
+	}
 	r.Status = src.Status
 }

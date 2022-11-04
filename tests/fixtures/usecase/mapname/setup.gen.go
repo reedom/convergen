@@ -14,7 +14,12 @@ func DomainToModel(src *domain.Pet) (dst *model.Pet) {
 	dst.Category.CategoryID = uint64(src.Category.ID)
 	dst.Category.Name = src.Category.Name
 	dst.Name = src.Name
-	// no match: dst.PhotoUrls
+	if src.PhotoUrls != nil {
+		dst.PhotoUrls = make([]string, len(src.PhotoUrls))
+		for i, e := range src.PhotoUrls {
+			dst.PhotoUrls[i] = string(e)
+		}
+	}
 	dst.Status = src.Status.String()
 
 	return
