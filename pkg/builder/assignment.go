@@ -107,6 +107,13 @@ func (b *assignmentBuilder) matchStructFieldAndStruct(lhs bmodel.Node, rhs bmode
 		}
 	}
 
+	for _, setter := range b.opts.Literals {
+		if setter.Dst().Match(lhs.MatcherExpr(), true) {
+			// If there are more than one mapper exist for the lhs, the first one wins.
+			return gmodel.SimpleField{LHS: lhs.AssignExpr(), RHS: setter.Literal()}, nil
+		}
+	}
+
 	return b.structFieldAndStructGettersAndFields(lhs, rhs)
 }
 

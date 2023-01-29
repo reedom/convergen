@@ -17,6 +17,7 @@ import (
 
 var reNotation = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
 var reConvergen = regexp.MustCompile(`^\s*//\s*:convergen\b`)
+var reLiteral = regexp.MustCompile(`^\s*\S+\s+(.*)$`)
 
 func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[string]struct{}, opts *option.Options) error {
 	var posReverse token.Pos
@@ -108,6 +109,13 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			}
 			converter := option.NewFieldConverter(args[0], src, dst, n.Pos())
 			opts.Converters = append(opts.Converters, converter)
+		case "literal":
+			if len(args) < 2 {
+				return logger.Errorf("%v: needs <dst> <literal> args", p.fset.Position(n.Pos()))
+			}
+			m = reLiteral.FindStringSubmatch(m[2])
+			setter := option.NewLiteralSetter(args[0], m[1], n.Pos())
+			opts.Literals = append(opts.Literals, setter)
 		case "preprocess":
 			if len(args) < 1 {
 				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))

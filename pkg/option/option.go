@@ -20,6 +20,7 @@ type Options struct {
 	SkipFields  []*PatternMatcher
 	NameMapper  []*NameMatcher
 	Converters  []*FieldConverter
+	Literals    []*LiteralSetter
 	PreProcess  *Manipulator
 	PostProcess *Manipulator
 }
@@ -84,6 +85,7 @@ var ValidOpsMethod = map[string]struct{}{
 	"conv":         {},
 	"conv:type":    {},
 	"conv:with":    {},
+	"literal":      {},
 	"preprocess":   {},
 	"postprocess":  {},
 }
