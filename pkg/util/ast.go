@@ -13,7 +13,8 @@ func RemoveMatchComments(file *ast.File, pattern *regexp.Regexp) {
 	}
 }
 
-// MatchComments reports whether any comment line contains any match of the regular expression pattern.
+// MatchComments reports whether any comment line in commentGroup contains
+// any match of the regular expression pattern.
 func MatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) bool {
 	if commentGroup == nil || len(commentGroup.List) == 0 {
 		return false
@@ -27,7 +28,7 @@ func MatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) bool 
 	return false
 }
 
-// ExtractMatchComments removes pattern matched comments from commentGroup and return them.
+// ExtractMatchComments removes pattern matched comments from commentGroup and returns them.
 func ExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) []*ast.Comment {
 	if commentGroup == nil || len(commentGroup.List) == 0 {
 		return nil
@@ -53,6 +54,7 @@ func ExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp
 	return removed
 }
 
+// RemoveDecl removes a declaration named name from file.Decls.
 func RemoveDecl(file *ast.File, name string) {
 	comparer := func(s string) bool {
 		return s == name
@@ -67,6 +69,8 @@ func RemoveDecl(file *ast.File, name string) {
 	file.Decls = decls
 }
 
+// InsertComment inserts a comment with the specified text at the specified
+// position in file.Comments.
 func InsertComment(file *ast.File, text string, pos token.Pos) {
 	comment := &ast.Comment{Slash: pos, Text: text}
 

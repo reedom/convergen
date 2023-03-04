@@ -15,10 +15,19 @@ import (
 	"github.com/reedom/convergen/pkg/util"
 )
 
-var reNotation = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
-var reConvergen = regexp.MustCompile(`^\s*//\s*:convergen\b`)
-var reLiteral = regexp.MustCompile(`^\s*\S+\s+(.*)$`)
+var (
+	// reNotation is a regular expression that matches a notation.
+	reNotation = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
+	// reConvergen is a regular expression that matches a notation that
+	// indicates the beginning of a convergen block.
+	reConvergen = regexp.MustCompile(`^\s*//\s*:convergen\b`)
+	// reLiteral is a regular expression that matches a notation that
+	// indicates the beginning of a literal block.
+	reLiteral = regexp.MustCompile(`^\s*\S+\s+(.*)$`)
+)
 
+// parseNotationInComments parses given notations and set the values into given Options.
+// validOps is a map of valid operation names.
 func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[string]struct{}, opts *option.Options) error {
 	var posReverse token.Pos
 
@@ -147,6 +156,10 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 	return nil
 }
 
+// lookupType looks up a type by name in the current package or its imports.
+// It returns the scope and object of the type if found, or nil if not found.
+// typeName is the fully qualified name of the type, including package name.
+// pos is the position where the lookup occurs.
 func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types.Object) {
 	names := strings.Split(typeName, ".")
 	if len(names) == 1 {
@@ -168,6 +181,12 @@ func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types
 	return scope, obj
 }
 
+// resolveConverters resolves the types and error flag of the FieldConverter `conv` by
+// looking up the corresponding function based on the converter's name. If the function
+// is found, its argument and return types are set to `conv`. If not, it tries to find
+// a method in `generatingMethods` that can be used as a converter.
+//
+// If no function or method is found, an error is returned.
 func (p *Parser) resolveConverters(generatingMethods []*bmodel.MethodEntry, conv *option.FieldConverter) error {
 	name := conv.Converter()
 	pos := conv.Pos()
@@ -200,6 +219,9 @@ func (p *Parser) resolveConverters(generatingMethods []*bmodel.MethodEntry, conv
 	return err
 }
 
+// lookupConverterFunc finds and returns the argument and return types of a function
+// with the given name and position.
+// It checks that the function is a valid converter function and can be used as such.
 func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, retType types.Type, retError bool, err error) {
 	_, obj := p.lookupType(funcName, pos)
 	if obj == nil {
@@ -226,6 +248,9 @@ func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, r
 	return
 }
 
+// lookupManipulatorFunc looks up a function by name and verifies that it can be used
+// as a manipulator function for a certain option. It returns a new Manipulator instance
+// on success, and an error on failure.
 func (p *Parser) lookupManipulatorFunc(funcName, optName string, pos token.Pos) (*option.Manipulator, error) {
 	_, obj := p.lookupType(funcName, pos)
 	if obj == nil {

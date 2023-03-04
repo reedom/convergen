@@ -12,10 +12,11 @@ import (
 
 const intfName = "Convergen"
 
+// intfEntry represents an entry of convergen interface.
 type intfEntry struct {
-	intf   types.Object
-	opts   option.Options
-	marker string
+	intf   types.Object   // intf represents the interface object.
+	opts   option.Options // opts represents the options of the interface.
+	marker string         // marker represents the marker of the interface.
 }
 
 // findConvergenEntries collects convergen interfaces from the setup file.
@@ -72,6 +73,7 @@ func (p *Parser) findConvergenEntries() ([]*intfEntry, error) {
 	return entries, nil
 }
 
+// isValidIdentifier checks if the given string is a valid identifier.
 func isValidIdentifier(id string) bool {
 	for i, r := range id {
 		if !unicode.IsLetter(r) &&

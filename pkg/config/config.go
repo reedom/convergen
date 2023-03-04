@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// Usage prints the usage of the tool.
 func Usage() {
 	var sb strings.Builder
 	sb.WriteString("\nUsage: convergen [flags] <input path>\n\n")
@@ -18,19 +19,21 @@ func Usage() {
 }
 
 type Config struct {
-	// Input is the input file path.
+	// Input is the path of the input file.
 	Input string
-	// Output is the output file path.
-	// If empty, it generates to the original source code dir with the name <basename>.gen.go".
+	// Output is the path where the generated code will be saved.
+	// If empty, the generated code will be saved in the same directory as
+	// the input file with the name "<basename>.gen.go".
 	Output string
-	// Log is the log file path to where the tool write logs.
+	// Log is the path of the log file where the tool writes logs.
 	Log string
-	// DryRun instructs convergen not to write the result code to the output path.
+	// DryRun instructs convergen not to write the generated code to the output path.
 	DryRun bool
-	// Prints instructs convergen to print the result code to stdout.
+	// Prints instructs convergen to print the generated code to stdout.
 	Prints bool
 }
 
+// String returns the string representation of the config.
 func (c *Config) String() string {
 	var sb strings.Builder
 	sb.WriteString("config.Config{\n\tInput: \"")
@@ -43,6 +46,7 @@ func (c *Config) String() string {
 	return sb.String()
 }
 
+// ParseArgs parses the command line arguments.
 func (c *Config) ParseArgs() error {
 	output := flag.String("out", "", "Set the output file path")
 	logs := flag.Bool("log", false, "Write log messages to <output path>.log.")
