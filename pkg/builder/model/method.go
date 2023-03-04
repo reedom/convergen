@@ -9,21 +9,25 @@ import (
 	"github.com/reedom/convergen/pkg/util"
 )
 
+// MethodsInfo contains a list of MethodEntry.
 type MethodsInfo struct {
 	Marker  string
 	Methods []*MethodEntry
 }
 
+// MethodEntry contains a method information.
 type MethodEntry struct {
 	Method     types.Object
 	Opts       option.Options
 	DocComment *ast.CommentGroup
 }
 
+// Name returns the method name.
 func (m *MethodEntry) Name() string {
 	return m.Method.Name()
 }
 
+// Recv returns the receiver type.
 func (m *MethodEntry) Recv() types.Type {
 	if m.Opts.Receiver == "" {
 		return nil
@@ -36,6 +40,7 @@ func (m *MethodEntry) Recv() types.Type {
 	return sig.Params().At(0).Type()
 }
 
+// Args returns the argument types.
 func (m *MethodEntry) Args() []types.Type {
 	var list []types.Type
 
@@ -59,6 +64,7 @@ func (m *MethodEntry) Args() []types.Type {
 	return list
 }
 
+// Results returns the result types.
 func (m *MethodEntry) Results() []types.Type {
 	var list []types.Type
 
@@ -78,6 +84,7 @@ func (m *MethodEntry) Results() []types.Type {
 	return list
 }
 
+// RetError returns true if the last result is an error.
 func (m *MethodEntry) RetError() bool {
 	ret := m.Results()
 	return 0 < len(ret) && util.IsErrorType(ret[len(ret)-1])
