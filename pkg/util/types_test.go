@@ -73,7 +73,7 @@ var err error
 type ErrFoo error
 var err2 ErrFoo`
 
-	_, _, pkg := testLoadSrc(t, src)
+	_, _, pkg := loadSrc(t, src)
 
 	obj := pkg.Scope().Lookup("err")
 	assert.True(t, util.IsErrorType(obj.Type()))
