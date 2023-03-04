@@ -44,10 +44,10 @@ func (c *Config) String() string {
 }
 
 func (c *Config) ParseArgs() error {
-	output := flag.String("out", "", "output file path")
-	logs := flag.Bool("log", false, "write log to <output path>.log")
-	dryRun := flag.Bool("dry", false, "dry run")
-	prints := flag.Bool("print", false, "print result code to STDOUT as well")
+	output := flag.String("out", "", "Set the output file path")
+	logs := flag.Bool("log", false, "Write log messages to <output path>.log.")
+	dryRun := flag.Bool("dry", false, "Perform a dry run without writing files.")
+	prints := flag.Bool("print", false, "Print the resulting code to STDOUT as well.")
 
 	flag.Usage = Usage
 	flag.Parse()
