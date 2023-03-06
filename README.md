@@ -1,6 +1,8 @@
 Convergen
 =========
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/reedom/convergen.svg)](https://pkg.go.dev/github.com/reedom/convergen) [![Go Report Card](https://goreportcard.com/badge/github.com/reedom/convergen)](https://goreportcard.com/report/github.com/reedom/convergen)
+
 Convergen is a code generator that creates functions for type-to-type copy.
 It generates functions that copy field to field between two types.
 
