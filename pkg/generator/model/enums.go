@@ -28,7 +28,7 @@ func NewDstVarStyleFromValue(v string) (DstVarStyle, bool) {
 			return style, true
 		}
 	}
-	return DstVarStyle(""), false
+	return "", false
 }
 
 // MatchRule represents the field matching rule.
@@ -58,5 +58,5 @@ func NewMatchRuleFromValue(v string) (MatchRule, bool) {
 			return rule, true
 		}
 	}
-	return MatchRule(""), false
+	return "", false
 }
