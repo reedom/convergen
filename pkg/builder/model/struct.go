@@ -28,11 +28,6 @@ func (n StructFieldNode) Parent() Node {
 	return n.parent
 }
 
-// Field returns the leaf Field.
-func (n StructFieldNode) Field() *types.Var {
-	return n.field
-}
-
 // ObjName returns the ident of the leaf element.
 // For example, it returns "Status" in both of dst.User.Status or dst.User.Status().
 func (n StructFieldNode) ObjName() string {

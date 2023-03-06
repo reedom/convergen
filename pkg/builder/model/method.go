@@ -34,10 +34,10 @@ func (m *MethodEntry) Recv() types.Type {
 	}
 
 	sig := m.Method.Type().(*types.Signature)
-	if sig.Params().Len() == 0 {
+	if sig.Recv() == nil {
 		return nil
 	}
-	return sig.Params().At(0).Type()
+	return sig.Recv().Type()
 }
 
 // Args returns the argument types.
