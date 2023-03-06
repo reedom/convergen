@@ -1,4 +1,5 @@
 Convergen
+![Coverage](https://img.shields.io/badge/Coverage-63.8%25-yellow)
 =========
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/reedom/convergen.svg)](https://pkg.go.dev/github.com/reedom/convergen) [![Go Report Card](https://goreportcard.com/badge/github.com/reedom/convergen)](https://goreportcard.com/report/github.com/reedom/convergen)
