@@ -29,3 +29,9 @@ test: ## Run all tests
 test:
 	go test github.com/reedom/convergen/tests && \
 	go test github.com/reedom/convergen/pkg/...
+
+.PHONY: coverage
+coverage:
+	@go test -v -cover ./... -coverprofile coverage.out -coverpkg ./... 2>&1 >/dev/null && \
+	go tool cover -func coverage.out -o coverage.out 2>&1 >/dev/null && \
+	cat coverage.out
