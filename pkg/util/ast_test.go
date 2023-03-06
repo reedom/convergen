@@ -22,7 +22,7 @@ var reGoBuildGen = regexp.MustCompile(`\s*//\s*(go:(generate\b|build convergen\b
 func loadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Package) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "example.go", src, parser.ParseComments)
-	require.Nil(t, err, "failed to parse test src:\n%v", src)
+	require.NoError(t, err, "failed to parse test src:\n%v", src)
 
 	conf := types.Config{Importer: importer.Default()}
 	pkg, err := conf.Check("example.go", fset, []*ast.File{file}, nil)

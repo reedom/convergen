@@ -77,6 +77,15 @@ func DerefPtr(typ types.Type) types.Type {
 	return typ
 }
 
+// Deref dereferences a type if it is a *Pointer type and returns its base type and true.
+// Otherwise, it returns (typ, false).
+func Deref(typ types.Type) (types.Type, bool) {
+	if ptr, ok := typ.(*types.Pointer); ok {
+		return ptr.Elem(), true
+	}
+	return typ, false
+}
+
 // PkgOf returns the package of the given type.
 func PkgOf(t types.Type) *types.Package {
 	switch typ := t.(type) {
@@ -89,35 +98,12 @@ func PkgOf(t types.Type) *types.Package {
 	}
 }
 
-// Deref dereferences a type if it is a *Pointer type and returns its base type and true.
-// Otherwise, it returns (typ, false).
-func Deref(typ types.Type) (types.Type, bool) {
-	if ptr, ok := typ.(*types.Pointer); ok {
-		return ptr.Elem(), true
-	}
-	return typ, false
-}
-
 // SliceElement returns the type of the element in a slice type.
 func SliceElement(t types.Type) types.Type {
 	if slice, ok := t.(*types.Slice); ok {
 		return slice.Elem()
 	}
 	return nil
-}
-
-// RemoveObject removes an object from an AST file.
-func RemoveObject(file *ast.File, obj types.Object) {
-	nodes, _ := ToAstNode(file, obj)
-	for _, node := range nodes {
-		switch n := node.(type) {
-		case *ast.GenDecl:
-			if n.Doc != nil {
-				n.Doc.List = nil
-			}
-			RemoveDecl(file, obj.Name())
-		}
-	}
 }
 
 // GetDocCommentOn retrieves doc comments that relate to nodes.
@@ -305,10 +291,13 @@ func StringType() types.Type {
 	return types.Universe.Lookup("string").Type()
 }
 
-// CompliesGetter checks if the given function is a getter compliant method,
-// which has one return value and no error type.
+// CompliesGetter checks whether the given function complies with the requirements of a getter function.
+// A getter function must have no input parameters and must return exactly one non-error value.
 func CompliesGetter(m *types.Func) bool {
 	sig := m.Type().(*types.Signature)
+	if sig.Params().Len() != 0 {
+		return false
+	}
 	num := sig.Results().Len()
 	return num == 1 && !IsErrorType(sig.Results().At(0).Type())
 }
