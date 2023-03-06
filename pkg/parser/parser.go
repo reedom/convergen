@@ -19,19 +19,22 @@ import (
 
 const buildTag = "convergen"
 
+// Parser represents a parser for a Go source file that contains convergen blocks.
 type Parser struct {
-	srcPath     string
-	file        *ast.File
-	fset        *token.FileSet
-	pkg         *packages.Package
-	opts        option.Options
-	imports     util.ImportNames
-	intfEntries []*intfEntry
+	srcPath     string            // The path to the source file being parsed.
+	file        *ast.File         // The parsed AST of the source file.
+	fset        *token.FileSet    // The token file set used for parsing.
+	pkg         *packages.Package // The package information for the parsed file.
+	opts        option.Options    // The options for the parser.
+	imports     util.ImportNames  // The import names used in the parsed file.
+	intfEntries []*intfEntry      // The interface entries parsed from the file.
 }
 
+// parserLoadMode is a packages.Load mode that loads types and syntax trees.
 const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedDeps |
 	packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo
 
+// NewParser returns a new parser for convergen annotations.
 func NewParser(srcPath, dstPath string) (*Parser, error) {
 	fileSet := token.NewFileSet()
 	var fileSrc *ast.File
@@ -87,6 +90,7 @@ func NewParser(srcPath, dstPath string) (*Parser, error) {
 	}, nil
 }
 
+// Parse parses convergen annotations in the source code.
 func (p *Parser) Parse() ([]*model.MethodsInfo, error) {
 	entries, err := p.findConvergenEntries()
 	if err != nil {
@@ -125,10 +129,15 @@ func (p *Parser) Parse() ([]*model.MethodsInfo, error) {
 	return list, nil
 }
 
+// CreateBuilder creates a new function builder.
 func (p *Parser) CreateBuilder() *builder.FunctionBuilder {
 	return builder.NewFunctionBuilder(p.file, p.fset, p.pkg, p.imports)
 }
 
+// GenerateBaseCode generates the base code without convergen annotations.
+// The code is stripped of convergen annotations and the doc comments of interfaces.
+// The resulting code can be used as a starting point for the code generation process.
+// GenerateBaseCode returns the resulting code as a string, or an error if the generation process fails.
 func (p *Parser) GenerateBaseCode() (code string, err error) {
 	util.RemoveMatchComments(p.file, reGoBuildGen)
 

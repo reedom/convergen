@@ -1,7 +1,8 @@
 Convergen
 =========
 
-A type-to-type copy function code generator.
+Convergen is a code generator that creates functions for type-to-type copy.
+It generates functions that copy field to field between two types.
 
 Notation Table
 --------------
@@ -44,7 +45,7 @@ import (
     "github.com/sample/myapp/storage"
 )
 
-//go:generate go run github.com/reedom/convergen@v0.4.3
+//go:generate go run github.com/reedom/convergen@v0.6.1
 type Convergen interface {
     // :typecast
     // :stringer
@@ -129,7 +130,7 @@ $ go get -u github.com/reedom/convergen@latest
 Then, write a generator as follows:
 
 ```go
-//go:generate go run github.com/reedom/convergen@v0.4.3
+//go:generate go run github.com/reedom/convergen@v0.6.1
 type Convergen interface {
     …
 }
@@ -1189,5 +1190,5 @@ For those who want to contribute, there are several ways to do it, including:
 - Creating a project's logo to help with its branding.
 - Showing your support by giving the project a star.
 
-- By contributing to the project, you can help make it better and more useful for everyone.
-- So, if you're interested, feel free to get involved!
+By contributing to the project, you can help make it better and more useful for everyone.
+So, if you're interested, feel free to get involved!

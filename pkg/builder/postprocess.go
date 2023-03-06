@@ -9,6 +9,11 @@ import (
 	"github.com/reedom/convergen/pkg/util"
 )
 
+// buildManipulator builds a gmodel.Manipulator based on the given Manipulator
+// option, source and destination variables, and retError.
+// It checks that the function is valid and the types of its arguments match
+// the source and destination variables.
+// If the Manipulator is nil, it returns nil and no error.
 func (p *FunctionBuilder) buildManipulator(m *option.Manipulator, src *types.Var, dst *types.Var, retError bool) (*gmodel.Manipulator, error) {
 	if m == nil {
 		return nil, nil

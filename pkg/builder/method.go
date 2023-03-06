@@ -12,13 +12,17 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+// FunctionBuilder is a struct responsible for building functions from
+// method entries.
 type FunctionBuilder struct {
-	file    *ast.File
-	fset    *token.FileSet
-	pkg     *packages.Package
-	imports util.ImportNames
+	file    *ast.File         // The AST file containing the method.
+	fset    *token.FileSet    // The fileset used to read the method.
+	pkg     *packages.Package // The package where the method belongs.
+	imports util.ImportNames  // The import names to be used.
 }
 
+// NewFunctionBuilder is a constructor that returns a new instance of
+// FunctionBuilder.
 func NewFunctionBuilder(
 	file *ast.File,
 	fset *token.FileSet,
@@ -33,6 +37,8 @@ func NewFunctionBuilder(
 	}
 }
 
+// CreateFunctions is a method that creates functions based on a slice of
+// method entries.
 func (p *FunctionBuilder) CreateFunctions(methods []*bmodel.MethodEntry) ([]*gmodel.Function, error) {
 	functions := make([]*gmodel.Function, len(methods))
 	var err error
@@ -45,6 +51,8 @@ func (p *FunctionBuilder) CreateFunctions(methods []*bmodel.MethodEntry) ([]*gmo
 	return functions, nil
 }
 
+// CreateFunction is a method that creates a function based on a method
+// entry.
 func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Function, error) {
 	comments := util.ToTextList(m.DocComment)
 	src := m.SrcVar()
@@ -117,6 +125,8 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	return fn, nil
 }
 
+// createVar creates a gmodel.Var from a types.Var.
+// If the types.Var doesn't have a name, defName is used instead.
 func (p *FunctionBuilder) createVar(v *types.Var, defName string) gmodel.Var {
 	name := v.Name()
 	if name == "" {

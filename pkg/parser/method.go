@@ -13,9 +13,16 @@ import (
 	"github.com/reedom/convergen/pkg/util"
 )
 
-var reGoBuildGen = regexp.MustCompile(`\s*//\s*(go:(generate\b|build convergen\b)|\+build convergen)`)
-var errAbort = errors.New("abort")
+var (
+	// reGoBuildGen is a regular expression that matches a notation that
+	// indicates the beginning of a convergen block.
+	reGoBuildGen = regexp.MustCompile(`\s*//\s*(go:(generate\b|build convergen\b)|\+build convergen)`)
+	// reConvergen is a regular expression that matches a notation that
+	// indicates the beginning of a convergen block.
+	errAbort = errors.New("abort")
+)
 
+// parseMethods parses all the methods in an interface type.
 func (p *Parser) parseMethods(intf *intfEntry) ([]*model.MethodEntry, error) {
 	iface := intf.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
@@ -35,6 +42,7 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*model.MethodEntry, error) {
 	return methods, nil
 }
 
+// parseMethod parses a single method in an interface type.
 func (p *Parser) parseMethod(method types.Object, opts option.Options) (*model.MethodEntry, error) {
 	signature, ok := method.Type().(*types.Signature)
 	if !ok {

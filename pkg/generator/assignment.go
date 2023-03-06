@@ -6,6 +6,7 @@ import (
 	"github.com/reedom/convergen/pkg/generator/model"
 )
 
+// AssignmentToString returns the string representation of the assignment.
 func AssignmentToString(f *model.Function, a model.Assignment) string {
 	var sb strings.Builder
 	sb.WriteString(a.String())

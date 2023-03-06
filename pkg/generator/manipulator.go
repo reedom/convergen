@@ -6,6 +6,14 @@ import (
 	"github.com/reedom/convergen/pkg/generator/model"
 )
 
+// ManipulatorToString returns a string representation of the given Manipulator.
+// It generates a function call that performs the manipulation and returns the result as a string.
+// Parameters:
+// - m: the Manipulator to be converted into a string representation.
+// - src: the source Var that corresponds to the Manipulator's first argument.
+// - dst: the destination Var that corresponds to the Manipulator's second argument.
+// Returns:
+// - a string that represents the function call to the Manipulator.
 func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var) string {
 	var sb strings.Builder
 	if m.RetError {

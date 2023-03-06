@@ -6,6 +6,11 @@ import (
 	"github.com/reedom/convergen/pkg/generator/model"
 )
 
+// FuncToString generates the string representation of a given Function.
+// The generated string can be used to represent the Function as Go code.
+// The function generates a doc comment (if any), the function signature,
+// the variable declarations (if any), the assignment statements, and the return statement.
+// The function uses ManipulatorToString to generate the string representation of manipulators.
 func (g *Generator) FuncToString(f *model.Function) string {
 	var sb strings.Builder
 

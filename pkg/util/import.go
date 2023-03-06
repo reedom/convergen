@@ -67,6 +67,7 @@ func (i ImportNames) LookupPath(pkgName string) (path string, ok bool) {
 	return
 }
 
+// TypeName returns a string representation of the given type with its package name.
 func (i ImportNames) TypeName(t types.Type) string {
 	switch typ := t.(type) {
 	case *types.Pointer:
@@ -83,6 +84,8 @@ func (i ImportNames) TypeName(t types.Type) string {
 	}
 }
 
+// IsExternal returns true if the given type is defined in a different package than
+// the conversion setup file.
 func (i ImportNames) IsExternal(t types.Type) bool {
 	switch typ := DerefPtr(t).(type) {
 	case *types.Named:

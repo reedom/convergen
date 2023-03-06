@@ -14,21 +14,24 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+// assignmentBuilder represents the builder for a single assignment between
+// two variables.
 type assignmentBuilder struct {
-	file    *ast.File
-	fset    *token.FileSet
-	pkg     *packages.Package
-	imports util.ImportNames
+	file    *ast.File         // The file the assignment belongs to.
+	fset    *token.FileSet    // The fileset the assignment belongs to.
+	pkg     *packages.Package // The package the assignment belongs to.
+	imports util.ImportNames  // The import names to use in the generated code.
 
-	methodPos token.Pos
-	opts      option.Options
-	lhsVar    gmodel.Var
-	rhsVar    gmodel.Var
+	methodPos token.Pos      // The position of the method in the source code.
+	opts      option.Options // The options to use when generating the code.
+	lhsVar    gmodel.Var     // The variable on the left-hand side of the assignment.
+	rhsVar    gmodel.Var     // The variable on the right-hand side of the assignment.
 
-	funcName string
-	copiers  []*bmodel.Copier
+	funcName string           // The name of the method being generated.
+	copiers  []*bmodel.Copier // The list of copiers used in the generated code.
 }
 
+// newAssignmentBuilder creates a new assignmentBuilder instance.
 func newAssignmentBuilder(p *FunctionBuilder, m *bmodel.MethodEntry, lhsVar, rhsVar gmodel.Var) *assignmentBuilder {
 	return &assignmentBuilder{
 		file:      p.file,
@@ -43,6 +46,7 @@ func newAssignmentBuilder(p *FunctionBuilder, m *bmodel.MethodEntry, lhsVar, rhs
 	}
 }
 
+// build generates the code for the assignment.
 func (b *assignmentBuilder) build(lhs, rhs *types.Var) ([]gmodel.Assignment, error) {
 	rootCopier := bmodel.NewCopier("", lhs.Type(), rhs.Type())
 	rootCopier.IsRoot = true
@@ -58,6 +62,7 @@ func (b *assignmentBuilder) build(lhs, rhs *types.Var) ([]gmodel.Assignment, err
 	return b.dispatch(rootLHS, rootRHS)
 }
 
+// dispatch decides what type of assignment should be generated.
 func (b *assignmentBuilder) dispatch(lhs, rhs bmodel.Node) ([]gmodel.Assignment, error) {
 	lhsType := util.DerefPtr(lhs.ExprType())
 	rhsType := util.DerefPtr(rhs.ExprType())
@@ -69,6 +74,7 @@ func (b *assignmentBuilder) dispatch(lhs, rhs bmodel.Node) ([]gmodel.Assignment,
 	return []gmodel.Assignment{gmodel.NoMatchField{LHS: lhs.AssignExpr()}}, nil
 }
 
+// structToStruct generates code for a struct-to-struct assignment.
 func (b *assignmentBuilder) structToStruct(lhsStruct, rhsStruct bmodel.Node) ([]gmodel.Assignment, error) {
 	var err error
 	var assignments []gmodel.Assignment
@@ -87,6 +93,11 @@ func (b *assignmentBuilder) structToStruct(lhsStruct, rhsStruct bmodel.Node) ([]
 	return assignments, err
 }
 
+// matchStructFieldAndStruct matches a field in a struct with another struct
+// and returns an assignment. It checks if the field should be skipped and if
+// not, tries to match the field with a converter, name mapper or literal
+// setter. If none of these match, it falls back to the
+// structFieldAndStructGettersAndFields method.
 func (b *assignmentBuilder) matchStructFieldAndStruct(lhs bmodel.Node, rhs bmodel.Node) (gmodel.Assignment, error) {
 	if b.opts.ShouldSkip(lhs.MatcherExpr()) {
 		logger.Printf("%v: skip %v", b.fset.Position(b.methodPos), lhs.AssignExpr())
@@ -117,6 +128,11 @@ func (b *assignmentBuilder) matchStructFieldAndStruct(lhs bmodel.Node, rhs bmode
 	return b.structFieldAndStructGettersAndFields(lhs, rhs)
 }
 
+// matchStructFieldAndStruct matches a struct field on the left-hand side of an assignment
+// to a struct or struct pointer on the right-hand side of the assignment.
+// If a match is found, returns an Assignment that represents the field assignment.
+// If no match is found, returns a NoMatchField or SkipField if the field is to be skipped
+// based on the options set in the AssignmentBuilder.
 func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node, rhsStruct bmodel.Node) (gmodel.Assignment, error) {
 	opts := b.opts
 	methodPosStr := b.fset.Position(b.methodPos)
@@ -186,6 +202,8 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
+// createWithConverter creates an assignment using the given field converter.
+// It resolves the source field, applies the converter, and creates an assignment from the result.
 func (b *assignmentBuilder) createWithConverter(lhs, rhs bmodel.Node, converter *option.FieldConverter) (gmodel.Assignment, error) {
 	converterNode := func() bmodel.Node {
 		root := rhs
@@ -225,6 +243,12 @@ func (b *assignmentBuilder) createWithConverter(lhs, rhs bmodel.Node, converter 
 	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
+// createWithMapper creates an assignment for the given lhs and rhs nodes using the
+// provided name mapper. It searches for a node in the rhs tree that matches the mapper's
+// source expression and casts it to the lhs expression type.
+// If a match is found, it returns a SimpleField with the lhs and rhs expressions and
+// the returns error flag.
+// If a match is not found, it returns a NoMatchField with the lhs expression.
 func (b *assignmentBuilder) createWithMapper(lhs, rhs bmodel.Node, mapper *option.NameMatcher) (gmodel.Assignment, error) {
 	mappedNode := func() bmodel.Node {
 		root := rhs
@@ -253,6 +277,15 @@ func (b *assignmentBuilder) createWithMapper(lhs, rhs bmodel.Node, mapper *optio
 	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
+// castNode tries to cast a given node to a target type.
+// It checks if the target type is assignable from the node type,
+// if not, it tries to convert to the target type, if possible.
+// If the Stringer option is enabled and the target type is string,
+// and the node type complies with the Stringer interface,
+// it wraps the node in a Stringer node.
+// If the Typecast option is enabled and the node type is convertible to the target type,
+// it creates a typecast node and returns it along with true.
+// Otherwise, it returns nil and false.
 func (b *assignmentBuilder) castNode(lhsType types.Type, rhs bmodel.Node) (c bmodel.Node, ok bool) {
 	if types.AssignableTo(rhs.ExprType(), lhsType) {
 		return rhs, true
@@ -273,6 +306,7 @@ func (b *assignmentBuilder) castNode(lhsType types.Type, rhs bmodel.Node) (c bmo
 	return nil, false
 }
 
+// isStructFieldAccessible returns true if the given struct field is accessible from the current package.
 func (b *assignmentBuilder) isStructFieldAccessible(structNode bmodel.Node, leafName string) bool {
 	structType := util.DerefPtr(structNode.ExprType())
 	if !util.IsStructType(structType) {
@@ -285,6 +319,7 @@ func (b *assignmentBuilder) isStructFieldAccessible(structNode bmodel.Node, leaf
 
 }
 
+// isExternalPkg returns true if the given package is not the current package.
 func (b *assignmentBuilder) isExternalPkg(pkg *types.Package) bool {
 	if pkg == nil {
 		return false
@@ -292,6 +327,10 @@ func (b *assignmentBuilder) isExternalPkg(pkg *types.Package) bool {
 	return b.pkg.PkgPath != pkg.Path()
 }
 
+// resolveExpr follows the path specified by the IdentMatcher to resolve
+// the corresponding Node in the root node.
+// It returns the resolved node and a boolean indicating whether the
+// resolution was successful.
 func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmodel.Node) (node bmodel.Node, ok bool) {
 	node = root
 	typ := root.ExprType()
@@ -349,6 +388,11 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmode
 	return
 }
 
+// sliceToSlice attempts to create a slice-to-slice assignment between the given
+// left-hand side and right-hand side nodes. If the elements of the slices are
+// assignable, a simple slice copy or a loop-based copy is generated. If the
+// element types are convertible, a typecast is inserted between the slices. If
+// neither is possible, this function returns nil.
 func (b *assignmentBuilder) sliceToSlice(lhs, rhs bmodel.Node) (a gmodel.Assignment, err error) {
 	lhsElem := util.SliceElement(lhs.ExprType())
 	rhsElem := util.SliceElement(rhs.ExprType())

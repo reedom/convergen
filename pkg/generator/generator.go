@@ -11,16 +11,20 @@ import (
 	"golang.org/x/tools/imports"
 )
 
+// Generator represents a code generator.
 type Generator struct {
-	code model.Code
+	code model.Code // the code to generate
 }
 
+// NewGenerator creates a new generator with the given code.
 func NewGenerator(code model.Code) *Generator {
 	return &Generator{
 		code: code,
 	}
 }
 
+// Generate generates the code into a file with the given path.
+// It returns the generated code as a byte slice.
 func (g *Generator) Generate(outPath string, output, dryRun bool) ([]byte, error) {
 	content, err := g.generateContent()
 	if err != nil {
@@ -58,6 +62,7 @@ func (g *Generator) Generate(outPath string, output, dryRun bool) ([]byte, error
 	return formatted, nil
 }
 
+// generateContent generates the entire code with the given information.
 func (g *Generator) generateContent() (content []byte, err error) {
 	code := g.code.BaseCode
 	for _, block := range g.code.FunctionBlocks {
