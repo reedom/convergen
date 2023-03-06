@@ -118,7 +118,7 @@ func NewScalarNode(parent Node, name string, typ types.Type) Node {
 
 // Parent returns the container of the node or nil.
 func (n ScalarNode) Parent() Node {
-	return n.parent
+	return nil
 }
 
 // ObjName returns the ident of the leaf element.
