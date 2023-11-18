@@ -45,7 +45,7 @@ func NewParser(srcPath, dstPath string) (*Parser, error) {
 	}
 
 	dstStat, _ := os.Stat(dstPath)
-
+	var parseErr error
 	cfg := &packages.Config{
 		Mode:       parserLoadMode,
 		BuildFlags: []string{"-tags", buildTag},
@@ -66,10 +66,12 @@ func NewParser(srcPath, dstPath string) (*Parser, error) {
 			}
 
 			file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
-			if err == nil {
-				fileSrc = file
+			if err != nil {
+				parseErr = err
+				return nil, err
 			}
-			return file, err
+			fileSrc = file
+			return file, nil
 		},
 	}
 	pkgs, err := packages.Load(cfg, "file="+srcPath)
@@ -80,6 +82,9 @@ func NewParser(srcPath, dstPath string) (*Parser, error) {
 		return nil, logger.Errorf("%v: failed to load package information", srcPath)
 	}
 
+	if fileSrc == nil && parseErr != nil {
+		return nil, logger.Errorf("%v: %v", srcPath, parseErr)
+	}
 	return &Parser{
 		srcPath: fileSet.Position(fileSrc.Pos()).Filename,
 		fset:    fileSet,
