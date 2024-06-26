@@ -49,6 +49,7 @@ func (c *Config) String() string {
 // ParseArgs parses the command line arguments.
 func (c *Config) ParseArgs() error {
 	output := flag.String("out", "", "Set the output file path")
+	outputSuffix := flag.String("suffix", "", "Set the output suffix file path")
 	logs := flag.Bool("log", false, "Write log messages to <output path>.log.")
 	dryRun := flag.Bool("dry", false, "Perform a dry run without writing files.")
 	prints := flag.Bool("print", false, "Print the resulting code to STDOUT as well.")
@@ -70,7 +71,11 @@ func (c *Config) ParseArgs() error {
 		c.Output = *output
 	} else {
 		ext := path.Ext(inputPath)
-		c.Output = inputPath[0:len(inputPath)-len(ext)] + ".gen" + ext
+		suffix := ".gen"
+		if outputSuffix != nil && *outputSuffix != "" {
+			suffix = "." + *outputSuffix
+		}
+		c.Output = inputPath[0:len(inputPath)-len(ext)] + suffix + ext
 	}
 
 	if *logs {

@@ -174,7 +174,6 @@ func (n ScalarNode) NullCheckExpr() string {
 // ConverterNode is a node that represents a converter function.
 type ConverterNode struct {
 	arg       Node
-	pkgName   string
 	converter *option.FieldConverter
 }
 
@@ -313,12 +312,13 @@ func (n TypecastEntry) ObjNullable() bool {
 
 // StringerEntry is a node that represents a Stringer interface.
 type StringerEntry struct {
-	inner Node
+	inner    Node
+	funcName string
 }
 
 // NewStringer creates a new StringerEntry.
 func NewStringer(inner Node) Node {
-	return StringerEntry{inner: inner}
+	return StringerEntry{inner: inner, funcName: "String"}
 }
 
 // ObjName returns the ident of the leaf element.
@@ -342,7 +342,7 @@ func (e StringerEntry) ExprType() types.Type {
 // AssignExpr returns a value evaluate expression for assignment.
 // For example, it returns "dst.User.Name", "dst.User.Status()", "strconv.Itoa(dst.User.Score())", etc.
 func (e StringerEntry) AssignExpr() string {
-	return fmt.Sprintf("%v.String()", e.inner.AssignExpr())
+	return fmt.Sprintf("%v.%v()", e.inner.AssignExpr(), e.funcName)
 }
 
 // MatcherExpr returns a value evaluate expression for assignment but omits the root variable name.
@@ -365,4 +365,19 @@ func (e StringerEntry) ReturnsError() bool {
 // ObjNullable indicates whether the node itself is a pointer type so that it can be nil at runtime.
 func (e StringerEntry) ObjNullable() bool {
 	return e.inner.ObjNullable()
+}
+
+type MethodCallNode struct {
+	*StringerEntry
+}
+
+// NewMethodCallNodeNode creates a new MethodCallNode.
+func NewMethodCallNode(inner Node, funcName string) Node {
+	return MethodCallNode{
+		StringerEntry: &StringerEntry{inner: inner, funcName: funcName},
+	}
+}
+
+func (e MethodCallNode) ExprType() types.Type {
+	return e.inner.ExprType()
 }

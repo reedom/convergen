@@ -203,3 +203,73 @@ func (c SliceTypecastAssignment) String() string {
 func (c SliceTypecastAssignment) RetError() bool {
 	return false
 }
+
+// SliceMethodCallAssignment represents a slice assignment with a typecast.
+type SliceMethodCallAssignment struct {
+	LHS      string
+	RHS      string
+	Typ      string
+	Method   string
+	Nullable bool
+}
+
+// String returns the string representation of the slice assignment with a typecast.
+func (c SliceMethodCallAssignment) String() string {
+	var sb strings.Builder
+	sb.WriteString("if ")
+	sb.WriteString(c.RHS)
+	sb.WriteString(" != nil {\n")
+	sb.WriteString(c.LHS)
+	sb.WriteString(" = make(")
+	sb.WriteString(c.Typ)
+	sb.WriteString(", len(")
+	sb.WriteString(c.RHS)
+	sb.WriteString("))\nfor i, e := range ")
+	sb.WriteString(c.RHS)
+	sb.WriteString("{\n")
+	if c.Nullable {
+		sb.WriteString("if e != nil {")
+	}
+	sb.WriteString(c.LHS)
+	sb.WriteString("[i] = e.")
+	sb.WriteString(c.Method)
+	sb.WriteString("()\n")
+	if c.Nullable {
+		sb.WriteString("}")
+	}
+	sb.WriteString("}\n}\n")
+	return sb.String()
+}
+
+// RetError returns whether the assignment returns an error value.
+func (c SliceMethodCallAssignment) RetError() bool {
+	return false
+}
+
+// IfAssignment represents if check assignment
+type IfAssignment struct {
+	Inner    Assignment
+	Nullable bool
+	Expr     string
+}
+
+// String returns the string representation of the nested struct assignment.
+func (s IfAssignment) String() string {
+	if !s.Nullable {
+		return s.Inner.String()
+	}
+
+	var sb strings.Builder
+	sb.WriteString("if ")
+	sb.WriteString(s.Expr)
+	sb.WriteString(" != nil {\n")
+	sb.WriteString(s.Inner.String())
+	sb.WriteString("}\n")
+
+	return sb.String()
+}
+
+// RetError returns whether the assignment returns an error value.
+func (s IfAssignment) RetError() bool {
+	return s.Inner.RetError()
+}

@@ -8,20 +8,22 @@ import (
 
 // Options represents the conversion options.
 type Options struct {
-	Style       model.DstVarStyle // Style of the destination variable name
-	Rule        model.MatchRule   // Matching rule for fields
-	ExactCase   bool              // Whether to match fields with exact case sensitivity
-	Getter      bool              // Whether to use getter methods to access fields
-	Stringer    bool              // Whether to use stringer methods to convert values to strings
-	Typecast    bool              // Whether to use explicit typecasts when converting values
-	Receiver    string            // Receiver name for method generation
-	Reverse     bool              // Whether to reverse the order of struct tags
-	SkipFields  []*PatternMatcher // List of field names to skip during conversion
-	NameMapper  []*NameMatcher    // List of field name mapping rules
-	Converters  []*FieldConverter // List of field conversion rules
-	Literals    []*LiteralSetter  // List of literal value setting rules
-	PreProcess  *Manipulator      // Manipulator to run before struct processing
-	PostProcess *Manipulator      // Manipulator to run after struct processing
+	Style         model.DstVarStyle // Style of the destination variable name
+	Rule          model.MatchRule   // Matching rule for fields
+	ExactCase     bool              // Whether to match fields with exact case sensitivity
+	Getter        bool              // Whether to use getter methods to access fields
+	Stringer      bool              // Whether to use stringer methods to convert values to strings
+	Typecast      bool              // Whether to use explicit typecasts when converting values
+	Receiver      string            // Receiver name for method generation
+	FuncCutPrefix string            // Receiver name prefix to cut, If there is a receiver, the name can be repeated for more consistency and neatness
+	Reverse       bool              // Whether to reverse the order of struct tags
+	SkipFields    []*PatternMatcher // List of field names to skip during conversion
+	NameMapper    []*NameMatcher    // List of field name mapping rules
+	Converters    []*FieldConverter // List of field conversion rules
+	Literals      []*LiteralSetter  // List of literal value setting rules
+	Methods       []*FieldConverter // List of method value setting rules
+	PreProcess    *Manipulator      // Manipulator to run before struct processing
+	PostProcess   *Manipulator      // Manipulator to run after struct processing
 }
 
 // NewOptions returns a new Options instance.
@@ -89,6 +91,7 @@ var ValidOpsMethod = map[string]struct{}{
 	"conv":         {},
 	"conv:type":    {},
 	"conv:with":    {},
+	"method":       {},
 	"literal":      {},
 	"preprocess":   {},
 	"postprocess":  {},

@@ -111,6 +111,13 @@ func (b *assignmentBuilder) matchStructFieldAndStruct(lhs bmodel.Node, rhs bmode
 		}
 	}
 
+	for _, method := range b.opts.Methods {
+		if method.Dst().Match(lhs.MatcherExpr(), true) {
+			// If there are more than one converter exist for the lhs, the first one wins.
+			return b.createWithMethodCall(lhs, rhs, method)
+		}
+	}
+
 	for _, mapper := range b.opts.NameMapper {
 		if mapper.Dst().Match(lhs.MatcherExpr(), true) {
 			// If there are more than one mapper exist for the lhs, the first one wins.
@@ -237,6 +244,38 @@ func (b *assignmentBuilder) createWithConverter(lhs, rhs bmodel.Node, converter 
 		rhsExpr := converterNode.AssignExpr()
 		logger.Printf("%v: assignment found: %v = %v, err", posStr, lhsExpr, rhsExpr)
 		return gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: converter.RetError()}, nil
+	}
+
+	logger.Warnf("%v: no assignment for %v [%v]", posStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
+	return gmodel.NoMatchField{LHS: lhsExpr}, nil
+}
+
+func (b *assignmentBuilder) createWithMethodCall(lhs, rhs bmodel.Node, converter *option.FieldConverter) (gmodel.Assignment, error) {
+	methodCallNode, originNode := func() (bmodel.Node, bmodel.Node) {
+		root := rhs
+		for ; root.Parent() != nil; root = root.Parent() {
+		}
+
+		rhsNode, ok := b.resolveExpr(converter.Src(), root)
+		if !ok {
+			return nil, nil
+		}
+
+		convNode := bmodel.NewMethodCallNode(rhsNode, converter.Converter())
+		return convNode, rhsNode
+	}()
+
+	lhsExpr := lhs.AssignExpr()
+	posStr := b.fset.Position(converter.Pos())
+
+	if methodCallNode != nil {
+		rhsExpr := methodCallNode.AssignExpr()
+		logger.Printf("%v: assignment found: %v = %v, err", posStr, lhsExpr, rhsExpr)
+		return gmodel.IfAssignment{
+			Inner:    gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: converter.RetError()},
+			Expr:     originNode.AssignExpr(),
+			Nullable: methodCallNode.ObjNullable(),
+		}, nil
 	}
 
 	logger.Warnf("%v: no assignment for %v [%v]", posStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
@@ -415,6 +454,31 @@ func (b *assignmentBuilder) sliceToSlice(lhs, rhs bmodel.Node) (a gmodel.Assignm
 			}
 		}
 		return
+	}
+
+	for _, method := range b.opts.Methods {
+		if method.Dst().Match(lhs.MatcherExpr()+"[]", true) {
+			a = gmodel.SliceMethodCallAssignment{
+				LHS:      lhs.AssignExpr(),
+				RHS:      rhs.AssignExpr(),
+				Typ:      "[]" + b.imports.TypeName(lhsElem),
+				Method:   method.Converter(),
+				Nullable: util.IsPtr(rhsElem),
+			}
+			return
+		}
+	}
+
+	for _, converter := range b.opts.Converters {
+		if converter.Dst().Match(lhs.MatcherExpr()+"[]", true) {
+			a = gmodel.SliceTypecastAssignment{
+				LHS:  lhs.AssignExpr(),
+				RHS:  rhs.AssignExpr(),
+				Typ:  "[]" + b.imports.TypeName(lhsElem),
+				Cast: converter.Converter(),
+			}
+			return
+		}
 	}
 
 	if b.opts.Typecast && types.ConvertibleTo(rhsElem, lhsElem) {
