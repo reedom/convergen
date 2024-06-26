@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/reedom/convergen/pkg/generator/model"
@@ -33,7 +34,12 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	}
 
 	// "func (r *SrcModel) Name("
-	sb.WriteString(f.Name)
+	if f.FuncCutPrefix == "" {
+		sb.WriteString(f.Name)
+	} else {
+		// cut prefix, multi funcs with reciever CAN have same function name
+		sb.WriteString(strings.TrimPrefix(f.Name, f.FuncCutPrefix))
+	}
 	sb.WriteString("(")
 
 	if f.DstVarStyle == model.DstVarArg {
@@ -69,6 +75,13 @@ func (g *Generator) FuncToString(f *model.Function) string {
 
 		// "func Name(src *SrcModel) (dst *DstModel) {"
 		sb.WriteString(") {\n")
+
+		if f.Src.Pointer {
+			sb.WriteString(fmt.Sprintf("if %s == nil {\n", f.Src.Name))
+			sb.WriteString("return\n")
+			sb.WriteString("}\n\n")
+		}
+
 		if f.Dst.Pointer {
 			// "dst = &DstModel{}"
 			sb.WriteString(f.Dst.Name)
@@ -86,6 +99,12 @@ func (g *Generator) FuncToString(f *model.Function) string {
 		} else {
 			// "func Name(dst *DstModel, src *SrcModel) {"
 			sb.WriteString("{\n")
+		}
+
+		if f.Src.Pointer {
+			sb.WriteString(fmt.Sprintf("if %s == nil {\n", f.Src.Name))
+			sb.WriteString("return\n")
+			sb.WriteString("}\n\n")
 		}
 	}
 

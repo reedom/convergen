@@ -110,16 +110,17 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	}
 
 	fn := &gmodel.Function{
-		Name:        m.Method.Name(),
-		Comments:    comments,
-		Receiver:    m.Opts.Receiver,
-		Src:         srcVar,
-		Dst:         dstVar,
-		DstVarStyle: m.Opts.Style,
-		RetError:    m.RetError(),
-		Assignments: assignments,
-		PreProcess:  preProcess,
-		PostProcess: postProcess,
+		Name:          m.Method.Name(),
+		Comments:      comments,
+		Receiver:      m.Opts.Receiver,
+		FuncCutPrefix: m.Opts.FuncCutPrefix,
+		Src:           srcVar,
+		Dst:           dstVar,
+		DstVarStyle:   m.Opts.Style,
+		RetError:      m.RetError(),
+		Assignments:   assignments,
+		PreProcess:    preProcess,
+		PostProcess:   postProcess,
 	}
 
 	return fn, nil

@@ -89,6 +89,14 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 				return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
 			}
 			opts.Receiver = args[0]
+
+			if len(args) > 1 { // with function prefix to cut
+				if !isValidIdentifier(args[1]) {
+					return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
+				}
+
+				opts.FuncCutPrefix = args[1]
+			}
 		case "reverse":
 			opts.Reverse = true
 			posReverse = n.Pos()
@@ -103,13 +111,13 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			opts.SkipFields = append(opts.SkipFields, matcher)
 		case "map":
 			if len(args) < 2 {
-				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
+				return logger.Errorf("%v: needs <src> <dst>", p.fset.Position(n.Pos()))
 			}
 			matcher := option.NewNameMatcher(args[0], args[1], n.Pos())
 			opts.NameMapper = append(opts.NameMapper, matcher)
 		case "conv":
 			if len(args) < 2 {
-				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
+				return logger.Errorf("%v: needs <conv> <src> <dst>", p.fset.Position(n.Pos()))
 			}
 			src := args[1]
 			dst := src
@@ -118,6 +126,20 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			}
 			converter := option.NewFieldConverter(args[0], src, dst, n.Pos())
 			opts.Converters = append(opts.Converters, converter)
+		case "method":
+			if len(args) < 2 {
+				return logger.Errorf("%v: needs <method> <src> <dst>", p.fset.Position(n.Pos()))
+			}
+
+			src := args[1]
+			dst := src
+			if 3 <= len(args) {
+				dst = args[2]
+			}
+
+			// setter := option.NewMethodSetter(args[0], src, dst, n.Pos())
+			method := option.NewFieldConverter(args[0], src, dst, n.Pos())
+			opts.Methods = append(opts.Methods, method)
 		case "literal":
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <dst> <literal> args", p.fset.Position(n.Pos()))

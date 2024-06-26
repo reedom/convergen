@@ -35,3 +35,8 @@ coverage:
 	@go test -v -cover ./... -coverprofile coverage.out -coverpkg ./... 2>&1 >/dev/null && \
 	go tool cover -func coverage.out -o coverage.out 2>&1 >/dev/null && \
 	cat coverage.out
+
+.PHONY: build-linux
+build-linux:
+	mkdir -p build/
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/convergen .
