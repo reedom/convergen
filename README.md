@@ -1,6 +1,8 @@
 Convergen
 =========
 
+[**`中文`**](README_CN.md)
+
 [![Go Reference](https://pkg.go.dev/badge/github.com/reedom/convergen.svg)](https://pkg.go.dev/github.com/reedom/convergen) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/reedom/convergen)](https://goreportcard.com/report/github.com/reedom/convergen) 
 ![Coverage](https://img.shields.io/badge/Coverage-67.6%25-yellow)

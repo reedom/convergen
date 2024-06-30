@@ -60,7 +60,7 @@ func (p *Parser) findConvergenEntries() ([]*intfEntry, error) {
 		marker, _ := gonanoid.Nanoid()
 		entry := &intfEntry{
 			intf:   obj,
-			opts:   p.opts,
+			opts:   opts,
 			marker: marker,
 		}
 		entries = append(entries, entry)

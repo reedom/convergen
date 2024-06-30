@@ -172,10 +172,11 @@ func (c SliceLoopAssignment) RetError() bool {
 
 // SliceTypecastAssignment represents a slice assignment with a typecast.
 type SliceTypecastAssignment struct {
-	LHS  string
-	RHS  string
-	Typ  string
-	Cast string
+	LHS   string
+	RHS   string
+	Typ   string
+	Cast  string
+	Error bool
 }
 
 // String returns the string representation of the slice assignment with a typecast.
@@ -193,9 +194,17 @@ func (c SliceTypecastAssignment) String() string {
 	sb.WriteString(c.RHS)
 	sb.WriteString("{\n")
 	sb.WriteString(c.LHS)
-	sb.WriteString("[i] = ")
+	sb.WriteString("[i]")
+	if c.Error {
+		sb.WriteString(", err")
+	}
+	sb.WriteString(" = ")
 	sb.WriteString(c.Cast)
-	sb.WriteString("(e)\n}\n}\n")
+	sb.WriteString("(e)\n")
+	if c.Error {
+		sb.WriteString("if err != nil {\nreturn\n}")
+	}
+	sb.WriteString("}\n}\n")
 	return sb.String()
 }
 
@@ -211,6 +220,7 @@ type SliceMethodCallAssignment struct {
 	Typ      string
 	Method   string
 	Nullable bool
+	Error    bool
 }
 
 // String returns the string representation of the slice assignment with a typecast.
@@ -231,9 +241,16 @@ func (c SliceMethodCallAssignment) String() string {
 		sb.WriteString("if e != nil {")
 	}
 	sb.WriteString(c.LHS)
-	sb.WriteString("[i] = e.")
+	sb.WriteString("[i]")
+	if c.Error {
+		sb.WriteString(", err")
+	}
+	sb.WriteString(" = e.")
 	sb.WriteString(c.Method)
 	sb.WriteString("()\n")
+	if c.Error {
+		sb.WriteString("if err != nil {\nreturn\n}")
+	}
 	if c.Nullable {
 		sb.WriteString("}")
 	}
