@@ -464,6 +464,7 @@ func (b *assignmentBuilder) sliceToSlice(lhs, rhs bmodel.Node) (a gmodel.Assignm
 				Typ:      "[]" + b.imports.TypeName(lhsElem),
 				Method:   method.Converter(),
 				Nullable: util.IsPtr(rhsElem),
+				Error:    method.RetError(),
 			}
 			return
 		}
@@ -472,10 +473,11 @@ func (b *assignmentBuilder) sliceToSlice(lhs, rhs bmodel.Node) (a gmodel.Assignm
 	for _, converter := range b.opts.Converters {
 		if converter.Dst().Match(lhs.MatcherExpr()+"[]", true) {
 			a = gmodel.SliceTypecastAssignment{
-				LHS:  lhs.AssignExpr(),
-				RHS:  rhs.AssignExpr(),
-				Typ:  "[]" + b.imports.TypeName(lhsElem),
-				Cast: converter.Converter(),
+				LHS:   lhs.AssignExpr(),
+				RHS:   rhs.AssignExpr(),
+				Typ:   "[]" + b.imports.TypeName(lhsElem),
+				Cast:  converter.Converter(),
+				Error: converter.RetError(),
 			}
 			return
 		}

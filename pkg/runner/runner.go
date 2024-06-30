@@ -26,7 +26,7 @@ func Run(conf config.Config) error {
 		logger.SetupLogger(logger.Enable(), logger.Output(f))
 	}
 
-	p, err := parser.NewParser(conf.Input, conf.Output)
+	p, err := parser.NewParser(&conf)
 	if err != nil {
 		return err
 	}

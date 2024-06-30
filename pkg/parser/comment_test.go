@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/reedom/convergen/pkg/config"
 	"github.com/reedom/convergen/pkg/generator/model"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/stretchr/testify/assert"
@@ -88,8 +89,10 @@ func testCommonNotations(t *testing.T, validOpts map[string]struct{}) {
 	}
 
 	p, err := NewParser(
-		"../../tests/fixtures/usecase/getter/setup.go",
-		"../../tests/fixtures/usecase/getter/setup.gen.go",
+		&config.Config{
+			Input:  "../../tests/fixtures/usecase/getter/setup.go",
+			Output: "../../tests/fixtures/usecase/getter/setup.gen.go",
+		},
 	)
 	require.Nil(t, err)
 
@@ -125,8 +128,10 @@ func testMethodNotations(t *testing.T) {
 	}
 
 	p, err := NewParser(
-		"../../tests/fixtures/usecase/getter/setup.go",
-		"../../tests/fixtures/usecase/getter/setup.gen.go",
+		&config.Config{
+			Input:  "../../tests/fixtures/usecase/getter/setup.go",
+			Output: "../../tests/fixtures/usecase/getter/setup.gen.go",
+		},
 	)
 	require.Nil(t, err)
 

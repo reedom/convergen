@@ -126,7 +126,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			}
 			converter := option.NewFieldConverter(args[0], src, dst, n.Pos())
 			opts.Converters = append(opts.Converters, converter)
-		case "method":
+		case "method", "method:err":
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <method> <src> <dst>", p.fset.Position(n.Pos()))
 			}
@@ -137,8 +137,12 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 				dst = args[2]
 			}
 
-			// setter := option.NewMethodSetter(args[0], src, dst, n.Pos())
 			method := option.NewFieldConverter(args[0], src, dst, n.Pos())
+			if m[1] == "method:err" {
+				// ! method can trim prefix, can NOT calc by programe
+				method.Set(nil, nil, true) // force error return
+			}
+
 			opts.Methods = append(opts.Methods, method)
 		case "literal":
 			if len(args) < 2 {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/reedom/convergen/pkg/config"
 	"github.com/reedom/convergen/pkg/generator"
 	"github.com/reedom/convergen/pkg/generator/model"
 	"github.com/reedom/convergen/pkg/logger"
@@ -94,7 +95,10 @@ func TestUseCases(t *testing.T) {
 			//log.SetFlags(log.Llongfile)
 			//logger.SetupLogger(logger.Enable())
 
-			p, err := parser.NewParser(tt.source, tt.expected)
+			p, err := parser.NewParser(&config.Config{
+				Input:  tt.source,
+				Output: tt.expected,
+			})
 			require.Nil(t, err)
 			methods, err := p.Parse()
 			require.Nil(t, err)

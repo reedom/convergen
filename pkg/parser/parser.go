@@ -11,6 +11,7 @@ import (
 
 	"github.com/reedom/convergen/pkg/builder"
 	"github.com/reedom/convergen/pkg/builder/model"
+	"github.com/reedom/convergen/pkg/config"
 	"github.com/reedom/convergen/pkg/logger"
 	"github.com/reedom/convergen/pkg/option"
 	"github.com/reedom/convergen/pkg/util"
@@ -35,9 +36,19 @@ const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedD
 	packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo
 
 // NewParser returns a new parser for convergen annotations.
-func NewParser(srcPath, dstPath string) (*Parser, error) {
-	fileSet := token.NewFileSet()
-	var fileSrc *ast.File
+func NewParser(conf *config.Config) (*Parser, error) {
+	var (
+		fileSet = token.NewFileSet()
+		fileSrc *ast.File
+		srcPath = conf.Input
+		dstPath = conf.Output
+		opts    = option.NewOptions()
+	)
+
+	opts.Getter = conf.Getter
+	opts.ExactCase = conf.ExactCase
+	opts.Stringer = conf.Stringer
+	opts.Typecast = conf.Typecast
 
 	srcStat, err := os.Stat(srcPath)
 	if err != nil {
@@ -90,7 +101,7 @@ func NewParser(srcPath, dstPath string) (*Parser, error) {
 		fset:    fileSet,
 		file:    fileSrc,
 		pkg:     pkgs[0],
-		opts:    option.NewOptions(),
+		opts:    opts,
 		imports: util.NewImportNames(fileSrc.Imports),
 	}, nil
 }
@@ -174,9 +185,16 @@ func (p *Parser) GenerateBaseCode() (code string, err error) {
 			}
 		}
 
+		// fix interface内容短于marker的时候
+		// 下面的代码会报错
+		/*
+			type Convergen interface {
+				A2B(*A) *B
+			}
+		*/
 		// Insert markers.
-		util.InsertComment(p.file, entry.marker, minPos)
 		util.InsertComment(p.file, entry.marker, maxPos)
+		util.InsertComment(p.file, entry.marker, minPos)
 	}
 
 	var buf bytes.Buffer

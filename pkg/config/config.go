@@ -31,6 +31,14 @@ type Config struct {
 	DryRun bool
 	// Prints instructs convergen to print the generated code to stdout.
 	Prints bool
+	// Whether to match fields with exact case sensitivity
+	ExactCase bool
+	// Whether to use explicit typecasts when converting values
+	Typecast bool
+	// Whether to use stringer methods to convert values to strings
+	Stringer bool
+	// Whether to use getter methods to access fields
+	Getter bool
 }
 
 // String returns the string representation of the config.
@@ -53,6 +61,10 @@ func (c *Config) ParseArgs() error {
 	logs := flag.Bool("log", false, "Write log messages to <output path>.log.")
 	dryRun := flag.Bool("dry", false, "Perform a dry run without writing files.")
 	prints := flag.Bool("print", false, "Print the resulting code to STDOUT as well.")
+	exactCase := flag.Bool("case", true, "Whether to match fields with exact case sensitivity")
+	typecast := flag.Bool("cast", false, "Whether to use explicit typecasts when converting values")
+	stringer := flag.Bool("stringer", false, "Whether to use stringer methods to convert values to strings")
+	getter := flag.Bool("getter", false, "Whether to use getter methods to access fields")
 
 	flag.Usage = Usage
 	flag.Parse()
@@ -84,6 +96,10 @@ func (c *Config) ParseArgs() error {
 	}
 	c.DryRun = *dryRun
 	c.Prints = *prints
+	c.ExactCase = *exactCase
+	c.Typecast = *typecast
+	c.Stringer = *stringer
+	c.Getter = *getter
 
 	return nil
 }

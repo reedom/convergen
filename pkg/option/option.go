@@ -69,6 +69,7 @@ var ValidOpsIntf = map[string]struct{}{
 	"stringer:off": {},
 	"typecast":     {},
 	"typecast:off": {},
+	"skip":         {},
 }
 
 // ValidOpsMethod is a set of valid conversion option keys for method-level conversion.
@@ -92,6 +93,7 @@ var ValidOpsMethod = map[string]struct{}{
 	"conv:type":    {},
 	"conv:with":    {},
 	"method":       {},
+	"method:err":   {},
 	"literal":      {},
 	"preprocess":   {},
 	"postprocess":  {},
