@@ -406,6 +406,15 @@ func A2B(src *A) (dst *B) {
 }
 ```
 
+可以一次性skip多个, 用 **`空格`** 隔开, 而不是 **`逗号,`**
+
+``` go
+type Convergen interface {
+	// :skip A B C
+	A2B(*A) *B
+}
+```
+
 ## 3.9 map
 仅仅字段名有区别, 可以用map做映射
 

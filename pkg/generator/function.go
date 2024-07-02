@@ -75,13 +75,27 @@ func (g *Generator) FuncToString(f *model.Function) string {
 
 		// "func Name(src *SrcModel) (dst *DstModel) {"
 		sb.WriteString(") {\n")
-
-		if f.Src.Pointer {
-			sb.WriteString(fmt.Sprintf("if %s == nil {\n", f.Src.Name))
-			sb.WriteString("return\n")
-			sb.WriteString("}\n\n")
+	} else {
+		if f.RetError {
+			// "func Name(dst *DstModel, src *SrcModel) (err error) {"
+			sb.WriteString("(err error) {\n")
+		} else {
+			// "func Name(dst *DstModel, src *SrcModel) {"
+			sb.WriteString("{\n")
 		}
+	}
 
+	if f.PreProcess != nil {
+		sb.WriteString(g.ManipulatorToString(f.PreProcess, f.Src, f.Dst))
+	}
+
+	if (f.PreProcess == nil || !f.PreProcess.RetError) && f.Src.Pointer {
+		sb.WriteString(fmt.Sprintf("if %s == nil {\n", f.Src.Name))
+		sb.WriteString("return\n")
+		sb.WriteString("}\n\n")
+	}
+
+	if f.DstVarStyle == model.DstVarReturn {
 		if f.Dst.Pointer {
 			// "dst = &DstModel{}"
 			sb.WriteString(f.Dst.Name)
@@ -92,25 +106,8 @@ func (g *Generator) FuncToString(f *model.Function) string {
 			sb.WriteString(f.Dst.PtrLessFullType())
 			sb.WriteString("{}\n")
 		}
-	} else {
-		if f.RetError {
-			// "func Name(dst *DstModel, src *SrcModel) (err error) {"
-			sb.WriteString("(err error) {\n")
-		} else {
-			// "func Name(dst *DstModel, src *SrcModel) {"
-			sb.WriteString("{\n")
-		}
-
-		if f.Src.Pointer {
-			sb.WriteString(fmt.Sprintf("if %s == nil {\n", f.Src.Name))
-			sb.WriteString("return\n")
-			sb.WriteString("}\n\n")
-		}
 	}
 
-	if f.PreProcess != nil {
-		sb.WriteString(g.ManipulatorToString(f.PreProcess, f.Src, f.Dst))
-	}
 	for i := range f.Assignments {
 		sb.WriteString(AssignmentToString(f, f.Assignments[i]))
 	}
