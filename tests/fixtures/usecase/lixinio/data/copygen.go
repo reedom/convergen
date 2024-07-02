@@ -37,7 +37,7 @@ func cleanUpClientProvider(dst *ClientProvider, src *biz.ClientProvider) error {
 }
 
 type Convergen interface {
-	//:typecast
+	// :typecast
 	// 使用成员函数, 函数名去掉前缀(Client, 就保留 ToBiz)
 	// :recv client Client
 	// 忽略字段
@@ -51,7 +51,7 @@ type Convergen interface {
 	// :method ToBiz Provider2 Provider3
 	// :method ToBiz Uris[]
 	ClientToBiz(*Client) *biz.Client
-	//:typecast
+	// :typecast
 	// 忽略字段
 	// :skip ClientSecret
 	// 用自定义函数转换

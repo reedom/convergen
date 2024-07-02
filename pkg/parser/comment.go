@@ -102,13 +102,17 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			posReverse = n.Pos()
 		case "skip":
 			if len(args) == 0 {
-				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
+				return logger.Errorf("%v: needs <field> <field2> ...", p.fset.Position(n.Pos()))
 			}
-			matcher, err := option.NewPatternMatcher(args[0], opts.ExactCase)
-			if err != nil {
-				return logger.Errorf("%v: invalid regexp", p.fset.Position(n.Pos()))
+
+			// skip multi field one time
+			for _, arg := range args {
+				matcher, err := option.NewPatternMatcher(arg, opts.ExactCase)
+				if err != nil {
+					return logger.Errorf("%v: invalid regexp", p.fset.Position(n.Pos()))
+				}
+				opts.SkipFields = append(opts.SkipFields, matcher)
 			}
-			opts.SkipFields = append(opts.SkipFields, matcher)
 		case "map":
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst>", p.fset.Position(n.Pos()))
