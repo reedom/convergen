@@ -255,7 +255,7 @@ func (p *Parser) resolveConverters(generatingMethods []*bmodel.MethodEntry, conv
 func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, retType types.Type, retError bool, err error) {
 	_, obj := p.lookupType(funcName, pos)
 	if obj == nil {
-		err = logger.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
+		err = fmt.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
 		return
 	}
 	sig, ok := obj.Type().(*types.Signature)
