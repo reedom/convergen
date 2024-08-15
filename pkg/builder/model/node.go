@@ -245,18 +245,32 @@ type TypecastEntry struct {
 // NewTypecast creates a new TypecastEntry.
 func NewTypecast(scope *types.Scope, imports util.ImportNames, t types.Type, inner Node) (Node, bool) {
 	var expr string
+	_, isPtr := t.(*types.Pointer)
+
 	switch typ := util.DerefPtr(t).(type) {
 	case *types.Named:
 		// If the type is defined within the current package.
 		if scope.Lookup(typ.Obj().Name()) != nil {
-			expr = typ.Obj().Name()
+			if isPtr {
+				expr = fmt.Sprintf("(*%v)", typ.Obj().Name())
+			} else {
+				expr = typ.Obj().Name()
+			}
 		} else if pkgName, ok := imports.LookupName(typ.Obj().Pkg().Path()); ok {
-			expr = fmt.Sprintf("%v.%v", pkgName, typ.Obj().Name())
+			if isPtr {
+				expr = fmt.Sprintf("(*%v.%v)", pkgName, typ.Obj().Name())
+			} else {
+				expr = fmt.Sprintf("%v.%v", pkgName, typ.Obj().Name())
+			}
 		} else {
-			expr = fmt.Sprintf("%v.%v", typ.Obj().Pkg().Name(), typ.Obj().Name())
+			if isPtr {
+				expr = fmt.Sprintf("(*%v.%v)", typ.Obj().Pkg().Name(), typ.Obj().Name())
+			} else {
+				expr = fmt.Sprintf("%v.%v", typ.Obj().Pkg().Name(), typ.Obj().Name())
+			}
 		}
 	case *types.Basic:
-		expr = t.String()
+		expr = fmt.Sprintf("(%s)", t.String())
 	default:
 		return nil, false
 	}

@@ -79,6 +79,10 @@ func (client *Client) ToBiz() (dst *biz.Client) {
 	dst = &biz.Client{}
 	dst.ID = client.ID
 	dst.Status = biz.ClentStatus(client.Status)
+	dst.StatusPtr = (*biz.ClentStatus)(client.StatusPtr)
+	dst.StructPtr = (*biz.StructField)(client.StructPtr)
+	dst.StringPtr = (*string)(client.StringPtr)
+	dst.IntPtr = (*int32)(client.IntPtr)
 	dst.ClientID = client.ClientID
 	// skip: dst.ClientSecret
 	dst.TokenExpire = client.TokenExpire
@@ -119,6 +123,10 @@ func NewClientFromBiz(src *biz.Client) (dst *Client, err error) {
 	dst = &Client{}
 	dst.ID = src.ID
 	dst.Status = Int8(src.Status)
+	dst.StatusPtr = (*int32)(src.StatusPtr)
+	dst.StructPtr = (*StructField2)(src.StructPtr)
+	dst.StringPtr = (*String)(src.StringPtr)
+	dst.IntPtr = (*Int32)(src.IntPtr)
 	dst.ClientID = src.ClientID
 	// skip: dst.ClientSecret
 	dst.TokenExpire = src.TokenExpire
@@ -150,15 +158,11 @@ func NewClientFromBiz(src *biz.Client) (dst *Client, err error) {
 // 转换
 // 前置/后置检查
 func NewClientProviderFromBiz(src *biz.ClientProvider) (dst *ClientProvider, err error) {
-	if src == nil {
-		return
-	}
-
-	dst = &ClientProvider{}
 	err = prepareClientProvider(dst, src)
 	if err != nil {
 		return
 	}
+	dst = &ClientProvider{}
 	dst.ID = src.ID
 	dst.ClientID = src.ClientID
 	dst.Uri = strings.ToLower(src.Uri)
