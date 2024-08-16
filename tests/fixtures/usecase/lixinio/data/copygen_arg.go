@@ -6,39 +6,14 @@ package data
 //go:generate /tmp/convergen/convergen -suffix transfer
 
 import (
-	"errors"
 	_ "strings"
 
 	"github.com/reedom/convergen/tests/fixtures/usecase/lixinio/biz"
 )
 
-func Int8(status biz.ClentStatus) int8 {
-	return int8(status)
-}
-
-func ClientStatus(status int8) biz.ClentStatus {
-	return biz.ClentStatus(status)
-}
-
-func prepareEmpty(*ClientRedirectUri, *biz.ClientRedirectUri) {}
-
-func prepareClientProvider(dst *ClientProvider, src *biz.ClientProvider) error {
-	if src == nil {
-		return errors.New("empty model")
-	}
-
-	return nil
-}
-
-func cleanUpClientProvider(dst *ClientProvider, src *biz.ClientProvider) error {
-	if dst.ID == 0 {
-		return errors.New("empty model id")
-	}
-
-	return nil
-}
-
-type Convergen interface {
+// :convergen
+// :style arg
+type ConvergenArg interface {
 	// :typecast
 	// 使用成员函数, 函数名去掉前缀(Client, 就保留 ToBiz)
 	// :recv client Client
@@ -52,7 +27,7 @@ type Convergen interface {
 	// :method ToBiz Provider
 	// :method ToBiz Provider2 Provider3
 	// :method ToBiz Uris[]
-	ClientToBiz(*Client) *biz.Client
+	ClientToBiz2(*Client) *biz.Client
 	// :typecast
 	// 忽略字段
 	// :skip ClientSecret
@@ -63,20 +38,19 @@ type Convergen interface {
 	// :method Local UpdateTime
 	// :map IntSlice2 IntSlice
 	// 转换
-	// :conv NewClientProviderFromBiz Provider
-	// :conv NewClientProviderFromBiz Provider3 Provider2
+	// :skip Provider Provider2
 	// :conv NewClientRedirectUriFromBiz Uris[]
-	NewClientFromBiz(*biz.Client) (*Client, error)
+	NewClientArgFromBiz(*biz.Client) (*Client, error)
 
 	// 映射并转换
 	// :conv strings.ToUpper Url Uri
 	// 使用成员函数, 函数名去掉前缀(ClientRedirectUri, 就保留 ToBiz)
 	// :recv client ClientRedirectUri
-	ClientRedirectUriToBiz(*ClientRedirectUri) *biz.ClientRedirectUri
+	ClientRedirectUriToBiz2(*ClientRedirectUri) *biz.ClientRedirectUri
 	// 映射并转换
 	// :conv strings.ToUpper Uri Url
 	// :preprocess prepareEmpty
-	NewClientRedirectUriFromBiz(*biz.ClientRedirectUri) *ClientRedirectUri
+	NewClientArgRedirectUriFromBiz(*biz.ClientRedirectUri) *ClientRedirectUri
 
 	// 忽略特定字段
 	// :skip ClientID
@@ -84,12 +58,12 @@ type Convergen interface {
 	// :conv strings.ToLower Uri
 	// 使用成员函数, 函数名去掉前缀(ClientProvider, 就保留 ToBiz)
 	// :recv client ClientProvider
-	ClientProviderToBiz(*ClientProvider) *biz.ClientProvider
+	ClientProviderToBiz2(*ClientProvider) *biz.ClientProvider
 	// 转换
 	// :conv strings.ToLower Uri
 	// 前置/后置检查
 	// :preprocess prepareClientProvider
 	// :postprocess cleanUpClientProvider
 	// :literal InternalFlag 123
-	NewClientProviderFromBiz(*biz.ClientProvider) (*ClientProvider, error)
+	NewClientArgProviderFromBiz(*biz.ClientProvider) (*ClientProvider, error)
 }

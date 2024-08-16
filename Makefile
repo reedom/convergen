@@ -44,3 +44,4 @@ build-linux:
 .PHONY: gen
 gen:
 	./build/convergen -suffix transfer tests/fixtures/usecase/lixinio/data/copygen.go
+	./build/convergen -suffix transfer tests/fixtures/usecase/lixinio/data/copygen_arg.go

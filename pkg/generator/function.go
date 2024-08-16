@@ -62,6 +62,27 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	// "func Name(dst *DstModel, src *SrcModel)"
 	sb.WriteString(") ")
 
+	checkSrc := func() {
+		if f.Src.Pointer {
+			sb.WriteString(fmt.Sprintf("if %s == nil {\n", f.Src.Name))
+			sb.WriteString("return\n")
+			sb.WriteString("}\n\n")
+		}
+	}
+
+	initDst := func() {
+		if f.Dst.Pointer {
+			// "dst = &DstModel{}"
+			sb.WriteString(f.Dst.Name)
+			sb.WriteString(" = ")
+			if f.Dst.Pointer {
+				sb.WriteString("&")
+			}
+			sb.WriteString(f.Dst.PtrLessFullType())
+			sb.WriteString("{}\n")
+		}
+	}
+
 	if f.DstVarStyle == model.DstVarReturn {
 		// "func Name(src *SrcModel) (dst *DstModel"
 		sb.WriteString("(")
@@ -83,29 +104,24 @@ func (g *Generator) FuncToString(f *model.Function) string {
 			// "func Name(dst *DstModel, src *SrcModel) {"
 			sb.WriteString("{\n")
 		}
+
+		initDst = func() {} // arg 不需要初始化 dst
 	}
 
 	if f.PreProcess != nil {
-		sb.WriteString(g.ManipulatorToString(f.PreProcess, f.Src, f.Dst))
-	}
-
-	if (f.PreProcess == nil || !f.PreProcess.RetError) && f.Src.Pointer {
-		sb.WriteString(fmt.Sprintf("if %s == nil {\n", f.Src.Name))
-		sb.WriteString("return\n")
-		sb.WriteString("}\n\n")
-	}
-
-	if f.DstVarStyle == model.DstVarReturn {
-		if f.Dst.Pointer {
-			// "dst = &DstModel{}"
-			sb.WriteString(f.Dst.Name)
-			sb.WriteString(" = ")
-			if f.Dst.Pointer {
-				sb.WriteString("&")
-			}
-			sb.WriteString(f.Dst.PtrLessFullType())
-			sb.WriteString("{}\n")
+		if f.PreProcess.RetError { // 最高优先级, 比如nil要返回错误
+			initDst()
+			sb.WriteString(g.ManipulatorToString(f.PreProcess, f.Src, f.Dst))
+			sb.WriteString("\n")
+			checkSrc() // 检查 == nil
+		} else {
+			checkSrc()
+			initDst()
+			sb.WriteString(g.ManipulatorToString(f.PreProcess, f.Src, f.Dst))
 		}
+	} else {
+		checkSrc()
+		initDst()
 	}
 
 	for i := range f.Assignments {
