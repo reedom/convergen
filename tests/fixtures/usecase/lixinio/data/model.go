@@ -1,11 +1,25 @@
 package data
 
-import "time"
+import (
+	"time"
+
+	"github.com/reedom/convergen/tests/fixtures/usecase/lixinio/biz"
+)
+
+type (
+	StructField2 biz.StructField
+	String       string
+	Int32        int32
+)
 
 // @table clients
 type Client struct {
 	ID           int64
 	Status       int8
+	StatusPtr    *int32
+	StructPtr    *StructField2
+	StringPtr    *String
+	IntPtr       *Int32
 	ClientID     string
 	ClientSecret string
 	TokenExpire  int

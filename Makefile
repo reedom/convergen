@@ -40,3 +40,7 @@ coverage:
 build-linux:
 	mkdir -p build/
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/convergen .
+
+.PHONY: gen
+gen:
+	./build/convergen -suffix transfer tests/fixtures/usecase/lixinio/data/copygen.go
