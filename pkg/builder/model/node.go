@@ -173,8 +173,8 @@ func (n ScalarNode) NullCheckExpr() string {
 
 // ConverterNode is a node that represents a converter function.
 type ConverterNode struct {
-	arg       Node
-	pkgName   string
+	arg Node
+	//pkgName   string
 	converter *option.FieldConverter
 }
 

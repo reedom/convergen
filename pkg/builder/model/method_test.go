@@ -1,11 +1,9 @@
 package model_test
 
 import (
-	"bytes"
 	"go/ast"
 	"go/importer"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"go/types"
 	"testing"
@@ -26,11 +24,11 @@ func loadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Packag
 	return file, fset, pkg
 }
 
-func getCodeText(t *testing.T, fset *token.FileSet, file *ast.File) string {
-	buf := bytes.Buffer{}
-	require.Nil(t, printer.Fprint(&buf, fset, file))
-	return buf.String()
-}
+//func getCodeText(t *testing.T, fset *token.FileSet, file *ast.File) string {
+//	buf := bytes.Buffer{}
+//	require.Nil(t, printer.Fprint(&buf, fset, file))
+//	return buf.String()
+//}
 
 func TestMethodEntry(t *testing.T) {
 	src := `package main
