@@ -46,7 +46,7 @@ func (p *FunctionBuilder) buildManipulator(
 		return nil, logger.Errorf("%v: manipulator function %v 2nd arg type mismatch", p.fset.Position(m.Pos), ret.FuncName())
 	}
 
-	if len(m.AdditionalArgs) > 0 {
+	if 0 < len(m.AdditionalArgs) {
 		if len(m.AdditionalArgs) != len(additionalArgs) {
 			return nil, logger.Errorf("%v: manipulator function %v additional args count mismatch", p.fset.Position(m.Pos), ret.FuncName())
 		}
@@ -64,7 +64,7 @@ func (p *FunctionBuilder) buildManipulator(
 }
 
 func ordinalNumber(n int) string {
-	if n >= 11 && n <= 13 {
+	if 11 <= n && n <= 13 {
 		return fmt.Sprintf("%dth", n)
 	}
 	switch n % 10 {

@@ -462,7 +462,7 @@ func (b *assignmentBuilder) resolveTemplatedExpr(
 		return
 	}
 	index--
-	if int(index) >= len(additionalArgs) || index < 0 {
+	if index < 0 || len(additionalArgs) <= int(index) {
 		return
 	}
 	node = additionalArgs[index]

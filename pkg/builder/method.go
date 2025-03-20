@@ -59,9 +59,9 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	src := m.SrcVar()
 	dst := m.DstVar()
 	additionalArgs := m.AdditionalArgVars()
-	// reverse cannot be used with additional arguments
-	if m.Opts.Reverse {
-		additionalArgs = nil
+
+	if m.Opts.Reverse && len(additionalArgs) > 0 {
+		return nil, logger.Errorf("%v: reverse cannot be used with additional arguments", p.fset.Position(m.Method.Pos()))
 	}
 
 	if util.IsInvalidType(src.Type()) {

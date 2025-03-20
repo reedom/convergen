@@ -158,11 +158,6 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 	if opts.Reverse && opts.Style == gmodel.DstVarReturn {
 		return logger.Errorf(`%v: to use ":reverse", style must be ":style arg"`, p.fset.Position(posReverse))
 	}
-
-	if opts.Reverse && len(opts.TemplatedNameMapper) > 0 {
-		return logger.Errorf(`%v: :reverse cannot be used with :map that has additional arguments.`, p.fset.Position(posReverse))
-	}
-
 	return nil
 }
 
