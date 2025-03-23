@@ -880,7 +880,7 @@ dst-field             = field-path
 field-path            = { identifier "." } identifier
 field-or-getter-chain = { (identifier | getter) "." } (identifier | getter)
 getter                = identifier "()"  
-templated-value         = "$" number-of-argument
+templated-value       = "$" number-of-argument
 ```
 Note that number-of-argument starts from 1.  
 The template value `$1` is assigned to the mapping data source.
@@ -1214,19 +1214,19 @@ func cleanUpOutput(dst *domain.User, src *storage.User) error {
 The `preprocess` and `postprocess` functions also support additional arguments:
 ```go
 type Convergen interface {
-	// :preprocess prepareInput
-	// :postprocess cleanUpOutput
-	FromStorage(*storage.User,int, string) (*domain.User, error)
+    // :preprocess prepareInput
+    // :postprocess cleanUpOutput
+    FromStorage(*storage.User,int, string) (*domain.User, error)
 }
 
 func prepareInput(dst *domain.User, src *storage.User, arg0 int, arg1 string) error {
-	// do something before conversion
-	return nil
+    // do something before conversion
+    return nil
 }
 
 func cleanUpOutput(dst *domain.User, src *storage.User, arg0 int, arg1 string) error {
-	// do something after conversion
-	return dst
+    // do something after conversion
+    return dst
 }
 ```
 
