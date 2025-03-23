@@ -882,9 +882,7 @@ field-or-getter-chain = { (identifier | getter) "." } (identifier | getter)
 getter                = identifier "()"  
 templated-value       = "$" number-of-argument
 ```
-Note that number-of-argument starts from 1.  
-The template value `$1` is assigned to the mapping data source.
-If there are additional arguments, `$2` and onwards will be assigned to the additional arguments.
+Arguments start from $1 for the first additional argument, $2 for the second, and so on.
 
 __Examples__
 
