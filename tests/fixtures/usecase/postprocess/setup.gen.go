@@ -10,6 +10,31 @@ import (
 	_ "github.com/reedom/convergen/tests/fixtures/usecase/postprocess/local"
 )
 
+type A struct {
+	Value int
+}
+
+type B struct {
+	Value int
+	Arg0  uint
+	Arg1  string
+}
+
+type AdditionalArgs struct {
+	Arg1 string
+}
+
+func AToB(src *A, arg0 uint, arg1 AdditionalArgs) (dst *B) {
+	dst = &B{}
+	PreAToB(dst, *src, arg0, arg1)
+	dst.Value = src.Value
+	// no match: dst.Arg0
+	// no match: dst.Arg1
+	PostAToB(dst, *src, arg0, arg1)
+
+	return
+}
+
 func DomainToModel(src *domain.Pet) (dst *model.Pet, err error) {
 	dst = &model.Pet{}
 	PreDomainToModel(dst, *src)
@@ -48,4 +73,12 @@ func PreDomainToModel(lhs *model.Pet, rhs domain.Pet) {
 
 func PostDomainToModel(lhs *model.Pet, rhs domain.Pet) error {
 	return nil
+}
+
+func PreAToB(lhs *B, rhs A, arg0 uint, arg1 AdditionalArgs) {
+
+}
+
+func PostAToB(lhs *B, rhs A, arg0 uint, arg1 AdditionalArgs) {
+
 }

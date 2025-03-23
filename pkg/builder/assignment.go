@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"strconv"
 
 	bmodel "github.com/reedom/convergen/pkg/builder/model"
 	gmodel "github.com/reedom/convergen/pkg/generator/model"
@@ -22,32 +23,38 @@ type assignmentBuilder struct {
 	pkg     *packages.Package // The package the assignment belongs to.
 	imports util.ImportNames  // The import names to use in the generated code.
 
-	methodPos token.Pos      // The position of the method in the source code.
-	opts      option.Options // The options to use when generating the code.
-	lhsVar    gmodel.Var     // The variable on the left-hand side of the assignment.
-	rhsVar    gmodel.Var     // The variable on the right-hand side of the assignment.
-
-	funcName string           // The name of the method being generated.
-	copiers  []*bmodel.Copier // The list of copiers used in the generated code.
+	methodPos         token.Pos        // The position of the method in the source code.
+	opts              option.Options   // The options to use when generating the code.
+	lhsVar            gmodel.Var       // The variable on the left-hand side of the assignment.
+	rhsVar            gmodel.Var       // The variable on the right-hand side of the assignment.
+	additionalArgVars []gmodel.Var     // The additional arguments to use in the assignment.
+	funcName          string           // The name of the method being generated.
+	copiers           []*bmodel.Copier // The list of copiers used in the generated code.
 }
 
 // newAssignmentBuilder creates a new assignmentBuilder instance.
-func newAssignmentBuilder(p *FunctionBuilder, m *bmodel.MethodEntry, lhsVar, rhsVar gmodel.Var) *assignmentBuilder {
+func newAssignmentBuilder(
+	p *FunctionBuilder,
+	m *bmodel.MethodEntry,
+	lhsVar, rhsVar gmodel.Var,
+	additionalArgs []gmodel.Var,
+) *assignmentBuilder {
 	return &assignmentBuilder{
-		file:      p.file,
-		fset:      p.fset,
-		pkg:       p.pkg,
-		imports:   p.imports,
-		methodPos: m.Method.Pos(),
-		opts:      m.Opts,
-		lhsVar:    lhsVar,
-		rhsVar:    rhsVar,
-		funcName:  m.Name(),
+		file:              p.file,
+		fset:              p.fset,
+		pkg:               p.pkg,
+		imports:           p.imports,
+		methodPos:         m.Method.Pos(),
+		opts:              m.Opts,
+		lhsVar:            lhsVar,
+		rhsVar:            rhsVar,
+		additionalArgVars: additionalArgs,
+		funcName:          m.Name(),
 	}
 }
 
 // build generates the code for the assignment.
-func (b *assignmentBuilder) build(lhs, rhs *types.Var) ([]gmodel.Assignment, error) {
+func (b *assignmentBuilder) build(lhs, rhs *types.Var, additionalArgs []*types.Var) ([]gmodel.Assignment, error) {
 	rootCopier := bmodel.NewCopier("", lhs.Type(), rhs.Type())
 	rootCopier.IsRoot = true
 	if b.opts.Receiver != "" {
@@ -59,15 +66,20 @@ func (b *assignmentBuilder) build(lhs, rhs *types.Var) ([]gmodel.Assignment, err
 
 	rootLHS := bmodel.NewRootNode(b.lhsVar.Name, lhs.Type())
 	rootRHS := bmodel.NewRootNode(b.rhsVar.Name, rhs.Type())
-	return b.dispatch(rootLHS, rootRHS)
+
+	rootAdditionalArgs := make([]bmodel.Node, len(additionalArgs))
+	for i, arg := range additionalArgs {
+		rootAdditionalArgs[i] = bmodel.NewRootNode(b.additionalArgVars[i].Name, arg.Type())
+	}
+	return b.dispatch(rootLHS, rootRHS, rootAdditionalArgs)
 }
 
 // dispatch decides what type of assignment should be generated.
-func (b *assignmentBuilder) dispatch(lhs, rhs bmodel.Node) ([]gmodel.Assignment, error) {
+func (b *assignmentBuilder) dispatch(lhs, rhs bmodel.Node, additionalArgs []bmodel.Node) ([]gmodel.Assignment, error) {
 	lhsType := util.DerefPtr(lhs.ExprType())
 	rhsType := util.DerefPtr(rhs.ExprType())
 	if util.IsStructType(lhsType) && util.IsStructType(rhsType) {
-		return b.structToStruct(lhs, rhs)
+		return b.structToStruct(lhs, rhs, additionalArgs)
 	}
 
 	logger.Warnf("%v: no assignment %T to %T", b.fset.Position(b.methodPos), rhs.ExprType(), lhs.ExprType())
@@ -75,7 +87,7 @@ func (b *assignmentBuilder) dispatch(lhs, rhs bmodel.Node) ([]gmodel.Assignment,
 }
 
 // structToStruct generates code for a struct-to-struct assignment.
-func (b *assignmentBuilder) structToStruct(lhsStruct, rhsStruct bmodel.Node) ([]gmodel.Assignment, error) {
+func (b *assignmentBuilder) structToStruct(lhsStruct, rhsStruct bmodel.Node, additionalArgs []bmodel.Node) ([]gmodel.Assignment, error) {
 	var err error
 	var assignments []gmodel.Assignment
 	bmodel.IterateStructFields(lhsStruct, func(lhsField bmodel.Node) (done bool) {
@@ -84,7 +96,7 @@ func (b *assignmentBuilder) structToStruct(lhsStruct, rhsStruct bmodel.Node) ([]
 		}
 
 		var a gmodel.Assignment
-		a, err = b.matchStructFieldAndStruct(lhsField, rhsStruct)
+		a, err = b.matchStructFieldAndStruct(lhsField, rhsStruct, additionalArgs)
 		if err == nil && a != nil {
 			assignments = append(assignments, a)
 		}
@@ -98,7 +110,10 @@ func (b *assignmentBuilder) structToStruct(lhsStruct, rhsStruct bmodel.Node) ([]
 // not, tries to match the field with a converter, name mapper or literal
 // setter. If none of these match, it falls back to the
 // structFieldAndStructGettersAndFields method.
-func (b *assignmentBuilder) matchStructFieldAndStruct(lhs bmodel.Node, rhs bmodel.Node) (gmodel.Assignment, error) {
+func (b *assignmentBuilder) matchStructFieldAndStruct(
+	lhs, rhs bmodel.Node,
+	additionalArgs []bmodel.Node,
+) (gmodel.Assignment, error) {
 	if b.opts.ShouldSkip(lhs.MatcherExpr()) {
 		logger.Printf("%v: skip %v", b.fset.Position(b.methodPos), lhs.AssignExpr())
 		return gmodel.SkipField{LHS: lhs.AssignExpr()}, nil
@@ -110,7 +125,6 @@ func (b *assignmentBuilder) matchStructFieldAndStruct(lhs bmodel.Node, rhs bmode
 			return b.createWithConverter(lhs, rhs, converter)
 		}
 	}
-
 	for _, mapper := range b.opts.NameMapper {
 		if mapper.Dst().Match(lhs.MatcherExpr(), true) {
 			// If there are more than one mapper exist for the lhs, the first one wins.
@@ -118,6 +132,12 @@ func (b *assignmentBuilder) matchStructFieldAndStruct(lhs bmodel.Node, rhs bmode
 		}
 	}
 
+	for _, mapper := range b.opts.TemplatedNameMapper {
+		if mapper.Dst().Match(lhs.MatcherExpr(), true) {
+			// If there are more than one mapper exist for the lhs, the first one wins.
+			return b.createWithTemplatedMapper(lhs, rhs, additionalArgs, mapper)
+		}
+	}
 	for _, setter := range b.opts.Literals {
 		if setter.Dst().Match(lhs.MatcherExpr(), true) {
 			// If there are more than one mapper exist for the lhs, the first one wins.
@@ -176,7 +196,7 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 			if rhs.ObjNullable() {
 				nestStruct.NullCheckExpr = rhs.NullCheckExpr()
 			}
-			nestStruct.Contents, err = b.structToStruct(lhs, rhs)
+			nestStruct.Contents, err = b.structToStruct(lhs, rhs, nil)
 			if err == nil && 0 < len(nestStruct.Contents) {
 				a = nestStruct
 			}
@@ -277,6 +297,42 @@ func (b *assignmentBuilder) createWithMapper(lhs, rhs bmodel.Node, mapper *optio
 	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
+// createWithTemplatedMapper creates an assignment for the given lhs node
+// using the provided name mapper and additional arguments.
+// It searches for a node in matches the mapper's source expression
+// and casts it to the lhs expression type.
+// If a match is found, it returns a SimpleField with the lhs and rhs expressions.
+// If a match is not found, it returns a NoMatchField with the lhs expression.
+func (b *assignmentBuilder) createWithTemplatedMapper(
+	lhs, rhs bmodel.Node,
+	additionalArgs []bmodel.Node,
+	mapper *option.NameMatcher,
+) (gmodel.Assignment, error) {
+	mappedNode := func() bmodel.Node {
+		args := []bmodel.Node{rhs}
+		args = append(args, additionalArgs...)
+		rhsNode, ok := b.resolveTemplatedExpr(mapper.Src(), args)
+		if !ok {
+			return nil
+		}
+
+		casted, _ := b.castNode(lhs.ExprType(), rhsNode)
+		return casted
+	}()
+
+	lhsExpr := lhs.AssignExpr()
+	posStr := b.fset.Position(mapper.Pos())
+
+	if mappedNode != nil {
+		rhsExpr := mappedNode.AssignExpr()
+		logger.Printf("%v: assignment found: %v = %s", posStr, lhs, rhsExpr)
+		return gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: mappedNode.ReturnsError()}, nil
+	}
+
+	logger.Warnf("%v: no assignment for %v [%v]", posStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
+	return gmodel.NoMatchField{LHS: lhsExpr}, nil
+}
+
 // castNode tries to cast a given node to a target type.
 // It checks if the target type is assignable from the node type,
 // if not, it tries to convert to the target type, if possible.
@@ -343,6 +399,85 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmode
 			return
 		}
 
+		external := b.isExternalPkg(pkg)
+		if matcher.ForGetter(i) {
+			method, valid := obj.(*types.Func)
+			if !valid {
+				return
+			}
+			if external && !ast.IsExported(method.Name()) {
+				return
+			}
+
+			ret, retError, valid := util.ParseGetterReturnTypes(method)
+			if !valid {
+				return
+			}
+
+			node = bmodel.NewStructMethodNode(node, method)
+			if isLast {
+				return node, true
+			}
+
+			if retError {
+				// It should be a simple getter, otherwise it cannot be a part of method chain.
+				return
+			}
+			typ = ret
+		} else {
+			field, valid := obj.(*types.Var)
+			if !valid {
+				return
+			}
+			if external && !ast.IsExported(field.Name()) {
+				return
+			}
+
+			node = bmodel.NewStructFieldNode(node, field)
+			if isLast {
+				return node, true
+			}
+
+			typ = field.Type()
+		}
+	}
+	return
+}
+
+// resolveTemplatedExpr resolves the node that corresponds to the additional arguments
+// by following the path specified by the IdentMatcher.
+// It returns the resolved node and a boolean indicating whether the
+// resolution was successful.
+func (b *assignmentBuilder) resolveTemplatedExpr(
+	matcher *option.IdentMatcher,
+	additionalArgs []bmodel.Node,
+) (node bmodel.Node, ok bool) {
+	if matcher.PathLen() == 0 {
+		return
+	}
+	// arg index is 1-based
+	index, err := strconv.ParseInt(matcher.ExprAt(0)[1:], 10, 64)
+	if err != nil {
+		return
+	}
+	index--
+	if index < 0 || len(additionalArgs) <= int(index) {
+		return
+	}
+	node = additionalArgs[index]
+	typ := node.ExprType()
+	if matcher.PathLen() == 1 {
+		return node, true
+	}
+
+	for i := 1; i < matcher.PathLen(); i++ {
+		isLast := matcher.PathLen() == i+1
+
+		pkg := util.PkgOf(typ)
+		obj, _, _ := types.LookupFieldOrMethod(typ, true, pkg, matcher.NameAt(i))
+		if obj == nil {
+			return
+		}
 		external := b.isExternalPkg(pkg)
 		if matcher.ForGetter(i) {
 			method, valid := obj.(*types.Func)

@@ -77,7 +77,7 @@ func (p *Parser) findConvergenEntries() ([]*intfEntry, error) {
 func isValidIdentifier(id string) bool {
 	for i, r := range id {
 		if !unicode.IsLetter(r) &&
-			!(i > 0 && unicode.IsDigit(r)) {
+			!(0 < i && unicode.IsDigit(r)) {
 			return false
 		}
 	}

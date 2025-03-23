@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -57,12 +58,22 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	comments := util.ToTextList(m.DocComment)
 	src := m.SrcVar()
 	dst := m.DstVar()
+	additionalArgs := m.AdditionalArgVars()
+
+	if m.Opts.Reverse && 0 < len(additionalArgs) {
+		return nil, logger.Errorf("%v: reverse cannot be used with additional arguments", p.fset.Position(m.Method.Pos()))
+	}
 
 	if util.IsInvalidType(src.Type()) {
 		return nil, logger.Errorf("%v: src type is not defined. make sure to be imported", p.fset.Position(src.Pos()))
 	}
-	if util.IsInvalidType(src.Type()) {
+	if util.IsInvalidType(dst.Type()) {
 		return nil, logger.Errorf("%v: dst type is not defined. make sure to be imported", p.fset.Position(dst.Pos()))
+	}
+	for _, arg := range additionalArgs {
+		if util.IsInvalidType(arg.Type()) {
+			return nil, logger.Errorf("%v: arg type is not defined. make sure to be imported", p.fset.Position(arg.Pos()))
+		}
 	}
 	if !util.IsStructType(util.DerefPtr(src.Type())) {
 		return nil, logger.Errorf("%v: src type should be a struct but %v", p.fset.Position(dst.Pos()), src.Type().Underlying().String())
@@ -79,7 +90,10 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 
 	srcVar := p.createVar(src, srcDefName)
 	dstVar := p.createVar(dst, dstDefName)
-
+	additionalArgsVars := make([]gmodel.Var, len(additionalArgs))
+	for i, arg := range additionalArgs {
+		additionalArgsVars[i] = p.createVar(arg, fmt.Sprintf("arg%d", i))
+	}
 	if m.Opts.Receiver != "" {
 		if srcVar.External {
 			return nil, logger.Errorf("%v: an external package type cannot be a receiver", p.fset.Position(m.Method.Pos()))
@@ -90,36 +104,37 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	var assignments []gmodel.Assignment
 	var err error
 	if m.Opts.Reverse {
-		builder := newAssignmentBuilder(p, m, srcVar, dstVar)
-		assignments, err = builder.build(src, dst)
+		builder := newAssignmentBuilder(p, m, srcVar, dstVar, additionalArgsVars)
+		assignments, err = builder.build(src, dst, additionalArgs)
 	} else {
-		builder := newAssignmentBuilder(p, m, dstVar, srcVar)
-		assignments, err = builder.build(dst, src)
+		builder := newAssignmentBuilder(p, m, dstVar, srcVar, additionalArgsVars)
+		assignments, err = builder.build(dst, src, additionalArgs)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	preProcess, err := p.buildManipulator(m.Opts.PreProcess, src, dst, m.RetError())
+	preProcess, err := p.buildManipulator(m.Opts.PreProcess, src, dst, additionalArgs, m.RetError())
 	if err != nil {
 		return nil, err
 	}
-	postProcess, err := p.buildManipulator(m.Opts.PostProcess, src, dst, m.RetError())
+	postProcess, err := p.buildManipulator(m.Opts.PostProcess, src, dst, additionalArgs, m.RetError())
 	if err != nil {
 		return nil, err
 	}
 
 	fn := &gmodel.Function{
-		Name:        m.Method.Name(),
-		Comments:    comments,
-		Receiver:    m.Opts.Receiver,
-		Src:         srcVar,
-		Dst:         dstVar,
-		DstVarStyle: m.Opts.Style,
-		RetError:    m.RetError(),
-		Assignments: assignments,
-		PreProcess:  preProcess,
-		PostProcess: postProcess,
+		Name:           m.Method.Name(),
+		Comments:       comments,
+		Receiver:       m.Opts.Receiver,
+		Src:            srcVar,
+		Dst:            dstVar,
+		AdditionalArgs: additionalArgsVars,
+		DstVarStyle:    m.Opts.Style,
+		RetError:       m.RetError(),
+		Assignments:    assignments,
+		PreProcess:     preProcess,
+		PostProcess:    postProcess,
 	}
 
 	return fn, nil

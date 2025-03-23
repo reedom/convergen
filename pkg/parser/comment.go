@@ -105,8 +105,14 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
-			matcher := option.NewNameMatcher(args[0], args[1], n.Pos())
-			opts.NameMapper = append(opts.NameMapper, matcher)
+			src := args[0]
+			dst := args[1]
+			matcher := option.NewNameMatcher(src, dst, n.Pos())
+			if strings.HasPrefix(src, "$") {
+				opts.TemplatedNameMapper = append(opts.TemplatedNameMapper, matcher)
+			} else {
+				opts.NameMapper = append(opts.NameMapper, matcher)
+			}
 		case "conv":
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
@@ -152,7 +158,6 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 	if opts.Reverse && opts.Style == gmodel.DstVarReturn {
 		return logger.Errorf(`%v: to use ":reverse", style must be ":style arg"`, p.fset.Position(posReverse))
 	}
-
 	return nil
 }
 
@@ -261,17 +266,21 @@ func (p *Parser) lookupManipulatorFunc(funcName, optName string, pos token.Pos) 
 		return nil, logger.Errorf("%v: %v isn't a function", p.fset.Position(pos), funcName)
 	}
 
-	if sig.Params().Len() != 2 ||
-		1 < sig.Results().Len() ||
+	if 1 < sig.Results().Len() ||
 		(sig.Results().Len() == 1 && !util.IsErrorType(sig.Results().At(0).Type())) {
 		return nil, logger.Errorf("%v: function %v cannot use for %v func", p.fset.Position(pos), funcName, optName)
 	}
 
+	additionalArgs := make([]types.Type, sig.Params().Len()-2)
+	for i := 0; i < sig.Params().Len()-2; i++ {
+		additionalArgs[i] = sig.Params().At(i + 2).Type()
+	}
 	return &option.Manipulator{
-		Func:     obj,
-		DstSide:  sig.Params().At(0).Type(),
-		SrcSide:  sig.Params().At(1).Type(),
-		RetError: sig.Results().Len() == 1 && util.IsErrorType(sig.Results().At(0).Type()),
-		Pos:      pos,
+		Func:           obj,
+		DstSide:        sig.Params().At(0).Type(),
+		SrcSide:        sig.Params().At(1).Type(),
+		AdditionalArgs: additionalArgs,
+		RetError:       sig.Results().Len() == 1 && util.IsErrorType(sig.Results().At(0).Type()),
+		Pos:            pos,
 	}, nil
 }

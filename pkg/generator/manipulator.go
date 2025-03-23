@@ -14,7 +14,7 @@ import (
 // - dst: the destination Var that corresponds to the Manipulator's second argument.
 // Returns:
 // - a string that represents the function call to the Manipulator.
-func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var) string {
+func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var, args []model.Var) string {
 	var sb strings.Builder
 	if m.RetError {
 		sb.WriteString("err = ")
@@ -44,6 +44,13 @@ func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var
 		}
 	}
 	sb.WriteString(src.Name)
+
+	if m.HasAdditionalArgs {
+		for _, arg := range args {
+			sb.WriteString(", ")
+			sb.WriteString(arg.Name)
+		}
+	}
 	sb.WriteString(")\n")
 
 	if m.RetError {
