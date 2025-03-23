@@ -6,7 +6,6 @@ import (
 	"go/token"
 	"go/types"
 	"strconv"
-	"strings"
 
 	bmodel "github.com/reedom/convergen/pkg/builder/model"
 	gmodel "github.com/reedom/convergen/pkg/generator/model"
@@ -457,7 +456,7 @@ func (b *assignmentBuilder) resolveTemplatedExpr(
 		return
 	}
 	// arg index is 1-based
-	index, err := strconv.ParseInt(strings.Replace(matcher.ExprAt(0), "$", "", 1), 10, 64)
+	index, err := strconv.ParseInt(matcher.ExprAt(0)[1:], 10, 64)
 	if err != nil {
 		return
 	}
