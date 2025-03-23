@@ -40,30 +40,6 @@ func (m *MethodEntry) Recv() types.Type {
 	return sig.Recv().Type()
 }
 
-// Args returns the argument types.
-func (m *MethodEntry) Args() []types.Type {
-	var list []types.Type
-
-	sig := m.Method.Type().(*types.Signature)
-	params := sig.Params()
-	results := sig.Results()
-
-	if m.Opts.Style == model.DstVarArg {
-		for i := 0; i < results.Len(); i++ {
-			list = append(list, results.At(i).Type())
-		}
-	}
-
-	i := 0
-	if m.Opts.Receiver != "" {
-		i = 1
-	}
-	for ; i < params.Len(); i++ {
-		list = append(list, params.At(i).Type())
-	}
-	return list
-}
-
 // Results returns the result types.
 func (m *MethodEntry) Results() []types.Type {
 	var list []types.Type
@@ -110,4 +86,17 @@ func (m *MethodEntry) DstVar() *types.Var {
 		return nil
 	}
 	return results.At(0)
+}
+
+// AdditionalArgVars returns the additional arguments.
+func (m *MethodEntry) AdditionalArgVars() []*types.Var {
+	sig := m.Method.Type().(*types.Signature)
+	params := make([]*types.Var, sig.Params().Len())
+	for i := 0; i < sig.Params().Len(); i++ {
+		params[i] = sig.Params().At(i)
+	}
+	if len(params) <= 1 {
+		return nil
+	}
+	return params[1:]
 }

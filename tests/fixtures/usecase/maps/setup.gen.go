@@ -21,6 +21,39 @@ func (t *JSONDate) Time() time.Time {
 	return time.Time(*t)
 }
 
+type A struct {
+	JSONDate JSONDate
+	Value    int
+}
+
+type B struct {
+	JSONDate time.Time
+	Value    int
+	Arg0     uint
+	Arg1     string
+}
+
+type AdditionalArgs struct {
+	Arg1 string
+}
+
+func AToB(src *A, arg0 uint, arg1 AdditionalArgs) (dst *B) {
+	dst = &B{}
+	dst.JSONDate = src.JSONDate.Time()
+	dst.Value = src.Value
+	dst.Arg0 = arg0
+	dst.Arg1 = arg1.Arg1
+
+	return
+}
+
+func AToBArgStyle(dst *B, src *A, arg0 uint, arg1 AdditionalArgs) {
+	dst.JSONDate = src.JSONDate.Time()
+	dst.Value = src.Value
+	dst.Arg0 = arg0
+	dst.Arg1 = arg1.Arg1
+}
+
 func FromTo(src *From) (dst *To) {
 	dst = &To{}
 	dst.JSONDate = src.JSONDate.Time()

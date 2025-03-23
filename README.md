@@ -412,6 +412,7 @@ func (u *User) ToStorage() (dst *storage.User) {
 
 Reverse copy direction. Might be useful with receiver form.  
 To use `:reverse`, `:style arg` is required. (Otherwise it can't have any data source to copy from.)
+Currently, `:reverse` not supported additional arguments.
 
 __Default__
 
@@ -858,6 +859,7 @@ Specify a field mapping rule.
 When to use:
 - copying a value between fields having different names.
 - assigning a method's result value to a destination field.
+- assigning additional argument value to a destination field.
 
 A method can have multiple `:map` lines that enable mapping multiple fields.
 
@@ -873,12 +875,16 @@ __Format__
 ```text
 ":map" src dst-field
 
-src                   = field-or-method-chain
+src                   = field-or-method-chain | templated-value { "." field-or-getter-chain }
 dst-field             = field-path
 field-path            = { identifier "." } identifier
 field-or-getter-chain = { (identifier | getter) "." } (identifier | getter)
 getter                = identifier "()"  
+templated-value         = "$" number-of-argument
 ```
+Note that number-of-argument starts from 1.  
+The template value `$1` is assigned to the mapping data source.
+If there are additional arguments, `$2` and onwards will be assigned to the additional arguments.
 
 __Examples__
 
@@ -972,6 +978,29 @@ func ToStorage(src *domain.User) (dst *storage.User) {
     dst.UserID = src.ID
     dst.Name = src.Name
     dst.Status = src.Status.Int()
+
+    return
+}
+```
+
+We can use `:map` to apply the additional arguments to assign:
+
+```go
+type Convergen interface {
+    // Map the "ID" field in domain.User to the "UserID" field in storage.User.
+    // Map the second additional argument to the "Status" field in storage.User.
+    // :map ID UserID
+    // :map $2 Status
+    ToStorage(*domain.User,int) *storage.User
+}
+```
+
+```go
+func ToStorage(src *domain.User, arg0 int) (dst *storage.User) {
+    dst = storage.User{}
+    dst.UserID = src.ID
+    dst.Name = src.Name
+    dst.Status = arg0
 
     return
 }
@@ -1147,19 +1176,19 @@ type Convergen interface {
     FromStorage(*storage.User) *domain.User
 }
 
-func prepareInput(src *storage.User) *storage.User {
-    // modify the input source before conversion
+func prepareInput(dst *domain.User, src *storage.User) {
+    // do something before conversion
     return src
 }
 
-func cleanUpOutput(dst *domain.User) *domain.User {
-    // modify the output destination after conversion
+func cleanUpOutput(dst *domain.User, src *storage.User) *domain.User {
+    // do something after conversion
     return dst
 }
 ```
-``
-When FromStorage is called, the prepareInput function will be called with the input
-argument before the conversion takes place. Then the FromStorage method will be executed. 
+
+When FromStorage is called, the prepareInput function will be called before the conversion takes place. 
+Then the FromStorage method will be executed. 
 Finally, the cleanUpOutput function will be called with the output result after the 
 conversion has taken place.
 
@@ -1170,14 +1199,34 @@ type Convergen interface {
     FromStorage(*storage.User) (*domain.User, error)
 }
 
-func prepareInput(src *storage.User) (*storage.User, error) {
-    // modify the input source before conversion
-    return src, nil
+func prepareInput(dst *domain.User, src *storage.User) error {
+    // do something before conversion
+    return nil
 }
 
-func cleanUpOutput(dst *domain.User) (*domain.User, error) {
-    // modify the output destination after conversion
-    return dst, nil
+func cleanUpOutput(dst *domain.User, src *storage.User) error {
+    // do something after conversion
+    return dst
+}
+```
+
+
+The `preprocess` and `postprocess` functions also support additional arguments:
+```go
+type Convergen interface {
+	// :preprocess prepareInput
+	// :postprocess cleanUpOutput
+	FromStorage(*storage.User,int, string) (*domain.User, error)
+}
+
+func prepareInput(dst *domain.User, src *storage.User, arg0 int, arg1 string) error {
+	// do something before conversion
+	return nil
+}
+
+func cleanUpOutput(dst *domain.User, src *storage.User, arg0 int, arg1 string) error {
+	// do something after conversion
+	return dst
 }
 ```
 
