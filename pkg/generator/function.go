@@ -2,7 +2,7 @@ package generator
 
 import (
 	"strings"
-
+	"regexp"
 	"github.com/reedom/convergen/pkg/generator/model"
 )
 
@@ -55,10 +55,17 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	}
 
 	for _, args := range f.AdditionalArgs {
+		fullType := ""
+		if strings.Contains(args.Type, "/") {
+			re := regexp.MustCompile(`^([^a-zA-Z]*)([a-zA-Z].*/)(.+)$`)
+			fullType = re.ReplaceAllString(args.FullType(), "$1$3")
+		} else {
+			fullType = args.FullType()
+		}
 		sb.WriteString(", ")
 		sb.WriteString(args.Name)
 		sb.WriteString(" ")
-		sb.WriteString(args.FullType())
+		sb.WriteString(fullType)
 	}
 
 	// "func Name(dst *DstModel, src *SrcModel)"
