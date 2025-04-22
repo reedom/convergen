@@ -12,3 +12,6 @@ type Category struct {
 	CategoryID uint64 `storage:"categoryId"`
 	Name       string `storage:"name"`
 }
+type Additional struct {
+	Name string `storage:"name"`
+}
