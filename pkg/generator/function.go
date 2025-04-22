@@ -57,7 +57,7 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	for _, args := range f.AdditionalArgs {
 		fullType := args.FullType()
 		if strings.Contains(args.Type, "/") {
-			re := regexp.MustCompile(`^([^a-zA-Z]*)([a-zA-Z].*/)(.+)$`)
+			re := regexp.MustCompile(`^([^a-zA-Z0-9]*)([a-zA-Z0-9].*/)(.+)$`)
 			fullType = re.ReplaceAllString(fullType, "$1$3")
 		}
 		sb.WriteString(", ")
