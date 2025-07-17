@@ -4,9 +4,9 @@
 package typecast
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/usecase/typecast/domain"
-	"github.com/reedom/convergen/tests/fixtures/usecase/typecast/enums"
-	"github.com/reedom/convergen/tests/fixtures/usecase/typecast/model"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/typecast/domain"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/typecast/enums"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/typecast/model"
 )
 
 // DomainToModel converts domain.User to model.User.

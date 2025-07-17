@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/usecase/embedded/model/types"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/embedded/model/types"
 )
 
 type Concrete struct {

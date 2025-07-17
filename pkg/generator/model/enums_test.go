@@ -3,7 +3,7 @@ package model_test
 import (
 	"testing"
 
-	"github.com/reedom/convergen/pkg/generator/model"
+	"github.com/reedom/convergen/v8/pkg/generator/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

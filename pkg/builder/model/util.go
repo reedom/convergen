@@ -3,7 +3,7 @@ package model
 import (
 	"go/types"
 
-	"github.com/reedom/convergen/pkg/util"
+	"github.com/reedom/convergen/v8/pkg/util"
 )
 
 // IterateStructFields iterates through all the fields of the given structNode and

@@ -4,8 +4,8 @@
 package getter
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/data/ddd/domain"
-	"github.com/reedom/convergen/tests/fixtures/data/ddd/model"
+	"github.com/reedom/convergen/v8/tests/fixtures/data/ddd/domain"
+	"github.com/reedom/convergen/v8/tests/fixtures/data/ddd/model"
 )
 
 // :getter:off

@@ -4,7 +4,7 @@
 package style
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/data/model"
+	"github.com/reedom/convergen/v8/tests/fixtures/data/model"
 )
 
 type Pet struct {

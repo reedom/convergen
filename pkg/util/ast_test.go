@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/reedom/convergen/pkg/util"
+	"github.com/reedom/convergen/v8/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

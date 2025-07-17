@@ -3,11 +3,11 @@ package runner
 import (
 	"os"
 
-	"github.com/reedom/convergen/pkg/config"
-	"github.com/reedom/convergen/pkg/generator"
-	"github.com/reedom/convergen/pkg/generator/model"
-	"github.com/reedom/convergen/pkg/logger"
-	"github.com/reedom/convergen/pkg/parser"
+	"github.com/reedom/convergen/v8/pkg/config"
+	"github.com/reedom/convergen/v8/pkg/generator"
+	"github.com/reedom/convergen/v8/pkg/generator/model"
+	"github.com/reedom/convergen/v8/pkg/logger"
+	"github.com/reedom/convergen/v8/pkg/parser"
 )
 
 // Run runs the convergen code generator using the provided configuration.

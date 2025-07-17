@@ -4,8 +4,8 @@
 package converter
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/usecase/embedded/domain"
-	"github.com/reedom/convergen/tests/fixtures/usecase/embedded/model"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/embedded/domain"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/embedded/model"
 )
 
 func DomainToModel(s *domain.Concrete) (d *model.Concrete) {
