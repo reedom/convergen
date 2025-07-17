@@ -3,8 +3,8 @@
 package typecast
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/usecase/typecast/domain"
-	"github.com/reedom/convergen/tests/fixtures/usecase/typecast/model"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/typecast/domain"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/typecast/model"
 )
 
 //go:generate go run github.com/reedom/convergen

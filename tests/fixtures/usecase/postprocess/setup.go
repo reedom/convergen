@@ -3,9 +3,9 @@
 package postprocess
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/data/domain"
-	"github.com/reedom/convergen/tests/fixtures/data/model"
-	_ "github.com/reedom/convergen/tests/fixtures/usecase/postprocess/local"
+	"github.com/reedom/convergen/v8/tests/fixtures/data/domain"
+	"github.com/reedom/convergen/v8/tests/fixtures/data/model"
+	_ "github.com/reedom/convergen/v8/tests/fixtures/usecase/postprocess/local"
 )
 
 type A struct {

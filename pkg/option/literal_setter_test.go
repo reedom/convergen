@@ -3,7 +3,7 @@ package option_test
 import (
 	"testing"
 
-	"github.com/reedom/convergen/pkg/option"
+	"github.com/reedom/convergen/v8/pkg/option"
 )
 
 func TestIdentMatcher_Match(t *testing.T) {

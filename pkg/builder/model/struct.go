@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/types"
 
-	"github.com/reedom/convergen/pkg/util"
+	"github.com/reedom/convergen/v8/pkg/util"
 )
 
 // StructFieldNode represents a struct field.

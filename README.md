@@ -49,7 +49,7 @@ import (
     "github.com/sample/myapp/storage"
 )
 
-//go:generate go run github.com/reedom/convergen@v0.8.2
+//go:generate go run github.com/reedom/convergen@v8.0.3
 type Convergen interface {
     // :typecast
     // :stringer

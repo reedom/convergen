@@ -8,11 +8,11 @@ import (
 	"regexp"
 	"strings"
 
-	bmodel "github.com/reedom/convergen/pkg/builder/model"
-	gmodel "github.com/reedom/convergen/pkg/generator/model"
-	"github.com/reedom/convergen/pkg/logger"
-	"github.com/reedom/convergen/pkg/option"
-	"github.com/reedom/convergen/pkg/util"
+	bmodel "github.com/reedom/convergen/v8/pkg/builder/model"
+	gmodel "github.com/reedom/convergen/v8/pkg/generator/model"
+	"github.com/reedom/convergen/v8/pkg/logger"
+	"github.com/reedom/convergen/v8/pkg/option"
+	"github.com/reedom/convergen/v8/pkg/util"
 )
 
 var (

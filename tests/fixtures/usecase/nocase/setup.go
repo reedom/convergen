@@ -3,7 +3,7 @@
 package nocase
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/usecase/nocase/model"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/nocase/model"
 )
 
 type ModelA struct {

@@ -4,9 +4,9 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/reedom/convergen/pkg/generator/model"
-	"github.com/reedom/convergen/pkg/option"
-	"github.com/reedom/convergen/pkg/util"
+	"github.com/reedom/convergen/v8/pkg/generator/model"
+	"github.com/reedom/convergen/v8/pkg/option"
+	"github.com/reedom/convergen/v8/pkg/util"
 )
 
 // MethodsInfo contains a list of MethodEntry.

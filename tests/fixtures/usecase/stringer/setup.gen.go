@@ -4,8 +4,8 @@
 package stringer
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/data/model"
-	"github.com/reedom/convergen/tests/fixtures/usecase/stringer/local"
+	"github.com/reedom/convergen/v8/tests/fixtures/data/model"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/stringer/local"
 )
 
 func LocalToModel(pet *local.Pet) (dst *model.Pet) {

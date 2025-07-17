@@ -3,16 +3,16 @@ package generator_test
 import (
 	"testing"
 
-	"github.com/reedom/convergen/pkg/generator"
-	"github.com/reedom/convergen/pkg/generator/model"
+	"github.com/reedom/convergen/v8/pkg/generator"
+	"github.com/reedom/convergen/v8/pkg/generator/model"
 	"github.com/stretchr/testify/assert"
 )
 
 const pre = `package simple
 
 import (
-	"github.com/reedom/convergen/pkg/tests/fixtures/data/domain"
-	"github.com/reedom/convergen/pkg/tests/fixtures/data/model"
+	"github.com/reedom/convergen/v8/pkg/tests/fixtures/data/domain"
+	"github.com/reedom/convergen/v8/pkg/tests/fixtures/data/model"
 )
 `
 

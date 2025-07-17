@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/usecase/embedded/domain/types"
+	"github.com/reedom/convergen/v8/tests/fixtures/usecase/embedded/domain/types"
 )
 
 type Concrete struct {

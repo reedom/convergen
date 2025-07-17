@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/reedom/convergen/pkg/generator"
-	"github.com/reedom/convergen/pkg/generator/model"
-	"github.com/reedom/convergen/pkg/logger"
-	"github.com/reedom/convergen/pkg/parser"
+	"github.com/reedom/convergen/v8/pkg/generator"
+	"github.com/reedom/convergen/v8/pkg/generator/model"
+	"github.com/reedom/convergen/v8/pkg/logger"
+	"github.com/reedom/convergen/v8/pkg/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

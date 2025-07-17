@@ -4,8 +4,8 @@
 package converter
 
 import (
-	"github.com/reedom/convergen/tests/fixtures/data/model"
-	"github.com/reedom/convergen/tests/fixtures/data/model/abc222"
+	"github.com/reedom/convergen/v8/tests/fixtures/data/model"
+	"github.com/reedom/convergen/v8/tests/fixtures/data/model/abc222"
 )
 
 func DomainToModel(src *model.Additional, arg0 []abc222.Additional321) (dst *abc222.AdditionalItem123) {

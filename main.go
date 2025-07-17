@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/reedom/convergen/pkg/config"
-	"github.com/reedom/convergen/pkg/runner"
+	"github.com/reedom/convergen/v8/pkg/config"
+	"github.com/reedom/convergen/v8/pkg/runner"
 )
 
 func main() {
