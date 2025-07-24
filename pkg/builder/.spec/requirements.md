@@ -19,3 +19,7 @@ The `pkg/builder` package MUST:
 *   **REQ-11: Support for post-processing:** The package MUST support post-processing of the generated code.
 *   **REQ-12: Support for pre-processing:** The package MUST support pre-processing of the generated code.
 *   **REQ-13: Support for reversing the direction of the conversion:** The package MUST support reversing the direction of the conversion.
+
+## Non-Functional Requirements
+
+*   **REQ-14: Extensibility:** The package MUST be designed in a way that allows for new types of assignments and matching rules to be added with minimal changes to the existing code.

@@ -26,3 +26,14 @@ The `bmodel.Node` interface has the following methods:
 *   **`AssignExpr()`:** This method returns the expression to be used on the right-hand side of the assignment.
 *   **`ExprType()`:** This method returns the type of the expression.
 *   **`ReturnsError()`:** This method returns `true` if the expression returns an error.
+
+## Field Matching
+
+The `assignmentBuilder` uses a chain of responsibility pattern to match fields. The chain is composed of a series of `AssignmentHandler`s. Each handler is responsible for a specific matching strategy. The following handlers are used:
+
+*   **`LiteralSetterHandler`:** This handler is responsible for handling literal setters.
+*   **`ConverterHandler`:** This handler is responsible for handling field converters.
+*   **`NameMapperHandler`:** This handler is responsible for handling name mappers.
+*   **`StructFieldMatchHandler`:** This handler is responsible for matching fields by name.
+
+If a handler can handle the assignment, it returns an `Assignment`. Otherwise, it returns `nil` and the assignment is passed to the next handler in the chain.
