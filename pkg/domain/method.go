@@ -5,14 +5,43 @@ import (
 	"time"
 )
 
+// Parameter represents a method parameter
+type Parameter struct {
+	Name     string    `json:"name"`
+	Type     Type      `json:"type"`
+	TypeInfo *TypeInfo `json:"type_info"`
+	Position int       `json:"position"`
+}
+
+// ReturnValue represents a method return value
+type ReturnValue struct {
+	Name     string    `json:"name"`
+	Type     Type      `json:"type"`
+	TypeInfo *TypeInfo `json:"type_info"`
+	Position int       `json:"position"`
+	IsError  bool      `json:"is_error"`
+}
+
+// TypeInfo contains detailed information about a type's structure
+type TypeInfo struct {
+	Name       string      `json:"name"`
+	Kind       TypeKind    `json:"kind"`
+	Fields     []*Field    `json:"fields"`
+	Methods    []*Method   `json:"methods"`
+	TypeParams []TypeParam `json:"type_params"`
+}
+
 // Method represents a conversion method to be generated
 type Method struct {
-	Name        string         `json:"name"`
-	SourceType  Type           `json:"source_type"`
-	DestType    Type           `json:"dest_type"`
-	Config      *MethodConfig  `json:"config"`
-	Mappings    []*FieldMapping `json:"mappings"`
-	Signature   *MethodSignature `json:"signature"`
+	Name               string         `json:"name"`
+	SourceType         Type           `json:"source_type"`
+	DestType           Type           `json:"dest_type"`
+	Config             *MethodConfig  `json:"config"`
+	Mappings           []*FieldMapping `json:"mappings"`
+	Signature          *MethodSignature `json:"signature"`
+	sourceParams       []*Parameter   `json:"-"`
+	destinationReturns []*ReturnValue `json:"-"`
+	fieldMappings      []*FieldMapping `json:"-"`
 }
 
 // NewMethod creates a validated method
@@ -51,7 +80,33 @@ func (m *Method) AddMapping(mapping *FieldMapping) error {
 	}
 	
 	m.Mappings = append(m.Mappings, mapping)
+	m.fieldMappings = append(m.fieldMappings, mapping)
 	return nil
+}
+
+// SourceParams returns the source parameters
+func (m *Method) SourceParams() []*Parameter {
+	return m.sourceParams
+}
+
+// SetSourceParams sets the source parameters
+func (m *Method) SetSourceParams(params []*Parameter) {
+	m.sourceParams = params
+}
+
+// DestinationReturns returns the destination return values
+func (m *Method) DestinationReturns() []*ReturnValue {
+	return m.destinationReturns
+}
+
+// SetDestinationReturns sets the destination return values
+func (m *Method) SetDestinationReturns(returns []*ReturnValue) {
+	m.destinationReturns = returns
+}
+
+// FieldMappings returns the field mappings
+func (m *Method) FieldMappings() []*FieldMapping {
+	return m.fieldMappings
 }
 
 // GetMappingByID retrieves a mapping by its ID
@@ -142,11 +197,6 @@ type Receiver struct {
 	Pointer bool   `json:"pointer"`
 }
 
-// Parameter represents a function parameter or result
-type Parameter struct {
-	Name string `json:"name"`
-	Type Type   `json:"type"`
-}
 
 // ExecutionPlan defines how to execute field conversions concurrently
 type ExecutionPlan struct {

@@ -2,18 +2,19 @@ package domain
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 )
 
 // Field represents a struct field with complete metadata
 type Field struct {
-	Name     string            `json:"name"`
-	Type     Type              `json:"type"`
-	Tags     reflect.StructTag `json:"tags"`
-	Position int               `json:"position"` // For ordering preservation
-	Exported bool              `json:"exported"`
-	Doc      string            `json:"doc"`
+	Name      string            `json:"name"`
+	Type      Type              `json:"type"`
+	Tag       string            `json:"tag"`
+	Position  int               `json:"position"` // For ordering preservation
+	Exported  bool              `json:"exported"`
+	Embedded  bool              `json:"embedded"`
+	Anonymous bool              `json:"anonymous"`
+	Doc       string            `json:"doc"`
 }
 
 // NewField creates a new field with validation
