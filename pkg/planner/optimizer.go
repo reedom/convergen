@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"go.uber.org/zap"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
 // PlanOptimizer applies optimization strategies to execution plans
@@ -129,7 +130,7 @@ func (po *ConcretePlanOptimizer) ApplyBatchOptimizations(batches []*ExecutionBat
 // OptimizeConcurrency optimizes concurrency settings across methods
 func (po *ConcretePlanOptimizer) OptimizeConcurrency(methodPlans map[string]*domain.MethodPlan) error {
 	totalWorkers := 0
-	
+
 	// Calculate total worker requirements
 	for _, plan := range methodPlans {
 		totalWorkers += plan.RequiredWorkers
@@ -150,7 +151,7 @@ func (po *ConcretePlanOptimizer) OptimizeConcurrency(methodPlans map[string]*dom
 // OptimizeResourceUsage optimizes memory and CPU resource usage
 func (po *ConcretePlanOptimizer) OptimizeResourceUsage(methodPlans map[string]*domain.MethodPlan) error {
 	totalMemory := 0
-	
+
 	// Calculate total memory requirements
 	for _, plan := range methodPlans {
 		totalMemory += plan.MemoryRequirementMB
@@ -173,7 +174,7 @@ func (po *ConcretePlanOptimizer) OptimizeResourceUsage(methodPlans map[string]*d
 func (po *ConcretePlanOptimizer) optimizeBatchSizes(batches []*ExecutionBatch) error {
 	for _, batch := range batches {
 		mappingCount := len(batch.Mappings)
-		
+
 		// Adjust concurrency level based on batch size
 		if mappingCount < po.config.MinBatchSize {
 			// Small batch - reduce concurrency to avoid overhead
@@ -192,13 +193,13 @@ func (po *ConcretePlanOptimizer) optimizeBatchSizes(batches []*ExecutionBatch) e
 func (po *ConcretePlanOptimizer) balanceWorkerAllocation(methodPlans map[string]*domain.MethodPlan) error {
 	// Calculate priority scores for methods
 	priorities := po.calculateMethodPriorities(methodPlans)
-	
+
 	// Sort methods by priority
 	sortedMethods := make([]string, 0, len(methodPlans))
 	for methodName := range methodPlans {
 		sortedMethods = append(sortedMethods, methodName)
 	}
-	
+
 	sort.Slice(sortedMethods, func(i, j int) bool {
 		return priorities[sortedMethods[i]] > priorities[sortedMethods[j]]
 	})
@@ -225,7 +226,7 @@ func (po *ConcretePlanOptimizer) optimizeMemoryUsage(methodPlans map[string]*dom
 		// Optimize memory based on field complexity
 		baseMemory := len(plan.Batches) * 10 // 10MB per batch baseline
 		plan.MemoryRequirementMB = baseMemory
-		
+
 		// Adjust based on batch characteristics
 		for _, batch := range batches {
 			if po.batchBelongsToMethod(batch, plan) {
@@ -248,7 +249,7 @@ func (po *ConcretePlanOptimizer) mergeBatches(batches []*ExecutionBatch) error {
 	for i < len(batches)-1 {
 		current := batches[i]
 		next := batches[i+1]
-		
+
 		// Check if batches can be merged
 		if po.canMergeBatches(current, next) {
 			// Merge next into current
@@ -256,11 +257,11 @@ func (po *ConcretePlanOptimizer) mergeBatches(batches []*ExecutionBatch) error {
 			current.EstimatedDurationMS += next.EstimatedDurationMS
 			current.ResourceRequirement.MemoryMB += next.ResourceRequirement.MemoryMB
 			current.ConcurrencyLevel = max(current.ConcurrencyLevel, next.ConcurrencyLevel)
-			
+
 			// Remove next batch
 			copy(batches[i+1:], batches[i+2:])
 			batches = batches[:len(batches)-1]
-			
+
 			po.logger.Debug("merged batches",
 				zap.String("batch1", current.ID),
 				zap.String("batch2", next.ID))
@@ -303,7 +304,7 @@ func (po *ConcretePlanOptimizer) sortBatchesByDuration(batches []*ExecutionBatch
 func (po *ConcretePlanOptimizer) optimizeBatchConcurrency(batch *ExecutionBatch) {
 	// Optimize concurrency based on batch characteristics
 	mappingCount := len(batch.Mappings)
-	
+
 	if mappingCount <= 2 {
 		batch.ConcurrencyLevel = 1 // No benefit from concurrency
 	} else if mappingCount <= 10 {
@@ -328,7 +329,7 @@ func (po *ConcretePlanOptimizer) mergeSmallBatches(batches []*ExecutionBatch) {
 func (po *ConcretePlanOptimizer) redistributeWorkers(methodPlans map[string]*domain.MethodPlan, totalWorkers int) {
 	// Calculate reduction factor
 	factor := float64(po.config.MaxConcurrentWorkers) / float64(totalWorkers)
-	
+
 	for _, plan := range methodPlans {
 		newWorkers := int(float64(plan.RequiredWorkers) * factor)
 		if newWorkers < 1 {
@@ -341,7 +342,7 @@ func (po *ConcretePlanOptimizer) redistributeWorkers(methodPlans map[string]*dom
 func (po *ConcretePlanOptimizer) optimizeMemoryAllocation(methodPlans map[string]*domain.MethodPlan, totalMemory int) {
 	// Calculate reduction factor
 	factor := float64(po.config.MaxMemoryMB) / float64(totalMemory)
-	
+
 	for _, plan := range methodPlans {
 		newMemory := int(float64(plan.MemoryRequirementMB) * factor)
 		if newMemory < 10 {
@@ -353,13 +354,13 @@ func (po *ConcretePlanOptimizer) optimizeMemoryAllocation(methodPlans map[string
 
 func (po *ConcretePlanOptimizer) calculateMethodPriorities(methodPlans map[string]*domain.MethodPlan) map[string]float64 {
 	priorities := make(map[string]float64)
-	
+
 	for methodName, plan := range methodPlans {
 		// Priority based on estimated duration and field count
 		priority := float64(plan.EstimatedDurationMS) * float64(plan.TotalFields)
 		priorities[methodName] = priority
 	}
-	
+
 	return priorities
 }
 

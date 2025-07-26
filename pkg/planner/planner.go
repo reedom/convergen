@@ -7,20 +7,21 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"go.uber.org/zap"
 )
 
 // ExecutionPlanner creates optimized execution plans for concurrent field processing
 type ExecutionPlanner struct {
-	logger      *zap.Logger
-	eventBus    events.EventBus
-	config      *PlannerConfig
-	depGraph    DependencyGraph
-	optimizer   PlanOptimizer
-	metrics     *PlannerMetrics
-	mutex       sync.RWMutex
+	logger    *zap.Logger
+	eventBus  events.EventBus
+	config    *PlannerConfig
+	depGraph  DependencyGraph
+	optimizer PlanOptimizer
+	metrics   *PlannerMetrics
+	mutex     sync.RWMutex
 }
 
 // PlannerConfig configures the execution planner behavior
@@ -40,6 +41,17 @@ type PlannerConfig struct {
 func NewExecutionPlanner(logger *zap.Logger, eventBus events.EventBus, config *PlannerConfig) *ExecutionPlanner {
 	if config == nil {
 		config = DefaultPlannerConfig()
+	}
+
+	// Validate and fix invalid configuration values
+	if config.MaxBatchSize <= 0 {
+		config.MaxBatchSize = 50 // Default value
+	}
+	if config.MaxConcurrentWorkers <= 0 {
+		config.MaxConcurrentWorkers = 10 // Default value
+	}
+	if config.MaxMemoryMB <= 0 {
+		config.MaxMemoryMB = 100 // Default value
 	}
 
 	depGraph := NewDependencyGraph(logger)
@@ -74,7 +86,7 @@ func DefaultPlannerConfig() *PlannerConfig {
 // CreateExecutionPlan creates an optimized execution plan for the given methods
 func (ep *ExecutionPlanner) CreateExecutionPlan(ctx context.Context, methods []*domain.Method) (*domain.ExecutionPlan, error) {
 	startTime := time.Now()
-	
+
 	// Emit planning started event
 	planStartedEvent := events.NewPlanStartedEvent(ctx, methods)
 	if err := ep.eventBus.Publish(planStartedEvent); err != nil {
@@ -357,13 +369,13 @@ func (ep *ExecutionPlanner) splitLargeBatch(batch *ExecutionBatch) []*ExecutionB
 	// Split batch if it exceeds maximum size
 	var subBatches []*ExecutionBatch
 	mappings := batch.Mappings
-	
+
 	for i := 0; i < len(mappings); i += ep.config.MaxBatchSize {
 		end := i + ep.config.MaxBatchSize
 		if end > len(mappings) {
 			end = len(mappings)
 		}
-		
+
 		subBatch := &ExecutionBatch{
 			ID:                  fmt.Sprintf("%s_sub_%d", batch.ID, i/ep.config.MaxBatchSize),
 			Mappings:            mappings[i:end],
@@ -373,7 +385,7 @@ func (ep *ExecutionPlanner) splitLargeBatch(batch *ExecutionBatch) []*ExecutionB
 		}
 		subBatches = append(subBatches, subBatch)
 	}
-	
+
 	return subBatches
 }
 
@@ -383,7 +395,7 @@ func (ep *ExecutionPlanner) determineExecutionStrategy(batches []*ExecutionBatch
 	if totalBatches <= 1 {
 		return domain.StrategySequential
 	}
-	
+
 	// Check if batches can run in parallel
 	hasParallelizableBatches := false
 	for _, batch := range batches {
@@ -392,11 +404,11 @@ func (ep *ExecutionPlanner) determineExecutionStrategy(batches []*ExecutionBatch
 			break
 		}
 	}
-	
+
 	if hasParallelizableBatches {
 		return domain.StrategyBatched
 	}
-	
+
 	return domain.StrategySequential
 }
 
@@ -419,12 +431,12 @@ func (ep *ExecutionPlanner) generatePlanMetrics(startTime time.Time, batches []*
 func (ep *ExecutionPlanner) findMethodBatches(method *domain.Method, batches []*ExecutionBatch) []*ExecutionBatch {
 	var methodBatches []*ExecutionBatch
 	methodMappings := make(map[string]bool)
-	
+
 	// Create mapping ID lookup
 	for _, mapping := range method.FieldMappings() {
 		methodMappings[mapping.ID] = true
 	}
-	
+
 	// Find batches containing method's mappings
 	for _, batch := range batches {
 		containsMethodMapping := false
@@ -438,7 +450,7 @@ func (ep *ExecutionPlanner) findMethodBatches(method *domain.Method, batches []*
 			methodBatches = append(methodBatches, batch)
 		}
 	}
-	
+
 	return methodBatches
 }
 
@@ -472,7 +484,7 @@ func (ep *ExecutionPlanner) selectMethodStrategy(method *domain.Method, batches 
 	if len(batches) <= 1 {
 		return domain.MethodStrategyDirect
 	}
-	
+
 	// Check for complex dependencies
 	hasComplexDependencies := false
 	for _, batch := range batches {
@@ -481,11 +493,11 @@ func (ep *ExecutionPlanner) selectMethodStrategy(method *domain.Method, batches 
 			break
 		}
 	}
-	
+
 	if hasComplexDependencies {
 		return domain.MethodStrategyPipelined
 	}
-	
+
 	return domain.MethodStrategyBatched
 }
 
@@ -493,21 +505,21 @@ func (ep *ExecutionPlanner) calculateParallelizationRatio(batches []*ExecutionBa
 	if len(batches) == 0 {
 		return 0.0
 	}
-	
+
 	parallelFields := 0
 	totalFields := 0
-	
+
 	for _, batch := range batches {
 		totalFields += len(batch.Mappings)
 		if batch.ConcurrencyLevel > 1 {
 			parallelFields += len(batch.Mappings)
 		}
 	}
-	
+
 	if totalFields == 0 {
 		return 0.0
 	}
-	
+
 	return float64(parallelFields) / float64(totalFields)
 }
 
@@ -515,19 +527,19 @@ func (ep *ExecutionPlanner) calculateEstimatedSpeedup(batches []*ExecutionBatch)
 	if len(batches) == 0 {
 		return 1.0
 	}
-	
+
 	sequentialTime := int64(0)
 	parallelTime := int64(0)
-	
+
 	for _, batch := range batches {
 		sequentialTime += batch.EstimatedDurationMS
 		parallelTime += batch.EstimatedDurationMS / int64(batch.ConcurrencyLevel)
 	}
-	
+
 	if parallelTime == 0 {
 		return 1.0
 	}
-	
+
 	return float64(sequentialTime) / float64(parallelTime)
 }
 
@@ -540,12 +552,12 @@ type ResourceRequirement struct {
 
 // ExecutionBatch represents a group of field mappings that can be processed concurrently
 type ExecutionBatch struct {
-	ID                  string                   `json:"id"`
-	Mappings            []*domain.FieldMapping   `json:"mappings"`
-	EstimatedDurationMS int64                    `json:"estimated_duration_ms"`
-	ResourceRequirement *ResourceRequirement     `json:"resource_requirement"`
-	DependsOn           []string                 `json:"depends_on"`
-	ConcurrencyLevel    int                      `json:"concurrency_level"`
+	ID                  string                 `json:"id"`
+	Mappings            []*domain.FieldMapping `json:"mappings"`
+	EstimatedDurationMS int64                  `json:"estimated_duration_ms"`
+	ResourceRequirement *ResourceRequirement   `json:"resource_requirement"`
+	DependsOn           []string               `json:"depends_on"`
+	ConcurrencyLevel    int                    `json:"concurrency_level"`
 }
 
 // PlannerMetrics tracks planner performance and statistics
@@ -567,7 +579,7 @@ func NewPlannerMetrics() *PlannerMetrics {
 func (pm *PlannerMetrics) RecordPlan(duration time.Duration) {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
-	
+
 	pm.TotalPlansCreated++
 	// Update average (simple moving average)
 	pm.AveragePlanningTime = (pm.AveragePlanningTime*time.Duration(pm.TotalPlansCreated-1) + duration) / time.Duration(pm.TotalPlansCreated)

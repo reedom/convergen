@@ -2,12 +2,14 @@ package planner
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
 func TestPlanOptimizer_OptimizePlan(t *testing.T) {
@@ -81,7 +83,7 @@ func TestPlanOptimizer_OptimizePlan(t *testing.T) {
 				}
 
 				assert.LessOrEqual(t, totalWorkers, config.MaxConcurrentWorkers*2) // Allow some overhead
-				assert.LessOrEqual(t, totalMemory, config.MaxMemoryMB*2)          // Allow some overhead
+				assert.LessOrEqual(t, totalMemory, config.MaxMemoryMB*2)           // Allow some overhead
 			}
 		})
 	}
@@ -96,7 +98,7 @@ func TestPlanOptimizer_ApplyBatchOptimizations(t *testing.T) {
 	batches := []*ExecutionBatch{
 		{
 			ID:                  "batch_1",
-			Mappings:            createTestFieldMappings(1),  // Small batch
+			Mappings:            createTestFieldMappings(1), // Small batch
 			EstimatedDurationMS: 100,
 			ConcurrencyLevel:    1,
 			ResourceRequirement: &ResourceRequirement{MemoryMB: 10},
@@ -285,7 +287,7 @@ func TestPlanOptimizer_BatchMerging(t *testing.T) {
 	}
 
 	originalBatchCount := len(batches)
-	
+
 	methods := createTestMethods(2, 4)
 	methodPlans := createTestMethodPlans(methods)
 
@@ -295,7 +297,7 @@ func TestPlanOptimizer_BatchMerging(t *testing.T) {
 
 	// Verify optimization effects (this is testing internal behavior)
 	// In practice, batch merging would be verified through the actual batch structures
-	assert.NotNil(t, batches) // Batches should still exist
+	assert.NotNil(t, batches)                       // Batches should still exist
 	assert.GreaterOrEqual(t, originalBatchCount, 1) // Should have had batches to work with
 }
 
@@ -333,15 +335,29 @@ func createTestMethodPlans(methods []*domain.Method) map[string]*domain.MethodPl
 		plans[method.Name] = &domain.MethodPlan{
 			MethodName:          method.Name,
 			TotalFields:         len(method.FieldMappings()),
-			Batches:             createTestExecutionBatches(2), // 2 batches per method
+			Batches:             createTestConcurrentBatches(2), // 2 batches per method
 			EstimatedDurationMS: int64((i + 1) * 100),
-			RequiredWorkers:     (i % 4) + 2, // 2-5 workers
+			RequiredWorkers:     (i % 4) + 2,  // 2-5 workers
 			MemoryRequirementMB: (i + 1) * 20, // 20-100 MB
 			Strategy:            domain.MethodStrategyDirect,
 		}
 	}
 
 	return plans
+}
+
+func createTestConcurrentBatches(count int) []*domain.ConcurrentBatch {
+	batches := make([]*domain.ConcurrentBatch, count)
+
+	for i := 0; i < count; i++ {
+		batch, _ := domain.NewConcurrentBatch(
+			fmt.Sprintf("batch_%d", i),
+			createTestFieldMappings((i%5)+3), // 3-7 mappings
+		)
+		batches[i] = batch
+	}
+
+	return batches
 }
 
 func createTestExecutionBatches(count int) []*ExecutionBatch {
@@ -357,7 +373,7 @@ func createTestExecutionBatches(count int) []*ExecutionBatch {
 				CPUIntensive: i%2 == 0,
 				IOOperations: i % 3,
 			},
-			DependsOn:        []string{}, // No dependencies for simplicity
+			DependsOn:        []string{},  // No dependencies for simplicity
 			ConcurrencyLevel: (i % 4) + 1, // 1-4 concurrency
 		}
 	}

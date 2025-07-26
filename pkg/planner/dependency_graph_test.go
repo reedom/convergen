@@ -3,10 +3,11 @@ package planner
 import (
 	"testing"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
 func TestDependencyGraph_BasicOperations(t *testing.T) {
@@ -85,11 +86,11 @@ func TestDependencyGraph_Dependencies(t *testing.T) {
 
 func TestDependencyGraph_TopologicalSort(t *testing.T) {
 	tests := []struct {
-		name              string
-		setupGraph        func(DependencyGraph) error
-		expectedBatches   int
-		expectedError     bool
-		validateBatches   func([]*domain.FieldMapping, [][]*domain.FieldMapping) bool
+		name            string
+		setupGraph      func(DependencyGraph) error
+		expectedBatches int
+		expectedError   bool
+		validateBatches func([]*domain.FieldMapping, [][]*domain.FieldMapping) bool
 	}{
 		{
 			name: "no dependencies",
@@ -201,10 +202,10 @@ func TestDependencyGraph_TopologicalSort(t *testing.T) {
 
 func TestDependencyGraph_CycleDetection(t *testing.T) {
 	tests := []struct {
-		name          string
-		setupGraph    func(DependencyGraph) ([]*domain.FieldMapping, error)
+		name           string
+		setupGraph     func(DependencyGraph) ([]*domain.FieldMapping, error)
 		expectedCycles int
-		hasCycles     bool
+		hasCycles      bool
 	}{
 		{
 			name: "no cycles",
@@ -226,7 +227,7 @@ func TestDependencyGraph_CycleDetection(t *testing.T) {
 				return mappings, nil
 			},
 			expectedCycles: 0,
-			hasCycles:     false,
+			hasCycles:      false,
 		},
 		{
 			name: "simple cycle",
@@ -248,7 +249,7 @@ func TestDependencyGraph_CycleDetection(t *testing.T) {
 				return mappings, nil
 			},
 			expectedCycles: 1,
-			hasCycles:     true,
+			hasCycles:      true,
 		},
 		{
 			name: "complex cycle",
@@ -273,7 +274,7 @@ func TestDependencyGraph_CycleDetection(t *testing.T) {
 				return mappings, nil
 			},
 			expectedCycles: 1,
-			hasCycles:     true,
+			hasCycles:      true,
 		},
 	}
 
@@ -291,7 +292,7 @@ func TestDependencyGraph_CycleDetection(t *testing.T) {
 
 			if tt.hasCycles {
 				assert.GreaterOrEqual(t, len(cycles), tt.expectedCycles)
-				
+
 				// Verify cycles contain valid mapping IDs
 				for _, cycle := range cycles {
 					assert.GreaterOrEqual(t, len(cycle), 2) // A cycle must have at least 2 nodes
@@ -467,11 +468,11 @@ func BenchmarkDependencyGraph_AddField(b *testing.B) {
 
 func BenchmarkDependencyGraph_TopologicalSort(b *testing.B) {
 	logger := zaptest.NewLogger(b)
-	
+
 	// Create a graph with many fields and some dependencies
 	graph := NewDependencyGraph(logger)
 	numFields := 1000
-	
+
 	mappings := make([]*domain.FieldMapping, numFields)
 	for i := 0; i < numFields; i++ {
 		mappings[i] = createTestFieldMapping(1, i+1)

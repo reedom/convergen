@@ -2,14 +2,17 @@ package planner
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
 func TestExecutionPlanner_NewExecutionPlanner(t *testing.T) {
@@ -130,7 +133,7 @@ func TestExecutionPlanner_DependencyHandling(t *testing.T) {
 	// Verify that dependencies are handled correctly
 	for _, methodPlan := range plan.Methods {
 		assert.GreaterOrEqual(t, len(methodPlan.Batches), 1)
-		
+
 		// Verify batches are ordered correctly
 		for i := 1; i < len(methodPlan.Batches); i++ {
 			// Each batch should depend on previous ones or be independent
@@ -435,5 +438,5 @@ func createTestFieldMapping(methodIndex, fieldIndex int) *domain.FieldMapping {
 }
 
 func createTestType(name string) domain.Type {
-	return domain.NewBasicType(name, domain.TypeKindString)
+	return domain.NewBasicType(name, reflect.String)
 }

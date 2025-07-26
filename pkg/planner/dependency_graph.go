@@ -5,8 +5,9 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"go.uber.org/zap"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
 // DependencyGraph represents dependencies between field mappings
@@ -28,8 +29,8 @@ type DependencyGraph interface {
 
 // GraphNode represents a node in the dependency graph
 type GraphNode struct {
-	ID          string                `json:"id"`
-	Mapping     *domain.FieldMapping  `json:"mapping"`
+	ID           string               `json:"id"`
+	Mapping      *domain.FieldMapping `json:"mapping"`
 	Dependencies []string             `json:"dependencies"` // IDs this node depends on
 	Dependents   []string             `json:"dependents"`   // IDs that depend on this node
 	Visited      bool                 `json:"-"`            // For cycle detection
@@ -87,7 +88,7 @@ func (g *ConcreteDependencyGraph) AddField(mapping *domain.FieldMapping) error {
 
 	// Track method associations (if we can determine the method)
 	// This would be enhanced with proper method tracking
-	
+
 	g.logger.Debug("added field to dependency graph",
 		zap.String("field_id", mapping.ID),
 		zap.String("strategy", mapping.StrategyName))
@@ -180,7 +181,7 @@ func (g *ConcreteDependencyGraph) TopologicalSort() ([][]*domain.FieldMapping, e
 
 	// Kahn's algorithm for topological sorting
 	inDegree := make(map[string]int)
-	
+
 	// Initialize in-degrees
 	for id, node := range g.nodes {
 		inDegree[id] = len(node.Dependencies)
@@ -276,7 +277,7 @@ func (g *ConcreteDependencyGraph) DetectCycles() ([][]string, error) {
 // dfsDetectCycle performs DFS cycle detection
 func (g *ConcreteDependencyGraph) dfsDetectCycle(nodeID string, path *[]string) []string {
 	node := g.nodes[nodeID]
-	
+
 	if node.InStack {
 		// Found a cycle - extract it from the path
 		cycleStart := -1
@@ -362,7 +363,7 @@ func (g *ConcreteDependencyGraph) Size() int {
 func (g *ConcreteDependencyGraph) DependencyCount() int {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
-	
+
 	count := 0
 	for _, node := range g.nodes {
 		count += len(node.Dependencies)
@@ -381,10 +382,10 @@ func (g *ConcreteDependencyGraph) MethodCount() int {
 func (g *ConcreteDependencyGraph) Clear() {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
-	
+
 	g.nodes = make(map[string]*GraphNode)
 	g.methodNodes = make(map[string][]string)
-	
+
 	g.logger.Debug("dependency graph cleared")
 }
 
@@ -392,7 +393,7 @@ func (g *ConcreteDependencyGraph) Clear() {
 func (g *ConcreteDependencyGraph) GetField(id string) (*domain.FieldMapping, bool) {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
-	
+
 	if node, exists := g.nodes[id]; exists {
 		return node.Mapping, true
 	}
@@ -403,7 +404,7 @@ func (g *ConcreteDependencyGraph) GetField(id string) (*domain.FieldMapping, boo
 func (g *ConcreteDependencyGraph) GetDependencies(id string) []string {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
-	
+
 	if node, exists := g.nodes[id]; exists {
 		deps := make([]string, len(node.Dependencies))
 		copy(deps, node.Dependencies)
@@ -416,7 +417,7 @@ func (g *ConcreteDependencyGraph) GetDependencies(id string) []string {
 func (g *ConcreteDependencyGraph) GetDependents(id string) []string {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
-	
+
 	if node, exists := g.nodes[id]; exists {
 		deps := make([]string, len(node.Dependents))
 		copy(deps, node.Dependents)

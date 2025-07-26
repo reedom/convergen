@@ -15,12 +15,12 @@
 //   - Comprehensive metrics and monitoring
 //
 // The planner operates in multiple phases:
-//   1. Dependency Analysis: Build dependency graphs between field mappings
-//   2. Cycle Detection: Identify and resolve circular dependencies
-//   3. Batch Generation: Group independent fields for concurrent processing
-//   4. Resource Planning: Calculate optimal worker allocation and limits
-//   5. Plan Optimization: Apply heuristics for performance improvement
-//   6. Event Emission: Notify other components of the execution plan
+//  1. Dependency Analysis: Build dependency graphs between field mappings
+//  2. Cycle Detection: Identify and resolve circular dependencies
+//  3. Batch Generation: Group independent fields for concurrent processing
+//  4. Resource Planning: Calculate optimal worker allocation and limits
+//  5. Plan Optimization: Apply heuristics for performance improvement
+//  6. Event Emission: Notify other components of the execution plan
 //
 // All operations maintain deterministic output ordering while maximizing
 // concurrency opportunities for improved performance on multi-core systems.
