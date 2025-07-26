@@ -4,11 +4,40 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 	"go.uber.org/zap/zaptest"
 )
+
+// Mock component for testing
+type mockComponent struct {
+	name     string
+	status   ComponentStatus
+	metrics  interface{}
+	initErr  error
+	shutErr  error
+}
+
+func (m *mockComponent) Name() string { return m.name }
+
+func (m *mockComponent) Initialize(ctx context.Context, eventBus events.EventBus) error {
+	if m.initErr != nil {
+		return m.initErr
+	}
+	m.status = StatusReady
+	return nil
+}
+
+func (m *mockComponent) Shutdown(ctx context.Context) error {
+	if m.shutErr != nil {
+		return m.shutErr
+	}
+	m.status = StatusShutdown
+	return nil
+}
+
+func (m *mockComponent) GetMetrics() interface{} { return m.metrics }
+func (m *mockComponent) GetStatus() ComponentStatus { return m.status }
 
 func TestNewComponentManager(t *testing.T) {
 	logger := zaptest.NewLogger(t)

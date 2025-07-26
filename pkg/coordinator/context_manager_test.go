@@ -214,7 +214,7 @@ func TestContextManagerContextCleanup(t *testing.T) {
 	parentCtx := context.Background()
 	
 	// Create pipeline context
-	ctx, cancel := mgr.CreatePipelineContext(parentCtx, time.Minute)
+	_, cancel := mgr.CreatePipelineContext(parentCtx, time.Minute)
 	
 	initialCount := mgr.GetActiveContextCount()
 	if initialCount == 0 {
@@ -280,7 +280,7 @@ func TestContextManagerGetAllContextInfo(t *testing.T) {
 	// Create multiple contexts
 	parentCtx := context.Background()
 	
-	ctx1, cancel1 := mgr.CreatePipelineContext(parentCtx, time.Minute)
+	_, cancel1 := mgr.CreatePipelineContext(parentCtx, time.Minute)
 	defer cancel1()
 	
 	ctx2 := mgr.CreateComponentContext(parentCtx, "component1")

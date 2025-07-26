@@ -272,9 +272,21 @@ func TestComponentStatusString(t *testing.T) {
 
 func createTestConfig() *Config {
 	return &Config{
-		ParserConfig:   parser.DefaultConfig(),
-		PlannerConfig:  planner.DefaultConfig(),
-		ExecutorConfig: executor.DefaultConfig(),
+		ParserConfig: &parser.ParserConfig{
+			BuildTag:              "convergen",
+			MaxConcurrentWorkers:  4,
+			TypeResolutionTimeout: 30 * time.Second,
+			CacheSize:             1000,
+			EnableProgress:        false,
+		},
+		PlannerConfig:  planner.DefaultPlannerConfig(),
+		ExecutorConfig: &executor.ExecutorConfig{
+			MaxWorkers:        4,
+			MinWorkers:        1,
+			MaxConcurrentJobs: 10,
+			ExecutionTimeout:  30 * time.Second,
+			RetryAttempts:     3,
+		},
 		EmitterConfig:  emitter.DefaultEmitterConfig(),
 		
 		MaxConcurrency:     2,
@@ -356,34 +368,7 @@ func (t *testPipelineInput) Config() *Config     { return t.config }
 
 // Mock implementations for testing
 
-type mockComponent struct {
-	name     string
-	status   ComponentStatus
-	metrics  interface{}
-	initErr  error
-	shutErr  error
-}
-
-func (m *mockComponent) Name() string { return m.name }
-
-func (m *mockComponent) Initialize(ctx context.Context, eventBus interface{}) error {
-	if m.initErr != nil {
-		return m.initErr
-	}
-	m.status = StatusReady
-	return nil
-}
-
-func (m *mockComponent) Shutdown(ctx context.Context) error {
-	if m.shutErr != nil {
-		return m.shutErr
-	}
-	m.status = StatusShutdown
-	return nil
-}
-
-func (m *mockComponent) GetMetrics() interface{} { return m.metrics }
-func (m *mockComponent) GetStatus() ComponentStatus { return m.status }
+// mockComponent is defined in component_manager_test.go
 
 // Integration test setup
 
