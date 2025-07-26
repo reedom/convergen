@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"go.uber.org/zap"
 )
 
 // EmitterConfig defines configuration parameters for the code generation engine

@@ -68,7 +68,7 @@ type To struct {
 
 // hoge
 //
-// !go:generate go run github.com/reedom/convergen
+// !go:generate go run github.com/reedom/convergen.
 type Convergen interface {
 	// convergen:map foo bar
 	FromTo(*From) *To

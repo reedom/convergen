@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"go.uber.org/zap"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/executor"
-	"go.uber.org/zap"
 )
 
 // CompositeLiteralStrategy generates code using composite literal initialization

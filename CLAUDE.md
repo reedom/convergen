@@ -14,13 +14,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Build & Development
 - `make build` - Build the CLI command to `build/convergen`
 - `make test` - Run all tests (both integration tests and package tests)
-- `make lint` - Run golangci-lint via Docker
 - `make coverage` - Generate test coverage report
 - `go run main.go <input-file>` - Run convergen directly on a file
 - `go run github.com/reedom/convergen@v8.0.3` - Run as go:generate command
 
-### Code Formatting (REQUIRED)
-- **ALWAYS run `go fmt` before committing**: This ensures consistent code formatting across the project
+### Code Quality & Linting
+- `make lint` - Run comprehensive linting with golangci-lint (no Docker required)
+- `make lint-fix` - Run linter and automatically fix issues where possible
+- `make lint-all` - Run all linting checks (comprehensive analysis)
+- `make lint-security` - Run security-focused linting with gosec
+- `make lint-complexity` - Check code complexity and maintainability
+- `make lint-deps` - Check for dependency issues and vulnerabilities
+- `make lint-docker` - Run linter using Docker (fallback option)
+- `make install-linters` - Install all recommended linting tools
+
+**Note**: Current golangci-lint version (1.53.3) has compatibility issues with Go 1.24.5. 
+Some advanced linters are temporarily disabled. Consider upgrading golangci-lint when newer 
+versions become available that support Go 1.24+.
+
+### Code Formatting & Quality Checks (REQUIRED)
+- **ALWAYS run formatting and linting after writing code**: This ensures consistent code quality
+- `make fmt` - Format all Go code (includes gofmt + goimports)
+- `make lint` - Run comprehensive linting checks
+- `make fmt-check` - Check if code is properly formatted (CI-friendly)
+- **Recommended workflow**: After writing code → `make fmt` → `make lint` → commit
 - **Format specific packages**: `go fmt ./pkg/package-name/...`
 - **Format entire project**: `go fmt ./...`
 

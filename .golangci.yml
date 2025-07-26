@@ -1,0 +1,242 @@
+# Comprehensive golangci-lint configuration for convergen
+# See https://golangci-lint.run/usage/configuration/ for all options
+
+run:
+  # Timeout for analysis
+  timeout: 5m
+  
+  # Exit code when at least one issue was found
+  issues-exit-code: 1
+  
+  # Include test files in analysis
+  tests: true
+  
+  # Skip vendor and generated files
+  skip-dirs:
+    - vendor
+    - .reference-projects
+  
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*_generated\\.go$"
+
+# Output configuration
+output:
+  # Format: colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions
+  format: colored-line-number
+  # Print lines of code with issue
+  print-issued-lines: true
+  # Print linter name in the end of issue text
+  print-linter-name: true
+  # Make issues output unique by line
+  uniq-by-line: true
+  # Sort results by: filepath, line and column
+  sort-results: true
+
+# Linters configuration
+linters:
+  # Disable all linters as default is too restrictive
+  disable-all: true
+  
+  # Enable specific linters (minimal set due to Go 1.24 compatibility issues)
+  enable:
+    # Basic linters that should work with Go 1.24
+    - errcheck      # Check for unchecked errors
+    - gofmt         # Check if code is gofmt-ed
+    - goimports     # Check if imports are sorted and grouped correctly
+    - ineffassign   # Detect ineffectual assignments
+    - misspell      # Find misspelled English words
+    - unconvert     # Remove unnecessary type conversions
+    - unused        # Detect unused constants, variables, functions (may have issues)
+    - goconst       # Find repeated strings that could be replaced by a constant
+    - godot         # Check if comments end in a period
+    
+    # Disabled due to Go 1.24 compatibility issues:
+    # - gosimple    # Suggest code simplifications 
+    # - govet       # Go vet tool
+    # - staticcheck # Staticcheck (SA class of checks)
+    # - typecheck   # Type checking
+    # - gocritic    # The most opinionated Go source code linter
+    # - revive      # Fast, configurable, extensible, flexible linter
+    # - gocyclo     # Cyclomatic complexity
+    # - unparam     # Reports unused function parameters
+    # - prealloc    # Find slice declarations with non-zero initial length
+    # - gosec       # Security issues
+    # - exportloopref # Check for pointers to enclosing loop variables
+    # - bodyclose   # Check if HTTP response body is closed successfully
+    # - noctx       # Find sending http request without context.Context
+    # - rowserrcheck # Check if Err of rows is checked successfully
+    # - sqlclosecheck # Check if sql.Rows and sql.Stmt are closed
+    # - gomnd       # Detect magic numbers
+    # - gomodguard  # Allow and block list linter for direct Go module dependencies
+    # - goheader    # Check file headers
+    # - nolintlint  # Reports ill-formed or insufficient nolint directives
+
+# Linter-specific settings
+linters-settings:
+  # Cyclomatic complexity threshold
+  gocyclo:
+    min-complexity: 15
+  
+  # Cognitive complexity threshold  
+  gocognit:
+    min-complexity: 20
+    
+  # Function length limits
+  funlen:
+    lines: 80
+    statements: 50
+    
+  # Nested if depth
+  nestif:
+    min-complexity: 5
+    
+  # Magic numbers
+  gomnd:
+    checks:
+      - argument
+      - case
+      - condition
+      - operation
+      - return
+      - assign
+    ignored-numbers: [0, 1, 2, 3, 10, 16, 32, 64, 100, 1000]
+    ignored-functions:
+      - 'make'
+      - 'time.Duration'
+      - 'context.WithTimeout'
+      - 'context.WithDeadline'
+  
+  # Constants detection
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+    ignore-tests: true
+    
+  # Duplicate code detection
+  dupl:
+    threshold: 150
+    
+  # Error wrapping
+  wrapcheck:
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Unwrap(
+      - .Wrap(
+      - .Wrapf(
+    ignoreSigRegexps:
+      - \.New.*Error\(
+      
+  # Security settings
+  gosec:
+    severity: medium
+    confidence: medium
+    excludes:
+      - G104 # Audit errors not checked (we handle this with errcheck)
+      
+  # Import formatting
+  goimports:
+    local-prefixes: github.com/reedom/convergen
+    
+  # Revive configuration (replaces golint)
+  revive:
+    confidence: 0.8
+    rules:
+      - name: var-naming
+      - name: package-comments
+      - name: range-val-in-closure
+      - name: go-conventions
+      - name: var-declaration
+      - name: unexported-return
+      - name: errorf
+      - name: blank-imports
+      - name: context-as-argument
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: indent-error-flow
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-naming
+      - name: indent-error-flow
+
+# Issues configuration
+issues:
+  # Exclude some linters from running on tests files
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gomnd
+        - goconst
+        - funlen
+        - dupl
+        - gocritic
+        - wrapcheck
+        
+    # Exclude magic number checks for tests
+    - path: _test\.go
+      text: "Magic number"
+      linters:
+        - gomnd
+        
+    # Exclude function length checks for tests
+    - path: _test\.go
+      text: "Function 'Test"
+      linters:
+        - funlen
+        
+    # Allow long test functions
+    - path: _test\.go
+      text: "cognitive complexity"
+      linters:
+        - gocognit
+        
+    # Exclude some issues in test files
+    - path: _test\.go
+      linters:
+        - testpackage
+      text: "should be in a package"
+      
+    # Exclude error wrapping requirements for test files
+    - path: _test\.go
+      linters:
+        - wrapcheck
+        
+    # Allow magic numbers in time operations
+    - text: "Magic number: (1000|60|24|30|365), in <operation> detected"
+      linters:
+        - gomnd
+        
+    # Exclude specific issues for main.go
+    - path: main\.go
+      linters:
+        - gocritic
+      text: "exitAfterDefer"
+      
+  # Maximum issues count per linter. Set to 0 to disable
+  max-issues-per-linter: 0
+  
+  # Maximum count of issues with the same text. Set to 0 to disable
+  max-same-issues: 0
+  
+  # Show only new issues created after git revision
+  # new-from-rev: HEAD~1
+  
+  # Independently of option `exclude` we use default exclude patterns,
+  # it can be disabled by this option. To list all excluded by default
+  # patterns execute `golangci-lint run --help`.
+  exclude-use-default: false
+  
+  # If set to true exclude and exclude-rules regular expressions become case-sensitive
+  exclude-case-sensitive: false
+  
+  # Fix found issues (if it's supported by the linter)
+  fix: false

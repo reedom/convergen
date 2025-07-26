@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/executor"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"go.uber.org/zap"
 )
 
 // EventBus interface for event publishing (simplified interface)

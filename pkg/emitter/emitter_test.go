@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/executor"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"go.uber.org/zap/zaptest"
 )
 
 // Helper function to create test method with proper field mappings
@@ -180,7 +181,7 @@ func TestEmitter_OptimizeOutput(t *testing.T) {
 			{
 				Name:      "TestMethod",
 				Signature: "func TestMethod(src *Source) (*Dest, error)",
-				Body:      "	var dest Dest\n	dest.Field = src.Field\n	return &dest, nil\n",
+				Body: "	var dest Dest\n	dest.Field = src.Field\n	return &dest, nil\n",
 			},
 		},
 		Metadata: &GenerationMetadata{},

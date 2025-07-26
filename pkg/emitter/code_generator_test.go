@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/executor"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestCodeGenerator_GenerateMethodCode(t *testing.T) {

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"go.uber.org/zap"
 )
 
 // EmitterEvent types for the emitter pipeline
