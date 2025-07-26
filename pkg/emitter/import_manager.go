@@ -13,29 +13,29 @@ import (
 type ImportManager interface {
 	// AnalyzeImports analyzes code and determines required imports
 	AnalyzeImports(ctx context.Context, code *GeneratedCode) (*ImportAnalysis, error)
-	
+
 	// GenerateImports creates import declarations from analysis
 	GenerateImports(ctx context.Context, analysis *ImportAnalysis) (*ImportDeclaration, error)
-	
+
 	// ResolveConflicts resolves import name conflicts
 	ResolveConflicts(imports []*Import) ([]*Import, error)
-	
+
 	// OptimizeImports optimizes import organization and usage
 	OptimizeImports(imports []*Import) ([]*Import, error)
-	
+
 	// AddImport adds a new import to the collection
 	AddImport(imports []*Import, newImport *Import) []*Import
-	
+
 	// RemoveUnusedImports removes imports that are not used
 	RemoveUnusedImports(imports []*Import, sourceCode string) []*Import
 }
 
 // ConcreteImportManager implements ImportManager
 type ConcreteImportManager struct {
-	config         *EmitterConfig
-	logger         *zap.Logger
-	standardLibs   map[string]bool
-	aliasCounter   map[string]int
+	config           *EmitterConfig
+	logger           *zap.Logger
+	standardLibs     map[string]bool
+	aliasCounter     map[string]int
 	conflictResolver *ConflictResolver
 }
 
@@ -81,18 +81,18 @@ func (im *ConcreteImportManager) AnalyzeImports(ctx context.Context, code *Gener
 		zap.Int("methods", len(code.Methods)))
 
 	analysis := &ImportAnalysis{
-		RequiredImports:    make([]*Import, 0),
-		ConflictingNames:   make(map[string][]*Import),
-		UnusedImports:      make([]*Import, 0),
-		StandardLibs:       make([]*Import, 0),
-		ThirdPartyLibs:     make([]*Import, 0),
-		LocalImports:       make([]*Import, 0),
+		RequiredImports:        make([]*Import, 0),
+		ConflictingNames:       make(map[string][]*Import),
+		UnusedImports:          make([]*Import, 0),
+		StandardLibs:           make([]*Import, 0),
+		ThirdPartyLibs:         make([]*Import, 0),
+		LocalImports:           make([]*Import, 0),
 		OptimizationsSuggested: make([]string, 0),
 	}
 
 	// Collect imports from all methods
 	importMap := make(map[string]*Import)
-	
+
 	for _, method := range code.Methods {
 		for _, imp := range method.Imports {
 			if existing, exists := importMap[imp.Path]; exists {
@@ -214,7 +214,7 @@ func (im *ConcreteImportManager) ResolveConflicts(imports []*Import) ([]*Import,
 
 	// Group imports by package name to detect conflicts
 	nameGroups := make(map[string][]*Import)
-	
+
 	for _, imp := range imports {
 		packageName := im.getPackageName(imp.Path)
 		nameGroups[packageName] = append(nameGroups[packageName], imp)
@@ -324,7 +324,7 @@ func (im *ConcreteImportManager) RemoveUnusedImports(imports []*Import, sourceCo
 		zap.Int("total_imports", len(imports)))
 
 	used := make([]*Import, 0, len(imports))
-	
+
 	for _, imp := range imports {
 		if im.isImportUsed(imp, sourceCode) {
 			imp.Used = true
@@ -362,7 +362,7 @@ func (im *ConcreteImportManager) isStandardLibrary(importPath string) bool {
 				"reflect", "regexp", "runtime", "sort", "strconv", "strings",
 				"sync", "syscall", "testing", "text", "time", "unicode", "unsafe",
 			}
-			
+
 			for _, prefix := range standardPrefixes {
 				if firstPart == prefix || strings.HasPrefix(importPath, prefix+"/") {
 					return true
@@ -376,9 +376,9 @@ func (im *ConcreteImportManager) isStandardLibrary(importPath string) bool {
 
 func (im *ConcreteImportManager) isLocalImport(importPath string) bool {
 	// Heuristic: local imports typically contain the module name or start with "./"
-	return strings.HasPrefix(importPath, "./") || 
-		   strings.HasPrefix(importPath, "../") ||
-		   strings.Contains(importPath, "github.com/reedom/convergen")
+	return strings.HasPrefix(importPath, "./") ||
+		strings.HasPrefix(importPath, "../") ||
+		strings.Contains(importPath, "github.com/reedom/convergen")
 }
 
 func (im *ConcreteImportManager) getPackageName(importPath string) string {
@@ -399,12 +399,12 @@ func (im *ConcreteImportManager) getImportKey(imp *Import) string {
 
 func (im *ConcreteImportManager) detectConflicts(analysis *ImportAnalysis) {
 	nameMap := make(map[string][]*Import)
-	
+
 	for _, imp := range analysis.RequiredImports {
 		name := im.getPackageName(imp.Path)
 		nameMap[name] = append(nameMap[name], imp)
 	}
-	
+
 	for name, imports := range nameMap {
 		if len(imports) > 1 {
 			analysis.ConflictingNames[name] = imports
@@ -414,12 +414,12 @@ func (im *ConcreteImportManager) detectConflicts(analysis *ImportAnalysis) {
 
 func (im *ConcreteImportManager) analyzeOptimizations(analysis *ImportAnalysis, code *GeneratedCode) {
 	// Suggest optimizations based on import patterns
-	
+
 	if len(analysis.RequiredImports) > 10 {
 		analysis.OptimizationsSuggested = append(analysis.OptimizationsSuggested,
 			"Consider grouping related functionality to reduce import count")
 	}
-	
+
 	if len(analysis.ConflictingNames) > 3 {
 		analysis.OptimizationsSuggested = append(analysis.OptimizationsSuggested,
 			"Consider using more descriptive package aliases to reduce conflicts")
@@ -433,7 +433,7 @@ func (im *ConcreteImportManager) resolveConflictGroup(packageName string, group 
 	})
 
 	resolved := make([]*Import, len(group))
-	
+
 	for i, imp := range group {
 		resolved[i] = &Import{
 			Path:     imp.Path,
@@ -463,7 +463,7 @@ func (im *ConcreteImportManager) generateAlias(importPath, packageName string) s
 
 	// Generate alias based on path components
 	parts := strings.Split(importPath, "/")
-	
+
 	var alias string
 	if len(parts) >= 2 {
 		// Use last two components
@@ -477,7 +477,7 @@ func (im *ConcreteImportManager) generateAlias(importPath, packageName string) s
 	// Clean alias (remove special characters)
 	alias = strings.ReplaceAll(alias, "-", "")
 	alias = strings.ReplaceAll(alias, ".", "")
-	
+
 	// Ensure it's a valid Go identifier
 	if !im.isValidIdentifier(alias) {
 		alias = "pkg" + alias
@@ -493,19 +493,19 @@ func (im *ConcreteImportManager) isValidIdentifier(name string) bool {
 	if name == "" {
 		return false
 	}
-	
+
 	// Simple check: starts with letter, contains only letters and numbers
 	first := rune(name[0])
 	if !((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_') {
 		return false
 	}
-	
+
 	for _, r := range name[1:] {
 		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
 			return false
 		}
 	}
-	
+
 	return true
 }
 

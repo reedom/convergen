@@ -14,35 +14,35 @@ import (
 // EmitterConfig defines configuration parameters for the code generation engine
 type EmitterConfig struct {
 	// Output preferences
-	PreferCompositeLiterals bool `json:"prefer_composite_literals"`
-	MaxFieldsForComposite   int  `json:"max_fields_for_composite"`
-	IndentStyle            string `json:"indent_style"`
-	LineWidth              int  `json:"line_width"`
-	
+	PreferCompositeLiterals bool   `json:"prefer_composite_literals"`
+	MaxFieldsForComposite   int    `json:"max_fields_for_composite"`
+	IndentStyle             string `json:"indent_style"`
+	LineWidth               int    `json:"line_width"`
+
 	// Optimization settings
-	OptimizationLevel       OptimizationLevel `json:"optimization_level"`
-	EnableDeadCodeElim      bool             `json:"enable_dead_code_elim"`
-	EnableVarOptimization   bool             `json:"enable_var_optimization"`
-	EnableImportOpt         bool             `json:"enable_import_opt"`
-	
+	OptimizationLevel     OptimizationLevel `json:"optimization_level"`
+	EnableDeadCodeElim    bool              `json:"enable_dead_code_elim"`
+	EnableVarOptimization bool              `json:"enable_var_optimization"`
+	EnableImportOpt       bool              `json:"enable_import_opt"`
+
 	// Template settings
-	CustomTemplates         map[string]string `json:"custom_templates"`
-	DefaultTemplate         string           `json:"default_template"`
-	
+	CustomTemplates map[string]string `json:"custom_templates"`
+	DefaultTemplate string            `json:"default_template"`
+
 	// Performance settings
-	EnableConcurrentGen     bool `json:"enable_concurrent_gen"`
-	MaxConcurrentMethods    int  `json:"max_concurrent_methods"`
-	GenerationTimeout       time.Duration `json:"generation_timeout"`
-	
+	EnableConcurrentGen  bool          `json:"enable_concurrent_gen"`
+	MaxConcurrentMethods int           `json:"max_concurrent_methods"`
+	GenerationTimeout    time.Duration `json:"generation_timeout"`
+
 	// Validation settings
 	EnableSyntaxValidation   bool `json:"enable_syntax_validation"`
 	EnableSemanticValidation bool `json:"enable_semantic_validation"`
-	StrictMode              bool `json:"strict_mode"`
-	
+	StrictMode               bool `json:"strict_mode"`
+
 	// Metrics and monitoring
-	EnableMetrics           bool `json:"enable_metrics"`
-	EnableProfiling         bool `json:"enable_profiling"`
-	DebugMode              bool `json:"debug_mode"`
+	EnableMetrics   bool `json:"enable_metrics"`
+	EnableProfiling bool `json:"enable_profiling"`
+	DebugMode       bool `json:"debug_mode"`
 }
 
 // DefaultEmitterConfig returns sensible default configuration
@@ -50,23 +50,23 @@ func DefaultEmitterConfig() *EmitterConfig {
 	return &EmitterConfig{
 		PreferCompositeLiterals:  true,
 		MaxFieldsForComposite:    5,
-		IndentStyle:             "\t",
-		LineWidth:               120,
-		OptimizationLevel:       OptimizationBasic,
-		EnableDeadCodeElim:      true,
-		EnableVarOptimization:   true,
-		EnableImportOpt:         true,
-		CustomTemplates:         make(map[string]string),
-		DefaultTemplate:         "standard",
-		EnableConcurrentGen:     true,
-		MaxConcurrentMethods:    8,
-		GenerationTimeout:       30 * time.Second,
-		EnableSyntaxValidation:  true,
+		IndentStyle:              "\t",
+		LineWidth:                120,
+		OptimizationLevel:        OptimizationBasic,
+		EnableDeadCodeElim:       true,
+		EnableVarOptimization:    true,
+		EnableImportOpt:          true,
+		CustomTemplates:          make(map[string]string),
+		DefaultTemplate:          "standard",
+		EnableConcurrentGen:      true,
+		MaxConcurrentMethods:     8,
+		GenerationTimeout:        30 * time.Second,
+		EnableSyntaxValidation:   true,
 		EnableSemanticValidation: false,
-		StrictMode:              false,
-		EnableMetrics:           true,
-		EnableProfiling:         false,
-		DebugMode:              false,
+		StrictMode:               false,
+		EnableMetrics:            true,
+		EnableProfiling:          false,
+		DebugMode:                false,
 	}
 }
 
@@ -74,26 +74,26 @@ func DefaultEmitterConfig() *EmitterConfig {
 type Emitter interface {
 	// GenerateCode generates complete Go code from execution results
 	GenerateCode(ctx context.Context, results *domain.ExecutionResults) (*GeneratedCode, error)
-	
+
 	// GenerateMethod generates code for a single method
 	GenerateMethod(ctx context.Context, method *domain.MethodResult) (*MethodCode, error)
-	
+
 	// OptimizeOutput applies global optimizations to generated code
 	OptimizeOutput(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error)
-	
+
 	// GetMetrics returns current emitter metrics
 	GetMetrics() *EmitterMetrics
-	
+
 	// Shutdown gracefully shuts down the emitter
 	Shutdown(ctx context.Context) error
 }
 
 // ConcreteEmitter implements the Emitter interface
 type ConcreteEmitter struct {
-	config      *EmitterConfig
-	logger      *zap.Logger
-	eventBus    events.EventBus
-	
+	config   *EmitterConfig
+	logger   *zap.Logger
+	eventBus events.EventBus
+
 	// Core components
 	codeGen     CodeGenerator
 	outputStrat OutputStrategy
@@ -101,12 +101,12 @@ type ConcreteEmitter struct {
 	importMgr   ImportManager
 	templateSys TemplateSystem
 	optimizer   CodeOptimizer
-	
+
 	// State management
-	metrics     *EmitterMetrics
-	shutdown    chan struct{}
-	wg          sync.WaitGroup
-	mutex       sync.RWMutex
+	metrics  *EmitterMetrics
+	shutdown chan struct{}
+	wg       sync.WaitGroup
+	mutex    sync.RWMutex
 }
 
 // NewEmitter creates a new code generation engine
@@ -116,7 +116,7 @@ func NewEmitter(logger *zap.Logger, eventBus events.EventBus, config *EmitterCon
 	}
 
 	metrics := NewEmitterMetrics()
-	
+
 	emitter := &ConcreteEmitter{
 		config:   config,
 		logger:   logger,
@@ -136,8 +136,8 @@ func NewEmitter(logger *zap.Logger, eventBus events.EventBus, config *EmitterCon
 	// Register custom templates if provided
 	for name, template := range config.CustomTemplates {
 		if err := emitter.templateSys.RegisterTemplate(name, template); err != nil {
-			logger.Warn("failed to register custom template", 
-				zap.String("name", name), 
+			logger.Warn("failed to register custom template",
+				zap.String("name", name),
 				zap.Error(err))
 		}
 	}
@@ -175,9 +175,9 @@ func (e *ConcreteEmitter) GenerateCode(ctx context.Context, results *domain.Exec
 
 	// Emit generation started event
 	if err := e.emitEvent(ctx, "emit.started", map[string]interface{}{
-		"package":     results.PackageName,
-		"methods":     len(results.Methods),
-		"start_time":  startTime,
+		"package":    results.PackageName,
+		"methods":    len(results.Methods),
+		"start_time": startTime,
 	}); err != nil {
 		e.logger.Warn("failed to emit generation started event", zap.Error(err))
 	}
@@ -244,10 +244,10 @@ func (e *ConcreteEmitter) GenerateCode(ctx context.Context, results *domain.Exec
 
 	// Emit generation completed event
 	if err := e.emitEvent(ctx, "emit.completed", map[string]interface{}{
-		"package":           results.PackageName,
-		"methods_generated": len(methodCodes),
-		"generation_time":   generatedCode.Metadata.GenerationDuration.Milliseconds(),
-		"lines_generated":   generatedCode.Metrics.LinesGenerated,
+		"package":            results.PackageName,
+		"methods_generated":  len(methodCodes),
+		"generation_time":    generatedCode.Metadata.GenerationDuration.Milliseconds(),
+		"lines_generated":    generatedCode.Metrics.LinesGenerated,
 		"optimization_level": e.config.OptimizationLevel.String(),
 	}); err != nil {
 		e.logger.Warn("failed to emit generation completed event", zap.Error(err))
@@ -280,8 +280,8 @@ func (e *ConcreteEmitter) GenerateMethod(ctx context.Context, method *domain.Met
 	// Apply method-level optimizations
 	if e.config.OptimizationLevel > OptimizationNone {
 		if err := e.optimizer.OptimizeMethodCode(methodCode); err != nil {
-			e.logger.Warn("method optimization failed", 
-				zap.String("method", method.Method.Name), 
+			e.logger.Warn("method optimization failed",
+				zap.String("method", method.Method.Name),
 				zap.Error(err))
 		}
 	}
@@ -318,25 +318,25 @@ func (e *ConcreteEmitter) GetMetrics() *EmitterMetrics {
 // Shutdown gracefully shuts down the emitter
 func (e *ConcreteEmitter) Shutdown(ctx context.Context) error {
 	e.logger.Info("shutting down emitter")
-	
+
 	close(e.shutdown)
-	
+
 	// Shutdown components
 	if err := e.codeGen.Shutdown(ctx); err != nil {
 		e.logger.Warn("code generator shutdown error", zap.Error(err))
 	}
-	
+
 	if err := e.optimizer.Shutdown(ctx); err != nil {
 		e.logger.Warn("optimizer shutdown error", zap.Error(err))
 	}
-	
+
 	// Wait for background tasks
 	done := make(chan struct{})
 	go func() {
 		e.wg.Wait()
 		close(done)
 	}()
-	
+
 	select {
 	case <-done:
 		e.logger.Info("emitter shutdown completed")
@@ -353,36 +353,36 @@ func (e *ConcreteEmitter) generateMethodsConcurrently(ctx context.Context, metho
 	methodCount := len(methods)
 	results := make([]*MethodCode, methodCount)
 	errors := make([]error, methodCount)
-	
+
 	// Limit concurrency
 	maxConcurrency := e.config.MaxConcurrentMethods
 	if maxConcurrency <= 0 || maxConcurrency > methodCount {
 		maxConcurrency = methodCount
 	}
-	
+
 	semaphore := make(chan struct{}, maxConcurrency)
 	var wg sync.WaitGroup
-	
+
 	for i, method := range methods {
 		wg.Add(1)
 		go func(index int, m *domain.MethodResult) {
 			defer wg.Done()
-			
-			semaphore <- struct{}{} // Acquire
+
+			semaphore <- struct{}{}        // Acquire
 			defer func() { <-semaphore }() // Release
-			
+
 			methodCode, err := e.GenerateMethod(ctx, m)
 			results[index] = methodCode
 			errors[index] = err
 		}(i, method)
 	}
-	
+
 	wg.Wait()
-	
+
 	// Check for errors
 	var generationErrors []error
 	var validResults []*MethodCode
-	
+
 	for i, err := range errors {
 		if err != nil {
 			generationErrors = append(generationErrors, fmt.Errorf("method %s: %w", methods[i].Method.Name, err))
@@ -390,17 +390,17 @@ func (e *ConcreteEmitter) generateMethodsConcurrently(ctx context.Context, metho
 			validResults = append(validResults, results[i])
 		}
 	}
-	
+
 	if len(generationErrors) > 0 {
 		return validResults, fmt.Errorf("method generation errors: %v", generationErrors)
 	}
-	
+
 	return validResults, nil
 }
 
 func (e *ConcreteEmitter) generateMethodsSequentially(ctx context.Context, methods []*domain.MethodResult) ([]*MethodCode, error) {
 	results := make([]*MethodCode, 0, len(methods))
-	
+
 	for _, method := range methods {
 		methodCode, err := e.GenerateMethod(ctx, method)
 		if err != nil {
@@ -408,7 +408,7 @@ func (e *ConcreteEmitter) generateMethodsSequentially(ctx context.Context, metho
 		}
 		results = append(results, methodCode)
 	}
-	
+
 	return results, nil
 }
 
@@ -429,7 +429,7 @@ func (e *ConcreteEmitter) emitEvent(ctx context.Context, eventType string, data 
 	for key, value := range data {
 		event.WithMetadata(key, value)
 	}
-	
+
 	return e.eventBus.Publish(event)
 }
 

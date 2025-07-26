@@ -13,13 +13,13 @@ import (
 type OutputStrategy interface {
 	// SelectStrategy determines the best construction strategy for a method
 	SelectStrategy(ctx context.Context, method *domain.MethodResult) ConstructionStrategy
-	
+
 	// AnalyzeFieldComplexity analyzes the complexity of fields for strategy selection
 	AnalyzeFieldComplexity(fields []*executor.FieldResult) *ComplexityMetrics
-	
+
 	// ShouldUseCompositeLiteral determines if composite literal approach is optimal
 	ShouldUseCompositeLiteral(method *domain.MethodResult) bool
-	
+
 	// EstimatePerformance estimates the performance characteristics of different strategies
 	EstimatePerformance(method *domain.MethodResult) *PerformanceEstimate
 }
@@ -28,19 +28,19 @@ type OutputStrategy interface {
 type ConcreteOutputStrategy struct {
 	config *EmitterConfig
 	logger *zap.Logger
-	
+
 	// Strategy selection weights
-	complexityWeight    float64
-	performanceWeight   float64
-	readabilityWeight   float64
+	complexityWeight      float64
+	performanceWeight     float64
+	readabilityWeight     float64
 	maintainabilityWeight float64
 }
 
 // PerformanceEstimate contains performance estimates for different strategies
 type PerformanceEstimate struct {
-	CompositeLiteral *StrategyEstimate `json:"composite_literal"`
-	AssignmentBlock  *StrategyEstimate `json:"assignment_block"`
-	MixedApproach    *StrategyEstimate `json:"mixed_approach"`
+	CompositeLiteral *StrategyEstimate    `json:"composite_literal"`
+	AssignmentBlock  *StrategyEstimate    `json:"assignment_block"`
+	MixedApproach    *StrategyEstimate    `json:"mixed_approach"`
 	Recommended      ConstructionStrategy `json:"recommended"`
 }
 
@@ -77,16 +77,16 @@ func (os *ConcreteOutputStrategy) SelectStrategy(ctx context.Context, method *do
 
 	// Extract field results for analysis
 	fields := os.extractFieldResults(method)
-	
+
 	// Analyze complexity
 	complexity := os.AnalyzeFieldComplexity(fields)
-	
+
 	// Get performance estimates
 	performance := os.EstimatePerformance(method)
-	
+
 	// Apply decision logic
 	strategy := os.selectOptimalStrategy(complexity, performance, len(fields))
-	
+
 	os.logger.Debug("strategy selected",
 		zap.String("method", method.Method.Name),
 		zap.String("strategy", strategy.String()),
@@ -99,32 +99,32 @@ func (os *ConcreteOutputStrategy) SelectStrategy(ctx context.Context, method *do
 // AnalyzeFieldComplexity analyzes the complexity of fields for strategy selection
 func (os *ConcreteOutputStrategy) AnalyzeFieldComplexity(fields []*executor.FieldResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
-	
+
 	if len(fields) == 0 {
 		return metrics
 	}
 
 	metrics.FieldCount = len(fields)
-	
+
 	var totalComplexity float64
 	var cyclomaticComplexity int
 
 	for _, field := range fields {
 		fieldComplexity := os.calculateFieldComplexity(field)
 		totalComplexity += fieldComplexity
-		
+
 		// Count error fields
 		if field.Error != nil || !field.Success {
 			metrics.ErrorFields++
 			cyclomaticComplexity += 2 // Error handling adds cyclomatic complexity
 		}
-		
+
 		// Count converter fields (complex transformations)
 		if os.isConverterField(field) {
 			metrics.ConverterFields++
 			cyclomaticComplexity += 1
 		}
-		
+
 		// Count nested fields (complex types)
 		if os.isNestedField(field) {
 			metrics.NestedFields++
@@ -149,7 +149,7 @@ func (os *ConcreteOutputStrategy) ShouldUseCompositeLiteral(method *domain.Metho
 	}
 
 	fields := os.extractFieldResults(method)
-	
+
 	// Basic criteria for composite literal usage
 	fieldCount := len(fields)
 	if fieldCount > os.config.MaxFieldsForComposite {
@@ -158,10 +158,10 @@ func (os *ConcreteOutputStrategy) ShouldUseCompositeLiteral(method *domain.Metho
 
 	// Check for complex scenarios that preclude composite literals
 	complexity := os.AnalyzeFieldComplexity(fields)
-	
-	return complexity.ErrorFields == 0 && 
-		   complexity.ComplexityScore < 30.0 && 
-		   complexity.CyclomaticComplexity <= 2
+
+	return complexity.ErrorFields == 0 &&
+		complexity.ComplexityScore < 30.0 &&
+		complexity.CyclomaticComplexity <= 2
 }
 
 // EstimatePerformance estimates the performance characteristics of different strategies
@@ -262,8 +262,8 @@ func (os *ConcreteOutputStrategy) determineRecommendedStrategy(metrics *Complexi
 		return StrategyCompositeLiteral
 	}
 
-	if metrics.FieldCount > 10 && 
-		metrics.ErrorFields > 0 && 
+	if metrics.FieldCount > 10 &&
+		metrics.ErrorFields > 0 &&
 		metrics.ConverterFields > 2 {
 		return StrategyMixedApproach
 	}
@@ -273,23 +273,23 @@ func (os *ConcreteOutputStrategy) determineRecommendedStrategy(metrics *Complexi
 
 func (os *ConcreteOutputStrategy) estimateCompositeLiteral(fieldCount int, complexity *ComplexityMetrics) *StrategyEstimate {
 	return &StrategyEstimate{
-		GenerationTime:   float64(fieldCount) * 0.5,          // Fast generation
-		ExecutionTime:    float64(fieldCount) * 100,          // Fast execution
-		MemoryUsage:      fieldCount * 32,                    // Minimal memory
+		GenerationTime:   float64(fieldCount) * 0.5,                  // Fast generation
+		ExecutionTime:    float64(fieldCount) * 100,                  // Fast execution
+		MemoryUsage:      fieldCount * 32,                            // Minimal memory
 		ReadabilityScore: math.Max(0, 90-complexity.ComplexityScore), // High readability for simple cases
-		Complexity:       complexity.ComplexityScore * 0.7,   // Lower perceived complexity
-		LinesOfCode:      fieldCount + 3,                     // Compact code
+		Complexity:       complexity.ComplexityScore * 0.7,           // Lower perceived complexity
+		LinesOfCode:      fieldCount + 3,                             // Compact code
 	}
 }
 
 func (os *ConcreteOutputStrategy) estimateAssignmentBlock(fieldCount int, complexity *ComplexityMetrics) *StrategyEstimate {
 	return &StrategyEstimate{
-		GenerationTime:   float64(fieldCount) * 1.2,          // Moderate generation time
-		ExecutionTime:    float64(fieldCount) * 150,          // Moderate execution time
-		MemoryUsage:      fieldCount * 48,                    // Moderate memory usage
+		GenerationTime:   float64(fieldCount) * 1.2,                      // Moderate generation time
+		ExecutionTime:    float64(fieldCount) * 150,                      // Moderate execution time
+		MemoryUsage:      fieldCount * 48,                                // Moderate memory usage
 		ReadabilityScore: math.Max(0, 80-complexity.ComplexityScore*0.5), // Good readability
-		Complexity:       complexity.ComplexityScore,         // Direct complexity mapping
-		LinesOfCode:      fieldCount*2 + 5,                   // More verbose
+		Complexity:       complexity.ComplexityScore,                     // Direct complexity mapping
+		LinesOfCode:      fieldCount*2 + 5,                               // More verbose
 	}
 }
 
@@ -304,7 +304,7 @@ func (os *ConcreteOutputStrategy) estimateMixedApproach(fieldCount int, complexi
 		MemoryUsage:      int(compositePart*32 + assignmentPart*48),
 		ReadabilityScore: math.Max(0, 85-complexity.ComplexityScore*0.3),
 		Complexity:       complexity.ComplexityScore * 0.8,
-		LinesOfCode:      int(compositePart*1.5 + assignmentPart*2) + 4,
+		LinesOfCode:      int(compositePart*1.5+assignmentPart*2) + 4,
 	}
 }
 
@@ -379,9 +379,9 @@ func (os *ConcreteOutputStrategy) getCompositeLiteralWeights() map[string]float6
 	return map[string]float64{
 		"generation_time": 0.2,
 		"execution_time":  0.3,
-		"memory":         0.15,
-		"readability":    0.25,
-		"complexity":     0.1,
+		"memory":          0.15,
+		"readability":     0.25,
+		"complexity":      0.1,
 	}
 }
 
@@ -389,9 +389,9 @@ func (os *ConcreteOutputStrategy) getAssignmentBlockWeights() map[string]float64
 	return map[string]float64{
 		"generation_time": 0.15,
 		"execution_time":  0.2,
-		"memory":         0.15,
-		"readability":    0.3,
-		"complexity":     0.2,
+		"memory":          0.15,
+		"readability":     0.3,
+		"complexity":      0.2,
 	}
 }
 
@@ -399,9 +399,9 @@ func (os *ConcreteOutputStrategy) getMixedApproachWeights() map[string]float64 {
 	return map[string]float64{
 		"generation_time": 0.2,
 		"execution_time":  0.25,
-		"memory":         0.15,
-		"readability":    0.25,
-		"complexity":     0.15,
+		"memory":          0.15,
+		"readability":     0.25,
+		"complexity":      0.15,
 	}
 }
 

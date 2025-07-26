@@ -17,43 +17,43 @@ import (
 type FormatManager interface {
 	// FormatCode formats the complete generated code
 	FormatCode(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error)
-	
+
 	// ApplyGoFormat applies standard Go formatting
 	ApplyGoFormat(source string) (string, error)
-	
+
 	// OptimizeLayout optimizes code layout and structure
 	OptimizeLayout(code *GeneratedCode) error
-	
+
 	// ValidateFormat validates formatting compliance
 	ValidateFormat(source string) error
-	
+
 	// FormatImports formats import declarations
 	FormatImports(imports *ImportDeclaration) (*ImportDeclaration, error)
 }
 
 // ConcreteFormatManager implements FormatManager
 type ConcreteFormatManager struct {
-	config      *FormatConfig
-	logger      *zap.Logger
-	goImports   GoImportsProcessor
-	goFmt       GoFmtProcessor
-	linter      CodeLinter
+	config    *FormatConfig
+	logger    *zap.Logger
+	goImports GoImportsProcessor
+	goFmt     GoFmtProcessor
+	linter    CodeLinter
 }
 
 // FormatConfig defines formatting preferences
 type FormatConfig struct {
-	IndentStyle           string        `json:"indent_style"`
-	LineWidth             int           `json:"line_width"`
-	UseGoImports          bool          `json:"use_goimports"`
-	UseGoFmt              bool          `json:"use_gofmt"`
-	SortImports           bool          `json:"sort_imports"`
-	GroupImports          bool          `json:"group_imports"`
-	RemoveUnusedImports   bool          `json:"remove_unused_imports"`
-	FormatComments        bool          `json:"format_comments"`
-	EnforceLineWidth      bool          `json:"enforce_line_width"`
-	PreserveBlankLines    bool          `json:"preserve_blank_lines"`
-	MaxBlankLines         int           `json:"max_blank_lines"`
-	ValidationTimeout     time.Duration `json:"validation_timeout"`
+	IndentStyle         string        `json:"indent_style"`
+	LineWidth           int           `json:"line_width"`
+	UseGoImports        bool          `json:"use_goimports"`
+	UseGoFmt            bool          `json:"use_gofmt"`
+	SortImports         bool          `json:"sort_imports"`
+	GroupImports        bool          `json:"group_imports"`
+	RemoveUnusedImports bool          `json:"remove_unused_imports"`
+	FormatComments      bool          `json:"format_comments"`
+	EnforceLineWidth    bool          `json:"enforce_line_width"`
+	PreserveBlankLines  bool          `json:"preserve_blank_lines"`
+	MaxBlankLines       int           `json:"max_blank_lines"`
+	ValidationTimeout   time.Duration `json:"validation_timeout"`
 }
 
 // GoImportsProcessor handles goimports processing
@@ -76,11 +76,11 @@ type CodeLinter interface {
 
 // GoImportsOptions configures goimports behavior
 type GoImportsOptions struct {
-	LocalPrefix    string `json:"local_prefix"`
-	FormatOnly     bool   `json:"format_only"`
-	Comments       bool   `json:"comments"`
-	TabIndent      bool   `json:"tab_indent"`
-	TabWidth       int    `json:"tab_width"`
+	LocalPrefix string `json:"local_prefix"`
+	FormatOnly  bool   `json:"format_only"`
+	Comments    bool   `json:"comments"`
+	TabIndent   bool   `json:"tab_indent"`
+	TabWidth    int    `json:"tab_width"`
 }
 
 // LintResult contains linting results
@@ -94,29 +94,29 @@ type LintResult struct {
 
 // LintIssue represents a single linting issue
 type LintIssue struct {
-	Line      int    `json:"line"`
-	Column    int    `json:"column"`
-	Message   string `json:"message"`
-	Rule      string `json:"rule"`
-	Severity  string `json:"severity"`
-	Fix       string `json:"fix,omitempty"`
+	Line     int    `json:"line"`
+	Column   int    `json:"column"`
+	Message  string `json:"message"`
+	Rule     string `json:"rule"`
+	Severity string `json:"severity"`
+	Fix      string `json:"fix,omitempty"`
 }
 
 // NewFormatManager creates a new format manager
 func NewFormatManager(config *EmitterConfig, logger *zap.Logger) FormatManager {
 	formatConfig := &FormatConfig{
-		IndentStyle:           config.IndentStyle,
-		LineWidth:             config.LineWidth,
-		UseGoImports:          true,
-		UseGoFmt:              true,
-		SortImports:           true,
-		GroupImports:          true,
-		RemoveUnusedImports:   true,
-		FormatComments:        true,
-		EnforceLineWidth:      false, // Flexible for generated code
-		PreserveBlankLines:    false,
-		MaxBlankLines:         2,
-		ValidationTimeout:     5 * time.Second,
+		IndentStyle:         config.IndentStyle,
+		LineWidth:           config.LineWidth,
+		UseGoImports:        true,
+		UseGoFmt:            true,
+		SortImports:         true,
+		GroupImports:        true,
+		RemoveUnusedImports: true,
+		FormatComments:      true,
+		EnforceLineWidth:    false, // Flexible for generated code
+		PreserveBlankLines:  false,
+		MaxBlankLines:       2,
+		ValidationTimeout:   5 * time.Second,
 	}
 
 	return &ConcreteFormatManager{
@@ -236,7 +236,7 @@ func (fm *ConcreteFormatManager) ApplyGoFormat(source string) (string, error) {
 			TabWidth:  4,
 			Comments:  fm.config.FormatComments,
 		}
-		
+
 		formattedSource, err = fm.goImports.ProcessWithOptions(formattedSource, options)
 		if err != nil {
 			return formattedSource, fmt.Errorf("goimports failed: %w", err)
@@ -429,11 +429,11 @@ func (fm *ConcreteFormatManager) assembleSourceCode(code *GeneratedCode) (string
 		// Method signature and body
 		source.WriteString(method.Signature)
 		source.WriteString(" {\n")
-		
+
 		if method.Body != "" {
 			source.WriteString(method.Body)
 		}
-		
+
 		source.WriteString("}\n")
 
 		// Add blank line between methods (except for the last one)
@@ -587,7 +587,7 @@ func (l *DefaultCodeLinter) LintWithRules(source string, rules []string) (*LintR
 	// Basic validation - ensure the code parses
 	fset := token.NewFileSet()
 	_, err := parser.ParseFile(fset, "", source, parser.ParseComments)
-	
+
 	result := &LintResult{
 		Issues:      []LintIssue{},
 		Warnings:    []string{},

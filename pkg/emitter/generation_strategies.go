@@ -85,23 +85,23 @@ func (cls *CompositeLiteralStrategy) GenerateCode(ctx context.Context, method *d
 		zap.String("method", method.Method.Name))
 
 	var code strings.Builder
-	
+
 	// Generate method body with composite literal
 	code.WriteString(fmt.Sprintf("%sreturn &DestType{\n", cls.config.IndentStyle))
-	
+
 	// Generate field assignments
 	fieldCount := 0
 	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Success && fr.Error == nil {
 				assignment := cls.generateFieldAssignment(fieldName, fr)
-				code.WriteString(fmt.Sprintf("%s%s%s,\n", 
+				code.WriteString(fmt.Sprintf("%s%s%s,\n",
 					cls.config.IndentStyle, cls.config.IndentStyle, assignment))
 				fieldCount++
 			}
 		}
 	}
-	
+
 	code.WriteString(fmt.Sprintf("%s}, nil\n", cls.config.IndentStyle))
 
 	cls.logger.Debug("composite literal code generated",
@@ -115,10 +115,10 @@ func (cls *CompositeLiteralStrategy) GetComplexity(method *domain.MethodResult) 
 	metrics := NewComplexityMetrics()
 	metrics.FieldCount = len(method.Metadata)
 	metrics.ComplexityScore = float64(metrics.FieldCount) * 2.0 // Low complexity
-	metrics.CyclomaticComplexity = 1 // Simple linear flow
-	metrics.LinesGenerated = metrics.FieldCount + 2 // Fields + return statement
+	metrics.CyclomaticComplexity = 1                            // Simple linear flow
+	metrics.LinesGenerated = metrics.FieldCount + 2             // Fields + return statement
 	metrics.RecommendedStrategy = StrategyCompositeLiteral
-	
+
 	return metrics
 }
 
@@ -158,27 +158,27 @@ func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *do
 		zap.String("method", method.Method.Name))
 
 	var code strings.Builder
-	
+
 	// Generate variable declaration
 	code.WriteString(fmt.Sprintf("%svar dest DestType\n\n", abs.config.IndentStyle))
-	
+
 	// Generate field assignments with error handling
 	fieldCount := 0
 	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			assignment, errorHandling := abs.generateFieldAssignment(fieldName, fr)
-			
+
 			code.WriteString(fmt.Sprintf("%s%s\n", abs.config.IndentStyle, assignment))
-			
+
 			if errorHandling != "" {
 				code.WriteString(fmt.Sprintf("%s%s\n", abs.config.IndentStyle, errorHandling))
 			}
-			
+
 			code.WriteString("\n")
 			fieldCount++
 		}
 	}
-	
+
 	// Generate return statement
 	code.WriteString(fmt.Sprintf("%sreturn &dest, nil\n", abs.config.IndentStyle))
 
@@ -192,7 +192,7 @@ func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *do
 func (abs *AssignmentBlockStrategy) GetComplexity(method *domain.MethodResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
 	metrics.FieldCount = len(method.Metadata)
-	
+
 	// Calculate complexity based on error handling and field types
 	errorFields := 0
 	for _, fieldResult := range method.Metadata {
@@ -202,19 +202,19 @@ func (abs *AssignmentBlockStrategy) GetComplexity(method *domain.MethodResult) *
 			}
 		}
 	}
-	
+
 	metrics.ErrorFields = errorFields
 	metrics.ComplexityScore = float64(metrics.FieldCount)*3.0 + float64(errorFields)*5.0
-	metrics.CyclomaticComplexity = 1 + errorFields*2 // Base + error handling paths
+	metrics.CyclomaticComplexity = 1 + errorFields*2                  // Base + error handling paths
 	metrics.LinesGenerated = metrics.FieldCount*2 + errorFields*3 + 3 // Assignments + error handling + structure
 	metrics.RecommendedStrategy = StrategyAssignmentBlock
-	
+
 	return metrics
 }
 
 func (abs *AssignmentBlockStrategy) GetRequiredImports(method *domain.MethodResult) []*Import {
 	var imports []*Import
-	
+
 	// Check if error handling is needed
 	hasErrors := false
 	for _, fieldResult := range method.Metadata {
@@ -225,7 +225,7 @@ func (abs *AssignmentBlockStrategy) GetRequiredImports(method *domain.MethodResu
 			}
 		}
 	}
-	
+
 	if hasErrors {
 		imports = append(imports, &Import{
 			Path:     "fmt",
@@ -234,17 +234,17 @@ func (abs *AssignmentBlockStrategy) GetRequiredImports(method *domain.MethodResu
 			Required: true,
 		})
 	}
-	
+
 	return imports
 }
 
 func (abs *AssignmentBlockStrategy) generateFieldAssignment(fieldName string, field *executor.FieldResult) (string, string) {
 	var assignment, errorHandling string
-	
+
 	switch field.StrategyUsed {
 	case "direct":
 		assignment = fmt.Sprintf("dest.%s = src.%s", fieldName, fieldName)
-		
+
 	case "converter":
 		if field.Error != nil || !field.Success {
 			assignment = fmt.Sprintf("converted_%s, err := converter.Convert(src.%s)", fieldName, fieldName)
@@ -254,10 +254,10 @@ func (abs *AssignmentBlockStrategy) generateFieldAssignment(fieldName string, fi
 		} else {
 			assignment = fmt.Sprintf("dest.%s = converter.Convert(src.%s)", fieldName, fieldName)
 		}
-		
+
 	case "literal":
 		assignment = fmt.Sprintf("dest.%s = %v", fieldName, field.Result)
-		
+
 	case "expression":
 		if field.Error != nil || !field.Success {
 			assignment = fmt.Sprintf("result_%s, err := expression.Evaluate(src.%s)", fieldName, fieldName)
@@ -267,11 +267,11 @@ func (abs *AssignmentBlockStrategy) generateFieldAssignment(fieldName string, fi
 		} else {
 			assignment = fmt.Sprintf("dest.%s = expression.Evaluate(src.%s)", fieldName, fieldName)
 		}
-		
+
 	default:
 		assignment = fmt.Sprintf("dest.%s = src.%s", fieldName, fieldName)
 	}
-	
+
 	return assignment, errorHandling
 }
 
@@ -285,16 +285,16 @@ func (mas *MixedApproachStrategy) CanHandle(method *domain.MethodResult) bool {
 	if method == nil {
 		return false
 	}
-	
+
 	// Mixed approach is suitable when there are both simple and complex fields
 	fieldCount := len(method.Metadata)
 	if fieldCount < 3 {
 		return false // Not worth the complexity for few fields
 	}
-	
+
 	simpleFields := 0
 	complexFields := 0
-	
+
 	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if mas.isSimpleField(fr) {
@@ -304,7 +304,7 @@ func (mas *MixedApproachStrategy) CanHandle(method *domain.MethodResult) bool {
 			}
 		}
 	}
-	
+
 	// Mixed approach is beneficial when we have both simple and complex fields
 	return simpleFields > 0 && complexFields > 0
 }
@@ -314,11 +314,11 @@ func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *doma
 		zap.String("method", method.Method.Name))
 
 	var code strings.Builder
-	
+
 	// Separate simple and complex fields
 	simpleFields := make(map[string]*executor.FieldResult)
 	complexFields := make(map[string]*executor.FieldResult)
-	
+
 	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if mas.isSimpleField(fr) {
@@ -328,35 +328,35 @@ func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *doma
 			}
 		}
 	}
-	
+
 	// Generate composite literal for simple fields
 	if len(simpleFields) > 0 {
 		code.WriteString(fmt.Sprintf("%sdest := &DestType{\n", mas.config.IndentStyle))
-		
+
 		for fieldName, field := range simpleFields {
 			assignment := mas.generateSimpleAssignment(fieldName, field)
-			code.WriteString(fmt.Sprintf("%s%s%s,\n", 
+			code.WriteString(fmt.Sprintf("%s%s%s,\n",
 				mas.config.IndentStyle, mas.config.IndentStyle, assignment))
 		}
-		
+
 		code.WriteString(fmt.Sprintf("%s}\n\n", mas.config.IndentStyle))
 	} else {
 		code.WriteString(fmt.Sprintf("%svar dest DestType\n\n", mas.config.IndentStyle))
 	}
-	
+
 	// Generate assignments for complex fields
 	for fieldName, field := range complexFields {
 		assignment, errorHandling := mas.generateComplexAssignment(fieldName, field)
-		
+
 		code.WriteString(fmt.Sprintf("%s%s\n", mas.config.IndentStyle, assignment))
-		
+
 		if errorHandling != "" {
 			code.WriteString(fmt.Sprintf("%s%s\n", mas.config.IndentStyle, errorHandling))
 		}
-		
+
 		code.WriteString("\n")
 	}
-	
+
 	// Generate return statement
 	if len(simpleFields) > 0 {
 		code.WriteString(fmt.Sprintf("%sreturn dest, nil\n", mas.config.IndentStyle))
@@ -375,11 +375,11 @@ func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *doma
 func (mas *MixedApproachStrategy) GetComplexity(method *domain.MethodResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
 	metrics.FieldCount = len(method.Metadata)
-	
+
 	simpleFields := 0
 	complexFields := 0
 	errorFields := 0
-	
+
 	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if mas.isSimpleField(fr) {
@@ -387,25 +387,25 @@ func (mas *MixedApproachStrategy) GetComplexity(method *domain.MethodResult) *Co
 			} else {
 				complexFields++
 			}
-			
+
 			if fr.Error != nil || !fr.Success {
 				errorFields++
 			}
 		}
 	}
-	
+
 	metrics.ErrorFields = errorFields
 	metrics.ComplexityScore = float64(simpleFields)*1.5 + float64(complexFields)*4.0
 	metrics.CyclomaticComplexity = 1 + errorFields*2
 	metrics.LinesGenerated = simpleFields + complexFields*2 + errorFields*3 + 4
 	metrics.RecommendedStrategy = StrategyMixedApproach
-	
+
 	return metrics
 }
 
 func (mas *MixedApproachStrategy) GetRequiredImports(method *domain.MethodResult) []*Import {
 	var imports []*Import
-	
+
 	// Check if error handling is needed
 	hasErrors := false
 	for _, fieldResult := range method.Metadata {
@@ -416,7 +416,7 @@ func (mas *MixedApproachStrategy) GetRequiredImports(method *domain.MethodResult
 			}
 		}
 	}
-	
+
 	if hasErrors {
 		imports = append(imports, &Import{
 			Path:     "fmt",
@@ -425,15 +425,15 @@ func (mas *MixedApproachStrategy) GetRequiredImports(method *domain.MethodResult
 			Required: true,
 		})
 	}
-	
+
 	return imports
 }
 
 func (mas *MixedApproachStrategy) isSimpleField(field *executor.FieldResult) bool {
-	return field.Success && 
-		   field.Error == nil && 
-		   field.RetryCount == 0 &&
-		   (field.StrategyUsed == "direct" || field.StrategyUsed == "literal")
+	return field.Success &&
+		field.Error == nil &&
+		field.RetryCount == 0 &&
+		(field.StrategyUsed == "direct" || field.StrategyUsed == "literal")
 }
 
 func (mas *MixedApproachStrategy) generateSimpleAssignment(fieldName string, field *executor.FieldResult) string {
@@ -449,7 +449,7 @@ func (mas *MixedApproachStrategy) generateSimpleAssignment(fieldName string, fie
 
 func (mas *MixedApproachStrategy) generateComplexAssignment(fieldName string, field *executor.FieldResult) (string, string) {
 	var assignment, errorHandling string
-	
+
 	switch field.StrategyUsed {
 	case "converter":
 		if field.Error != nil || !field.Success {
@@ -460,7 +460,7 @@ func (mas *MixedApproachStrategy) generateComplexAssignment(fieldName string, fi
 		} else {
 			assignment = fmt.Sprintf("dest.%s = converter.Convert(src.%s)", fieldName, fieldName)
 		}
-		
+
 	case "expression":
 		if field.Error != nil || !field.Success {
 			assignment = fmt.Sprintf("result_%s, err := expression.Evaluate(src.%s)", fieldName, fieldName)
@@ -470,13 +470,13 @@ func (mas *MixedApproachStrategy) generateComplexAssignment(fieldName string, fi
 		} else {
 			assignment = fmt.Sprintf("dest.%s = expression.Evaluate(src.%s)", fieldName, fieldName)
 		}
-		
+
 	case "custom":
 		assignment = fmt.Sprintf("dest.%s = custom.Transform(src.%s)", fieldName, fieldName)
-		
+
 	default:
 		assignment = fmt.Sprintf("dest.%s = src.%s", fieldName, fieldName)
 	}
-	
+
 	return assignment, errorHandling
 }

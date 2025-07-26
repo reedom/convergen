@@ -34,28 +34,28 @@
 //
 // The emitter supports multiple adaptive strategies for optimal code generation:
 //
-// 1. Composite Literal Strategy: For simple, direct field assignments
-//    ```go
-//    return &DestStruct{
-//        Field1: src.Field1,
-//        Field2: src.Field2,
-//        Field3: converter.Convert(src.Field3),
-//    }
-//    ```
+//  1. Composite Literal Strategy: For simple, direct field assignments
+//     ```go
+//     return &DestStruct{
+//     Field1: src.Field1,
+//     Field2: src.Field2,
+//     Field3: converter.Convert(src.Field3),
+//     }
+//     ```
 //
-// 2. Assignment Block Strategy: For complex conversions with error handling
-//    ```go
-//    var dest DestStruct
-//    dest.Field1 = src.Field1
-//    
-//    converted, err := converter.Convert(src.Field2)
-//    if err != nil {
-//        return nil, fmt.Errorf("converting Field2: %w", err)
-//    }
-//    dest.Field2 = converted
-//    
-//    return &dest, nil
-//    ```
+//  2. Assignment Block Strategy: For complex conversions with error handling
+//     ```go
+//     var dest DestStruct
+//     dest.Field1 = src.Field1
+//
+//     converted, err := converter.Convert(src.Field2)
+//     if err != nil {
+//     return nil, fmt.Errorf("converting Field2: %w", err)
+//     }
+//     dest.Field2 = converted
+//
+//     return &dest, nil
+//     ```
 //
 // 3. Mixed Approach Strategy: Combines both approaches optimally
 //
@@ -86,14 +86,14 @@
 // Usage Example:
 //
 //	emitter := emitter.NewEmitter(logger, eventBus, config)
-//	
+//
 //	// Generate code from execution results
 //	ctx := context.Background()
 //	code, err := emitter.GenerateCode(ctx, executionResults)
 //	if err != nil {
 //		return fmt.Errorf("code generation failed: %w", err)
 //	}
-//	
+//
 //	// Access generated output
 //	fmt.Printf("Generated code:\n%s\n", code.Source)
 //	fmt.Printf("Imports: %v\n", code.Imports.List())

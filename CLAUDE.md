@@ -19,6 +19,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `go run main.go <input-file>` - Run convergen directly on a file
 - `go run github.com/reedom/convergen@v8.0.3` - Run as go:generate command
 
+### Code Formatting (REQUIRED)
+- **ALWAYS run `go fmt` before committing**: This ensures consistent code formatting across the project
+- **Format specific packages**: `go fmt ./pkg/package-name/...`
+- **Format entire project**: `go fmt ./...`
+
 ### Testing Individual Packages
 - `go test github.com/reedom/convergen/v8/tests` - Run integration tests
 - `go test github.com/reedom/convergen/v8/pkg/...` - Run all package tests

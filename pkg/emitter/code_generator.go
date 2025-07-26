@@ -21,59 +21,59 @@ type EventBus interface {
 type CodeGenerator interface {
 	// GenerateMethodCode generates complete method implementation
 	GenerateMethodCode(ctx context.Context, method *domain.MethodResult) (*MethodCode, error)
-	
+
 	// GenerateFieldCode generates code for individual field assignments
 	GenerateFieldCode(ctx context.Context, field *executor.FieldResult) (*FieldCode, error)
-	
+
 	// GenerateErrorHandling generates error handling code
 	GenerateErrorHandling(ctx context.Context, errors []domain.ExecutionError) (*ErrorCode, error)
-	
+
 	// GetMetrics returns code generation metrics
 	GetMetrics() *CodeGenMetrics
-	
+
 	// Shutdown gracefully shuts down the generator
 	Shutdown(ctx context.Context) error
 }
 
 // ConcreteCodeGenerator implements CodeGenerator
 type ConcreteCodeGenerator struct {
-	config     *EmitterConfig
-	logger     *zap.Logger
-	strategies map[string]GenerationStrategy
-	templates  TemplateSystem
-	validator  CodeValidator
-	metrics    *CodeGenMetrics
+	config      *EmitterConfig
+	logger      *zap.Logger
+	strategies  map[string]GenerationStrategy
+	templates   TemplateSystem
+	validator   CodeValidator
+	metrics     *CodeGenMetrics
 	outputStrat OutputStrategy
-	eventBus   EventBus  // For event publishing
+	eventBus    EventBus // For event publishing
 }
 
 // CodeGenMetrics tracks code generation performance
 type CodeGenMetrics struct {
-	MethodsGenerated     int64                    `json:"methods_generated"`
-	FieldsGenerated      int64                    `json:"fields_generated"`
-	ErrorHandlersGenerated int64                  `json:"error_handlers_generated"`
-	TotalGenerationTime  time.Duration            `json:"total_generation_time"`
-	AverageMethodTime    time.Duration            `json:"average_method_time"`
-	StrategyUsage        map[string]int64         `json:"strategy_usage"`
-	TemplateUsage        map[string]int64         `json:"template_usage"`
-	ValidationTime       time.Duration            `json:"validation_time"`
-	ErrorsEncountered    int64                    `json:"errors_encountered"`
+	MethodsGenerated       int64            `json:"methods_generated"`
+	FieldsGenerated        int64            `json:"fields_generated"`
+	ErrorHandlersGenerated int64            `json:"error_handlers_generated"`
+	TotalGenerationTime    time.Duration    `json:"total_generation_time"`
+	AverageMethodTime      time.Duration    `json:"average_method_time"`
+	StrategyUsage          map[string]int64 `json:"strategy_usage"`
+	TemplateUsage          map[string]int64 `json:"template_usage"`
+	ValidationTime         time.Duration    `json:"validation_time"`
+	ErrorsEncountered      int64            `json:"errors_encountered"`
 }
 
 // GenerationStrategy defines how different types of code should be generated
 type GenerationStrategy interface {
 	// Name returns the strategy name
 	Name() string
-	
+
 	// CanHandle determines if this strategy can handle the given method
 	CanHandle(method *domain.MethodResult) bool
-	
+
 	// GenerateCode generates code for the method
 	GenerateCode(ctx context.Context, method *domain.MethodResult, data *TemplateData) (string, error)
-	
+
 	// GetComplexity estimates the complexity of the generated code
 	GetComplexity(method *domain.MethodResult) *ComplexityMetrics
-	
+
 	// GetRequiredImports returns imports needed for this strategy
 	GetRequiredImports(method *domain.MethodResult) []*Import
 }
@@ -81,10 +81,10 @@ type GenerationStrategy interface {
 // NewCodeGenerator creates a new code generator
 func NewCodeGenerator(config *EmitterConfig, logger *zap.Logger, metrics *EmitterMetrics) CodeGenerator {
 	generator := &ConcreteCodeGenerator{
-		config:     config,
-		logger:     logger,
-		strategies: make(map[string]GenerationStrategy),
-		metrics:    NewCodeGenMetrics(),
+		config:      config,
+		logger:      logger,
+		strategies:  make(map[string]GenerationStrategy),
+		metrics:     NewCodeGenMetrics(),
 		outputStrat: NewOutputStrategy(config, logger),
 	}
 
@@ -101,7 +101,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	}
 
 	startTime := time.Now()
-	
+
 	cg.logger.Debug("generating method code",
 		zap.String("method", method.Method.Name),
 		zap.Int("metadata_fields", len(method.Metadata)))
@@ -112,9 +112,9 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 
 	// Prepare template data
 	templateData := &TemplateData{
-		Method:  method,
-		Fields:  cg.extractFieldResults(method),
-		Config:  cg.config,
+		Method: method,
+		Fields: cg.extractFieldResults(method),
+		Config: cg.config,
 		Metadata: map[string]interface{}{
 			"strategy":   strategy.String(),
 			"complexity": complexity,
@@ -257,7 +257,7 @@ func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *e
 		ErrorCheck:   errorCheck,
 		Imports:      imports,
 		Dependencies: dependencies,
-		Order:        0, // This would be determined from source order
+		Order:        0,         // This would be determined from source order
 		Strategy:     "default", // TODO: add strategy tracking to FieldResult
 	}
 
@@ -398,7 +398,7 @@ func (cg *ConcreteCodeGenerator) analyzeDependencies(field *executor.FieldResult
 func (cg *ConcreteCodeGenerator) analyzeFieldImports(field *executor.FieldResult) []*Import {
 	// Simplified import analysis
 	var imports []*Import
-	
+
 	// Add fmt import if error handling is present
 	if field.Error != nil {
 		imports = append(imports, &Import{
@@ -408,7 +408,7 @@ func (cg *ConcreteCodeGenerator) analyzeFieldImports(field *executor.FieldResult
 			Required: true,
 		})
 	}
-	
+
 	return imports
 }
 
@@ -435,7 +435,7 @@ func (cg *ConcreteCodeGenerator) emitEvent(ctx context.Context, eventType string
 	for key, value := range data {
 		event.WithMetadata(key, value)
 	}
-	
+
 	return cg.eventBus.Publish(ctx, event)
 }
 

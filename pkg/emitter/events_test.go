@@ -14,23 +14,23 @@ func TestEmitterEventHandler_RegisterEventHandlers(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
-	
+
 	handler := NewEmitterEventHandler(emitter, eventBus, logger)
-	
+
 	err := handler.RegisterEventHandlers()
 	if err != nil {
 		t.Fatalf("Failed to register event handlers: %v", err)
 	}
-	
+
 	// Verify handlers can handle the expected event types
 	if !handler.CanHandle("executor.completed") {
 		t.Error("Handler should be able to handle executor.completed events")
 	}
-	
+
 	if !handler.CanHandle("planner.method_planned") {
 		t.Error("Handler should be able to handle planner.method_planned events")
 	}
-	
+
 	if handler.CanHandle("unknown.event") {
 		t.Error("Handler should not handle unknown event types")
 	}
@@ -40,22 +40,22 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
-	
+
 	handler := NewEmitterEventHandler(emitter, eventBus, logger)
 	ctx := context.Background()
-	
+
 	// Test publishing emitter started event
 	err := handler.PublishEmitterStarted(ctx, "testpkg", 3)
 	if err != nil {
 		t.Errorf("Failed to publish emitter started event: %v", err)
 	}
-	
+
 	// Test publishing strategy selected event
 	err = handler.PublishStrategySelected(ctx, "TestMethod", StrategyCompositeLiteral, "optimal_performance")
 	if err != nil {
 		t.Errorf("Failed to publish strategy selected event: %v", err)
 	}
-	
+
 	// Test publishing method generated event
 	methodCode := &MethodCode{
 		Name:      "TestMethod",
@@ -66,7 +66,7 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to publish method generated event: %v", err)
 	}
-	
+
 	// Test publishing emitter completed event
 	code := &GeneratedCode{
 		PackageName: "testpkg",
@@ -80,7 +80,7 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to publish emitter completed event: %v", err)
 	}
-	
+
 	// Test publishing emitter failed event
 	testErr := &domain.ExecutionError{
 		Type:      "test_error",
@@ -99,10 +99,10 @@ func TestEmitterEventHandler_HandleExecutorCompleted(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
-	
+
 	handler := NewEmitterEventHandler(emitter, eventBus, logger)
 	ctx := context.Background()
-	
+
 	// Create executor completed event
 	results := &domain.ExecutionResults{
 		PackageName: "testpkg",
@@ -124,15 +124,15 @@ func TestEmitterEventHandler_HandleExecutorCompleted(t *testing.T) {
 			},
 		},
 	}
-	
+
 	event := events.NewBaseEvent("executor.completed", ctx)
 	event.WithMetadata("execution_results", results)
-	
+
 	err := handler.Handle(ctx, event)
 	if err != nil {
 		t.Errorf("Failed to handle executor completed event: %v", err)
 	}
-	
+
 	// Give time for async processing
 	time.Sleep(100 * time.Millisecond)
 }
@@ -141,14 +141,14 @@ func TestEmitterEventHandler_HandleMethodPlanned(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
-	
+
 	handler := NewEmitterEventHandler(emitter, eventBus, logger)
 	ctx := context.Background()
-	
+
 	// Create method planned event
 	event := events.NewBaseEvent("planner.method_planned", ctx)
 	event.WithMetadata("method_name", "TestMethod")
-	
+
 	err := handler.Handle(ctx, event)
 	if err != nil {
 		t.Errorf("Failed to handle method planned event: %v", err)
@@ -157,7 +157,7 @@ func TestEmitterEventHandler_HandleMethodPlanned(t *testing.T) {
 
 func TestEmitterEvents_Creation(t *testing.T) {
 	ctx := context.Background()
-	
+
 	// Test EmitterStartedEvent
 	startedEvent := NewEmitterStartedEvent(ctx, "testpkg", 5)
 	if startedEvent.Type() != EventEmitterStarted {
@@ -169,7 +169,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	if startedEvent.MethodCount != 5 {
 		t.Errorf("Expected method count 5, got %d", startedEvent.MethodCount)
 	}
-	
+
 	// Test EmitterCompletedEvent
 	code := &GeneratedCode{PackageName: "testpkg", Methods: []*MethodCode{}}
 	metrics := &EmitterMetrics{TotalMethods: 3}
@@ -177,7 +177,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	if completedEvent.Type() != EventEmitterCompleted {
 		t.Errorf("Expected event type %s, got %s", EventEmitterCompleted, completedEvent.Type())
 	}
-	
+
 	// Test EmitterFailedEvent
 	testErr := &domain.ExecutionError{
 		Type:      "test_error",
@@ -192,7 +192,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	if failedEvent.Error != testErr {
 		t.Error("Failed event should contain the original error")
 	}
-	
+
 	// Test CodeGenerationStartedEvent
 	codeGenEvent := NewCodeGenerationStartedEvent(ctx, "TestMethod", StrategyCompositeLiteral)
 	if codeGenEvent.Type() != EventCodeGenerationStarted {
@@ -201,7 +201,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	if codeGenEvent.MethodName != "TestMethod" {
 		t.Errorf("Expected method name 'TestMethod', got '%s'", codeGenEvent.MethodName)
 	}
-	
+
 	// Test MethodGeneratedEvent
 	methodCode := &MethodCode{Name: "TestMethod"}
 	duration := time.Millisecond * 150
@@ -212,7 +212,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	if methodEvent.Duration != duration {
 		t.Errorf("Expected duration %v, got %v", duration, methodEvent.Duration)
 	}
-	
+
 	// Test StrategySelectedEvent
 	strategyEvent := NewStrategySelectedEvent(ctx, "TestMethod", StrategyMixedApproach, "complexity_analysis")
 	if strategyEvent.Type() != EventStrategySelected {
@@ -230,9 +230,9 @@ func TestEventAwareEmitter_GenerateCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	innerEmitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
-	
+
 	eventAwareEmitter := NewEventAwareEmitter(innerEmitter, eventBus, logger)
-	
+
 	// Create test execution results
 	results := &domain.ExecutionResults{
 		PackageName: "testpkg",
@@ -254,18 +254,18 @@ func TestEventAwareEmitter_GenerateCode(t *testing.T) {
 			},
 		},
 	}
-	
+
 	ctx := context.Background()
 	code, err := eventAwareEmitter.GenerateCode(ctx, results)
-	
+
 	if err != nil {
 		t.Fatalf("EventAwareEmitter GenerateCode failed: %v", err)
 	}
-	
+
 	if code == nil {
 		t.Fatal("Generated code is nil")
 	}
-	
+
 	if len(code.Methods) != 1 {
 		t.Errorf("Expected 1 method, got %d", len(code.Methods))
 	}
@@ -275,9 +275,9 @@ func TestEventAwareEmitter_GenerateMethod(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	innerEmitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
-	
+
 	eventAwareEmitter := NewEventAwareEmitter(innerEmitter, eventBus, logger)
-	
+
 	// Create test method result
 	method := &domain.MethodResult{
 		Method: &domain.Method{
@@ -294,18 +294,18 @@ func TestEventAwareEmitter_GenerateMethod(t *testing.T) {
 			},
 		},
 	}
-	
+
 	ctx := context.Background()
 	methodCode, err := eventAwareEmitter.GenerateMethod(ctx, method)
-	
+
 	if err != nil {
 		t.Fatalf("EventAwareEmitter GenerateMethod failed: %v", err)
 	}
-	
+
 	if methodCode == nil {
 		t.Fatal("Generated method code is nil")
 	}
-	
+
 	if methodCode.Name != "ConvertSimple" {
 		t.Errorf("Expected method name 'ConvertSimple', got '%s'", methodCode.Name)
 	}
@@ -315,9 +315,9 @@ func TestEventAwareEmitter_DelegatedMethods(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	innerEmitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
-	
+
 	eventAwareEmitter := NewEventAwareEmitter(innerEmitter, eventBus, logger)
-	
+
 	// Test OptimizeOutput delegation
 	code := &GeneratedCode{
 		PackageName: "testpkg",
@@ -325,7 +325,7 @@ func TestEventAwareEmitter_DelegatedMethods(t *testing.T) {
 		Metadata:    &GenerationMetadata{},
 		Metrics:     NewGenerationMetrics(),
 	}
-	
+
 	ctx := context.Background()
 	optimized, err := eventAwareEmitter.OptimizeOutput(ctx, code)
 	if err != nil {
@@ -334,13 +334,13 @@ func TestEventAwareEmitter_DelegatedMethods(t *testing.T) {
 	if optimized == nil {
 		t.Error("OptimizeOutput should return non-nil result")
 	}
-	
+
 	// Test GetMetrics delegation
 	metrics := eventAwareEmitter.GetMetrics()
 	if metrics == nil {
 		t.Error("GetMetrics should return non-nil result")
 	}
-	
+
 	// Test Shutdown delegation
 	err = eventAwareEmitter.Shutdown(ctx)
 	if err != nil {
@@ -352,19 +352,19 @@ func TestEmitterEventHandler_ErrorHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
-	
+
 	handler := NewEmitterEventHandler(emitter, eventBus, logger)
 	ctx := context.Background()
-	
+
 	// Test handling event with missing metadata
 	event := events.NewBaseEvent("executor.completed", ctx)
 	// No execution_results metadata
-	
+
 	err := handler.Handle(ctx, event)
 	if err == nil {
 		t.Error("Expected error when handling event with missing metadata")
 	}
-	
+
 	// Test handling unknown event type
 	unknownEvent := events.NewBaseEvent("unknown.event", ctx)
 	err = handler.Handle(ctx, unknownEvent)

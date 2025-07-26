@@ -216,8 +216,8 @@ func NewEmitterCompletedEvent(ctx context.Context, code *GeneratedCode, metrics 
 // EmitterFailedEvent represents code generation failure
 type EmitterFailedEvent struct {
 	*events.BaseEvent
-	Error       error           `json:"error"`
-	PartialCode *GeneratedCode  `json:"partial_code,omitempty"`
+	Error       error          `json:"error"`
+	PartialCode *GeneratedCode `json:"partial_code,omitempty"`
 }
 
 // NewEmitterFailedEvent creates a new emitter failed event
@@ -237,7 +237,7 @@ func NewEmitterFailedEvent(ctx context.Context, err error, partialCode *Generate
 // CodeGenerationStartedEvent represents the start of method code generation
 type CodeGenerationStartedEvent struct {
 	*events.BaseEvent
-	MethodName string              `json:"method_name"`
+	MethodName string               `json:"method_name"`
 	Strategy   ConstructionStrategy `json:"strategy"`
 }
 
@@ -276,9 +276,9 @@ func NewMethodGeneratedEvent(ctx context.Context, method *MethodCode, duration t
 // StrategySelectedEvent represents strategy selection for a method
 type StrategySelectedEvent struct {
 	*events.BaseEvent
-	MethodName string              `json:"method_name"`
+	MethodName string               `json:"method_name"`
 	Strategy   ConstructionStrategy `json:"strategy"`
-	Reason     string              `json:"reason"`
+	Reason     string               `json:"reason"`
 }
 
 // NewStrategySelectedEvent creates a new strategy selected event
@@ -305,7 +305,7 @@ type EventAwareEmitter struct {
 // NewEventAwareEmitter creates a new event-aware emitter
 func NewEventAwareEmitter(inner Emitter, eventBus events.EventBus, logger *zap.Logger) *EventAwareEmitter {
 	eventHandler := NewEmitterEventHandler(inner, eventBus, logger)
-	
+
 	// Register event handlers
 	if err := eventHandler.RegisterEventHandlers(); err != nil {
 		logger.Error("failed to register event handlers", zap.Error(err))
@@ -342,7 +342,7 @@ func (e *EventAwareEmitter) GenerateCode(ctx context.Context, results *domain.Ex
 	if metrics != nil {
 		metrics.TotalGenerationTime = duration
 	}
-	
+
 	if err := e.eventHandler.PublishEmitterCompleted(ctx, code, metrics); err != nil {
 		e.logger.Warn("failed to publish emitter completed event", zap.Error(err))
 	}
@@ -353,7 +353,7 @@ func (e *EventAwareEmitter) GenerateCode(ctx context.Context, results *domain.Ex
 // GenerateMethod generates a single method with event publishing
 func (e *EventAwareEmitter) GenerateMethod(ctx context.Context, method *domain.MethodResult) (*MethodCode, error) {
 	start := time.Now()
-	
+
 	methodCode, err := e.inner.GenerateMethod(ctx, method)
 	duration := time.Since(start)
 

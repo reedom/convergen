@@ -17,56 +17,56 @@ import (
 type CodeOptimizer interface {
 	// OptimizeCode applies all configured optimizations
 	OptimizeCode(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error)
-	
+
 	// OptimizeMethodCode optimizes a single method
 	OptimizeMethodCode(method *MethodCode) error
-	
+
 	// EliminateDeadCode removes unused variables and unreachable code
 	EliminateDeadCode(code *GeneratedCode) error
-	
+
 	// OptimizeVariableNames improves variable naming and removes conflicts
 	OptimizeVariableNames(code *GeneratedCode) error
-	
+
 	// SimplifyExpressions simplifies complex expressions where possible
 	SimplifyExpressions(code *GeneratedCode) error
-	
+
 	// RemoveRedundancy removes redundant operations and assignments
 	RemoveRedundancy(code *GeneratedCode) error
-	
+
 	// GetMetrics returns optimization metrics
 	GetMetrics() *OptimizerMetrics
-	
+
 	// Shutdown gracefully shuts down the optimizer
 	Shutdown(ctx context.Context) error
 }
 
 // ConcreteCodeOptimizer implements CodeOptimizer
 type ConcreteCodeOptimizer struct {
-	config    *EmitterConfig
-	logger    *zap.Logger
-	metrics   *OptimizerMetrics
-	
+	config  *EmitterConfig
+	logger  *zap.Logger
+	metrics *OptimizerMetrics
+
 	// Optimization components
 	deadCodeEliminator   DeadCodeEliminator
 	variableOptimizer    VariableOptimizer
 	expressionSimplifier ExpressionSimplifier
 	redundancyRemover    RedundancyRemover
-	
+
 	// Analysis tools
-	astAnalyzer     ASTAnalyzer
+	astAnalyzer         ASTAnalyzer
 	controlFlowAnalyzer ControlFlowAnalyzer
 }
 
 // OptimizerMetrics tracks optimization performance and results
 type OptimizerMetrics struct {
-	OptimizationsApplied  map[string]int64  `json:"optimizations_applied"`
-	TotalOptimizationTime time.Duration     `json:"total_optimization_time"`
-	DeadCodeEliminated    int64             `json:"dead_code_eliminated"`
-	VariablesOptimized    int64             `json:"variables_optimized"`
-	ExpressionsSimplified int64             `json:"expressions_simplified"`
-	RedundancyRemoved     int64             `json:"redundancy_removed"`
-	BytesSaved           int64             `json:"bytes_saved"`
-	PerformanceGain      float64           `json:"performance_gain"`
+	OptimizationsApplied  map[string]int64 `json:"optimizations_applied"`
+	TotalOptimizationTime time.Duration    `json:"total_optimization_time"`
+	DeadCodeEliminated    int64            `json:"dead_code_eliminated"`
+	VariablesOptimized    int64            `json:"variables_optimized"`
+	ExpressionsSimplified int64            `json:"expressions_simplified"`
+	RedundancyRemoved     int64            `json:"redundancy_removed"`
+	BytesSaved            int64            `json:"bytes_saved"`
+	PerformanceGain       float64          `json:"performance_gain"`
 }
 
 // Optimization component interfaces
@@ -156,10 +156,10 @@ type ImportInfo struct {
 }
 
 type Definition struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Line     int    `json:"line"`
-	Scope    string `json:"scope"`
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Line  int    `json:"line"`
+	Scope string `json:"scope"`
 }
 
 type ControlFlowGraph struct {
@@ -214,7 +214,7 @@ func (co *ConcreteCodeOptimizer) OptimizeCode(ctx context.Context, code *Generat
 		zap.Int("methods", len(code.Methods)))
 
 	startTime := time.Now()
-	
+
 	// Create a copy to avoid modifying the original
 	optimizedCode := &GeneratedCode{
 		PackageName: code.PackageName,
@@ -533,11 +533,11 @@ func NewDeadCodeEliminator(logger *zap.Logger) DeadCodeEliminator {
 func (dce *DefaultDeadCodeEliminator) EliminateInCode(code string) (string, int, error) {
 	// Simplified dead code elimination
 	eliminated := 0
-	
+
 	// Remove empty lines and unnecessary whitespace
 	lines := strings.Split(code, "\n")
 	var cleaned []string
-	
+
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" {
@@ -546,7 +546,7 @@ func (dce *DefaultDeadCodeEliminator) EliminateInCode(code string) (string, int,
 			eliminated++
 		}
 	}
-	
+
 	return strings.Join(cleaned, "\n"), eliminated, nil
 }
 
@@ -571,7 +571,7 @@ func NewVariableOptimizer(logger *zap.Logger) VariableOptimizer {
 
 func (vo *DefaultVariableOptimizer) OptimizeNames(code string) (string, int, error) {
 	optimizations := 0
-	
+
 	// Simple variable name optimization
 	// Replace long variable names with shorter ones where safe
 	replacements := map[string]string{
@@ -579,7 +579,7 @@ func (vo *DefaultVariableOptimizer) OptimizeNames(code string) (string, int, err
 		"result_":    "res_",
 		"temporary_": "tmp_",
 	}
-	
+
 	optimized := code
 	for old, new := range replacements {
 		if strings.Contains(optimized, old) {
@@ -587,7 +587,7 @@ func (vo *DefaultVariableOptimizer) OptimizeNames(code string) (string, int, err
 			optimizations++
 		}
 	}
-	
+
 	return optimized, optimizations, nil
 }
 
@@ -609,17 +609,17 @@ func NewExpressionSimplifier(logger *zap.Logger) ExpressionSimplifier {
 
 func (es *DefaultExpressionSimplifier) SimplifyInCode(code string) (string, int, error) {
 	simplifications := 0
-	
+
 	// Simple expression simplification
 	simplified := code
-	
+
 	// Remove unnecessary parentheses in simple cases
 	re := regexp.MustCompile(`\(([a-zA-Z_][a-zA-Z0-9_]*)\)`)
 	if re.MatchString(simplified) {
 		simplified = re.ReplaceAllString(simplified, "$1")
 		simplifications++
 	}
-	
+
 	return simplified, simplifications, nil
 }
 
@@ -641,7 +641,7 @@ func NewRedundancyRemover(logger *zap.Logger) RedundancyRemover {
 
 func (rr *DefaultRedundancyRemover) RemoveInCode(code string) (string, int, error) {
 	removed := 0
-	
+
 	// Simple redundancy removal
 	// Remove duplicate blank lines
 	re := regexp.MustCompile(`\n\s*\n\s*\n`)
@@ -649,7 +649,7 @@ func (rr *DefaultRedundancyRemover) RemoveInCode(code string) (string, int, erro
 	if optimized != code {
 		removed++
 	}
-	
+
 	return optimized, removed, nil
 }
 
