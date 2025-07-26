@@ -6,46 +6,47 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"go.uber.org/zap"
 )
 
 // Coordinator orchestrates the entire Convergen pipeline
 type Coordinator interface {
 	// Generate code from source files
 	Generate(ctx context.Context, sources []string, config *Config) (*GenerationResult, error)
-	
+
 	// Generate from in-memory source code
 	GenerateFromSource(ctx context.Context, source string, config *Config) (*GenerationResult, error)
-	
+
 	// Get coordinator metrics
 	GetMetrics() *CoordinatorMetrics
-	
+
 	// Get current pipeline status
 	GetStatus() *PipelineStatus
-	
+
 	// Shutdown gracefully
 	Shutdown(ctx context.Context) error
 }
 
 // ConcreteCoordinator implements the Coordinator interface
 type ConcreteCoordinator struct {
-	config           *Config
-	logger           *zap.Logger
-	eventBus         events.EventBus
-	componentMgr     ComponentManager
+	config            *Config
+	logger            *zap.Logger
+	eventBus          events.EventBus
+	componentMgr      ComponentManager
 	eventOrchestrator EventOrchestrator
-	resourcePool     ResourcePool
-	errorHandler     ErrorHandler
-	metricsCollector MetricsCollector
-	contextMgr       ContextManager
+	resourcePool      ResourcePool
+	errorHandler      ErrorHandler
+	metricsCollector  MetricsCollector
+	contextMgr        ContextManager
 
 	// State management
-	mutex            sync.RWMutex
-	status           *PipelineStatus
-	shutdown         chan struct{}
-	running          bool
+	mutex    sync.RWMutex
+	status   *PipelineStatus
+	shutdown chan struct{}
+	running  bool
 }
 
 // New creates a new coordinator instance
@@ -87,7 +88,7 @@ func (c *ConcreteCoordinator) Generate(ctx context.Context, sources []string, co
 		zap.Int("source_count", len(sources)))
 
 	startTime := time.Now()
-	
+
 	// Create pipeline input
 	input := &PipelineInput{
 		Sources: sources,
@@ -95,7 +96,7 @@ func (c *ConcreteCoordinator) Generate(ctx context.Context, sources []string, co
 		Context: ctx,
 		Metadata: map[string]interface{}{
 			"generation_id": c.generatePipelineID(),
-			"start_time":   startTime,
+			"start_time":    startTime,
 		},
 	}
 
@@ -140,8 +141,8 @@ func (c *ConcreteCoordinator) GenerateFromSource(ctx context.Context, source str
 		Context:    ctx,
 		Metadata: map[string]interface{}{
 			"generation_id": c.generatePipelineID(),
-			"start_time":   startTime,
-			"source_type":  "in_memory",
+			"start_time":    startTime,
+			"source_type":   "in_memory",
 		},
 	}
 
@@ -169,7 +170,7 @@ func (c *ConcreteCoordinator) GetMetrics() *CoordinatorMetrics {
 func (c *ConcreteCoordinator) GetStatus() *PipelineStatus {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	
+
 	// Create a copy to avoid race conditions
 	status := *c.status
 	status.ElapsedTime = time.Since(c.status.StartTime)
@@ -301,7 +302,7 @@ func (c *ConcreteCoordinator) waitForCompletion(ctx context.Context, input *Pipe
 
 		case <-ticker.C:
 			status := c.eventOrchestrator.GetStatus()
-			
+
 			// Update progress
 			progress := c.calculateProgress(status.Stage)
 			c.updateStatus(status.Stage, progress)
@@ -336,12 +337,12 @@ func (c *ConcreteCoordinator) assembleResult(startTime time.Time, input *Pipelin
 
 	// Create metadata
 	metadata := &GenerationMetadata{
-		Timestamp:         startTime,
+		Timestamp:          startTime,
 		CoordinatorVersion: "2.0.0",
-		PipelineID:        input.Metadata["generation_id"].(string),
-		InputSources:      input.Sources,
-		ComponentVersions: c.getComponentVersions(),
-		ProcessingStages:  []StageMetadata{}, // TODO: collect from orchestrator
+		PipelineID:         input.Metadata["generation_id"].(string),
+		InputSources:       input.Sources,
+		ComponentVersions:  c.getComponentVersions(),
+		ProcessingStages:   []StageMetadata{}, // TODO: collect from orchestrator
 	}
 
 	// Get final result from event orchestrator
@@ -352,9 +353,9 @@ func (c *ConcreteCoordinator) assembleResult(startTime time.Time, input *Pipelin
 		// Continue with empty result rather than failing
 		executionResults = &domain.ExecutionResults{}
 	}
-	
+
 	result := &GenerationResult{
-		Code:       "", // Will be populated by emitter result
+		Code:       "",         // Will be populated by emitter result
 		Imports:    []string{}, // Will be populated by emitter result
 		Methods:    executionResults.Methods,
 		Metadata:   metadata,
@@ -380,7 +381,7 @@ func (c *ConcreteCoordinator) assembleResult(startTime time.Time, input *Pipelin
 func (c *ConcreteCoordinator) updateStatus(stage PipelineStage, progress float64) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	
+
 	c.status.Stage = stage
 	c.status.Progress = progress
 	c.status.ElapsedTime = time.Since(c.status.StartTime)
@@ -427,7 +428,7 @@ func (c *ConcreteCoordinator) formatErrors(errors *ErrorReport) string {
 	}
 
 	if errors.CriticalCount > 0 {
-		return fmt.Sprintf("%d critical errors, %d total errors", 
+		return fmt.Sprintf("%d critical errors, %d total errors",
 			errors.CriticalCount, errors.TotalCount)
 	}
 

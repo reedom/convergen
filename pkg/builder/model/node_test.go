@@ -5,9 +5,10 @@ import (
 	"go/types"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/reedom/convergen/v8/pkg/builder/model"
 	"github.com/reedom/convergen/v8/pkg/option"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestRootNode(t *testing.T) {

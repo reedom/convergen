@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"go/types"
+	"strings"
 
 	"github.com/reedom/convergen/v8/pkg/option"
 	"github.com/reedom/convergen/v8/pkg/util"
@@ -88,6 +89,12 @@ func (n RootNode) AssignExpr() string {
 // MatcherExpr returns a value evaluate expression for assignment but omits the root variable name.
 // For example, it returns "User.Status()" in "dst.User.Status()".
 func (n RootNode) MatcherExpr() string {
+	// Extract field name from full path like "dst.ID" -> "ID"
+	// But for simple root names like "dst", return empty string
+	if idx := strings.LastIndex(n.name, "."); idx >= 0 {
+		return n.name[idx+1:]
+	}
+	// For simple names without dots (like "dst"), return empty string
 	return ""
 }
 

@@ -5,10 +5,11 @@ import (
 	"go/types"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	bmodel "github.com/reedom/convergen/v8/pkg/builder/model"
 	gmodel "github.com/reedom/convergen/v8/pkg/generator/model"
 	"github.com/reedom/convergen/v8/pkg/option"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestSkipHandler(t *testing.T) {

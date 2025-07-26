@@ -21,12 +21,12 @@
 //
 //	config := coordinator.DefaultConfig()
 //	coord := coordinator.New(logger, config)
-//	
+//
 //	result, err := coord.Generate(ctx, []string{"input.go"}, config)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
-//	
+//
 //	fmt.Println("Generated:", result.Code)
 //
 // The coordinator provides thread-safe operations and handles concurrent access

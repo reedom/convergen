@@ -50,18 +50,18 @@ func (s ComponentStatus) String() string {
 // Config defines configuration for the coordinator
 type Config struct {
 	// Component configurations
-	ParserConfig   *parser.ParserConfig   `json:"parser_config,omitempty"`
-	PlannerConfig  *planner.PlannerConfig  `json:"planner_config,omitempty"`
+	ParserConfig   *parser.ParserConfig     `json:"parser_config,omitempty"`
+	PlannerConfig  *planner.PlannerConfig   `json:"planner_config,omitempty"`
 	ExecutorConfig *executor.ExecutorConfig `json:"executor_config,omitempty"`
-	EmitterConfig  *emitter.EmitterConfig `json:"emitter_config,omitempty"`
+	EmitterConfig  *emitter.EmitterConfig   `json:"emitter_config,omitempty"`
 
 	// Coordinator-specific settings
-	MaxConcurrency     int           `json:"max_concurrency"`
-	EventBufferSize    int           `json:"event_buffer_size"`
-	ComponentTimeout   time.Duration `json:"component_timeout"`
-	ErrorThreshold     int           `json:"error_threshold"`
-	EnableMetrics      bool          `json:"enable_metrics"`
-	LogLevel          string        `json:"log_level"`
+	MaxConcurrency   int           `json:"max_concurrency"`
+	EventBufferSize  int           `json:"event_buffer_size"`
+	ComponentTimeout time.Duration `json:"component_timeout"`
+	ErrorThreshold   int           `json:"error_threshold"`
+	EnableMetrics    bool          `json:"enable_metrics"`
+	LogLevel         string        `json:"log_level"`
 
 	// Resource management
 	WorkerPoolSize  int `json:"worker_pool_size"`
@@ -75,20 +75,20 @@ type Config struct {
 	RetryDelay           time.Duration `json:"retry_delay"`
 
 	// Performance tuning
-	EnableProfiling      bool `json:"enable_profiling"`
-	ProfileOutputDir     string `json:"profile_output_dir"`
-	EnableEventTracing   bool `json:"enable_event_tracing"`
+	EnableProfiling    bool   `json:"enable_profiling"`
+	ProfileOutputDir   string `json:"profile_output_dir"`
+	EnableEventTracing bool   `json:"enable_event_tracing"`
 }
 
 // DefaultConfig returns a sensible default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		ParserConfig:   &parser.ParserConfig{
+		ParserConfig: &parser.ParserConfig{
 			BuildTag:              "convergen",
 			MaxConcurrentWorkers:  4,
 			TypeResolutionTimeout: 30 * time.Second,
 		},
-		PlannerConfig:  &planner.PlannerConfig{
+		PlannerConfig: &planner.PlannerConfig{
 			MaxConcurrentWorkers: 4,
 			MaxMemoryMB:          512,
 			PlanningTimeout:      30 * time.Second,
@@ -97,7 +97,7 @@ func DefaultConfig() *Config {
 			MinBatchSize:         1,
 			MaxBatchSize:         100,
 			EnableMetrics:        true,
-			DebugMode:           false,
+			DebugMode:            false,
 		},
 		ExecutorConfig: executor.DefaultExecutorConfig(),
 		EmitterConfig:  emitter.DefaultEmitterConfig(),
@@ -107,7 +107,7 @@ func DefaultConfig() *Config {
 		ComponentTimeout: 30 * time.Second,
 		ErrorThreshold:   10,
 		EnableMetrics:    true,
-		LogLevel:        "info",
+		LogLevel:         "info",
 
 		WorkerPoolSize:  8,
 		BufferPoolSize:  32,
@@ -125,63 +125,63 @@ func DefaultConfig() *Config {
 
 // PipelineInput represents input to the pipeline
 type PipelineInput struct {
-	Sources    []string          `json:"sources"`
-	SourceCode string           `json:"source_code,omitempty"`
-	Config     *Config          `json:"config"`
-	Context    context.Context  `json:"-"`
+	Sources    []string               `json:"sources"`
+	SourceCode string                 `json:"source_code,omitempty"`
+	Config     *Config                `json:"config"`
+	Context    context.Context        `json:"-"`
 	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // GenerationResult represents the output of the pipeline
 type GenerationResult struct {
 	// Generated code and metadata
-	Code        string                    `json:"code"`
-	Imports     []string                  `json:"imports"`
-	Methods     []*domain.MethodResult    `json:"methods"`
-	Metadata    *GenerationMetadata       `json:"metadata"`
+	Code     string                 `json:"code"`
+	Imports  []string               `json:"imports"`
+	Methods  []*domain.MethodResult `json:"methods"`
+	Metadata *GenerationMetadata    `json:"metadata"`
 
 	// Execution information
-	Duration    time.Duration             `json:"duration"`
-	Metrics     *CoordinatorMetrics       `json:"metrics"`
-	Errors      *ErrorReport              `json:"errors,omitempty"`
-	Warnings    []string                  `json:"warnings,omitempty"`
+	Duration time.Duration       `json:"duration"`
+	Metrics  *CoordinatorMetrics `json:"metrics"`
+	Errors   *ErrorReport        `json:"errors,omitempty"`
+	Warnings []string            `json:"warnings,omitempty"`
 
 	// Pipeline status
-	Status      PipelineStage             `json:"status"`
-	Components  map[string]ComponentStatus `json:"components"`
+	Status     PipelineStage              `json:"status"`
+	Components map[string]ComponentStatus `json:"components"`
 }
 
 // GenerationMetadata contains metadata about the generation process
 type GenerationMetadata struct {
-	Timestamp        time.Time              `json:"timestamp"`
-	CoordinatorVersion string               `json:"coordinator_version"`
-	PipelineID       string                 `json:"pipeline_id"`
-	InputSources     []string               `json:"input_sources"`
-	ComponentVersions map[string]string     `json:"component_versions"`
-	ProcessingStages  []StageMetadata       `json:"processing_stages"`
+	Timestamp          time.Time         `json:"timestamp"`
+	CoordinatorVersion string            `json:"coordinator_version"`
+	PipelineID         string            `json:"pipeline_id"`
+	InputSources       []string          `json:"input_sources"`
+	ComponentVersions  map[string]string `json:"component_versions"`
+	ProcessingStages   []StageMetadata   `json:"processing_stages"`
 }
 
 // StageMetadata contains metadata about a specific pipeline stage
 type StageMetadata struct {
-	Stage     PipelineStage `json:"stage"`
-	StartTime time.Time     `json:"start_time"`
-	EndTime   time.Time     `json:"end_time"`
-	Duration  time.Duration `json:"duration"`
-	Success   bool          `json:"success"`
-	ErrorCount int          `json:"error_count"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Stage      PipelineStage          `json:"stage"`
+	StartTime  time.Time              `json:"start_time"`
+	EndTime    time.Time              `json:"end_time"`
+	Duration   time.Duration          `json:"duration"`
+	Success    bool                   `json:"success"`
+	ErrorCount int                    `json:"error_count"`
+	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // PipelineStatus represents the current status of pipeline execution
 type PipelineStatus struct {
-	Stage           PipelineStage                    `json:"stage"`
-	Progress        float64                          `json:"progress"`
-	ComponentStatus map[string]ComponentStatus       `json:"component_status"`
-	StartTime       time.Time                        `json:"start_time"`
-	ElapsedTime     time.Duration                    `json:"elapsed_time"`
-	Errors          []error                          `json:"errors,omitempty"`
-	CurrentInput    *PipelineInput                   `json:"current_input,omitempty"`
-	PipelineID      string                           `json:"pipeline_id"`
+	Stage           PipelineStage              `json:"stage"`
+	Progress        float64                    `json:"progress"`
+	ComponentStatus map[string]ComponentStatus `json:"component_status"`
+	StartTime       time.Time                  `json:"start_time"`
+	ElapsedTime     time.Duration              `json:"elapsed_time"`
+	Errors          []error                    `json:"errors,omitempty"`
+	CurrentInput    *PipelineInput             `json:"current_input,omitempty"`
+	PipelineID      string                     `json:"pipeline_id"`
 }
 
 // ComponentError represents an error from a specific component
@@ -217,22 +217,22 @@ type CoordinatorMetrics struct {
 
 	// Component metrics
 	ComponentMetrics map[string]interface{} `json:"component_metrics"`
-	
+
 	// Resource usage
-	ResourceUsage    *ResourceUsage         `json:"resource_usage"`
-	
+	ResourceUsage *ResourceUsage `json:"resource_usage"`
+
 	// Event statistics
-	EventCounts      map[string]int64       `json:"event_counts"`
+	EventCounts         map[string]int64         `json:"event_counts"`
 	EventProcessingTime map[string]time.Duration `json:"event_processing_time"`
 
 	// Error statistics
-	ErrorCounts      map[string]int64       `json:"error_counts"`
-	RetryStats       *RetryStatistics       `json:"retry_stats"`
+	ErrorCounts map[string]int64 `json:"error_counts"`
+	RetryStats  *RetryStatistics `json:"retry_stats"`
 
 	// Performance metrics
-	Throughput       float64                `json:"throughput"` // pipelines/second
-	Latency          *LatencyMetrics        `json:"latency"`
-	ConcurrencyLevel float64                `json:"concurrency_level"`
+	Throughput       float64         `json:"throughput"` // pipelines/second
+	Latency          *LatencyMetrics `json:"latency"`
+	ConcurrencyLevel float64         `json:"concurrency_level"`
 }
 
 // ResourceUsage tracks resource consumption
@@ -246,17 +246,17 @@ type ResourceUsage struct {
 
 // GCStatistics tracks garbage collection statistics
 type GCStatistics struct {
-	NumGC        uint32        `json:"num_gc"`
-	PauseTotalNs uint64        `json:"pause_total_ns"`
-	PauseNs      []uint64      `json:"pause_ns"`
-	LastGC       time.Time     `json:"last_gc"`
+	NumGC        uint32    `json:"num_gc"`
+	PauseTotalNs uint64    `json:"pause_total_ns"`
+	PauseNs      []uint64  `json:"pause_ns"`
+	LastGC       time.Time `json:"last_gc"`
 }
 
 // RetryStatistics tracks retry behavior
 type RetryStatistics struct {
-	TotalRetries    int64              `json:"total_retries"`
+	TotalRetries      int64            `json:"total_retries"`
 	SuccessfulRetries int64            `json:"successful_retries"`
-	FailedRetries   int64              `json:"failed_retries"`
+	FailedRetries     int64            `json:"failed_retries"`
 	RetrysByComponent map[string]int64 `json:"retries_by_component"`
 	AverageRetryDelay time.Duration    `json:"average_retry_delay"`
 }
@@ -276,16 +276,16 @@ type LatencyMetrics struct {
 type PipelineComponent interface {
 	// Name returns the component name
 	Name() string
-	
+
 	// Initialize the component with event bus
 	Initialize(ctx context.Context, eventBus events.EventBus) error
-	
+
 	// Shutdown the component gracefully
 	Shutdown(ctx context.Context) error
-	
+
 	// GetMetrics returns component-specific metrics
 	GetMetrics() interface{}
-	
+
 	// GetStatus returns current component status
 	GetStatus() ComponentStatus
 }
@@ -307,22 +307,22 @@ type EventInterceptor interface {
 type RecoveryStrategy interface {
 	// IsRecoverable determines if error can be recovered from
 	IsRecoverable(err error) bool
-	
+
 	// Recover attempts to recover from the error
 	Recover(ctx context.Context, err error) error
-	
+
 	// GetRetryDelay returns delay before retry attempt
 	GetRetryDelay(attempt int) time.Duration
 }
 
 // WorkerPool manages a pool of worker goroutines
 type WorkerPool struct {
-	Size     int            `json:"size"`
-	Workers  chan struct{}  `json:"-"`
-	Tasks    chan func()    `json:"-"`
-	Done     chan struct{}  `json:"-"`
-	Error    chan error     `json:"-"`
-	Active   int32          `json:"active"`
+	Size      int           `json:"size"`
+	Workers   chan struct{} `json:"-"`
+	Tasks     chan func()   `json:"-"`
+	Done      chan struct{} `json:"-"`
+	Error     chan error    `json:"-"`
+	Active    int32         `json:"active"`
 	Processed int64         `json:"processed"`
 }
 

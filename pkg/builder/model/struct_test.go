@@ -4,8 +4,9 @@ import (
 	"go/types"
 	"testing"
 
-	"github.com/reedom/convergen/v8/pkg/builder/model"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/reedom/convergen/v8/pkg/builder/model"
 )
 
 func TestStructFieldNode(t *testing.T) {

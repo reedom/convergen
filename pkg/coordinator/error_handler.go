@@ -12,25 +12,25 @@ import (
 type ErrorHandler interface {
 	// Collect error from any component
 	CollectError(component string, err error)
-	
+
 	// Collect critical error that should stop pipeline
 	CollectCriticalError(component string, err error)
-	
+
 	// Collect warning that doesn't stop pipeline
 	CollectWarning(component string, err error)
-	
+
 	// Get aggregated errors
 	GetErrors() *ErrorReport
-	
+
 	// Check if pipeline should stop due to errors
 	ShouldStop() bool
-	
+
 	// Reset error state for new pipeline
 	Reset()
-	
+
 	// Set error threshold
 	SetErrorThreshold(threshold int)
-	
+
 	// Get error statistics
 	GetErrorStats() map[string]int64
 }
@@ -39,23 +39,23 @@ type ErrorHandler interface {
 type ConcreteErrorHandler struct {
 	logger *zap.Logger
 	config *Config
-	
+
 	// Error storage
-	mutex         sync.RWMutex
-	errors        []ComponentError
-	critical      []error
-	warnings      []error
-	
+	mutex    sync.RWMutex
+	errors   []ComponentError
+	critical []error
+	warnings []error
+
 	// Error tracking
-	errorCounts     map[string]int64
-	totalCount      int
-	criticalCount   int
-	warningCount    int
-	errorThreshold  int
-	
+	errorCounts    map[string]int64
+	totalCount     int
+	criticalCount  int
+	warningCount   int
+	errorThreshold int
+
 	// Error categorization
 	retryableErrors map[string]bool
-	
+
 	// Recovery tracking
 	recoveryAttempts map[string]int
 	maxRetryAttempts int
@@ -75,14 +75,14 @@ func NewErrorHandler(logger *zap.Logger, config *Config) ErrorHandler {
 		recoveryAttempts: make(map[string]int),
 		maxRetryAttempts: config.MaxRetries,
 	}
-	
+
 	// Initialize retryable error patterns
 	handler.initializeRetryableErrors()
-	
+
 	logger.Debug("error handler initialized",
 		zap.Int("error_threshold", config.ErrorThreshold),
 		zap.Int("max_retries", config.MaxRetries))
-	
+
 	return handler
 }
 
@@ -90,7 +90,7 @@ func NewErrorHandler(logger *zap.Logger, config *Config) ErrorHandler {
 func (e *ConcreteErrorHandler) CollectError(component string, err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	
+
 	componentError := ComponentError{
 		Component: component,
 		Stage:     e.getCurrentStage(component),
@@ -100,17 +100,17 @@ func (e *ConcreteErrorHandler) CollectError(component string, err error) {
 		Retryable: e.isRetryable(err),
 		Attempt:   e.getAttemptCount(component),
 	}
-	
+
 	e.errors = append(e.errors, componentError)
 	e.errorCounts[component]++
 	e.totalCount++
-	
+
 	e.logger.Warn("error collected",
 		zap.String("component", component),
 		zap.Error(err),
 		zap.Bool("retryable", componentError.Retryable),
 		zap.Int("attempt", componentError.Attempt))
-	
+
 	// Track recovery attempts for retryable errors
 	if componentError.Retryable {
 		e.recoveryAttempts[component]++
@@ -121,7 +121,7 @@ func (e *ConcreteErrorHandler) CollectError(component string, err error) {
 func (e *ConcreteErrorHandler) CollectCriticalError(component string, err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	
+
 	componentError := ComponentError{
 		Component: component,
 		Stage:     e.getCurrentStage(component),
@@ -131,13 +131,13 @@ func (e *ConcreteErrorHandler) CollectCriticalError(component string, err error)
 		Retryable: false, // Critical errors are never retryable
 		Attempt:   1,
 	}
-	
+
 	e.errors = append(e.errors, componentError)
 	e.critical = append(e.critical, err)
 	e.errorCounts[component]++
 	e.totalCount++
 	e.criticalCount++
-	
+
 	e.logger.Error("critical error collected",
 		zap.String("component", component),
 		zap.Error(err))
@@ -147,7 +147,7 @@ func (e *ConcreteErrorHandler) CollectCriticalError(component string, err error)
 func (e *ConcreteErrorHandler) CollectWarning(component string, err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	
+
 	componentError := ComponentError{
 		Component: component,
 		Stage:     e.getCurrentStage(component),
@@ -157,13 +157,13 @@ func (e *ConcreteErrorHandler) CollectWarning(component string, err error) {
 		Retryable: false, // Warnings don't need retry
 		Attempt:   1,
 	}
-	
+
 	e.errors = append(e.errors, componentError)
 	e.warnings = append(e.warnings, err)
 	e.errorCounts[component]++
 	e.totalCount++
 	e.warningCount++
-	
+
 	e.logger.Warn("warning collected",
 		zap.String("component", component),
 		zap.Error(err))
@@ -173,7 +173,7 @@ func (e *ConcreteErrorHandler) CollectWarning(component string, err error) {
 func (e *ConcreteErrorHandler) GetErrors() *ErrorReport {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	
+
 	report := &ErrorReport{
 		Errors:        make([]ComponentError, len(e.errors)),
 		Critical:      make([]error, len(e.critical)),
@@ -182,21 +182,21 @@ func (e *ConcreteErrorHandler) GetErrors() *ErrorReport {
 		CriticalCount: e.criticalCount,
 		WarningCount:  e.warningCount,
 	}
-	
+
 	// Copy errors to avoid race conditions
 	copy(report.Errors, e.errors)
 	copy(report.Critical, e.critical)
 	copy(report.Warnings, e.warnings)
-	
+
 	// Set first and last errors
 	if len(e.errors) > 0 {
 		firstError := e.errors[0]
 		report.FirstError = &firstError
-		
+
 		lastError := e.errors[len(e.errors)-1]
 		report.LastError = &lastError
 	}
-	
+
 	return report
 }
 
@@ -204,17 +204,17 @@ func (e *ConcreteErrorHandler) GetErrors() *ErrorReport {
 func (e *ConcreteErrorHandler) ShouldStop() bool {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	
+
 	// Stop if we have critical errors
 	if e.criticalCount > 0 {
 		return true
 	}
-	
+
 	// Stop if we're configured to stop on first error
 	if e.config.StopOnFirstError && e.totalCount > 0 {
 		return true
 	}
-	
+
 	// Stop if we've exceeded the error threshold
 	if e.totalCount >= e.errorThreshold {
 		e.logger.Warn("error threshold exceeded",
@@ -222,7 +222,7 @@ func (e *ConcreteErrorHandler) ShouldStop() bool {
 			zap.Int("threshold", e.errorThreshold))
 		return true
 	}
-	
+
 	// Stop if too many retry attempts for any component
 	for component, attempts := range e.recoveryAttempts {
 		if attempts >= e.maxRetryAttempts {
@@ -233,7 +233,7 @@ func (e *ConcreteErrorHandler) ShouldStop() bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -241,24 +241,24 @@ func (e *ConcreteErrorHandler) ShouldStop() bool {
 func (e *ConcreteErrorHandler) Reset() {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	
+
 	e.errors = e.errors[:0]
 	e.critical = e.critical[:0]
 	e.warnings = e.warnings[:0]
-	
+
 	// Clear counters
 	for component := range e.errorCounts {
 		e.errorCounts[component] = 0
 	}
-	
+
 	for component := range e.recoveryAttempts {
 		e.recoveryAttempts[component] = 0
 	}
-	
+
 	e.totalCount = 0
 	e.criticalCount = 0
 	e.warningCount = 0
-	
+
 	e.logger.Debug("error handler reset")
 }
 
@@ -266,9 +266,9 @@ func (e *ConcreteErrorHandler) Reset() {
 func (e *ConcreteErrorHandler) SetErrorThreshold(threshold int) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	
+
 	e.errorThreshold = threshold
-	
+
 	e.logger.Debug("error threshold updated", zap.Int("threshold", threshold))
 }
 
@@ -276,22 +276,22 @@ func (e *ConcreteErrorHandler) SetErrorThreshold(threshold int) {
 func (e *ConcreteErrorHandler) GetErrorStats() map[string]int64 {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	
+
 	stats := make(map[string]int64)
 	stats["total_errors"] = int64(e.totalCount)
 	stats["critical_errors"] = int64(e.criticalCount)
 	stats["warnings"] = int64(e.warningCount)
-	
+
 	// Add per-component error counts
 	for component, count := range e.errorCounts {
 		stats[fmt.Sprintf("%s_errors", component)] = count
 	}
-	
+
 	// Add retry statistics
 	for component, attempts := range e.recoveryAttempts {
 		stats[fmt.Sprintf("%s_retries", component)] = int64(attempts)
 	}
-	
+
 	return stats
 }
 
@@ -307,7 +307,7 @@ func (e *ConcreteErrorHandler) initializeRetryableErrors() {
 		"context deadline exceeded",
 		"network unreachable",
 	}
-	
+
 	for _, pattern := range retryablePatterns {
 		e.retryableErrors[pattern] = true
 	}
@@ -317,16 +317,16 @@ func (e *ConcreteErrorHandler) isRetryable(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	errStr := err.Error()
-	
+
 	// Check against known retryable patterns
 	for pattern := range e.retryableErrors {
 		if containsIgnoreCase(errStr, pattern) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -358,9 +358,9 @@ func (e *ConcreteErrorHandler) getAttemptCount(component string) int {
 func containsIgnoreCase(str, substr string) bool {
 	// Simple case-insensitive contains check
 	// In a real implementation, you'd use strings.ToLower or regexp
-	return len(str) >= len(substr) && 
-		   str[:len(substr)] == substr || 
-		   (len(str) > len(substr) && containsIgnoreCase(str[1:], substr))
+	return len(str) >= len(substr) &&
+		str[:len(substr)] == substr ||
+		(len(str) > len(substr) && containsIgnoreCase(str[1:], substr))
 }
 
 // ErrorReport methods
@@ -378,37 +378,37 @@ func (r *ErrorReport) HasWarnings() bool {
 // GetErrorsByComponent returns errors grouped by component
 func (r *ErrorReport) GetErrorsByComponent() map[string][]ComponentError {
 	errorsByComponent := make(map[string][]ComponentError)
-	
+
 	for _, err := range r.Errors {
 		component := err.Component
 		errorsByComponent[component] = append(errorsByComponent[component], err)
 	}
-	
+
 	return errorsByComponent
 }
 
 // GetErrorsByStage returns errors grouped by pipeline stage
 func (r *ErrorReport) GetErrorsByStage() map[PipelineStage][]ComponentError {
 	errorsByStage := make(map[PipelineStage][]ComponentError)
-	
+
 	for _, err := range r.Errors {
 		stage := err.Stage
 		errorsByStage[stage] = append(errorsByStage[stage], err)
 	}
-	
+
 	return errorsByStage
 }
 
 // GetRetryableErrors returns only the retryable errors
 func (r *ErrorReport) GetRetryableErrors() []ComponentError {
 	var retryable []ComponentError
-	
+
 	for _, err := range r.Errors {
 		if err.Retryable {
 			retryable = append(retryable, err)
 		}
 	}
-	
+
 	return retryable
 }
 
@@ -417,21 +417,21 @@ func (r *ErrorReport) Summary() string {
 	if r.TotalCount == 0 {
 		return "No errors"
 	}
-	
+
 	summary := fmt.Sprintf("Total: %d errors", r.TotalCount)
-	
+
 	if r.CriticalCount > 0 {
 		summary += fmt.Sprintf(" (%d critical)", r.CriticalCount)
 	}
-	
+
 	if r.WarningCount > 0 {
 		summary += fmt.Sprintf(" (%d warnings)", r.WarningCount)
 	}
-	
+
 	if r.FirstError != nil {
-		summary += fmt.Sprintf(" | First: %s in %s", 
+		summary += fmt.Sprintf(" | First: %s in %s",
 			r.FirstError.Error.Error(), r.FirstError.Component)
 	}
-	
+
 	return summary
 }

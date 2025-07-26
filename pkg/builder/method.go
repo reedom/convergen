@@ -6,11 +6,12 @@ import (
 	"go/token"
 	"go/types"
 
+	"golang.org/x/tools/go/packages"
+
 	bmodel "github.com/reedom/convergen/v8/pkg/builder/model"
 	gmodel "github.com/reedom/convergen/v8/pkg/generator/model"
 	"github.com/reedom/convergen/v8/pkg/logger"
 	"github.com/reedom/convergen/v8/pkg/util"
-	"golang.org/x/tools/go/packages"
 )
 
 // FunctionBuilder is a struct responsible for building functions from

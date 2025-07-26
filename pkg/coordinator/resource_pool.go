@@ -7,27 +7,28 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/internal/events"
 	"go.uber.org/zap"
+
+	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
 // ResourcePool manages shared resources across the pipeline
 type ResourcePool interface {
 	// Get worker pool for concurrent processing
 	GetWorkerPool(ctx context.Context, size int) (*WorkerPool, error)
-	
+
 	// Get memory buffer pool
 	GetBufferPool() *BufferPool
-	
+
 	// Get channel pool for event communication
 	GetChannelPool() *ChannelPool
-	
+
 	// Release all resources
 	Release(ctx context.Context) error
-	
+
 	// Get resource usage statistics
 	GetResourceUsage() *ResourceUsage
-	
+
 	// Force garbage collection
 	ForceGC()
 }
@@ -36,17 +37,17 @@ type ResourcePool interface {
 type ConcreteResourcePool struct {
 	logger *zap.Logger
 	config *Config
-	
+
 	// Resource pools
-	mutex        sync.RWMutex
-	workerPools  map[string]*WorkerPool
-	bufferPool   *BufferPool
-	channelPool  *ChannelPool
-	
+	mutex       sync.RWMutex
+	workerPools map[string]*WorkerPool
+	bufferPool  *BufferPool
+	channelPool *ChannelPool
+
 	// Resource tracking
 	resourceUsage *ResourceUsage
 	gcStats       *GCStatistics
-	
+
 	// Lifecycle management
 	shutdown chan struct{}
 	released bool
@@ -64,21 +65,21 @@ func NewResourcePool(logger *zap.Logger, config *Config) ResourcePool {
 		},
 		gcStats: &GCStatistics{},
 	}
-	
+
 	// Initialize buffer pool
 	pool.bufferPool = pool.createBufferPool()
-	
+
 	// Initialize channel pool
 	pool.channelPool = pool.createChannelPool()
-	
+
 	// Start resource monitoring
 	go pool.monitorResources()
-	
+
 	logger.Info("resource pool initialized",
 		zap.Int("worker_pool_size", config.WorkerPoolSize),
 		zap.Int("buffer_pool_size", config.BufferPoolSize),
 		zap.Int("channel_pool_size", config.ChannelPoolSize))
-	
+
 	return pool
 }
 
@@ -86,19 +87,19 @@ func NewResourcePool(logger *zap.Logger, config *Config) ResourcePool {
 func (r *ConcreteResourcePool) GetWorkerPool(ctx context.Context, size int) (*WorkerPool, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	
+
 	if r.released {
 		return nil, fmt.Errorf("resource pool has been released")
 	}
-	
+
 	// Create unique key for worker pool
 	key := fmt.Sprintf("worker_%d", size)
-	
+
 	// Return existing pool if available
 	if pool, exists := r.workerPools[key]; exists {
 		return pool, nil
 	}
-	
+
 	// Create new worker pool
 	pool := &WorkerPool{
 		Size:      size,
@@ -109,20 +110,20 @@ func (r *ConcreteResourcePool) GetWorkerPool(ctx context.Context, size int) (*Wo
 		Active:    0,
 		Processed: 0,
 	}
-	
+
 	// Start worker goroutines
 	for i := 0; i < size; i++ {
 		go r.startWorker(pool, i)
 		pool.Workers <- struct{}{} // Initialize worker slots
 	}
-	
+
 	r.workerPools[key] = pool
 	atomic.AddInt64(&r.resourceUsage.GoroutineCount, int64(size))
-	
+
 	r.logger.Debug("worker pool created",
 		zap.String("key", key),
 		zap.Int("size", size))
-	
+
 	return pool, nil
 }
 
@@ -140,31 +141,31 @@ func (r *ConcreteResourcePool) GetChannelPool() *ChannelPool {
 func (r *ConcreteResourcePool) Release(ctx context.Context) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	
+
 	if r.released {
 		return nil
 	}
-	
+
 	r.logger.Info("releasing resource pool")
-	
+
 	// Signal shutdown
 	close(r.shutdown)
-	
+
 	// Release worker pools
 	for key, pool := range r.workerPools {
 		close(pool.Done)
 		r.logger.Debug("worker pool released", zap.String("key", key))
 	}
-	
+
 	// Release buffer pool
 	r.releaseBufferPool()
-	
+
 	// Release channel pool
 	r.releaseChannelPool()
-	
+
 	r.released = true
 	r.logger.Info("resource pool released successfully")
-	
+
 	return nil
 }
 
@@ -172,10 +173,10 @@ func (r *ConcreteResourcePool) Release(ctx context.Context) error {
 func (r *ConcreteResourcePool) GetResourceUsage() *ResourceUsage {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	
+
 	// Update current statistics
 	r.updateResourceUsage()
-	
+
 	// Return a copy
 	usage := *r.resourceUsage
 	return &usage
@@ -185,7 +186,7 @@ func (r *ConcreteResourcePool) GetResourceUsage() *ResourceUsage {
 func (r *ConcreteResourcePool) ForceGC() {
 	// This would typically call runtime.GC() but we'll simulate it
 	r.logger.Debug("forcing garbage collection")
-	
+
 	r.mutex.Lock()
 	r.gcStats.NumGC++
 	r.gcStats.LastGC = time.Now()
@@ -202,13 +203,13 @@ func (r *ConcreteResourcePool) createBufferPool() *BufferPool {
 		created: 0,
 		reused:  0,
 	}
-	
+
 	// Pre-populate with buffers
 	for i := 0; i < r.config.BufferPoolSize; i++ {
 		pool.pool <- make([]byte, pool.bufSize)
 		atomic.AddInt64(&pool.created, 1)
 	}
-	
+
 	return pool
 }
 
@@ -219,24 +220,24 @@ func (r *ConcreteResourcePool) createChannelPool() *ChannelPool {
 		created:    0,
 		reused:     0,
 	}
-	
+
 	// Pre-populate with channels
 	for i := 0; i < r.config.ChannelPoolSize; i++ {
 		pool.eventChans <- make(chan events.Event, 10)
 		atomic.AddInt64(&pool.created, 1)
 	}
-	
+
 	return pool
 }
 
 func (r *ConcreteResourcePool) startWorker(pool *WorkerPool, workerID int) {
 	r.logger.Debug("starting worker", zap.Int("worker_id", workerID))
-	
+
 	for {
 		select {
 		case task := <-pool.Tasks:
 			atomic.AddInt32(&pool.Active, 1)
-			
+
 			// Execute task with recovery
 			func() {
 				defer func() {
@@ -244,25 +245,25 @@ func (r *ConcreteResourcePool) startWorker(pool *WorkerPool, workerID int) {
 						r.logger.Error("worker task panic",
 							zap.Int("worker_id", workerID),
 							zap.Any("panic", err))
-						
+
 						select {
 						case pool.Error <- fmt.Errorf("worker panic: %v", err):
 						default:
 							// Error channel full, log and continue
 						}
 					}
-					
+
 					atomic.AddInt32(&pool.Active, -1)
 					atomic.AddInt64(&pool.Processed, 1)
 				}()
-				
+
 				task()
 			}()
-			
+
 		case <-pool.Done:
 			r.logger.Debug("worker stopping", zap.Int("worker_id", workerID))
 			return
-			
+
 		case <-r.shutdown:
 			r.logger.Debug("worker stopping due to shutdown", zap.Int("worker_id", workerID))
 			return
@@ -273,12 +274,12 @@ func (r *ConcreteResourcePool) startWorker(pool *WorkerPool, workerID int) {
 func (r *ConcreteResourcePool) monitorResources() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
 			r.updateResourceUsage()
-			
+
 		case <-r.shutdown:
 			return
 		}
@@ -291,15 +292,15 @@ func (r *ConcreteResourcePool) updateResourceUsage() {
 	for _, pool := range r.workerPools {
 		totalGoroutines += pool.Active
 	}
-	
+
 	r.resourceUsage.GoroutineCount = int64(totalGoroutines)
-	
+
 	// Update memory usage (simulated)
 	r.resourceUsage.CurrentMemoryUsage = int64(len(r.workerPools)) * 1024 * 1024 // 1MB per pool
 	if r.resourceUsage.CurrentMemoryUsage > r.resourceUsage.PeakMemoryUsage {
 		r.resourceUsage.PeakMemoryUsage = r.resourceUsage.CurrentMemoryUsage
 	}
-	
+
 	// Update GC stats
 	r.resourceUsage.GCStats = r.gcStats
 }
@@ -308,13 +309,13 @@ func (r *ConcreteResourcePool) releaseBufferPool() {
 	if r.bufferPool == nil {
 		return
 	}
-	
+
 	// Drain the buffer pool
 	close(r.bufferPool.pool)
 	for range r.bufferPool.pool {
 		// Drain remaining buffers
 	}
-	
+
 	r.logger.Debug("buffer pool released",
 		zap.Int64("created", r.bufferPool.created),
 		zap.Int64("reused", r.bufferPool.reused))
@@ -324,13 +325,13 @@ func (r *ConcreteResourcePool) releaseChannelPool() {
 	if r.channelPool == nil {
 		return
 	}
-	
+
 	// Drain the channel pool
 	close(r.channelPool.eventChans)
 	for ch := range r.channelPool.eventChans {
 		close(ch)
 	}
-	
+
 	r.logger.Debug("channel pool released",
 		zap.Int64("created", r.channelPool.created),
 		zap.Int64("reused", r.channelPool.reused))
@@ -356,7 +357,7 @@ func (b *BufferPool) PutBuffer(buf []byte) {
 	if cap(buf) != b.bufSize {
 		return // Wrong size, don't return to pool
 	}
-	
+
 	select {
 	case b.pool <- buf:
 		// Successfully returned to pool

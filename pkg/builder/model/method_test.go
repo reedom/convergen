@@ -8,9 +8,10 @@ import (
 	"go/types"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/reedom/convergen/v8/pkg/builder/model"
 	"github.com/reedom/convergen/v8/pkg/option"
-	"github.com/stretchr/testify/require"
 )
 
 func loadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Package) {

@@ -7,12 +7,13 @@ import (
 	"go/types"
 	"strconv"
 
+	"golang.org/x/tools/go/packages"
+
 	bmodel "github.com/reedom/convergen/v8/pkg/builder/model"
 	gmodel "github.com/reedom/convergen/v8/pkg/generator/model"
 	"github.com/reedom/convergen/v8/pkg/logger"
 	"github.com/reedom/convergen/v8/pkg/option"
 	"github.com/reedom/convergen/v8/pkg/util"
-	"golang.org/x/tools/go/packages"
 )
 
 // assignmentBuilder represents the builder for a single assignment between
