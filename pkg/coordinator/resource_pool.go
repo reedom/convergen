@@ -292,7 +292,7 @@ func (r *ConcreteResourcePool) updateResourceUsage() {
 		totalGoroutines += pool.Active
 	}
 	
-	r.resourceUsage.GoroutineCount = int(totalGoroutines)
+	r.resourceUsage.GoroutineCount = int64(totalGoroutines)
 	
 	// Update memory usage (simulated)
 	r.resourceUsage.CurrentMemoryUsage = int64(len(r.workerPools)) * 1024 * 1024 // 1MB per pool

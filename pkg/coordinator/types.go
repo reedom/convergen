@@ -50,9 +50,9 @@ func (s ComponentStatus) String() string {
 // Config defines configuration for the coordinator
 type Config struct {
 	// Component configurations
-	ParserConfig   *parser.Config   `json:"parser_config,omitempty"`
-	PlannerConfig  *planner.Config  `json:"planner_config,omitempty"`
-	ExecutorConfig *executor.Config `json:"executor_config,omitempty"`
+	ParserConfig   *parser.ParserConfig   `json:"parser_config,omitempty"`
+	PlannerConfig  *planner.PlannerConfig  `json:"planner_config,omitempty"`
+	ExecutorConfig *executor.ExecutorConfig `json:"executor_config,omitempty"`
 	EmitterConfig  *emitter.EmitterConfig `json:"emitter_config,omitempty"`
 
 	// Coordinator-specific settings
@@ -83,9 +83,23 @@ type Config struct {
 // DefaultConfig returns a sensible default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		ParserConfig:   parser.DefaultConfig(),
-		PlannerConfig:  planner.DefaultConfig(),
-		ExecutorConfig: executor.DefaultConfig(),
+		ParserConfig:   &parser.ParserConfig{
+			BuildTag:              "convergen",
+			MaxConcurrentWorkers:  4,
+			TypeResolutionTimeout: 30 * time.Second,
+		},
+		PlannerConfig:  &planner.PlannerConfig{
+			MaxConcurrentWorkers: 4,
+			MaxMemoryMB:          512,
+			PlanningTimeout:      30 * time.Second,
+			EnableOptimizations:  true,
+			OptimizationLevel:    1,
+			MinBatchSize:         1,
+			MaxBatchSize:         100,
+			EnableMetrics:        true,
+			DebugMode:           false,
+		},
+		ExecutorConfig: executor.DefaultExecutorConfig(),
 		EmitterConfig:  emitter.DefaultEmitterConfig(),
 
 		MaxConcurrency:   4,
@@ -225,7 +239,7 @@ type CoordinatorMetrics struct {
 type ResourceUsage struct {
 	PeakMemoryUsage    int64         `json:"peak_memory_usage"`
 	CurrentMemoryUsage int64         `json:"current_memory_usage"`
-	GoroutineCount     int           `json:"goroutine_count"`
+	GoroutineCount     int64         `json:"goroutine_count"`
 	CPUUsage           float64       `json:"cpu_usage"`
 	GCStats            *GCStatistics `json:"gc_stats"`
 }
@@ -308,7 +322,7 @@ type WorkerPool struct {
 	Tasks    chan func()    `json:"-"`
 	Done     chan struct{}  `json:"-"`
 	Error    chan error     `json:"-"`
-	Active   int            `json:"active"`
+	Active   int32          `json:"active"`
 	Processed int64         `json:"processed"`
 }
 

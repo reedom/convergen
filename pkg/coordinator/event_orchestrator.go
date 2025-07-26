@@ -182,25 +182,39 @@ func (e *ConcreteEventOrchestrator) SetErrorHandler(handler ErrorHandler) {
 
 // Private methods
 
+// funcEventHandler wraps a function to implement EventHandler interface
+type funcEventHandler struct {
+	handlerFunc func(ctx context.Context, event events.Event) error
+	eventType   string
+}
+
+func (f *funcEventHandler) Handle(ctx context.Context, event events.Event) error {
+	return f.handlerFunc(ctx, event)
+}
+
+func (f *funcEventHandler) CanHandle(eventType string) bool {
+	return f.eventType == eventType
+}
+
 func (e *ConcreteEventOrchestrator) registerEventHandlers() {
 	// Parser events
-	e.eventHandlers["parser.completed"] = e.handleParseComplete
-	e.eventHandlers["parser.failed"] = e.handleParseFailed
+	e.eventHandlers["parser.completed"] = &funcEventHandler{e.handleParseComplete, "parser.completed"}
+	e.eventHandlers["parser.failed"] = &funcEventHandler{e.handleParseFailed, "parser.failed"}
 	
 	// Planner events
-	e.eventHandlers["planner.completed"] = e.handlePlanComplete
-	e.eventHandlers["planner.failed"] = e.handlePlanFailed
+	e.eventHandlers["planner.completed"] = &funcEventHandler{e.handlePlanComplete, "planner.completed"}
+	e.eventHandlers["planner.failed"] = &funcEventHandler{e.handlePlanFailed, "planner.failed"}
 	
 	// Executor events
-	e.eventHandlers["executor.completed"] = e.handleExecuteComplete
-	e.eventHandlers["executor.failed"] = e.handleExecuteFailed
+	e.eventHandlers["executor.completed"] = &funcEventHandler{e.handleExecuteComplete, "executor.completed"}
+	e.eventHandlers["executor.failed"] = &funcEventHandler{e.handleExecuteFailed, "executor.failed"}
 	
 	// Emitter events
-	e.eventHandlers["emitter.completed"] = e.handleEmitComplete
-	e.eventHandlers["emitter.failed"] = e.handleEmitFailed
+	e.eventHandlers["emitter.completed"] = &funcEventHandler{e.handleEmitComplete, "emitter.completed"}
+	e.eventHandlers["emitter.failed"] = &funcEventHandler{e.handleEmitFailed, "emitter.failed"}
 	
 	// Component status events
-	e.eventHandlers["component.status.changed"] = e.handleComponentStatusChanged
+	e.eventHandlers["component.status.changed"] = &funcEventHandler{e.handleComponentStatusChanged, "component.status.changed"}
 }
 
 func (e *ConcreteEventOrchestrator) processEvents(ctx context.Context) {
@@ -241,7 +255,7 @@ func (e *ConcreteEventOrchestrator) handleEventInternal(ctx context.Context, eve
 		zap.String("event_type", event.Type()),
 		zap.Any("event_data", event.Data()))
 	
-	return handler(ctx, event)
+	return handler.Handle(ctx, event)
 }
 
 // Event handlers

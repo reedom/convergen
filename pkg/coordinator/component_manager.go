@@ -249,34 +249,51 @@ func (c *ConcreteComponentManager) UpdateComponentStatus(name string, status Com
 func (c *ConcreteComponentManager) registerDefaultFactories() {
 	// Parser factory
 	c.factories["parser"] = func(config interface{}) (PipelineComponent, error) {
-		parserConfig, ok := config.(*parser.Config)
+		parserConfig, ok := config.(*parser.ParserConfig)
 		if !ok {
-			parserConfig = parser.DefaultConfig()
+			// Create default parser config since DefaultConfig doesn't exist
+			parserConfig = &parser.ParserConfig{
+				BuildTag:              "convergen",
+				MaxConcurrentWorkers:  4,
+				TypeResolutionTimeout: 30 * time.Second,
+			}
 		}
 		
-		p := parser.NewParser(c.logger, parserConfig)
-		return &ParserAdapter{parser: p}, nil
+		// Note: parser.NewParser has signature (srcPath, dstPath string) (*Parser, error)
+		// This is a placeholder adapter that needs proper implementation
+		return &ParserAdapter{config: parserConfig}, nil
 	}
 	
 	// Planner factory
 	c.factories["planner"] = func(config interface{}) (PipelineComponent, error) {
-		plannerConfig, ok := config.(*planner.Config)
+		plannerConfig, ok := config.(*planner.PlannerConfig)
 		if !ok {
-			plannerConfig = planner.DefaultConfig()
+			// Use the default from planner package 
+			plannerConfig = &planner.PlannerConfig{
+				MaxConcurrentWorkers: 4,
+				MaxMemoryMB:          512,
+				PlanningTimeout:      30 * time.Second,
+				EnableOptimizations:  true,
+				OptimizationLevel:    1,
+				MinBatchSize:         1,
+				MaxBatchSize:         100,
+				EnableMetrics:        true,
+				DebugMode:           false,
+			}
 		}
 		
-		p := planner.NewPlanner(c.logger, plannerConfig)
+		p := planner.NewExecutionPlanner(c.logger, c.eventBus, plannerConfig)
 		return &PlannerAdapter{planner: p}, nil
 	}
 	
 	// Executor factory
 	c.factories["executor"] = func(config interface{}) (PipelineComponent, error) {
-		executorConfig, ok := config.(*executor.Config)
+		executorConfig, ok := config.(*executor.ExecutorConfig)
 		if !ok {
-			executorConfig = executor.DefaultConfig()
+			executorConfig = executor.DefaultExecutorConfig()
 		}
 		
-		e := executor.NewExecutor(c.logger, executorConfig)
+		e := executor.NewExecutor(c.logger, c.eventBus, executorConfig)
 		return &ExecutorAdapter{executor: e}, nil
 	}
 	
@@ -287,7 +304,7 @@ func (c *ConcreteComponentManager) registerDefaultFactories() {
 			emitterConfig = emitter.DefaultEmitterConfig()
 		}
 		
-		e := emitter.NewEmitter(c.logger, emitterConfig)
+		e := emitter.NewEmitter(c.logger, c.eventBus, emitterConfig)
 		return &EmitterAdapter{emitter: e}, nil
 	}
 }
@@ -296,7 +313,7 @@ func (c *ConcreteComponentManager) registerDefaultFactories() {
 
 // ParserAdapter adapts parser.Parser to PipelineComponent
 type ParserAdapter struct {
-	parser parser.Parser
+	config *parser.ParserConfig
 	status ComponentStatus
 }
 
@@ -313,16 +330,20 @@ func (p *ParserAdapter) Shutdown(ctx context.Context) error {
 }
 
 func (p *ParserAdapter) GetMetrics() interface{} {
-	return p.parser.GetMetrics()
+	// TODO: Implement parser metrics collection
+	return map[string]interface{}{
+		"status": p.status,
+		"config": p.config,
+	}
 }
 
 func (p *ParserAdapter) GetStatus() ComponentStatus {
 	return p.status
 }
 
-// PlannerAdapter adapts planner.Planner to PipelineComponent
+// PlannerAdapter adapts planner.ExecutionPlanner to PipelineComponent
 type PlannerAdapter struct {
-	planner planner.Planner
+	planner *planner.ExecutionPlanner
 	status  ComponentStatus
 }
 
@@ -339,7 +360,11 @@ func (p *PlannerAdapter) Shutdown(ctx context.Context) error {
 }
 
 func (p *PlannerAdapter) GetMetrics() interface{} {
-	return p.planner.GetMetrics()
+	// TODO: Access ExecutionPlanner internal metrics
+	return map[string]interface{}{
+		"status": p.status,
+		"type":   "planner",
+	}
 }
 
 func (p *PlannerAdapter) GetStatus() ComponentStatus {
