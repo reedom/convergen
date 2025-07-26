@@ -5,9 +5,10 @@ import (
 	"go/types"
 	"testing"
 
-	"github.com/reedom/convergen/v8/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/reedom/convergen/v8/pkg/util"
 )
 
 func TestToAstNode(t *testing.T) {
