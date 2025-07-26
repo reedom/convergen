@@ -18,7 +18,7 @@ const (
 	KindGeneric
 	KindNamed
 	KindFunction
-	
+
 	// Aliases for compatibility
 	TypeKindInterface = KindInterface
 )
@@ -54,17 +54,17 @@ type Type interface {
 	Name() string
 	Kind() TypeKind
 	String() string
-	
+
 	// Generic type support
 	Generic() bool
 	TypeParams() []TypeParam
-	
+
 	// Type relationships
 	Underlying() Type
 	AssignableTo(other Type) bool
 	Implements(iface Type) bool
 	Comparable() bool
-	
+
 	// Package information
 	Package() string
 	ImportPath() string
@@ -72,16 +72,16 @@ type Type interface {
 
 // TypeParam represents a generic type parameter
 type TypeParam struct {
-	Name       string    `json:"name"`
-	Constraint Type      `json:"constraint"`
-	Index      int       `json:"index"`
+	Name       string `json:"name"`
+	Constraint Type   `json:"constraint"`
+	Index      int    `json:"index"`
 }
 
 // BasicType represents primitive types (int, string, bool, etc.)
 type BasicType struct {
-	name    string
-	kind    reflect.Kind
-	pkg     string
+	name string
+	kind reflect.Kind
+	pkg  string
 }
 
 func NewBasicType(name string, kind reflect.Kind) *BasicType {
@@ -92,14 +92,14 @@ func NewBasicType(name string, kind reflect.Kind) *BasicType {
 	}
 }
 
-func (t *BasicType) Name() string           { return t.name }
-func (t *BasicType) Kind() TypeKind         { return KindBasic }
-func (t *BasicType) String() string         { return t.name }
-func (t *BasicType) Generic() bool          { return false }
+func (t *BasicType) Name() string            { return t.name }
+func (t *BasicType) Kind() TypeKind          { return KindBasic }
+func (t *BasicType) String() string          { return t.name }
+func (t *BasicType) Generic() bool           { return false }
 func (t *BasicType) TypeParams() []TypeParam { return nil }
-func (t *BasicType) Underlying() Type       { return t }
-func (t *BasicType) Package() string        { return t.pkg }
-func (t *BasicType) ImportPath() string     { return "" }
+func (t *BasicType) Underlying() Type        { return t }
+func (t *BasicType) Package() string         { return t.pkg }
+func (t *BasicType) ImportPath() string      { return "" }
 
 func (t *BasicType) AssignableTo(other Type) bool {
 	if other == nil {
@@ -146,14 +146,14 @@ func NewStructType(name string, fields []Field, pkg string) *StructType {
 	}
 }
 
-func (t *StructType) Name() string           { return t.name }
-func (t *StructType) Kind() TypeKind         { return KindStruct }
-func (t *StructType) String() string         { return t.name }
-func (t *StructType) Generic() bool          { return len(t.typeParams) > 0 }
+func (t *StructType) Name() string            { return t.name }
+func (t *StructType) Kind() TypeKind          { return KindStruct }
+func (t *StructType) String() string          { return t.name }
+func (t *StructType) Generic() bool           { return len(t.typeParams) > 0 }
 func (t *StructType) TypeParams() []TypeParam { return append([]TypeParam(nil), t.typeParams...) }
-func (t *StructType) Underlying() Type       { return t }
-func (t *StructType) Package() string        { return t.pkg }
-func (t *StructType) ImportPath() string     { return t.importPath }
+func (t *StructType) Underlying() Type        { return t }
+func (t *StructType) Package() string         { return t.pkg }
+func (t *StructType) ImportPath() string      { return t.importPath }
 
 // Fields returns a defensive copy of the fields
 func (t *StructType) Fields() []Field {
@@ -211,15 +211,15 @@ func NewSliceType(elem Type, pkg string) *SliceType {
 	}
 }
 
-func (t *SliceType) Name() string           { return "[]" + t.elem.Name() }
-func (t *SliceType) Kind() TypeKind         { return KindSlice }
-func (t *SliceType) String() string         { return "[]" + t.elem.String() }
-func (t *SliceType) Generic() bool          { return t.elem.Generic() }
+func (t *SliceType) Name() string            { return "[]" + t.elem.Name() }
+func (t *SliceType) Kind() TypeKind          { return KindSlice }
+func (t *SliceType) String() string          { return "[]" + t.elem.String() }
+func (t *SliceType) Generic() bool           { return t.elem.Generic() }
 func (t *SliceType) TypeParams() []TypeParam { return t.elem.TypeParams() }
-func (t *SliceType) Underlying() Type       { return t }
-func (t *SliceType) Package() string        { return t.pkg }
-func (t *SliceType) ImportPath() string     { return t.importPath }
-func (t *SliceType) Elem() Type             { return t.elem }
+func (t *SliceType) Underlying() Type        { return t }
+func (t *SliceType) Package() string         { return t.pkg }
+func (t *SliceType) ImportPath() string      { return t.importPath }
+func (t *SliceType) Elem() Type              { return t.elem }
 
 func (t *SliceType) AssignableTo(other Type) bool {
 	if other == nil {
@@ -254,15 +254,15 @@ func NewPointerType(elem Type, pkg string) *PointerType {
 	}
 }
 
-func (t *PointerType) Name() string           { return "*" + t.elem.Name() }
-func (t *PointerType) Kind() TypeKind         { return KindPointer }
-func (t *PointerType) String() string         { return "*" + t.elem.String() }
-func (t *PointerType) Generic() bool          { return t.elem.Generic() }
+func (t *PointerType) Name() string            { return "*" + t.elem.Name() }
+func (t *PointerType) Kind() TypeKind          { return KindPointer }
+func (t *PointerType) String() string          { return "*" + t.elem.String() }
+func (t *PointerType) Generic() bool           { return t.elem.Generic() }
 func (t *PointerType) TypeParams() []TypeParam { return t.elem.TypeParams() }
-func (t *PointerType) Underlying() Type       { return t }
-func (t *PointerType) Package() string        { return t.pkg }
-func (t *PointerType) ImportPath() string     { return t.importPath }
-func (t *PointerType) Elem() Type             { return t.elem }
+func (t *PointerType) Underlying() Type        { return t }
+func (t *PointerType) Package() string         { return t.pkg }
+func (t *PointerType) ImportPath() string      { return t.importPath }
+func (t *PointerType) Elem() Type              { return t.elem }
 
 func (t *PointerType) AssignableTo(other Type) bool {
 	if other == nil {
@@ -302,18 +302,18 @@ func NewGenericType(name string, constraint Type, index int, pkg string) *Generi
 	}
 }
 
-func (t *GenericType) Name() string           { return t.name }
-func (t *GenericType) Kind() TypeKind         { return KindGeneric }
-func (t *GenericType) String() string         { return t.name }
-func (t *GenericType) Generic() bool          { return true }
-func (t *GenericType) TypeParams() []TypeParam { 
+func (t *GenericType) Name() string   { return t.name }
+func (t *GenericType) Kind() TypeKind { return KindGeneric }
+func (t *GenericType) String() string { return t.name }
+func (t *GenericType) Generic() bool  { return true }
+func (t *GenericType) TypeParams() []TypeParam {
 	return []TypeParam{{Name: t.name, Constraint: t.constraint, Index: t.index}}
 }
-func (t *GenericType) Underlying() Type       { return t.constraint }
-func (t *GenericType) Package() string        { return t.pkg }
-func (t *GenericType) ImportPath() string     { return t.importPath }
-func (t *GenericType) Constraint() Type       { return t.constraint }
-func (t *GenericType) Index() int             { return t.index }
+func (t *GenericType) Underlying() Type   { return t.constraint }
+func (t *GenericType) Package() string    { return t.pkg }
+func (t *GenericType) ImportPath() string { return t.importPath }
+func (t *GenericType) Constraint() Type   { return t.constraint }
+func (t *GenericType) Index() int         { return t.index }
 
 func (t *GenericType) AssignableTo(other Type) bool {
 	if other == nil {
@@ -342,7 +342,6 @@ func NewTypeBuilder() *TypeBuilder {
 	}
 }
 
-
 // Additional constructors needed by the parser
 func NewNamedType(name string, underlying Type, typeParams []TypeParam) Type {
 	return &BasicType{
@@ -361,8 +360,8 @@ func NewArrayType(elem Type, length int) Type {
 
 func NewMapType(key, value Type) Type {
 	return &mapType{
-		name: "map[" + key.Name() + "]" + value.Name(),
-		key:  key,
+		name:  "map[" + key.Name() + "]" + value.Name(),
+		key:   key,
 		value: value,
 	}
 }
@@ -374,17 +373,17 @@ type mapType struct {
 	value Type
 }
 
-func (t *mapType) Name() string           { return t.name }
-func (t *mapType) Kind() TypeKind         { return KindMap }
-func (t *mapType) String() string         { return t.name }
-func (t *mapType) Generic() bool          { return false }
-func (t *mapType) TypeParams() []TypeParam { return nil }
-func (t *mapType) Underlying() Type       { return t }
-func (t *mapType) Package() string        { return "" }
-func (t *mapType) ImportPath() string     { return "" }
+func (t *mapType) Name() string                 { return t.name }
+func (t *mapType) Kind() TypeKind               { return KindMap }
+func (t *mapType) String() string               { return t.name }
+func (t *mapType) Generic() bool                { return false }
+func (t *mapType) TypeParams() []TypeParam      { return nil }
+func (t *mapType) Underlying() Type             { return t }
+func (t *mapType) Package() string              { return "" }
+func (t *mapType) ImportPath() string           { return "" }
 func (t *mapType) AssignableTo(other Type) bool { return false }
-func (t *mapType) Implements(iface Type) bool { return false }
-func (t *mapType) Comparable() bool       { return false }
+func (t *mapType) Implements(iface Type) bool   { return false }
+func (t *mapType) Comparable() bool             { return false }
 
 func NewInterfaceType(methods []*Method) Type {
 	return &BasicType{
@@ -419,17 +418,17 @@ type functionType struct {
 	variadic bool
 }
 
-func (t *functionType) Name() string           { return t.name }
-func (t *functionType) Kind() TypeKind         { return KindFunction }
-func (t *functionType) String() string         { return t.name }
-func (t *functionType) Generic() bool          { return false }
-func (t *functionType) TypeParams() []TypeParam { return nil }
-func (t *functionType) Underlying() Type       { return t }
-func (t *functionType) Package() string        { return "" }
-func (t *functionType) ImportPath() string     { return "" }
+func (t *functionType) Name() string                 { return t.name }
+func (t *functionType) Kind() TypeKind               { return KindFunction }
+func (t *functionType) String() string               { return t.name }
+func (t *functionType) Generic() bool                { return false }
+func (t *functionType) TypeParams() []TypeParam      { return nil }
+func (t *functionType) Underlying() Type             { return t }
+func (t *functionType) Package() string              { return "" }
+func (t *functionType) ImportPath() string           { return "" }
 func (t *functionType) AssignableTo(other Type) bool { return false }
-func (t *functionType) Implements(iface Type) bool { return false }
-func (t *functionType) Comparable() bool       { return false }
+func (t *functionType) Implements(iface Type) bool   { return false }
+func (t *functionType) Comparable() bool             { return false }
 
 func NewTypeParameterType(name string, constraint Type) Type {
 	return &GenericType{
@@ -445,7 +444,7 @@ func (b *TypeBuilder) BuildStruct(name, pkg string, fields []Field) (*StructType
 	if name == "" {
 		return nil, fmt.Errorf("struct name cannot be empty")
 	}
-	
+
 	// Validate field names are unique
 	fieldNames := make(map[string]bool)
 	for _, field := range fields {
@@ -453,18 +452,18 @@ func (b *TypeBuilder) BuildStruct(name, pkg string, fields []Field) (*StructType
 			return nil, fmt.Errorf("duplicate field name: %s", field.Name)
 		}
 		fieldNames[field.Name] = true
-		
+
 		if field.Type == nil {
 			return nil, fmt.Errorf("field %s has nil type", field.Name)
 		}
 	}
-	
+
 	structType := NewStructType(name, fields, pkg)
-	
+
 	// Cache the type
 	key := fmt.Sprintf("%s.%s", pkg, name)
 	b.cache[key] = structType
-	
+
 	return structType, nil
 }
 

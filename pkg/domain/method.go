@@ -33,15 +33,15 @@ type TypeInfo struct {
 
 // Method represents a conversion method to be generated
 type Method struct {
-	Name               string         `json:"name"`
-	SourceType         Type           `json:"source_type"`
-	DestType           Type           `json:"dest_type"`
-	Config             *MethodConfig  `json:"config"`
-	Mappings           []*FieldMapping `json:"mappings"`
+	Name               string           `json:"name"`
+	SourceType         Type             `json:"source_type"`
+	DestType           Type             `json:"dest_type"`
+	Config             *MethodConfig    `json:"config"`
+	Mappings           []*FieldMapping  `json:"mappings"`
 	Signature          *MethodSignature `json:"signature"`
-	sourceParams       []*Parameter   `json:"-"`
-	destinationReturns []*ReturnValue `json:"-"`
-	fieldMappings      []*FieldMapping `json:"-"`
+	sourceParams       []*Parameter     `json:"-"`
+	destinationReturns []*ReturnValue   `json:"-"`
+	fieldMappings      []*FieldMapping  `json:"-"`
 }
 
 // NewMethod creates a validated method
@@ -55,7 +55,7 @@ func NewMethod(name string, sourceType, destType Type) (*Method, error) {
 	if destType == nil {
 		return nil, fmt.Errorf("destination type cannot be nil")
 	}
-	
+
 	return &Method{
 		Name:       name,
 		SourceType: sourceType,
@@ -71,14 +71,14 @@ func (m *Method) AddMapping(mapping *FieldMapping) error {
 	if mapping == nil {
 		return fmt.Errorf("mapping cannot be nil")
 	}
-	
+
 	// Check for duplicate mapping IDs
 	for _, existing := range m.Mappings {
 		if existing.ID == mapping.ID {
 			return fmt.Errorf("mapping with ID %s already exists", mapping.ID)
 		}
 	}
-	
+
 	m.Mappings = append(m.Mappings, mapping)
 	m.fieldMappings = append(m.fieldMappings, mapping)
 	return nil
@@ -197,7 +197,6 @@ type Receiver struct {
 	Pointer bool   `json:"pointer"`
 }
 
-
 // ExecutionPlan defines how to execute field conversions concurrently
 type ExecutionPlan struct {
 	ID           string                 `json:"id"`
@@ -223,11 +222,11 @@ type MethodPlan struct {
 
 // ConcurrentBatch groups fields that can be processed in parallel
 type ConcurrentBatch struct {
-	ID          string           `json:"id"`
-	Fields      []*FieldMapping  `json:"fields"`
-	DependsOn   []string         `json:"depends_on"` // Batch IDs this batch depends on
-	Complexity  int              `json:"complexity"`
-	EstimatedMS int64            `json:"estimated_ms"`
+	ID          string          `json:"id"`
+	Fields      []*FieldMapping `json:"fields"`
+	DependsOn   []string        `json:"depends_on"` // Batch IDs this batch depends on
+	Complexity  int             `json:"complexity"`
+	EstimatedMS int64           `json:"estimated_ms"`
 }
 
 // NewConcurrentBatch creates a validated concurrent batch
@@ -238,7 +237,7 @@ func NewConcurrentBatch(id string, fields []*FieldMapping) (*ConcurrentBatch, er
 	if len(fields) == 0 {
 		return nil, fmt.Errorf("batch must contain at least one field")
 	}
-	
+
 	return &ConcurrentBatch{
 		ID:          id,
 		Fields:      append([]*FieldMapping(nil), fields...), // defensive copy
@@ -256,29 +255,29 @@ func (cb *ConcurrentBatch) AddDependency(batchID string) error {
 	if batchID == cb.ID {
 		return fmt.Errorf("batch cannot depend on itself")
 	}
-	
+
 	// Check if dependency already exists
 	for _, dep := range cb.DependsOn {
 		if dep == batchID {
 			return nil // Already exists
 		}
 	}
-	
+
 	cb.DependsOn = append(cb.DependsOn, batchID)
 	return nil
 }
 
 // ResourceLimits defines execution constraints
 type ResourceLimits struct {
-	MaxGoroutines       int           `json:"max_goroutines"`
-	MaxWorkers          int           `json:"max_workers"`
-	MaxMemoryMB         int           `json:"max_memory_mb"`
-	TimeoutMS           int           `json:"timeout_ms"`
-	MaxConcurrentFields int           `json:"max_concurrent_fields"`
-	MaxDurationMS       int64         `json:"max_duration_ms"`
-	MaxFieldsPerBatch   int           `json:"max_fields_per_batch"`
-	EnableGoroutinePool bool          `json:"enable_goroutine_pool"`
-	EnableMemoryPool    bool          `json:"enable_memory_pool"`
+	MaxGoroutines       int   `json:"max_goroutines"`
+	MaxWorkers          int   `json:"max_workers"`
+	MaxMemoryMB         int   `json:"max_memory_mb"`
+	TimeoutMS           int   `json:"timeout_ms"`
+	MaxConcurrentFields int   `json:"max_concurrent_fields"`
+	MaxDurationMS       int64 `json:"max_duration_ms"`
+	MaxFieldsPerBatch   int   `json:"max_fields_per_batch"`
+	EnableGoroutinePool bool  `json:"enable_goroutine_pool"`
+	EnableMemoryPool    bool  `json:"enable_memory_pool"`
 }
 
 // NewResourceLimits creates default resource limits
@@ -294,13 +293,13 @@ func NewResourceLimits() *ResourceLimits {
 
 // ResourceAllocation represents allocated resources for execution
 type ResourceAllocation struct {
-	MaxConcurrentBatches int                 `json:"max_concurrent_batches"`
-	MemoryLimitMB        int                 `json:"memory_limit_mb"`
-	TimeoutMS            int                 `json:"timeout_ms"`
+	MaxConcurrentBatches int                  `json:"max_concurrent_batches"`
+	MemoryLimitMB        int                  `json:"memory_limit_mb"`
+	TimeoutMS            int                  `json:"timeout_ms"`
 	GoroutinePool        *GoroutinePoolConfig `json:"goroutine_pool"`
 }
 
-// GoroutinePoolConfig configures the worker goroutine pool  
+// GoroutinePoolConfig configures the worker goroutine pool
 type GoroutinePoolConfig struct {
 	MinWorkers  int `json:"min_workers"`
 	MaxWorkers  int `json:"max_workers"`
@@ -345,22 +344,22 @@ type PlanMetrics struct {
 
 // GenerationResult represents the outcome of processing
 type GenerationResult struct {
-	Methods     []*Method             `json:"methods"`
-	BaseCode    string                `json:"base_code"`
-	Generated   *GeneratedFunction    `json:"generated"`
-	Errors      []GenerationError     `json:"errors"`
-	Metrics     *ProcessingMetrics    `json:"metrics"`
-	Diagnostics []Diagnostic          `json:"diagnostics"`
+	Methods     []*Method          `json:"methods"`
+	BaseCode    string             `json:"base_code"`
+	Generated   *GeneratedFunction `json:"generated"`
+	Errors      []GenerationError  `json:"errors"`
+	Metrics     *ProcessingMetrics `json:"metrics"`
+	Diagnostics []Diagnostic       `json:"diagnostics"`
 }
 
 // GeneratedFunction represents a complete generated function
 type GeneratedFunction struct {
-	Name        string               `json:"name"`
-	Signature   string               `json:"signature"`
-	Body        string               `json:"body"`
-	Imports     []Import             `json:"imports"`
-	Comments    []Comment            `json:"comments"`
-	Metadata    *FunctionMetadata    `json:"metadata"`
+	Name      string            `json:"name"`
+	Signature string            `json:"signature"`
+	Body      string            `json:"body"`
+	Imports   []Import          `json:"imports"`
+	Comments  []Comment         `json:"comments"`
+	Metadata  *FunctionMetadata `json:"metadata"`
 }
 
 // Comment represents a code comment
@@ -390,11 +389,11 @@ type FieldResult struct {
 
 // ProcessingMetrics track performance and resource usage
 type ProcessingMetrics struct {
-	TotalDurationMS   int64   `json:"total_duration_ms"`
-	ConcurrentFields  int     `json:"concurrent_fields"`
-	MaxGoroutines     int     `json:"max_goroutines"`
-	MemoryUsageMB     int     `json:"memory_usage_mb"`
-	CacheHitRate      float64 `json:"cache_hit_rate"`
+	TotalDurationMS  int64   `json:"total_duration_ms"`
+	ConcurrentFields int     `json:"concurrent_fields"`
+	MaxGoroutines    int     `json:"max_goroutines"`
+	MemoryUsageMB    int     `json:"memory_usage_mb"`
+	CacheHitRate     float64 `json:"cache_hit_rate"`
 }
 
 // Diagnostic represents processing diagnostics and warnings
@@ -436,7 +435,7 @@ func calculateBatchComplexity(fields []*FieldMapping) int {
 	for _, field := range fields {
 		// Base complexity for each field
 		complexity += 1
-		
+
 		// Additional complexity based on strategy
 		switch field.StrategyName {
 		case "direct":
@@ -452,18 +451,18 @@ func calculateBatchComplexity(fields []*FieldMapping) int {
 		default:
 			complexity += 2
 		}
-		
+
 		// Additional complexity for dependencies
 		complexity += len(field.Dependencies)
 	}
-	
+
 	return complexity
 }
 
 // estimateBatchTime estimates processing time for a batch
 func estimateBatchTime(fields []*FieldMapping) int64 {
 	baseTimeMS := int64(len(fields)) // 1ms per field base time
-	
+
 	for _, field := range fields {
 		// Add time based on strategy complexity
 		switch field.StrategyName {
@@ -481,7 +480,7 @@ func estimateBatchTime(fields []*FieldMapping) int64 {
 			baseTimeMS += 3
 		}
 	}
-	
+
 	return baseTimeMS
 }
 
@@ -489,7 +488,7 @@ func estimateBatchTime(fields []*FieldMapping) int64 {
 type MethodStrategy int
 
 const (
-	MethodStrategyDirect     MethodStrategy = iota
+	MethodStrategyDirect MethodStrategy = iota
 	MethodStrategyPipelined
 	MethodStrategyBatched
 	MethodStrategyAdaptive
@@ -512,38 +511,38 @@ func (s MethodStrategy) String() string {
 
 // MethodResult represents the result of executing a single method
 type MethodResult struct {
-	Method      *Method           `json:"method"`
-	Code        string            `json:"code"`
-	Imports     []Import          `json:"imports"`
-	Success     bool              `json:"success"`
-	Error       *ExecutionError   `json:"error,omitempty"`
+	Method      *Method                `json:"method"`
+	Code        string                 `json:"code"`
+	Imports     []Import               `json:"imports"`
+	Success     bool                   `json:"success"`
+	Error       *ExecutionError        `json:"error,omitempty"`
 	Metadata    map[string]interface{} `json:"metadata"`
-	ProcessedAt time.Time         `json:"processed_at"`
-	DurationMS  int64             `json:"duration_ms"`
+	ProcessedAt time.Time              `json:"processed_at"`
+	DurationMS  int64                  `json:"duration_ms"`
 }
 
 // ExecutionResults represents the complete results of pipeline execution
 type ExecutionResults struct {
-	Methods     []*MethodResult   `json:"methods"`
-	Success     bool              `json:"success"`
-	Errors      []*ExecutionError `json:"errors"`
-	TotalTime   time.Duration     `json:"total_time"`
+	Methods     []*MethodResult        `json:"methods"`
+	Success     bool                   `json:"success"`
+	Errors      []*ExecutionError      `json:"errors"`
+	TotalTime   time.Duration          `json:"total_time"`
 	Metadata    map[string]interface{} `json:"metadata"`
-	PackageName string            `json:"package_name"`
-	BaseCode    string            `json:"base_code"`
+	PackageName string                 `json:"package_name"`
+	BaseCode    string                 `json:"base_code"`
 }
 
 // ExecutionError represents an error that occurred during execution
 type ExecutionError struct {
-	Type        string            `json:"type"`
-	Message     string            `json:"message"`
-	Component   string            `json:"component"`
-	Method      string            `json:"method,omitempty"`
-	Field       string            `json:"field,omitempty"`
-	StackTrace  string            `json:"stack_trace,omitempty"`
-	Timestamp   time.Time         `json:"timestamp"`
-	Retryable   bool              `json:"retryable"`
-	Context     map[string]interface{} `json:"context,omitempty"`
+	Type       string                 `json:"type"`
+	Message    string                 `json:"message"`
+	Component  string                 `json:"component"`
+	Method     string                 `json:"method,omitempty"`
+	Field      string                 `json:"field,omitempty"`
+	StackTrace string                 `json:"stack_trace,omitempty"`
+	Timestamp  time.Time              `json:"timestamp"`
+	Retryable  bool                   `json:"retryable"`
+	Context    map[string]interface{} `json:"context,omitempty"`
 }
 
 // Error implements the error interface
@@ -555,4 +554,3 @@ func (e *ExecutionError) Error() string {
 	}
 	return fmt.Sprintf("%s error in %s: %s", e.Type, e.Component, e.Message)
 }
-

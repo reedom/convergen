@@ -101,40 +101,40 @@ func (e ErrorHandlingMethod) String() string {
 
 // InterfaceOptions contains options that apply to an entire interface
 type InterfaceOptions struct {
-	Style                VariableStyle     `json:"style"`
-	MatchRule            MatchRule         `json:"match_rule"`
-	CaseSensitive        bool              `json:"case_sensitive"`
-	UseGetter            bool              `json:"use_getter"`
-	UseStringer          bool              `json:"use_stringer"`
-	UseTypecast          bool              `json:"use_typecast"`
-	ReceiverName         string            `json:"receiver_name"`
-	AllowReverse         bool              `json:"allow_reverse"`
-	SkipFields           []string          `json:"skip_fields"`
-	FieldMappings        map[string]string `json:"field_mappings"`
-	TypeConverters       map[string]string `json:"type_converters"`
-	LiteralAssignments   map[string]string `json:"literal_assignments"`
-	PreprocessFunction   string            `json:"preprocess_function"`
-	PostprocessFunction  string            `json:"postprocess_function"`
+	Style               VariableStyle     `json:"style"`
+	MatchRule           MatchRule         `json:"match_rule"`
+	CaseSensitive       bool              `json:"case_sensitive"`
+	UseGetter           bool              `json:"use_getter"`
+	UseStringer         bool              `json:"use_stringer"`
+	UseTypecast         bool              `json:"use_typecast"`
+	ReceiverName        string            `json:"receiver_name"`
+	AllowReverse        bool              `json:"allow_reverse"`
+	SkipFields          []string          `json:"skip_fields"`
+	FieldMappings       map[string]string `json:"field_mappings"`
+	TypeConverters      map[string]string `json:"type_converters"`
+	LiteralAssignments  map[string]string `json:"literal_assignments"`
+	PreprocessFunction  string            `json:"preprocess_function"`
+	PostprocessFunction string            `json:"postprocess_function"`
 }
 
 // MethodOptions contains options that apply to a specific method
 type MethodOptions struct {
-	Style                VariableStyle     `json:"style"`
-	MatchRule            MatchRule         `json:"match_rule"`
-	CaseSensitive        bool              `json:"case_sensitive"`
-	UseGetter            bool              `json:"use_getter"`
-	UseStringer          bool              `json:"use_stringer"`
-	UseTypecast          bool              `json:"use_typecast"`
-	AllowReverse         bool              `json:"allow_reverse"`
-	SkipFields           []string          `json:"skip_fields"`
-	FieldMappings        map[string]string `json:"field_mappings"`
-	TypeConverters       map[string]string `json:"type_converters"`
-	LiteralAssignments   map[string]string `json:"literal_assignments"`
-	PreprocessFunction   string            `json:"preprocess_function"`
-	PostprocessFunction  string            `json:"postprocess_function"`
-	CustomValidation     string            `json:"custom_validation"`
-	ConcurrencyLevel     int               `json:"concurrency_level"`
-	TimeoutDuration      time.Duration     `json:"timeout_duration"`
+	Style               VariableStyle     `json:"style"`
+	MatchRule           MatchRule         `json:"match_rule"`
+	CaseSensitive       bool              `json:"case_sensitive"`
+	UseGetter           bool              `json:"use_getter"`
+	UseStringer         bool              `json:"use_stringer"`
+	UseTypecast         bool              `json:"use_typecast"`
+	AllowReverse        bool              `json:"allow_reverse"`
+	SkipFields          []string          `json:"skip_fields"`
+	FieldMappings       map[string]string `json:"field_mappings"`
+	TypeConverters      map[string]string `json:"type_converters"`
+	LiteralAssignments  map[string]string `json:"literal_assignments"`
+	PreprocessFunction  string            `json:"preprocess_function"`
+	PostprocessFunction string            `json:"postprocess_function"`
+	CustomValidation    string            `json:"custom_validation"`
+	ConcurrencyLevel    int               `json:"concurrency_level"`
+	TimeoutDuration     time.Duration     `json:"timeout_duration"`
 }
 
 // ChannelDirection represents the direction of a channel

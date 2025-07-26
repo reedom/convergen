@@ -94,17 +94,17 @@ func (sl *SourceLocation) String() string {
 
 // GenerationError provides rich error context for generation failures
 type GenerationError struct {
-	Code      ErrorCode               `json:"code"`
-	Message   string                  `json:"message"`
-	Phase     ProcessingPhase         `json:"phase"`
-	Method    string                  `json:"method"`
-	Field     string                  `json:"field"`
-	Source    *SourceLocation         `json:"source"`
-	Cause     error                   `json:"-"` // Original error (not serialized)
-	CauseText string                  `json:"cause_text"`
-	Context   map[string]interface{}  `json:"context"`
-	Timestamp time.Time               `json:"timestamp"`
-	Hints     []string                `json:"hints"`
+	Code      ErrorCode              `json:"code"`
+	Message   string                 `json:"message"`
+	Phase     ProcessingPhase        `json:"phase"`
+	Method    string                 `json:"method"`
+	Field     string                 `json:"field"`
+	Source    *SourceLocation        `json:"source"`
+	Cause     error                  `json:"-"` // Original error (not serialized)
+	CauseText string                 `json:"cause_text"`
+	Context   map[string]interface{} `json:"context"`
+	Timestamp time.Time              `json:"timestamp"`
+	Hints     []string               `json:"hints"`
 }
 
 // NewGenerationError creates a new generation error
@@ -161,15 +161,15 @@ func (e *GenerationError) WithHint(hint string) *GenerationError {
 // Error implements the error interface
 func (e *GenerationError) Error() string {
 	var parts []string
-	
+
 	// Add phase and code
 	parts = append(parts, fmt.Sprintf("[%s:%s]", e.Phase, e.Code))
-	
+
 	// Add location if available
 	if e.Source != nil {
 		parts = append(parts, e.Source.String())
 	}
-	
+
 	// Add method and field context
 	if e.Method != "" {
 		if e.Field != "" {
@@ -178,15 +178,15 @@ func (e *GenerationError) Error() string {
 			parts = append(parts, e.Method)
 		}
 	}
-	
+
 	// Add the main message
 	parts = append(parts, e.Message)
-	
+
 	// Add cause if present
 	if e.CauseText != "" {
 		parts = append(parts, fmt.Sprintf("caused by: %s", e.CauseText))
 	}
-	
+
 	return strings.Join(parts, " ")
 }
 
@@ -217,7 +217,7 @@ func (e *GenerationError) Severity() DiagnosticLevel {
 
 // ErrorCollector aggregates errors from concurrent operations
 type ErrorCollector struct {
-	errors   []*GenerationError
+	errors    []*GenerationError
 	maxErrors int
 }
 
@@ -226,9 +226,9 @@ func NewErrorCollector(maxErrors int) *ErrorCollector {
 	if maxErrors <= 0 {
 		maxErrors = 100 // Default limit
 	}
-	
+
 	return &ErrorCollector{
-		errors:   make([]*GenerationError, 0),
+		errors:    make([]*GenerationError, 0),
 		maxErrors: maxErrors,
 	}
 }
@@ -259,22 +259,22 @@ func (ec *ErrorCollector) Errors() []*GenerationError {
 // ErrorsByPhase returns errors grouped by processing phase
 func (ec *ErrorCollector) ErrorsByPhase() map[ProcessingPhase][]*GenerationError {
 	result := make(map[ProcessingPhase][]*GenerationError)
-	
+
 	for _, err := range ec.errors {
 		result[err.Phase] = append(result[err.Phase], err)
 	}
-	
+
 	return result
 }
 
 // ErrorsByCode returns errors grouped by error code
 func (ec *ErrorCollector) ErrorsByCode() map[ErrorCode][]*GenerationError {
 	result := make(map[ErrorCode][]*GenerationError)
-	
+
 	for _, err := range ec.errors {
 		result[err.Code] = append(result[err.Code], err)
 	}
-	
+
 	return result
 }
 
@@ -283,18 +283,18 @@ func (ec *ErrorCollector) Summary() string {
 	if len(ec.errors) == 0 {
 		return "No errors"
 	}
-	
+
 	codeCount := make(map[ErrorCode]int)
 	phaseCount := make(map[ProcessingPhase]int)
-	
+
 	for _, err := range ec.errors {
 		codeCount[err.Code]++
 		phaseCount[err.Phase]++
 	}
-	
+
 	var parts []string
 	parts = append(parts, fmt.Sprintf("Total errors: %d", len(ec.errors)))
-	
+
 	// Add breakdown by phase
 	if len(phaseCount) > 0 {
 		var phaseParts []string
@@ -303,7 +303,7 @@ func (ec *ErrorCollector) Summary() string {
 		}
 		parts = append(parts, "By phase: "+strings.Join(phaseParts, ", "))
 	}
-	
+
 	// Add breakdown by code
 	if len(codeCount) > 0 {
 		var codeParts []string
@@ -312,7 +312,7 @@ func (ec *ErrorCollector) Summary() string {
 		}
 		parts = append(parts, "By type: "+strings.Join(codeParts, ", "))
 	}
-	
+
 	return strings.Join(parts, "; ")
 }
 
@@ -321,11 +321,11 @@ func (ec *ErrorCollector) ToError() error {
 	if len(ec.errors) == 0 {
 		return nil
 	}
-	
+
 	if len(ec.errors) == 1 {
 		return ec.errors[0]
 	}
-	
+
 	return &MultiError{
 		Errors:  ec.errors,
 		Summary: ec.Summary(),
@@ -358,11 +358,11 @@ func (me *MultiError) Count() int {
 
 // ValidationError represents a validation failure
 type ValidationError struct {
-	Field     string      `json:"field"`
-	Value     interface{} `json:"value"`
-	Rule      string      `json:"rule"`
-	Message   string      `json:"message"`
-	Path      []string    `json:"path"`
+	Field   string      `json:"field"`
+	Value   interface{} `json:"value"`
+	Rule    string      `json:"rule"`
+	Message string      `json:"message"`
+	Path    []string    `json:"path"`
 }
 
 // NewValidationError creates a new validation error
@@ -390,18 +390,18 @@ func (ve *ValidationError) WithPath(path []string) *ValidationError {
 // Error implements the error interface
 func (ve *ValidationError) Error() string {
 	var parts []string
-	
+
 	if len(ve.Path) > 0 {
 		parts = append(parts, strings.Join(ve.Path, "."))
 	}
-	
+
 	parts = append(parts, ve.Field)
 	parts = append(parts, fmt.Sprintf("validation failed [%s]: %s", ve.Rule, ve.Message))
-	
+
 	if ve.Value != nil {
 		parts = append(parts, fmt.Sprintf("(value: %v)", ve.Value))
 	}
-	
+
 	return strings.Join(parts, " ")
 }
 
@@ -416,8 +416,8 @@ func ErrTypeResolutionFailed(typeName string, cause error) *GenerationError {
 
 // ErrIncompatibleTypeConversion creates an incompatible types error
 func ErrIncompatibleTypeConversion(sourceType, destType Type) *GenerationError {
-	return NewGenerationError(ErrIncompatibleTypes, 
-		fmt.Sprintf("cannot convert from %s to %s", sourceType.String(), destType.String()), 
+	return NewGenerationError(ErrIncompatibleTypes,
+		fmt.Sprintf("cannot convert from %s to %s", sourceType.String(), destType.String()),
 		PhasePlanning).
 		WithContext("source_type", sourceType.String()).
 		WithContext("dest_type", destType.String()).
@@ -427,8 +427,8 @@ func ErrIncompatibleTypeConversion(sourceType, destType Type) *GenerationError {
 
 // ErrCircularFieldDependency creates a circular dependency error
 func ErrCircularFieldDependency(cycle []string) *GenerationError {
-	return NewGenerationError(ErrCircularDependency, 
-		fmt.Sprintf("circular dependency detected: %s", strings.Join(cycle, " -> ")), 
+	return NewGenerationError(ErrCircularDependency,
+		fmt.Sprintf("circular dependency detected: %s", strings.Join(cycle, " -> ")),
 		PhasePlanning).
 		WithContext("cycle", cycle).
 		WithHint("Review field mappings to break the circular dependency")
@@ -436,8 +436,8 @@ func ErrCircularFieldDependency(cycle []string) *GenerationError {
 
 // ErrInvalidAnnotationSyntax creates an invalid annotation error
 func ErrInvalidAnnotationSyntax(annotation, reason string) *GenerationError {
-	return NewGenerationError(ErrInvalidAnnotation, 
-		fmt.Sprintf("invalid annotation syntax: %s (%s)", annotation, reason), 
+	return NewGenerationError(ErrInvalidAnnotation,
+		fmt.Sprintf("invalid annotation syntax: %s (%s)", annotation, reason),
 		PhaseParsing).
 		WithContext("annotation", annotation).
 		WithContext("reason", reason).
@@ -446,8 +446,8 @@ func ErrInvalidAnnotationSyntax(annotation, reason string) *GenerationError {
 
 // ErrConverterFunctionNotFound creates a converter not found error
 func ErrConverterFunctionNotFound(funcName, pkg string) *GenerationError {
-	return NewGenerationError(ErrConverterNotFound, 
-		fmt.Sprintf("converter function not found: %s in package %s", funcName, pkg), 
+	return NewGenerationError(ErrConverterNotFound,
+		fmt.Sprintf("converter function not found: %s in package %s", funcName, pkg),
 		PhasePlanning).
 		WithContext("function_name", funcName).
 		WithContext("package", pkg).
@@ -456,8 +456,8 @@ func ErrConverterFunctionNotFound(funcName, pkg string) *GenerationError {
 
 // ErrCodeGenerationFailed creates a code generation error
 func ErrCodeGenerationFailed(reason string, cause error) *GenerationError {
-	return NewGenerationError(ErrCodeGeneration, 
-		fmt.Sprintf("code generation failed: %s", reason), 
+	return NewGenerationError(ErrCodeGeneration,
+		fmt.Sprintf("code generation failed: %s", reason),
 		PhaseEmission).
 		WithCause(cause).
 		WithContext("reason", reason)
@@ -465,8 +465,8 @@ func ErrCodeGenerationFailed(reason string, cause error) *GenerationError {
 
 // ErrResourceLimitExceeded creates a resource exhaustion error
 func ErrResourceLimitExceeded(resource string, limit, requested int) *GenerationError {
-	return NewGenerationError(ErrResourceExhausted, 
-		fmt.Sprintf("%s limit exceeded: requested %d, limit %d", resource, requested, limit), 
+	return NewGenerationError(ErrResourceExhausted,
+		fmt.Sprintf("%s limit exceeded: requested %d, limit %d", resource, requested, limit),
 		PhaseExecution).
 		WithContext("resource", resource).
 		WithContext("limit", limit).
@@ -476,8 +476,8 @@ func ErrResourceLimitExceeded(resource string, limit, requested int) *Generation
 
 // ErrProcessingTimeout creates a timeout error
 func ErrProcessingTimeout(operation string, timeoutMS int) *GenerationError {
-	return NewGenerationError(ErrTimeout, 
-		fmt.Sprintf("%s timed out after %d ms", operation, timeoutMS), 
+	return NewGenerationError(ErrTimeout,
+		fmt.Sprintf("%s timed out after %d ms", operation, timeoutMS),
 		PhaseExecution).
 		WithContext("operation", operation).
 		WithContext("timeout_ms", timeoutMS).
