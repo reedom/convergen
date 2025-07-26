@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"reflect"
 	"sync"
 	"testing"
 
@@ -17,7 +18,7 @@ func TestTypeCache_BasicOperations(t *testing.T) {
 	assert.Equal(t, 0.0, cache.HitRate())
 
 	// Create a test type
-	testType := domain.NewBasicType("string", domain.TypeKindString)
+	testType := domain.StringType
 
 	// Test put and get
 	cache.Put("string", testType)
@@ -34,9 +35,9 @@ func TestTypeCache_BasicOperations(t *testing.T) {
 func TestTypeCache_LRUEviction(t *testing.T) {
 	cache := NewTypeCache(2) // Small cache for testing eviction
 
-	type1 := domain.NewBasicType("int", domain.TypeKindInt)
-	type2 := domain.NewBasicType("string", domain.TypeKindString)
-	type3 := domain.NewBasicType("bool", domain.TypeKindBool)
+	type1 := domain.IntType
+	type2 := domain.StringType
+	type3 := domain.BoolType
 
 	// Fill cache to capacity
 	cache.Put("int", type1)
@@ -69,7 +70,7 @@ func TestTypeCache_ConcurrentAccess(t *testing.T) {
 	// Create test types
 	testTypes := make([]domain.Type, numOperations)
 	for i := 0; i < numOperations; i++ {
-		testTypes[i] = domain.NewBasicType("type"+string(rune(i)), domain.TypeKindBasic)
+		testTypes[i] = domain.NewBasicType("type"+string(rune(i)), reflect.String)
 	}
 
 	// Run concurrent operations
@@ -101,7 +102,7 @@ func TestTypeCache_ConcurrentAccess(t *testing.T) {
 func TestTypeCache_Stats(t *testing.T) {
 	cache := NewTypeCache(10)
 
-	testType := domain.NewBasicType("string", domain.TypeKindString)
+	testType := domain.StringType
 
 	// Initially no hits or misses
 	stats := cache.Stats()
@@ -129,7 +130,7 @@ func TestTypeCache_Clear(t *testing.T) {
 	// Add some items
 	for i := 0; i < 5; i++ {
 		key := "key" + string(rune(i))
-		testType := domain.NewBasicType("type"+string(rune(i)), domain.TypeKindBasic)
+		testType := domain.NewBasicType("type"+string(rune(i)), reflect.String)
 		cache.Put(key, testType)
 	}
 
@@ -155,7 +156,7 @@ func TestTypeCache_MaxSizeEnforcement(t *testing.T) {
 	// Add more items than max size
 	for i := 0; i < maxSize*2; i++ {
 		key := "key" + string(rune(i))
-		testType := domain.NewBasicType("type"+string(rune(i)), domain.TypeKindBasic)
+		testType := domain.NewBasicType("type"+string(rune(i)), reflect.String)
 		cache.Put(key, testType)
 	}
 
@@ -165,7 +166,7 @@ func TestTypeCache_MaxSizeEnforcement(t *testing.T) {
 
 func TestTypeCache_AccessCountTracking(t *testing.T) {
 	cache := NewTypeCache(10)
-	testType := domain.NewBasicType("string", domain.TypeKindString)
+	testType := domain.StringType
 
 	cache.Put("string", testType)
 
@@ -183,7 +184,7 @@ func TestTypeCache_AccessCountTracking(t *testing.T) {
 
 func BenchmarkTypeCache_Put(b *testing.B) {
 	cache := NewTypeCache(1000)
-	testType := domain.NewBasicType("string", domain.TypeKindString)
+	testType := domain.StringType
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -194,7 +195,7 @@ func BenchmarkTypeCache_Put(b *testing.B) {
 
 func BenchmarkTypeCache_Get(b *testing.B) {
 	cache := NewTypeCache(1000)
-	testType := domain.NewBasicType("string", domain.TypeKindString)
+	testType := domain.StringType
 
 	// Pre-populate cache
 	for i := 0; i < 1000; i++ {
@@ -211,7 +212,7 @@ func BenchmarkTypeCache_Get(b *testing.B) {
 
 func BenchmarkTypeCache_ConcurrentAccess(b *testing.B) {
 	cache := NewTypeCache(1000)
-	testType := domain.NewBasicType("string", domain.TypeKindString)
+	testType := domain.StringType
 
 	// Pre-populate cache
 	for i := 0; i < 100; i++ {

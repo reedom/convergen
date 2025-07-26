@@ -2,6 +2,8 @@ package executor
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -339,10 +341,11 @@ func createTestExecutionPlan(id string, methodCount, fieldsPerMethod int) *domai
 			MaxWorkers:  8,
 			MaxMemoryMB: 256,
 		},
-		Metrics: &domain.PlanningMetrics{
-			PlanningDuration:      100 * time.Millisecond,
-			TotalMethods:          methodCount,
+		Metrics: &domain.PlanMetrics{
+			PlanningDurationMS:    100,
+			MethodsPlanned:        methodCount,
 			TotalFields:           methodCount * fieldsPerMethod,
+			ConcurrentBatches:     methodCount,
 			ParallelizationRatio:  0.8,
 			EstimatedSpeedupRatio: 2.5,
 		},
@@ -365,11 +368,11 @@ func createTestExecutionPlan(id string, methodCount, fieldsPerMethod int) *domai
 	return plan
 }
 
-func createTestMethodBatches(fieldCount int) []*domain.ExecutionBatch {
+func createTestMethodBatches(fieldCount int) []*domain.ConcurrentBatch {
 	batchSize := 5
 	batchCount := (fieldCount + batchSize - 1) / batchSize
 
-	batches := make([]*domain.ExecutionBatch, batchCount)
+	batches := make([]*domain.ConcurrentBatch, batchCount)
 	for i := 0; i < batchCount; i++ {
 		startIdx := i * batchSize
 		endIdx := min(startIdx+batchSize, fieldCount)
@@ -379,9 +382,9 @@ func createTestMethodBatches(fieldCount int) []*domain.ExecutionBatch {
 			mappings[j-startIdx] = createTestFieldMapping(fmt.Sprintf("field_%d", j))
 		}
 
-		batches[i] = &domain.ExecutionBatch{
-			ID:       fmt.Sprintf("batch_%d", i),
-			Mappings: mappings,
+		batches[i] = &domain.ConcurrentBatch{
+			ID:     fmt.Sprintf("batch_%d", i),
+			Fields: mappings,
 		}
 	}
 
@@ -447,12 +450,6 @@ func createTestFieldMapping(id string) *domain.FieldMapping {
 }
 
 func createTestType(name string) domain.Type {
-	return domain.NewBasicType(name, domain.TypeKindString)
+	return domain.NewBasicType(name, reflect.String)
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

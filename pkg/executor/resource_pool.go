@@ -413,7 +413,7 @@ func (rp *ResourcePool) handleMemoryPressure() {
 	rp.mutex.RUnlock()
 	
 	if workerCount > minWorkers {
-		targetWorkers := max(minWorkers, workerCount*3/4)
+		targetWorkers := maxInt(minWorkers, workerCount*3/4)
 		rp.scaleDownWorkers(targetWorkers)
 	}
 }
@@ -490,7 +490,7 @@ func (rp *ResourcePool) checkResourceLimits() error {
 }
 
 // Utility functions
-func max(a, b int) int {
+func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}

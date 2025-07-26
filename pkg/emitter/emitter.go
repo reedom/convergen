@@ -115,7 +115,7 @@ func NewEmitter(logger *zap.Logger, eventBus events.EventBus, config *EmitterCon
 		config = DefaultEmitterConfig()
 	}
 
-	metrics := NewEmitterMetrics(config.EnableMetrics)
+	metrics := NewEmitterMetrics()
 	
 	emitter := &ConcreteEmitter{
 		config:   config,
@@ -130,12 +130,12 @@ func NewEmitter(logger *zap.Logger, eventBus events.EventBus, config *EmitterCon
 	emitter.outputStrat = NewOutputStrategy(config, logger)
 	emitter.formatMgr = NewFormatManager(config, logger)
 	emitter.importMgr = NewImportManager(config, logger)
-	emitter.templateSys = NewTemplateSystem(config, logger)
+	emitter.templateSys = NewTemplateSystem()
 	emitter.optimizer = NewCodeOptimizer(config, logger, metrics)
 
 	// Register custom templates if provided
 	for name, template := range config.CustomTemplates {
-		if err := emitter.templateSys.RegisterTemplate(name, NewCustomTemplate(name, template)); err != nil {
+		if err := emitter.templateSys.RegisterTemplate(name, template); err != nil {
 			logger.Warn("failed to register custom template", 
 				zap.String("name", name), 
 				zap.Error(err))
@@ -236,7 +236,11 @@ func (e *ConcreteEmitter) GenerateCode(ctx context.Context, results *domain.Exec
 	generatedCode.Metrics.MethodsGenerated = len(methodCodes)
 
 	// Update global metrics
-	e.metrics.RecordGeneration(generatedCode)
+	var firstMethod *MethodCode
+	if len(methodCodes) > 0 {
+		firstMethod = methodCodes[0]
+	}
+	e.metrics.RecordGeneration(firstMethod, results.PackageName, methodCodes)
 
 	// Emit generation completed event
 	if err := e.emitEvent(ctx, "emit.completed", map[string]interface{}{
@@ -265,7 +269,7 @@ func (e *ConcreteEmitter) GenerateMethod(ctx context.Context, method *domain.Met
 	}
 
 	e.logger.Debug("generating method code",
-		zap.String("method", method.MethodName))
+		zap.String("method", method.Method.Name))
 
 	// Generate method code using the code generator
 	methodCode, err := e.codeGen.GenerateMethodCode(ctx, method)
@@ -277,13 +281,13 @@ func (e *ConcreteEmitter) GenerateMethod(ctx context.Context, method *domain.Met
 	if e.config.OptimizationLevel > OptimizationNone {
 		if err := e.optimizer.OptimizeMethodCode(methodCode); err != nil {
 			e.logger.Warn("method optimization failed", 
-				zap.String("method", method.MethodName), 
+				zap.String("method", method.Method.Name), 
 				zap.Error(err))
 		}
 	}
 
 	e.logger.Debug("method code generated",
-		zap.String("method", method.MethodName),
+		zap.String("method", method.Method.Name),
 		zap.Int("lines", methodCode.Complexity.LinesGenerated))
 
 	return methodCode, nil
@@ -381,7 +385,7 @@ func (e *ConcreteEmitter) generateMethodsConcurrently(ctx context.Context, metho
 	
 	for i, err := range errors {
 		if err != nil {
-			generationErrors = append(generationErrors, fmt.Errorf("method %s: %w", methods[i].MethodName, err))
+			generationErrors = append(generationErrors, fmt.Errorf("method %s: %w", methods[i].Method.Name, err))
 		} else {
 			validResults = append(validResults, results[i])
 		}
@@ -400,7 +404,7 @@ func (e *ConcreteEmitter) generateMethodsSequentially(ctx context.Context, metho
 	for _, method := range methods {
 		methodCode, err := e.GenerateMethod(ctx, method)
 		if err != nil {
-			return results, fmt.Errorf("method %s generation failed: %w", method.MethodName, err)
+			return results, fmt.Errorf("method %s generation failed: %w", method.Method.Name, err)
 		}
 		results = append(results, methodCode)
 	}

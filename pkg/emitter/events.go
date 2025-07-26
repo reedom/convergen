@@ -91,37 +91,37 @@ func (h *EmitterEventHandler) CanHandle(eventType string) bool {
 // PublishEmitterStarted publishes an emitter started event
 func (h *EmitterEventHandler) PublishEmitterStarted(ctx context.Context, packageName string, methodCount int) error {
 	event := NewEmitterStartedEvent(ctx, packageName, methodCount)
-	return h.eventBus.Publish(ctx, event)
+	return h.eventBus.Publish(event)
 }
 
 // PublishEmitterCompleted publishes an emitter completed event
 func (h *EmitterEventHandler) PublishEmitterCompleted(ctx context.Context, code *GeneratedCode, metrics *EmitterMetrics) error {
 	event := NewEmitterCompletedEvent(ctx, code, metrics)
-	return h.eventBus.Publish(ctx, event)
+	return h.eventBus.Publish(event)
 }
 
 // PublishEmitterFailed publishes an emitter failed event
 func (h *EmitterEventHandler) PublishEmitterFailed(ctx context.Context, err error, partialCode *GeneratedCode) error {
 	event := NewEmitterFailedEvent(ctx, err, partialCode)
-	return h.eventBus.Publish(ctx, event)
+	return h.eventBus.Publish(event)
 }
 
 // PublishCodeGenerationStarted publishes a code generation started event
 func (h *EmitterEventHandler) PublishCodeGenerationStarted(ctx context.Context, methodName string, strategy ConstructionStrategy) error {
 	event := NewCodeGenerationStartedEvent(ctx, methodName, strategy)
-	return h.eventBus.Publish(ctx, event)
+	return h.eventBus.Publish(event)
 }
 
 // PublishMethodGenerated publishes a method generated event
 func (h *EmitterEventHandler) PublishMethodGenerated(ctx context.Context, method *MethodCode, duration time.Duration) error {
 	event := NewMethodGeneratedEvent(ctx, method, duration)
-	return h.eventBus.Publish(ctx, event)
+	return h.eventBus.Publish(event)
 }
 
 // PublishStrategySelected publishes a strategy selected event
 func (h *EmitterEventHandler) PublishStrategySelected(ctx context.Context, methodName string, strategy ConstructionStrategy, reason string) error {
 	event := NewStrategySelectedEvent(ctx, methodName, strategy, reason)
-	return h.eventBus.Publish(ctx, event)
+	return h.eventBus.Publish(event)
 }
 
 // Event handlers

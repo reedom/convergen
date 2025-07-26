@@ -62,13 +62,13 @@ func (cls *CompositeLiteralStrategy) CanHandle(method *domain.MethodResult) bool
 		return false
 	}
 
-	fieldCount := len(method.Data)
+	fieldCount := len(method.Metadata)
 	if fieldCount > cls.config.MaxFieldsForComposite {
 		return false
 	}
 
 	// Check for error handling requirements
-	for _, fieldResult := range method.Data {
+	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {
 				return false // Cannot use composite literals with error handling
@@ -81,7 +81,7 @@ func (cls *CompositeLiteralStrategy) CanHandle(method *domain.MethodResult) bool
 
 func (cls *CompositeLiteralStrategy) GenerateCode(ctx context.Context, method *domain.MethodResult, data *TemplateData) (string, error) {
 	cls.logger.Debug("generating composite literal code",
-		zap.String("method", method.MethodName))
+		zap.String("method", method.Method.Name))
 
 	var code strings.Builder
 	
@@ -90,7 +90,7 @@ func (cls *CompositeLiteralStrategy) GenerateCode(ctx context.Context, method *d
 	
 	// Generate field assignments
 	fieldCount := 0
-	for fieldName, fieldResult := range method.Data {
+	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			if fr.Success && fr.Error == nil {
 				assignment := cls.generateFieldAssignment(fieldName, fr)
@@ -104,7 +104,7 @@ func (cls *CompositeLiteralStrategy) GenerateCode(ctx context.Context, method *d
 	code.WriteString(fmt.Sprintf("%s}, nil\n", cls.config.IndentStyle))
 
 	cls.logger.Debug("composite literal code generated",
-		zap.String("method", method.MethodName),
+		zap.String("method", method.Method.Name),
 		zap.Int("fields", fieldCount))
 
 	return code.String(), nil
@@ -112,7 +112,7 @@ func (cls *CompositeLiteralStrategy) GenerateCode(ctx context.Context, method *d
 
 func (cls *CompositeLiteralStrategy) GetComplexity(method *domain.MethodResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
-	metrics.FieldCount = len(method.Data)
+	metrics.FieldCount = len(method.Metadata)
 	metrics.ComplexityScore = float64(metrics.FieldCount) * 2.0 // Low complexity
 	metrics.CyclomaticComplexity = 1 // Simple linear flow
 	metrics.LinesGenerated = metrics.FieldCount + 2 // Fields + return statement
@@ -154,7 +154,7 @@ func (abs *AssignmentBlockStrategy) CanHandle(method *domain.MethodResult) bool 
 
 func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *domain.MethodResult, data *TemplateData) (string, error) {
 	abs.logger.Debug("generating assignment block code",
-		zap.String("method", method.MethodName))
+		zap.String("method", method.Method.Name))
 
 	var code strings.Builder
 	
@@ -163,7 +163,7 @@ func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *do
 	
 	// Generate field assignments with error handling
 	fieldCount := 0
-	for fieldName, fieldResult := range method.Data {
+	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			assignment, errorHandling := abs.generateFieldAssignment(fieldName, fr)
 			
@@ -182,7 +182,7 @@ func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *do
 	code.WriteString(fmt.Sprintf("%sreturn &dest, nil\n", abs.config.IndentStyle))
 
 	abs.logger.Debug("assignment block code generated",
-		zap.String("method", method.MethodName),
+		zap.String("method", method.Method.Name),
 		zap.Int("fields", fieldCount))
 
 	return code.String(), nil
@@ -190,11 +190,11 @@ func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *do
 
 func (abs *AssignmentBlockStrategy) GetComplexity(method *domain.MethodResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
-	metrics.FieldCount = len(method.Data)
+	metrics.FieldCount = len(method.Metadata)
 	
 	// Calculate complexity based on error handling and field types
 	errorFields := 0
-	for _, fieldResult := range method.Data {
+	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {
 				errorFields++
@@ -216,7 +216,7 @@ func (abs *AssignmentBlockStrategy) GetRequiredImports(method *domain.MethodResu
 	
 	// Check if error handling is needed
 	hasErrors := false
-	for _, fieldResult := range method.Data {
+	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {
 				hasErrors = true
@@ -286,7 +286,7 @@ func (mas *MixedApproachStrategy) CanHandle(method *domain.MethodResult) bool {
 	}
 	
 	// Mixed approach is suitable when there are both simple and complex fields
-	fieldCount := len(method.Data)
+	fieldCount := len(method.Metadata)
 	if fieldCount < 3 {
 		return false // Not worth the complexity for few fields
 	}
@@ -294,7 +294,7 @@ func (mas *MixedApproachStrategy) CanHandle(method *domain.MethodResult) bool {
 	simpleFields := 0
 	complexFields := 0
 	
-	for _, fieldResult := range method.Data {
+	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			if mas.isSimpleField(fr) {
 				simpleFields++
@@ -310,7 +310,7 @@ func (mas *MixedApproachStrategy) CanHandle(method *domain.MethodResult) bool {
 
 func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *domain.MethodResult, data *TemplateData) (string, error) {
 	mas.logger.Debug("generating mixed approach code",
-		zap.String("method", method.MethodName))
+		zap.String("method", method.Method.Name))
 
 	var code strings.Builder
 	
@@ -318,7 +318,7 @@ func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *doma
 	simpleFields := make(map[string]*domain.FieldResult)
 	complexFields := make(map[string]*domain.FieldResult)
 	
-	for fieldName, fieldResult := range method.Data {
+	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			if mas.isSimpleField(fr) {
 				simpleFields[fieldName] = fr
@@ -364,7 +364,7 @@ func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *doma
 	}
 
 	mas.logger.Debug("mixed approach code generated",
-		zap.String("method", method.MethodName),
+		zap.String("method", method.Method.Name),
 		zap.Int("simple_fields", len(simpleFields)),
 		zap.Int("complex_fields", len(complexFields)))
 
@@ -373,13 +373,13 @@ func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *doma
 
 func (mas *MixedApproachStrategy) GetComplexity(method *domain.MethodResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
-	metrics.FieldCount = len(method.Data)
+	metrics.FieldCount = len(method.Metadata)
 	
 	simpleFields := 0
 	complexFields := 0
 	errorFields := 0
 	
-	for _, fieldResult := range method.Data {
+	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			if mas.isSimpleField(fr) {
 				simpleFields++
@@ -407,7 +407,7 @@ func (mas *MixedApproachStrategy) GetRequiredImports(method *domain.MethodResult
 	
 	// Check if error handling is needed
 	hasErrors := false
-	for _, fieldResult := range method.Data {
+	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {
 				hasErrors = true

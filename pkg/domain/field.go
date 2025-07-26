@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -10,6 +11,7 @@ type Field struct {
 	Name      string            `json:"name"`
 	Type      Type              `json:"type"`
 	Tag       string            `json:"tag"`
+	Tags      reflect.StructTag `json:"tags"`
 	Position  int               `json:"position"` // For ordering preservation
 	Exported  bool              `json:"exported"`
 	Embedded  bool              `json:"embedded"`
@@ -31,6 +33,8 @@ func NewField(name string, typ Type, position int, exported bool) (*Field, error
 		Type:     typ,
 		Position: position,
 		Exported: exported,
+		Tags:     reflect.StructTag(""),
+		Doc:      "",
 	}, nil
 }
 

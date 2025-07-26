@@ -6,7 +6,6 @@ import (
 	"go/types"
 	"reflect"
 	"sync"
-	"time"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"go.uber.org/zap"
@@ -166,7 +165,7 @@ func (tr *TypeResolver) resolvePointerType(ctx context.Context, ptr *types.Point
 		return nil, err
 	}
 
-	return domain.NewPointerType(elem), nil
+	return domain.NewPointerType(elem, ""), nil
 }
 
 // resolveSliceType handles slice types
@@ -176,7 +175,7 @@ func (tr *TypeResolver) resolveSliceType(ctx context.Context, slice *types.Slice
 		return nil, err
 	}
 
-	return domain.NewSliceType(elem), nil
+	return domain.NewSliceType(elem, ""), nil
 }
 
 // resolveArrayType handles array types
@@ -242,7 +241,12 @@ func (tr *TypeResolver) resolveStructType(ctx context.Context, structType *types
 		return nil, err
 	}
 
-	return domain.NewStructType(fields), nil
+	// Convert []*domain.Field to []domain.Field
+	fieldSlice := make([]domain.Field, len(fields))
+	for i, field := range fields {
+		fieldSlice[i] = *field
+	}
+	return domain.NewStructType("", fieldSlice, ""), nil
 }
 
 // resolveInterfaceType handles interface types
@@ -251,7 +255,7 @@ func (tr *TypeResolver) resolveInterfaceType(ctx context.Context, iface *types.I
 
 	for i := 0; i < iface.NumMethods(); i++ {
 		method := iface.Method(i)
-		sig, ok := method.Type().(*types.Signature)
+		_, ok := method.Type().(*types.Signature)
 		if !ok {
 			return nil, fmt.Errorf("expected signature for method %s", method.Name())
 		}
@@ -322,16 +326,16 @@ func (p *ASTParser) analyzeTypeStructure(ctx context.Context, domainType domain.
 	var typeInfo *domain.TypeInfo
 	
 	switch domainType.Kind() {
-	case domain.TypeKindStruct:
+	case domain.KindStruct:
 		typeInfo = p.analyzeStructTypeInfo(ctx, domainType)
-	case domain.TypeKindPointer:
+	case domain.KindPointer:
 		// Analyze the pointed-to type
 		if pointerType, ok := domainType.(*domain.PointerType); ok {
-			return p.analyzeTypeStructure(ctx, pointerType.ElementType)
+			return p.analyzeTypeStructure(ctx, pointerType.Elem())
 		}
-	case domain.TypeKindSlice, domain.TypeKindArray:
+	case domain.KindSlice:
 		typeInfo = p.analyzeCollectionTypeInfo(ctx, domainType)
-	case domain.TypeKindMap:
+	case domain.KindMap:
 		typeInfo = p.analyzeMapTypeInfo(ctx, domainType)
 	default:
 		// For basic types, create simple type info
@@ -352,19 +356,38 @@ func (p *ASTParser) analyzeTypeStructure(ctx context.Context, domainType domain.
 
 // Helper methods
 
-func (tr *TypeResolver) mapBasicTypeKind(kind types.BasicKind) domain.TypeKind {
+func (tr *TypeResolver) mapBasicTypeKind(kind types.BasicKind) reflect.Kind {
 	switch kind {
 	case types.Bool:
-		return domain.TypeKindBool
-	case types.Int, types.Int8, types.Int16, types.Int32, types.Int64,
-		 types.Uint, types.Uint8, types.Uint16, types.Uint32, types.Uint64:
-		return domain.TypeKindInt
-	case types.Float32, types.Float64:
-		return domain.TypeKindFloat
+		return reflect.Bool
+	case types.Int:
+		return reflect.Int
+	case types.Int8:
+		return reflect.Int8
+	case types.Int16:
+		return reflect.Int16
+	case types.Int32:
+		return reflect.Int32
+	case types.Int64:
+		return reflect.Int64
+	case types.Uint:
+		return reflect.Uint
+	case types.Uint8:
+		return reflect.Uint8
+	case types.Uint16:
+		return reflect.Uint16
+	case types.Uint32:
+		return reflect.Uint32
+	case types.Uint64:
+		return reflect.Uint64
+	case types.Float32:
+		return reflect.Float32
+	case types.Float64:
+		return reflect.Float64
 	case types.String:
-		return domain.TypeKindString
+		return reflect.String
 	default:
-		return domain.TypeKindBasic
+		return reflect.Interface
 	}
 }
 
@@ -387,10 +410,17 @@ func (p *ASTParser) analyzeStructTypeInfo(ctx context.Context, domainType domain
 		return nil
 	}
 
+	// Get fields and convert to pointer slice
+	fields := structType.Fields()
+	fieldPtrs := make([]*domain.Field, len(fields))
+	for i := range fields {
+		fieldPtrs[i] = &fields[i]
+	}
+
 	return &domain.TypeInfo{
 		Name:       domainType.Name(),
 		Kind:       domainType.Kind(),
-		Fields:     structType.Fields,
+		Fields:     fieldPtrs,
 		Methods:    nil, // Would be populated if needed
 		TypeParams: domainType.TypeParams(),
 	}

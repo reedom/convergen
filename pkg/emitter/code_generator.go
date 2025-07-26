@@ -102,8 +102,8 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	startTime := time.Now()
 	
 	cg.logger.Debug("generating method code",
-		zap.String("method", method.MethodName),
-		zap.Int("fields", len(method.Data)))
+		zap.String("method", method.Method.Name),
+		zap.Int("metadata_fields", len(method.Metadata)))
 
 	// Analyze method complexity and select strategy
 	strategy := cg.outputStrat.SelectStrategy(ctx, method)
@@ -169,8 +169,8 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	imports := generationStrategy.GetRequiredImports(method)
 
 	// Generate field codes for detailed analysis
-	fields := make([]*FieldCode, 0, len(method.Data))
-	for fieldName, fieldResult := range method.Data {
+	fields := make([]*FieldCode, 0, len(method.Metadata))
+	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			fieldCode, err := cg.GenerateFieldCode(ctx, fr)
 			if err != nil {
@@ -184,7 +184,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	}
 
 	methodCode := &MethodCode{
-		Name:          method.MethodName,
+		Name:          method.Method.Name,
 		Signature:     signature,
 		Body:          body,
 		ErrorHandling: errorHandling,
@@ -206,14 +206,14 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	if cg.config.EnableSyntaxValidation && cg.validator != nil {
 		if err := cg.validator.ValidateMethodCode(methodCode); err != nil {
 			cg.logger.Warn("method code validation failed",
-				zap.String("method", method.MethodName),
+				zap.String("method", method.Method.Name),
 				zap.Error(err))
 			cg.metrics.ErrorsEncountered++
 		}
 	}
 
 	cg.logger.Debug("method code generated",
-		zap.String("method", method.MethodName),
+		zap.String("method", method.Method.Name),
 		zap.Duration("duration", duration),
 		zap.String("strategy", strategy.String()),
 		zap.Int("lines", strings.Count(body, "\n")+1))
@@ -236,7 +236,7 @@ func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *d
 	var dependencies []string
 
 	// Simple field assignment (this would be more sophisticated in practice)
-	if field.Success && field.Error == nil {
+	if field.Error == nil {
 		assignment = cg.generateSimpleAssignment(field)
 	} else {
 		// Complex assignment with error handling
@@ -257,7 +257,7 @@ func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *d
 		Imports:      imports,
 		Dependencies: dependencies,
 		Order:        0, // This would be determined from source order
-		Strategy:     field.StrategyUsed,
+		Strategy:     "default", // TODO: add strategy tracking to FieldResult
 	}
 
 	cg.metrics.FieldsGenerated++
@@ -331,13 +331,13 @@ func (cg *ConcreteCodeGenerator) registerDefaultStrategies() {
 
 func (cg *ConcreteCodeGenerator) generateMethodSignature(method *domain.MethodResult) (string, error) {
 	// Simplified method signature generation
-	return fmt.Sprintf("func %s(src *SourceType) (*DestType, error)", method.MethodName), nil
+	return fmt.Sprintf("func %s(src *SourceType) (*DestType, error)", method.Method.Name), nil
 }
 
 func (cg *ConcreteCodeGenerator) hasErrorHandling(method *domain.MethodResult) bool {
-	for _, fieldResult := range method.Data {
+	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
-			if fr.Error != nil || !fr.Success {
+			if fr.Error != nil {
 				return true
 			}
 		}
@@ -347,10 +347,18 @@ func (cg *ConcreteCodeGenerator) hasErrorHandling(method *domain.MethodResult) b
 
 func (cg *ConcreteCodeGenerator) extractErrors(method *domain.MethodResult) []domain.ExecutionError {
 	var errors []domain.ExecutionError
-	for _, fieldResult := range method.Data {
+	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			if fr.Error != nil {
-				errors = append(errors, *fr.Error)
+				// Convert GenerationError to ExecutionError
+				execError := domain.ExecutionError{
+					Type:      string(fr.Error.Code),
+					Message:   fr.Error.Message,
+					Component: "emitter",
+					Method:    fr.Error.Method,
+					Field:     fr.Error.Field,
+				}
+				errors = append(errors, execError)
 			}
 		}
 	}
@@ -359,7 +367,7 @@ func (cg *ConcreteCodeGenerator) extractErrors(method *domain.MethodResult) []do
 
 func (cg *ConcreteCodeGenerator) extractFieldResults(method *domain.MethodResult) []*domain.FieldResult {
 	var results []*domain.FieldResult
-	for _, fieldResult := range method.Data {
+	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*domain.FieldResult); ok {
 			results = append(results, fr)
 		}
@@ -368,7 +376,7 @@ func (cg *ConcreteCodeGenerator) extractFieldResults(method *domain.MethodResult
 }
 
 func (cg *ConcreteCodeGenerator) generateDocumentation(method *domain.MethodResult) string {
-	return fmt.Sprintf("// %s converts SourceType to DestType\n", method.MethodName)
+	return fmt.Sprintf("// %s converts SourceType to DestType\n", method.Method.Name)
 }
 
 func (cg *ConcreteCodeGenerator) generateSimpleAssignment(field *domain.FieldResult) string {
@@ -404,7 +412,7 @@ func (cg *ConcreteCodeGenerator) analyzeFieldImports(field *domain.FieldResult) 
 }
 
 func (cg *ConcreteCodeGenerator) generateErrorCheck(err domain.ExecutionError) string {
-	return fmt.Sprintf("// Error check for %s: %s", err.FieldID, err.Error)
+	return fmt.Sprintf("// Error check for %s: %s", err.Field, err.Message)
 }
 
 func (cg *ConcreteCodeGenerator) getHelperFunctions() map[string]interface{} {

@@ -77,7 +77,7 @@ func (ep *ExecutionPlanner) CreateExecutionPlan(ctx context.Context, methods []*
 	
 	// Emit planning started event
 	planStartedEvent := events.NewPlanStartedEvent(ctx, methods)
-	if err := ep.eventBus.Publish(ctx, planStartedEvent); err != nil {
+	if err := ep.eventBus.Publish(planStartedEvent); err != nil {
 		ep.logger.Warn("failed to publish plan started event", zap.Error(err))
 	}
 
@@ -132,7 +132,7 @@ func (ep *ExecutionPlanner) CreateExecutionPlan(ctx context.Context, methods []*
 
 	// Emit planning completed event
 	plannedEvent := events.NewPlannedEvent(ctx, plan)
-	if err := ep.eventBus.Publish(ctx, plannedEvent); err != nil {
+	if err := ep.eventBus.Publish(plannedEvent); err != nil {
 		ep.logger.Warn("failed to publish planned event", zap.Error(err))
 	}
 
@@ -283,10 +283,20 @@ func (ep *ExecutionPlanner) createMethodPlans(ctx context.Context, methods []*do
 		// Find batches containing this method's field mappings
 		methodBatches := ep.findMethodBatches(method, batches)
 
+		// Convert ExecutionBatch to ConcurrentBatch
+		concurrentBatches := make([]*domain.ConcurrentBatch, len(methodBatches))
+		for i, execBatch := range methodBatches {
+			concurrentBatch, err := domain.NewConcurrentBatch(execBatch.ID, execBatch.Mappings)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create concurrent batch: %w", err)
+			}
+			concurrentBatches[i] = concurrentBatch
+		}
+
 		plan := &domain.MethodPlan{
 			MethodName:          method.Name,
 			TotalFields:         len(method.FieldMappings()),
-			Batches:             methodBatches,
+			Batches:             concurrentBatches,
 			EstimatedDurationMS: ep.estimateMethodDuration(methodBatches),
 			RequiredWorkers:     ep.calculateMethodWorkers(methodBatches),
 			MemoryRequirementMB: ep.calculateMethodMemory(methodBatches),
@@ -384,7 +394,7 @@ func (ep *ExecutionPlanner) determineExecutionStrategy(batches []*ExecutionBatch
 	}
 	
 	if hasParallelizableBatches {
-		return domain.StrategyPipelined
+		return domain.StrategyBatched
 	}
 	
 	return domain.StrategySequential

@@ -298,6 +298,9 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 		zap.Int("errors", len(result.Errors)),
 		zap.Int("methods_completed", len(result.Results)))
 
+	// Record plan execution metrics
+	e.metrics.RecordPlanExecution(result)
+
 	return result, nil
 }
 
@@ -399,7 +402,7 @@ func (e *ConcreteExecutor) executeMethod(ctx context.Context, methodName string,
 	for i, batch := range methodPlan.Batches {
 		batchExecution := &BatchExecution{
 			ID:             batch.ID,
-			Mappings:       batch.Mappings,
+			Mappings:       batch.Fields,
 			MethodName:     methodName,
 			BatchIndex:     i,
 			DependsOn:      batch.DependsOn,

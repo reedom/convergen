@@ -72,7 +72,7 @@ func TestInMemoryEventBus(t *testing.T) {
 		ctx := context.Background()
 		event := NewBaseEvent("test.event", ctx)
 		
-		err := bus.Publish(ctx, event)
+		err := bus.Publish(event)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), bus.Stats().GetPublishedCount("test.event"))
 	})
@@ -97,7 +97,7 @@ func TestInMemoryEventBus(t *testing.T) {
 		ctx := context.Background()
 		event := NewBaseEvent("test.event", ctx)
 		
-		err = bus.Publish(ctx, event)
+		err = bus.Publish(event)
 		assert.NoError(t, err)
 		
 		// Wait a bit for async processing
@@ -127,7 +127,7 @@ func TestInMemoryEventBus(t *testing.T) {
 		ctx := context.Background()
 		event := NewBaseEvent("test.event", ctx)
 		
-		err = bus.Publish(ctx, event)
+		err = bus.Publish(event)
 		assert.Error(t, err)
 		
 		assert.Equal(t, int64(1), bus.Stats().GetPublishedCount("test.event"))
@@ -164,7 +164,7 @@ func TestInMemoryEventBus(t *testing.T) {
 		ctx := context.Background()
 		event := NewBaseEvent("test.event", ctx)
 		
-		err = bus.Publish(ctx, event)
+		err = bus.Publish(event)
 		assert.NoError(t, err)
 		
 		// Wait for async processing
@@ -198,7 +198,7 @@ func TestInMemoryEventBus(t *testing.T) {
 		
 		ctx := context.Background()
 		event := NewBaseEvent("test.event", ctx)
-		err = bus.Publish(ctx, event)
+		err = bus.Publish(event)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "event bus is closed")
 	})
@@ -281,7 +281,7 @@ func TestMiddlewareEventBus(t *testing.T) {
 		ctx := context.Background()
 		event := NewBaseEvent("test.event", ctx)
 		
-		err = bus.Publish(ctx, event)
+		err = bus.Publish(event)
 		assert.NoError(t, err)
 		
 		stats := bus.Stats()
@@ -312,7 +312,7 @@ func TestMiddlewareEventBus(t *testing.T) {
 		ctx := context.Background()
 		event := NewBaseEvent("test.event", ctx)
 		
-		err = bus.Publish(ctx, event)
+		err = bus.Publish(event)
 		assert.NoError(t, err)
 		
 		time.Sleep(10 * time.Millisecond)

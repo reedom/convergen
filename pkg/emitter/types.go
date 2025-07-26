@@ -1,6 +1,7 @@
 package emitter
 
 import (
+	"strings"
 	"time"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
@@ -336,15 +337,85 @@ type ValidationMetrics struct {
 	SuggestionsFound int                     `json:"suggestions_found"`
 }
 
+// TemplateSystem manages code generation templates
+type TemplateSystem interface {
+	Execute(template string, data interface{}) (string, error)
+	HasTemplate(name string) bool
+	RegisterTemplate(name, content string) error
+}
+
+// CodeValidator validates generated code
+type CodeValidator interface {
+	Validate(code string) error
+	ValidateMethod(method *MethodCode) error
+	ValidateMethodCode(methodCode *MethodCode) error
+}
+
+// SimpleTemplateSystem provides basic template functionality
+type SimpleTemplateSystem struct{}
+
+func NewTemplateSystem() TemplateSystem {
+	return &SimpleTemplateSystem{}
+}
+
+func (s *SimpleTemplateSystem) Execute(template string, data interface{}) (string, error) {
+	// Simple template execution - in practice this would use text/template
+	return template, nil
+}
+
+func (s *SimpleTemplateSystem) HasTemplate(name string) bool {
+	return false
+}
+
+func (s *SimpleTemplateSystem) RegisterTemplate(name, content string) error {
+	// Simple registration - in practice this would store templates
+	return nil
+}
+
+func NewCustomTemplate(name, content string) interface{} {
+	return content
+}
+
+// NewEmitterMetrics creates default emitter metrics
+func NewEmitterMetrics() *EmitterMetrics {
+	return &EmitterMetrics{
+		StartTime:        time.Now(),
+		TotalMethods:     0,
+		MethodsGenerated: 0,
+		MethodsFailed:    0,
+		LinesGenerated:   0,
+		ImportsGenerated: 0,
+		BytesGenerated:   0,
+	}
+}
+
+// RecordGeneration records generation metrics
+func (m *EmitterMetrics) RecordGeneration(methodCode *MethodCode, packageName string, methods []*MethodCode) {
+	m.MethodsGenerated++
+	if methodCode != nil {
+		m.LinesGenerated += len(strings.Split(methodCode.Assignment, "\n"))
+	}
+}
+
+// GetSnapshot returns a snapshot of current metrics
+func (m *EmitterMetrics) GetSnapshot() *EmitterMetrics {
+	return &EmitterMetrics{
+		StartTime:        m.StartTime,
+		EndTime:          m.EndTime,
+		TotalMethods:     m.TotalMethods,
+		MethodsGenerated: m.MethodsGenerated,
+		MethodsFailed:    m.MethodsFailed,
+		LinesGenerated:   m.LinesGenerated,
+		ImportsGenerated: m.ImportsGenerated,
+		BytesGenerated:   m.BytesGenerated,
+	}
+}
+
 // Event type constants
 const (
 	EventEmitStarted      = "emit.started"
 	EventEmitCompleted    = "emit.completed"
 	EventEmitFailed       = "emit.failed"
-	EventMethodGenerated  = "emit.method.generated"
-	EventImportsGenerated = "emit.imports.generated"
-	EventCodeOptimized    = "emit.code.optimized"
-	EventCodeFormatted    = "emit.code.formatted"
 	EventValidationFailed = "emit.validation.failed"
 )
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"go/ast"
-	"go/token"
 	"go/types"
 	"strings"
 
@@ -65,14 +64,12 @@ func (p *ASTParser) processMethod(ctx context.Context, pkg *packages.Package, fi
 		return nil, fmt.Errorf("failed to analyze return types: %w", err)
 	}
 
-	// Analyze receiver if present
-	var receiver *domain.Parameter
+	// Analyze receiver if present (for future use)
 	if signature.Recv() != nil {
-		recv, err := p.analyzeReceiver(ctx, signature.Recv())
+		_, err := p.analyzeReceiver(ctx, signature.Recv())
 		if err != nil {
 			return nil, fmt.Errorf("failed to analyze receiver: %w", err)
 		}
-		receiver = recv
 	}
 
 	// Create field mappings
@@ -120,7 +117,7 @@ func (p *ASTParser) validateMethodSignature(signature *types.Signature, methodOb
 	// Check if last return is error (optional)
 	if signature.Results().Len() > 1 {
 		lastReturn := signature.Results().At(signature.Results().Len() - 1)
-		if !p.isErrorType(lastReturn.Type()) {
+		if !isGoErrorType(lastReturn.Type()) {
 			return fmt.Errorf("method %s: if multiple returns, last must be error type", methodObj.Name())
 		}
 	}
@@ -216,7 +213,7 @@ func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotat
 	default:
 		p.logger.Warn("unknown method annotation",
 			zap.String("type", annotation.Type),
-			zap.String("position", p.parser.fileSet.Position(annotation.Position).String()))
+			zap.String("position", p.fileSet.Position(annotation.Position).String()))
 	}
 
 	return nil
@@ -230,7 +227,7 @@ func (p *ASTParser) analyzeMethodParameters(ctx context.Context, params *types.T
 		param := params.At(i)
 		
 		// Resolve type with generics support
-		resolvedType, err := p.typeResolver.ResolveType(ctx, param.Type())
+		resolvedType, err := p.typeResolverPool.Get().ResolveType(ctx, param.Type())
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve parameter type: %w", err)
 		}
@@ -260,7 +257,7 @@ func (p *ASTParser) analyzeMethodReturns(ctx context.Context, results *types.Tup
 		result := results.At(i)
 		
 		// Resolve type with generics support
-		resolvedType, err := p.typeResolver.ResolveType(ctx, result.Type())
+		resolvedType, err := p.typeResolverPool.Get().ResolveType(ctx, result.Type())
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve return type: %w", err)
 		}
@@ -292,7 +289,7 @@ func (p *ASTParser) analyzeMethodReturns(ctx context.Context, results *types.Tup
 
 // analyzeReceiver analyzes method receiver
 func (p *ASTParser) analyzeReceiver(ctx context.Context, recv *types.Var) (*domain.Parameter, error) {
-	resolvedType, err := p.typeResolver.ResolveType(ctx, recv.Type())
+	resolvedType, err := p.typeResolverPool.Get().ResolveType(ctx, recv.Type())
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve receiver type: %w", err)
 	}
@@ -458,4 +455,12 @@ func (p *ASTParser) applyInterfaceAnnotationToMethod(options *domain.MethodOptio
 	options.PostprocessFunction = interfaceOpts.PostprocessFunction
 
 	return nil
+}
+
+// isGoErrorType checks if a Go types.Type is the built-in error interface
+func isGoErrorType(t types.Type) bool {
+	if named, ok := t.(*types.Named); ok {
+		return named.Obj().Name() == "error" && named.Obj().Pkg() == nil
+	}
+	return false
 }

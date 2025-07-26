@@ -18,6 +18,9 @@ const (
 	KindGeneric
 	KindNamed
 	KindFunction
+	
+	// Aliases for compatibility
+	TypeKindInterface = KindInterface
 )
 
 func (k TypeKind) String() string {
@@ -126,11 +129,11 @@ func (t *BasicType) Comparable() bool {
 
 // StructType represents struct types with ordered fields
 type StructType struct {
-	name       string        `json:"name"`
-	fields     []Field       `json:"fields"`
-	typeParams []TypeParam   `json:"type_params"`
-	pkg        string        `json:"package"`
-	importPath string        `json:"import_path"`
+	name       string
+	fields     []Field
+	typeParams []TypeParam
+	pkg        string
+	importPath string
 }
 
 func NewStructType(name string, fields []Field, pkg string) *StructType {
@@ -195,9 +198,9 @@ func (t *StructType) Comparable() bool {
 
 // SliceType represents slice types
 type SliceType struct {
-	elem       Type     `json:"element_type"`
-	pkg        string   `json:"package"`
-	importPath string   `json:"import_path"`
+	elem       Type
+	pkg        string
+	importPath string
 }
 
 func NewSliceType(elem Type, pkg string) *SliceType {
@@ -238,9 +241,9 @@ func (t *SliceType) Comparable() bool {
 
 // PointerType represents pointer types
 type PointerType struct {
-	elem       Type     `json:"element_type"`
-	pkg        string   `json:"package"`
-	importPath string   `json:"import_path"`
+	elem       Type
+	pkg        string
+	importPath string
 }
 
 func NewPointerType(elem Type, pkg string) *PointerType {
@@ -282,11 +285,11 @@ func (t *PointerType) Comparable() bool {
 
 // GenericType represents generic type parameters
 type GenericType struct {
-	name       string      `json:"name"`
-	constraint Type        `json:"constraint"`
-	index      int         `json:"index"`
-	pkg        string      `json:"package"`
-	importPath string      `json:"import_path"`
+	name       string
+	constraint Type
+	index      int
+	pkg        string
+	importPath string
 }
 
 func NewGenericType(name string, constraint Type, index int, pkg string) *GenericType {
@@ -336,6 +339,104 @@ type TypeBuilder struct {
 func NewTypeBuilder() *TypeBuilder {
 	return &TypeBuilder{
 		cache: make(map[string]Type),
+	}
+}
+
+
+// Additional constructors needed by the parser
+func NewNamedType(name string, underlying Type, typeParams []TypeParam) Type {
+	return &BasicType{
+		name: name,
+		kind: reflect.Struct, // Default for named types
+		pkg:  "",
+	}
+}
+
+func NewArrayType(elem Type, length int) Type {
+	return &SliceType{
+		elem: elem,
+		pkg:  "",
+	}
+}
+
+func NewMapType(key, value Type) Type {
+	return &mapType{
+		name: "map[" + key.Name() + "]" + value.Name(),
+		key:  key,
+		value: value,
+	}
+}
+
+// mapType is a simple wrapper that returns KindMap
+type mapType struct {
+	name  string
+	key   Type
+	value Type
+}
+
+func (t *mapType) Name() string           { return t.name }
+func (t *mapType) Kind() TypeKind         { return KindMap }
+func (t *mapType) String() string         { return t.name }
+func (t *mapType) Generic() bool          { return false }
+func (t *mapType) TypeParams() []TypeParam { return nil }
+func (t *mapType) Underlying() Type       { return t }
+func (t *mapType) Package() string        { return "" }
+func (t *mapType) ImportPath() string     { return "" }
+func (t *mapType) AssignableTo(other Type) bool { return false }
+func (t *mapType) Implements(iface Type) bool { return false }
+func (t *mapType) Comparable() bool       { return false }
+
+func NewInterfaceType(methods []*Method) Type {
+	return &BasicType{
+		name: "interface{}",
+		kind: reflect.Interface,
+		pkg:  "",
+	}
+}
+
+func NewChannelType(elem Type, direction ChannelDirection) Type {
+	return &BasicType{
+		name: "chan " + elem.Name(),
+		kind: reflect.Chan,
+		pkg:  "",
+	}
+}
+
+func NewFunctionType(params, returns []Type, variadic bool) Type {
+	return &functionType{
+		name:     "func",
+		params:   params,
+		returns:  returns,
+		variadic: variadic,
+	}
+}
+
+// functionType is a simple wrapper that returns KindFunction
+type functionType struct {
+	name     string
+	params   []Type
+	returns  []Type
+	variadic bool
+}
+
+func (t *functionType) Name() string           { return t.name }
+func (t *functionType) Kind() TypeKind         { return KindFunction }
+func (t *functionType) String() string         { return t.name }
+func (t *functionType) Generic() bool          { return false }
+func (t *functionType) TypeParams() []TypeParam { return nil }
+func (t *functionType) Underlying() Type       { return t }
+func (t *functionType) Package() string        { return "" }
+func (t *functionType) ImportPath() string     { return "" }
+func (t *functionType) AssignableTo(other Type) bool { return false }
+func (t *functionType) Implements(iface Type) bool { return false }
+func (t *functionType) Comparable() bool       { return false }
+
+func NewTypeParameterType(name string, constraint Type) Type {
+	return &GenericType{
+		name:       name,
+		constraint: constraint,
+		index:      0,
+		pkg:        "",
 	}
 }
 

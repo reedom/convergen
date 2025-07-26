@@ -200,6 +200,7 @@ type Receiver struct {
 
 // ExecutionPlan defines how to execute field conversions concurrently
 type ExecutionPlan struct {
+	ID           string                 `json:"id"`
 	Methods      map[string]*MethodPlan `json:"methods"`
 	GlobalLimits *ResourceLimits        `json:"global_limits"`
 	Strategy     ExecutionStrategy      `json:"strategy"`
@@ -208,10 +209,16 @@ type ExecutionPlan struct {
 
 // MethodPlan represents the execution plan for a single method
 type MethodPlan struct {
-	Method    *Method             `json:"method"`
-	Mappings  []*FieldMapping     `json:"mappings"`
-	Batches   []*ConcurrentBatch  `json:"batches"`
-	Resources *ResourceAllocation `json:"resources"`
+	Method              *Method             `json:"method"`
+	MethodName          string              `json:"method_name"`
+	Mappings            []*FieldMapping     `json:"mappings"`
+	Batches             []*ConcurrentBatch  `json:"batches"`
+	Resources           *ResourceAllocation `json:"resources"`
+	Strategy            MethodStrategy      `json:"strategy"`
+	RequiredWorkers     int                 `json:"required_workers"`
+	MemoryRequirementMB int                 `json:"memory_requirement_mb"`
+	TotalFields         int                 `json:"total_fields"`
+	EstimatedDurationMS int64               `json:"estimated_duration_ms"`
 }
 
 // ConcurrentBatch groups fields that can be processed in parallel
@@ -264,15 +271,21 @@ func (cb *ConcurrentBatch) AddDependency(batchID string) error {
 // ResourceLimits defines execution constraints
 type ResourceLimits struct {
 	MaxGoroutines       int           `json:"max_goroutines"`
+	MaxWorkers          int           `json:"max_workers"`
 	MaxMemoryMB         int           `json:"max_memory_mb"`
 	TimeoutMS           int           `json:"timeout_ms"`
 	MaxConcurrentFields int           `json:"max_concurrent_fields"`
+	MaxDurationMS       int64         `json:"max_duration_ms"`
+	MaxFieldsPerBatch   int           `json:"max_fields_per_batch"`
+	EnableGoroutinePool bool          `json:"enable_goroutine_pool"`
+	EnableMemoryPool    bool          `json:"enable_memory_pool"`
 }
 
 // NewResourceLimits creates default resource limits
 func NewResourceLimits() *ResourceLimits {
 	return &ResourceLimits{
 		MaxGoroutines:       10,
+		MaxWorkers:          10,
 		MaxMemoryMB:         100,
 		TimeoutMS:           30000, // 30 seconds
 		MaxConcurrentFields: 50,
@@ -471,3 +484,75 @@ func estimateBatchTime(fields []*FieldMapping) int64 {
 	
 	return baseTimeMS
 }
+
+// MethodStrategy defines different strategies for method execution
+type MethodStrategy int
+
+const (
+	MethodStrategyDirect     MethodStrategy = iota
+	MethodStrategyPipelined
+	MethodStrategyBatched
+	MethodStrategyAdaptive
+)
+
+func (s MethodStrategy) String() string {
+	switch s {
+	case MethodStrategyDirect:
+		return "direct"
+	case MethodStrategyPipelined:
+		return "pipelined"
+	case MethodStrategyBatched:
+		return "batched"
+	case MethodStrategyAdaptive:
+		return "adaptive"
+	default:
+		return "unknown"
+	}
+}
+
+// MethodResult represents the result of executing a single method
+type MethodResult struct {
+	Method      *Method           `json:"method"`
+	Code        string            `json:"code"`
+	Imports     []Import          `json:"imports"`
+	Success     bool              `json:"success"`
+	Error       *ExecutionError   `json:"error,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata"`
+	ProcessedAt time.Time         `json:"processed_at"`
+	DurationMS  int64             `json:"duration_ms"`
+}
+
+// ExecutionResults represents the complete results of pipeline execution
+type ExecutionResults struct {
+	Methods     []*MethodResult   `json:"methods"`
+	Success     bool              `json:"success"`
+	Errors      []*ExecutionError `json:"errors"`
+	TotalTime   time.Duration     `json:"total_time"`
+	Metadata    map[string]interface{} `json:"metadata"`
+	PackageName string            `json:"package_name"`
+	BaseCode    string            `json:"base_code"`
+}
+
+// ExecutionError represents an error that occurred during execution
+type ExecutionError struct {
+	Type        string            `json:"type"`
+	Message     string            `json:"message"`
+	Component   string            `json:"component"`
+	Method      string            `json:"method,omitempty"`
+	Field       string            `json:"field,omitempty"`
+	StackTrace  string            `json:"stack_trace,omitempty"`
+	Timestamp   time.Time         `json:"timestamp"`
+	Retryable   bool              `json:"retryable"`
+	Context     map[string]interface{} `json:"context,omitempty"`
+}
+
+// Error implements the error interface
+func (e *ExecutionError) Error() string {
+	if e.Method != "" && e.Field != "" {
+		return fmt.Sprintf("%s error in %s.%s.%s: %s", e.Type, e.Component, e.Method, e.Field, e.Message)
+	} else if e.Method != "" {
+		return fmt.Sprintf("%s error in %s.%s: %s", e.Type, e.Component, e.Method, e.Message)
+	}
+	return fmt.Sprintf("%s error in %s: %s", e.Type, e.Component, e.Message)
+}
+

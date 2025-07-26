@@ -14,6 +14,7 @@ import (
 type Event interface {
 	ID() string
 	Type() string
+	Data() map[string]interface{}
 	Timestamp() time.Time
 	Context() context.Context
 	Metadata() map[string]interface{}
@@ -27,17 +28,19 @@ type EventHandler interface {
 
 // EventBus manages event publishing and subscription
 type EventBus interface {
-	Publish(ctx context.Context, event Event) error
+	Publish(event Event) error
 	Subscribe(eventType string, handler EventHandler) error
 	Unsubscribe(eventType string, handler EventHandler) error
 	Close() error
 	Stats() *BusStats
+	Emit(ctx context.Context, event Event) error
 }
 
 // BaseEvent provides common event functionality
 type BaseEvent struct {
 	id        string
 	eventType string
+	data      map[string]interface{}
 	timestamp time.Time
 	ctx       context.Context
 	metadata  map[string]interface{}
@@ -49,14 +52,29 @@ func NewBaseEvent(eventType string, ctx context.Context) *BaseEvent {
 	return &BaseEvent{
 		id:        id,
 		eventType: eventType,
+		data:      make(map[string]interface{}),
 		timestamp: time.Now(),
 		ctx:       ctx,
 		metadata:  make(map[string]interface{}),
 	}
 }
 
+// NewEvent creates a new event with data
+func NewEvent(eventType string, data map[string]interface{}) Event {
+	id, _ := gonanoid.Nanoid()
+	return &BaseEvent{
+		id:        id,
+		eventType: eventType,
+		data:      data,
+		timestamp: time.Now(),
+		ctx:       context.Background(),
+		metadata:  make(map[string]interface{}),
+	}
+}
+
 func (e *BaseEvent) ID() string                         { return e.id }
 func (e *BaseEvent) Type() string                       { return e.eventType }
+func (e *BaseEvent) Data() map[string]interface{}       { return e.data }
 func (e *BaseEvent) Timestamp() time.Time               { return e.timestamp }
 func (e *BaseEvent) Context() context.Context           { return e.ctx }
 func (e *BaseEvent) Metadata() map[string]interface{}   { return e.metadata }
@@ -87,7 +105,8 @@ func NewInMemoryEventBus(logger *zap.Logger) *InMemoryEventBus {
 }
 
 // Publish publishes an event to all registered handlers
-func (bus *InMemoryEventBus) Publish(ctx context.Context, event Event) error {
+func (bus *InMemoryEventBus) Publish(event Event) error {
+	ctx := event.Context()
 	bus.mutex.RLock()
 	defer bus.mutex.RUnlock()
 	
@@ -224,6 +243,11 @@ func (bus *InMemoryEventBus) Stats() *BusStats {
 	// Return a copy to avoid race conditions
 	statsCopy := *bus.stats
 	return &statsCopy
+}
+
+// Emit emits an event with context (alias for Publish for compatibility)
+func (bus *InMemoryEventBus) Emit(ctx context.Context, event Event) error {
+	return bus.Publish(event)
 }
 
 // BusStats tracks event bus statistics
@@ -380,14 +404,15 @@ func (bus *MiddlewareEventBus) AddMiddleware(middleware EventMiddleware) {
 }
 
 // Publish publishes an event through the middleware chain
-func (bus *MiddlewareEventBus) Publish(ctx context.Context, event Event) error {
+func (bus *MiddlewareEventBus) Publish(event Event) error {
+	ctx := event.Context()
 	if len(bus.middlewares) == 0 {
-		return bus.inner.Publish(ctx, event)
+		return bus.inner.Publish(event)
 	}
 	
 	// Build middleware chain
 	next := func(ctx context.Context, event Event) error {
-		return bus.inner.Publish(ctx, event)
+		return bus.inner.Publish(event)
 	}
 	
 	// Apply middlewares in reverse order

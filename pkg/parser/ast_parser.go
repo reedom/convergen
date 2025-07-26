@@ -68,7 +68,7 @@ func NewASTParser(logger *zap.Logger, eventBus events.EventBus, config *ParserCo
 func (p *ASTParser) ParseSourceFile(ctx context.Context, sourcePath, destPath string) ([]*domain.Method, string, error) {
 	// Emit parse started event
 	parseStartedEvent := events.NewParseStartedEvent(ctx, sourcePath)
-	if err := p.eventBus.Publish(ctx, parseStartedEvent); err != nil {
+	if err := p.eventBus.Publish(parseStartedEvent); err != nil {
 		p.logger.Warn("failed to publish parse started event", zap.Error(err))
 	}
 
@@ -146,7 +146,7 @@ func (p *ASTParser) ParseSourceFile(ctx context.Context, sourcePath, destPath st
 	// Emit parsed event
 	parsedEvent := events.NewParsedEvent(ctx, methods, baseCode)
 	parsedEvent.Metrics = metrics
-	if err := p.eventBus.Publish(ctx, parsedEvent); err != nil {
+	if err := p.eventBus.Publish(parsedEvent); err != nil {
 		p.logger.Warn("failed to publish parsed event", zap.Error(err))
 	}
 
@@ -306,7 +306,7 @@ func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPh
 			// This is a simplified progress tracking - in a real implementation,
 			// you'd track actual progress through shared counters
 			progressEvent := events.NewProgressEvent(ctx, phase, 0, total, message)
-			if err := p.eventBus.Publish(ctx, progressEvent); err != nil {
+			if err := p.eventBus.Publish(progressEvent); err != nil {
 				p.logger.Warn("failed to publish progress event", zap.Error(err))
 			}
 		}

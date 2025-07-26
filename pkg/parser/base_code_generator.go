@@ -8,7 +8,6 @@ import (
 	"go/printer"
 	"go/token"
 	"regexp"
-	"strings"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"go.uber.org/zap"
@@ -314,13 +313,13 @@ func (p *ASTParser) resolveCrossReferences(ctx context.Context, methods []*domai
 	// Create a map of method names to methods for quick lookup
 	methodMap := make(map[string]*domain.Method)
 	for _, method := range methods {
-		methodMap[method.Name()] = method
+		methodMap[method.Name] = method
 	}
 
 	// Process each method to resolve converter references
 	for _, method := range methods {
 		if err := p.resolveMethodConverters(method, methodMap); err != nil {
-			return fmt.Errorf("failed to resolve converters for method %s: %w", method.Name(), err)
+			return fmt.Errorf("failed to resolve converters for method %s: %w", method.Name, err)
 		}
 	}
 
@@ -372,17 +371,17 @@ func (p *ASTParser) validateConverterCompatibility(mapping *domain.FieldMapping,
 
 	if !sourceType.AssignableTo(converterSourceType) {
 		return fmt.Errorf("source type %s not assignable to converter input %s", 
-			sourceType.Name, converterSourceType.Name)
+			sourceType.Name(), converterSourceType.Name())
 	}
 
 	if !converterDestType.AssignableTo(destType) {
 		return fmt.Errorf("converter output %s not assignable to destination type %s", 
-			converterDestType.Name, destType.Name)
+			converterDestType.Name(), destType.Name())
 	}
 
 	// If two returns, second must be error
 	if len(returns) == 2 {
-		if returns[1].Type.Name != "error" {
+		if returns[1].Type.Name() != "error" {
 			return fmt.Errorf("second return value must be error type")
 		}
 	}
