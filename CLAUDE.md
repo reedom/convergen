@@ -2,11 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Quick Reference
 
-Convergen is a Go code generator that creates type-to-type copy functions. It analyzes Go interfaces with special comment annotations and generates efficient copying functions between different struct types.
+- **Project Overview**: See `.claude/01_project/01_convergen_concept_requirements.md`
+- **Architecture**: See `.claude/02_development_docs/01_architecture_design.md`
+- **Code Conventions**: See `.claude/00_general_rules/02_coding_guidelines.md`
+- **SDD Workflow**: See `.claude/00_general_rules/01_sdd_workflow_concepts.md`
 
-## Key Commands
+## Key Development Commands
 
 ### Build & Development
 - `make build` - Build the CLI command to `build/convergen`
@@ -20,42 +23,81 @@ Convergen is a Go code generator that creates type-to-type copy functions. It an
 - `go test github.com/reedom/convergen/v8/tests` - Run integration tests
 - `go test github.com/reedom/convergen/v8/pkg/...` - Run all package tests
 - `go test ./pkg/builder/...` - Test specific package
+- `go test -v ./pkg/builder/...` - Run tests with verbose output
+- `go test -run TestSpecificTest ./pkg/builder/...` - Run specific test by name
 
-## Architecture
+## Current Module Information
 
-### Core Processing Pipeline
-1. **Parser** (`pkg/parser/`) - Parses Go source files and extracts interface definitions with annotations
-2. **Builder** (`pkg/builder/`) - Analyzes type relationships and builds conversion logic models
-3. **Generator** (`pkg/generator/`) - Generates actual Go code from the conversion models
-4. **Runner** (`pkg/runner/`) - Orchestrates the entire process
+- **Module Path**: `github.com/reedom/convergen/v8`
+- **Go Version**: 1.23+
+- **Entry Point**: `main.go`
+- **Package Layout**: Standard Go project layout with `pkg/` organization
 
-### Key Packages
+## Key Package Overview
 
-- **`pkg/config/`** - Command-line argument parsing and configuration
-- **`pkg/parser/`** - AST parsing, interface detection, and comment annotation parsing
-- **`pkg/builder/`** - Core logic for building type conversion mappings and handling complex field assignments
-- **`pkg/generator/`** - Code generation engine that produces the final Go functions
-- **`pkg/option/`** - Handles various annotation options (`:map`, `:conv`, `:skip`, etc.)
-- **`pkg/util/`** - AST utilities, type checking, and import management
-- **`pkg/logger/`** - Logging utilities
+- **`pkg/domain/`** - Core domain models and types (use constructors!)
+- **`pkg/parser/`** - AST parsing and interface extraction
+- **`pkg/builder/`** - Type conversion logic and field mapping
+- **`pkg/executor/`** - Field mapping strategy execution
+- **`pkg/generator/`** - Go code generation from models
+- **`pkg/emitter/`** - Final code emission with optimization
+- **`pkg/coordinator/`** - Pipeline orchestration with events
+- **`pkg/config/`** - Configuration management
+- **`pkg/util/`** - AST utilities and type checking
+- **`pkg/internal/events/`** - Event-driven communication
 
-### Important Models
+## Essential Development Patterns
 
-- **`builder/model/copier.go`** - Central model representing a conversion function
-- **`generator/model/function.go`** - Generated function representation
-- **`parser/interface.go`** - Parsed interface and method definitions
+### Domain Model Usage (CRITICAL)
+The project underwent major domain model restructuring. Always follow these patterns:
 
-## Code Generation Process
+**✅ Use Constructors (Required)**:
+```go
+// Use constructors for all domain objects
+sourceType := domain.NewBasicType("User", reflect.Struct)
+method, err := domain.NewMethod("ConvertUser", sourceType, destType)
 
-1. Parse source file and extract `Convergen` interfaces (or those marked with `:convergen`)
-2. For each method in the interface, analyze source and destination types
-3. Build field mapping using various strategies (name matching, explicit `:map`, `:conv`)
-4. Handle special annotations (`:skip`, `:literal`, `:typecast`, `:stringer`, etc.)
-5. Generate Go code with proper imports and error handling
+// ❌ NEVER use direct struct literals
+// method := &domain.Method{Name: "ConvertUser", ...}
+```
 
-## Annotation System
+**✅ Event System Pattern**:
+```go
+// EventHandler interface calls
+err := handler.Handle(ctx, event)
 
-The project uses a rich comment-based annotation system:
+// Event publishing
+err := eventBus.Publish(event)  // Single parameter only
+
+// ❌ NOT: err := handler(ctx, event)
+// ❌ NOT: eventBus.Publish(ctx, event)
+```
+
+**✅ Result Structures**:
+```go
+// New MethodResult structure
+result := &domain.MethodResult{
+    Method:      method,          // NOT MethodName
+    Code:        "generated code", // NOT Result field
+    Success:     true,
+    Error:       nil,
+    ProcessedAt: time.Now(),
+    DurationMS:  5,
+}
+```
+
+### Test Development Guidelines
+- Replace legacy field patterns: `MethodName` → `Method` (with proper Method object)
+- Replace: `Success/Result/StrategyUsed` → `Code/Error/ProcessedAt/DurationMS`
+- Use proper domain constructors in test setup
+- Import `reflect` package when working with `BasicType`
+
+### Build Tags and Multiple Main Functions
+- Use `//go:build tools` and `// +build tools` for verification utilities
+- Prevents conflicts with main package compilation
+
+## Annotation System Reference
+
 - `:match name|none` - Field matching strategy
 - `:map <src> <dst>` - Explicit field mapping  
 - `:conv <func> <src> [dst]` - Custom converter functions
@@ -65,30 +107,109 @@ The project uses a rich comment-based annotation system:
 - `:recv <var>` - Generate receiver methods
 - `:style arg|return` - Function signature style
 
-## Testing
+## Project Context
 
-The project has comprehensive test coverage:
-- Integration tests in `tests/` using fixture-based approach
-- Unit tests alongside source files (`*_test.go`)
-- Coverage target visible in README badge (currently 67.4%)
-
-## Code Conventions
-
-From CONTRIBUTING.md:
-- Use `<` and `<=` operators instead of `>` and `>=` (number line model)
-- Follow Effective Go principles
-- Use `gofmt` for formatting
-- Prefer `MixedCaps` naming
-- Explicit error handling with no panics for normal errors
-- Comments explain "why" not "what"
-
-## Module Structure
-
-- Go module: `github.com/reedom/convergen/v8`
-- Go version: 1.23+
-- Main entry point: `main.go`
-- All source code in `pkg/` following standard Go project layout
+**What it does**: Convergen generates Go type-to-type copy functions from annotated interfaces
+**How it works**: 4-stage pipeline (Parser → Builder → Generator → Coordinator) with event-driven architecture
+**Testing**: Integration tests in `tests/`, unit tests alongside source, 67%+ coverage target
+**Recent Changes**: Major domain model restructuring completed, use constructor patterns throughout
 
 ## Spec-Driven Development (SDD) Workflow
 
-Read ./CONCEPTS.md for the SDD workflow.
+For complex changes, follow SDD workflow documented in `.claude/00_general_rules/01_sdd_workflow_concepts.md`:
+1. Understand requirements and analyze codebase
+2. Create `.spec/` directory with requirements.md, design.md, tasks.md
+3. Seek user approval before implementation
+4. Implement systematically following the plan
+5. Verify and validate results
+
+---
+
+## 📚 Documentation Reference Guide
+
+### When to Read Specific Documents
+
+#### 🔧 **General Rules & Guidelines**
+
+**`.claude/00_general_rules/01_sdd_workflow_concepts.md`**
+- **Read when**: Starting major features, refactoring, or architectural changes
+- **Purpose**: Spec-Driven Development methodology with EARS notation
+- **Contains**: Workflow steps, requirements templates, planning guidelines
+- **Use for**: Complex tasks requiring systematic planning and user approval
+
+**`.claude/00_general_rules/02_coding_guidelines.md`**
+- **Read when**: Writing new code, reviewing code, onboarding to project
+- **Purpose**: Code conventions and Effective Go practices
+- **Contains**: Operator preferences, naming conventions, formatting rules
+- **Use for**: Ensuring code consistency and following project standards
+
+#### 📋 **Project Understanding**
+
+**`.claude/01_project/01_convergen_concept_requirements.md`**
+- **Read when**: New to the project, explaining project to others, planning features
+- **Purpose**: High-level project concept and requirements
+- **Contains**: Value proposition, system purpose, annotation system overview
+- **Use for**: Understanding what Convergen does and why it exists
+
+#### 🏗️ **Development & Architecture**
+
+**`.claude/02_development_docs/01_architecture_design.md`**
+- **Read when**: Implementing complex features, debugging system issues, architectural decisions
+- **Purpose**: Comprehensive technical architecture reference
+- **Contains**: Pipeline stages, domain models, design patterns, data flow
+- **Use for**: Understanding how components interact and system design decisions
+
+**`.claude/02_development_docs/02_test_strategy.md`**
+- **Read when**: Writing tests, debugging test failures, updating domain model tests
+- **Purpose**: Testing methodology and patterns
+- **Contains**: Test types, domain model testing patterns, coverage targets
+- **Use for**: Following correct testing patterns, especially for domain model constructor usage
+
+**`.claude/02_development_docs/03_logging_strategy.md`** *(if exists)*
+- **Read when**: Adding logging, debugging issues, implementing observability
+- **Purpose**: Logging standards and practices
+- **Use for**: Consistent logging patterns across the system
+
+### 🎯 Situation-Specific Reading Recommendations
+
+#### **Starting New Feature Development**
+1. **Always read**: This `CLAUDE.md` for development patterns
+2. **For context**: `.claude/01_project/01_convergen_concept_requirements.md`
+3. **For complex features**: `.claude/00_general_rules/01_sdd_workflow_concepts.md`
+4. **For architecture changes**: `.claude/02_development_docs/01_architecture_design.md`
+
+#### **Fixing Domain Model Issues**
+1. **Start with**: This `CLAUDE.md` Essential Development Patterns section
+2. **Deep dive**: `.claude/02_development_docs/01_architecture_design.md` Domain Model section
+3. **For tests**: `.claude/02_development_docs/02_test_strategy.md` Domain Model Testing Patterns
+
+#### **Debugging Pipeline Issues**
+1. **Architecture understanding**: `.claude/02_development_docs/01_architecture_design.md`
+2. **Event system patterns**: This `CLAUDE.md` Event System Pattern section
+3. **Testing approach**: `.claude/02_development_docs/02_test_strategy.md`
+
+#### **Code Quality & Standards**
+1. **Conventions**: `.claude/00_general_rules/02_coding_guidelines.md`
+2. **Testing patterns**: `.claude/02_development_docs/02_test_strategy.md`
+3. **Architecture compliance**: `.claude/02_development_docs/01_architecture_design.md`
+
+#### **Major Refactoring or System Changes**
+1. **Planning**: `.claude/00_general_rules/01_sdd_workflow_concepts.md`
+2. **Requirements**: `.claude/01_project/01_convergen_concept_requirements.md`
+3. **Architecture**: `.claude/02_development_docs/01_architecture_design.md`
+4. **Testing strategy**: `.claude/02_development_docs/02_test_strategy.md`
+
+#### **Onboarding to Project**
+**Recommended reading order**:
+1. This `CLAUDE.md` (overview and patterns)
+2. `.claude/01_project/01_convergen_concept_requirements.md` (project understanding)
+3. `.claude/00_general_rules/02_coding_guidelines.md` (code standards)
+4. `.claude/02_development_docs/01_architecture_design.md` (technical depth)
+5. `.claude/02_development_docs/02_test_strategy.md` (testing approach)
+
+### 💡 Pro Tips for Future Claude
+- **Domain model issues?** → Always check constructor patterns in CLAUDE.md first
+- **Test failures?** → Check test strategy doc for new domain model patterns
+- **Architectural questions?** → Architecture design doc has comprehensive answers
+- **Planning complex work?** → Use SDD workflow to structure the approach
+- **Code style questions?** → Coding guidelines have the answers

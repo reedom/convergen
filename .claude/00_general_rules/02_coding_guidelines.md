@@ -1,6 +1,4 @@
-# Contributing to Convergen
-
-First off, thank you for considering contributing to Convergen. Your help is greatly appreciated. This document outlines the coding conventions and best practices to follow when contributing to this project.
+# Convergen Coding Guidelines
 
 ## 1. Code Conventions
 
