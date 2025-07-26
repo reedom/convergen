@@ -253,7 +253,7 @@ func TestComponentManagerShutdownWithErrors(t *testing.T) {
 		t.Error("Expected error from shutdown with failing component")
 	}
 	
-	if err.Error() != "component shutdown errors: [component failing-component shutdown failed: shutdown failed]" {
+	if err != nil && err.Error() != "component shutdown errors: [component failing-component shutdown failed: shutdown failed]" {
 		t.Errorf("Unexpected error message: %v", err)
 	}
 }

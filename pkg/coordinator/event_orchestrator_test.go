@@ -308,6 +308,18 @@ func TestEventOrchestratorParseCompleteHandler(t *testing.T) {
 	
 	orchestrator := NewEventOrchestrator(logger, eventBus, config).(*ConcreteEventOrchestrator)
 	
+	// Set up pipeline input first
+	input := &PipelineInput{
+		Sources: []string{"test.go"},
+		Config:  config,
+		Context: context.Background(),
+		Metadata: map[string]interface{}{
+			"generation_id": "test-pipeline-123",
+		},
+	}
+	orchestrator.currentInput = input
+	orchestrator.status.PipelineID = "test-pipeline-123"
+	
 	// Create parse complete event
 	event := events.NewEvent("parser.completed", map[string]interface{}{
 		"results": "test_parse_results",
@@ -430,6 +442,18 @@ func TestEventOrchestratorPipelineFlow(t *testing.T) {
 	
 	orchestrator := NewEventOrchestrator(logger, eventBus, config).(*ConcreteEventOrchestrator)
 	
+	// Set up pipeline input first
+	input := &PipelineInput{
+		Sources: []string{"test.go"},
+		Config:  config,
+		Context: context.Background(),
+		Metadata: map[string]interface{}{
+			"generation_id": "test-pipeline-flow",
+		},
+	}
+	orchestrator.currentInput = input
+	orchestrator.status.PipelineID = "test-pipeline-flow"
+	
 	ctx := context.Background()
 	
 	// Test complete pipeline flow
@@ -468,7 +492,7 @@ func TestEventOrchestratorPipelineFlow(t *testing.T) {
 			t.Fatalf("Handler for %s not found", stage.eventType)
 		}
 		
-		err := handler(ctx, event)
+		err := handler.Handle(ctx, event)
 		if err != nil {
 			t.Fatalf("Handler for %s failed: %v", stage.eventType, err)
 		}

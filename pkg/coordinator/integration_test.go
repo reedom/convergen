@@ -2,11 +2,9 @@ package coordinator
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/emitter"
 	"github.com/reedom/convergen/v8/pkg/executor"
 	"github.com/reedom/convergen/v8/pkg/parser"
@@ -456,9 +454,21 @@ func TestCoordinatorShutdownIntegration(t *testing.T) {
 
 func createIntegrationTestConfig() *Config {
 	return &Config{
-		ParserConfig:   parser.DefaultConfig(),
-		PlannerConfig:  planner.DefaultConfig(),
-		ExecutorConfig: executor.DefaultConfig(),
+		ParserConfig: &parser.ParserConfig{
+			BuildTag:              "convergen",
+			MaxConcurrentWorkers:  4,
+			TypeResolutionTimeout: 30 * time.Second,
+			CacheSize:             1000,
+			EnableProgress:        false,
+		},
+		PlannerConfig:  planner.DefaultPlannerConfig(),
+		ExecutorConfig: &executor.ExecutorConfig{
+			MaxWorkers:        4,
+			MinWorkers:        1,
+			MaxConcurrentJobs: 10,
+			ExecutionTimeout:  30 * time.Second,
+			RetryAttempts:     3,
+		},
 		EmitterConfig:  emitter.DefaultEmitterConfig(),
 		
 		MaxConcurrency:     2,

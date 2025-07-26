@@ -3,7 +3,6 @@ package coordinator
 import (
 	"errors"
 	"testing"
-	"time"
 
 	"go.uber.org/zap/zaptest"
 )
