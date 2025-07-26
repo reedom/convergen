@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/executor"
 	"go.uber.org/zap"
 )
 
@@ -69,8 +70,8 @@ func (cls *CompositeLiteralStrategy) CanHandle(method *domain.MethodResult) bool
 
 	// Check for error handling requirements
 	for _, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
-			if fr.Error != nil || !fr.Success {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
+			if !fr.Success || fr.Error != nil {
 				return false // Cannot use composite literals with error handling
 			}
 		}
@@ -91,7 +92,7 @@ func (cls *CompositeLiteralStrategy) GenerateCode(ctx context.Context, method *d
 	// Generate field assignments
 	fieldCount := 0
 	for fieldName, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Success && fr.Error == nil {
 				assignment := cls.generateFieldAssignment(fieldName, fr)
 				code.WriteString(fmt.Sprintf("%s%s%s,\n", 
@@ -127,7 +128,7 @@ func (cls *CompositeLiteralStrategy) GetRequiredImports(method *domain.MethodRes
 	return []*Import{}
 }
 
-func (cls *CompositeLiteralStrategy) generateFieldAssignment(fieldName string, field *domain.FieldResult) string {
+func (cls *CompositeLiteralStrategy) generateFieldAssignment(fieldName string, field *executor.FieldResult) string {
 	// Generate simple field assignment for composite literal
 	switch field.StrategyUsed {
 	case "direct":
@@ -164,7 +165,7 @@ func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *do
 	// Generate field assignments with error handling
 	fieldCount := 0
 	for fieldName, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			assignment, errorHandling := abs.generateFieldAssignment(fieldName, fr)
 			
 			code.WriteString(fmt.Sprintf("%s%s\n", abs.config.IndentStyle, assignment))
@@ -195,7 +196,7 @@ func (abs *AssignmentBlockStrategy) GetComplexity(method *domain.MethodResult) *
 	// Calculate complexity based on error handling and field types
 	errorFields := 0
 	for _, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {
 				errorFields++
 			}
@@ -217,7 +218,7 @@ func (abs *AssignmentBlockStrategy) GetRequiredImports(method *domain.MethodResu
 	// Check if error handling is needed
 	hasErrors := false
 	for _, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {
 				hasErrors = true
 				break
@@ -237,7 +238,7 @@ func (abs *AssignmentBlockStrategy) GetRequiredImports(method *domain.MethodResu
 	return imports
 }
 
-func (abs *AssignmentBlockStrategy) generateFieldAssignment(fieldName string, field *domain.FieldResult) (string, string) {
+func (abs *AssignmentBlockStrategy) generateFieldAssignment(fieldName string, field *executor.FieldResult) (string, string) {
 	var assignment, errorHandling string
 	
 	switch field.StrategyUsed {
@@ -295,7 +296,7 @@ func (mas *MixedApproachStrategy) CanHandle(method *domain.MethodResult) bool {
 	complexFields := 0
 	
 	for _, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if mas.isSimpleField(fr) {
 				simpleFields++
 			} else {
@@ -315,11 +316,11 @@ func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *doma
 	var code strings.Builder
 	
 	// Separate simple and complex fields
-	simpleFields := make(map[string]*domain.FieldResult)
-	complexFields := make(map[string]*domain.FieldResult)
+	simpleFields := make(map[string]*executor.FieldResult)
+	complexFields := make(map[string]*executor.FieldResult)
 	
 	for fieldName, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if mas.isSimpleField(fr) {
 				simpleFields[fieldName] = fr
 			} else {
@@ -380,7 +381,7 @@ func (mas *MixedApproachStrategy) GetComplexity(method *domain.MethodResult) *Co
 	errorFields := 0
 	
 	for _, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if mas.isSimpleField(fr) {
 				simpleFields++
 			} else {
@@ -408,7 +409,7 @@ func (mas *MixedApproachStrategy) GetRequiredImports(method *domain.MethodResult
 	// Check if error handling is needed
 	hasErrors := false
 	for _, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {
 				hasErrors = true
 				break
@@ -428,14 +429,14 @@ func (mas *MixedApproachStrategy) GetRequiredImports(method *domain.MethodResult
 	return imports
 }
 
-func (mas *MixedApproachStrategy) isSimpleField(field *domain.FieldResult) bool {
+func (mas *MixedApproachStrategy) isSimpleField(field *executor.FieldResult) bool {
 	return field.Success && 
 		   field.Error == nil && 
 		   field.RetryCount == 0 &&
 		   (field.StrategyUsed == "direct" || field.StrategyUsed == "literal")
 }
 
-func (mas *MixedApproachStrategy) generateSimpleAssignment(fieldName string, field *domain.FieldResult) string {
+func (mas *MixedApproachStrategy) generateSimpleAssignment(fieldName string, field *executor.FieldResult) string {
 	switch field.StrategyUsed {
 	case "direct":
 		return fmt.Sprintf("%s: src.%s", fieldName, fieldName)
@@ -446,7 +447,7 @@ func (mas *MixedApproachStrategy) generateSimpleAssignment(fieldName string, fie
 	}
 }
 
-func (mas *MixedApproachStrategy) generateComplexAssignment(fieldName string, field *domain.FieldResult) (string, string) {
+func (mas *MixedApproachStrategy) generateComplexAssignment(fieldName string, field *executor.FieldResult) (string, string) {
 	var assignment, errorHandling string
 	
 	switch field.StrategyUsed {

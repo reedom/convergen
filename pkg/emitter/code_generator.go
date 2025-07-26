@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/executor"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 	"go.uber.org/zap"
 )
@@ -22,7 +23,7 @@ type CodeGenerator interface {
 	GenerateMethodCode(ctx context.Context, method *domain.MethodResult) (*MethodCode, error)
 	
 	// GenerateFieldCode generates code for individual field assignments
-	GenerateFieldCode(ctx context.Context, field *domain.FieldResult) (*FieldCode, error)
+	GenerateFieldCode(ctx context.Context, field *executor.FieldResult) (*FieldCode, error)
 	
 	// GenerateErrorHandling generates error handling code
 	GenerateErrorHandling(ctx context.Context, errors []domain.ExecutionError) (*ErrorCode, error)
@@ -171,7 +172,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	// Generate field codes for detailed analysis
 	fields := make([]*FieldCode, 0, len(method.Metadata))
 	for fieldName, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			fieldCode, err := cg.GenerateFieldCode(ctx, fr)
 			if err != nil {
 				cg.logger.Warn("field code generation failed",
@@ -222,7 +223,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 }
 
 // GenerateFieldCode generates code for individual field assignments
-func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *domain.FieldResult) (*FieldCode, error) {
+func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *executor.FieldResult) (*FieldCode, error) {
 	if field == nil {
 		return nil, fmt.Errorf("field result cannot be nil")
 	}
@@ -336,7 +337,7 @@ func (cg *ConcreteCodeGenerator) generateMethodSignature(method *domain.MethodRe
 
 func (cg *ConcreteCodeGenerator) hasErrorHandling(method *domain.MethodResult) bool {
 	for _, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Error != nil {
 				return true
 			}
@@ -348,15 +349,15 @@ func (cg *ConcreteCodeGenerator) hasErrorHandling(method *domain.MethodResult) b
 func (cg *ConcreteCodeGenerator) extractErrors(method *domain.MethodResult) []domain.ExecutionError {
 	var errors []domain.ExecutionError
 	for _, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Error != nil {
-				// Convert GenerationError to ExecutionError
+				// Convert executor.ExecutionError to domain.ExecutionError
 				execError := domain.ExecutionError{
-					Type:      string(fr.Error.Code),
-					Message:   fr.Error.Message,
+					Type:      fr.Error.ErrorType,
+					Message:   fr.Error.Error,
 					Component: "emitter",
-					Method:    fr.Error.Method,
-					Field:     fr.Error.Field,
+					Method:    method.Method.Name,
+					Field:     fr.Error.FieldID,
 				}
 				errors = append(errors, execError)
 			}
@@ -365,10 +366,10 @@ func (cg *ConcreteCodeGenerator) extractErrors(method *domain.MethodResult) []do
 	return errors
 }
 
-func (cg *ConcreteCodeGenerator) extractFieldResults(method *domain.MethodResult) []*domain.FieldResult {
-	var results []*domain.FieldResult
+func (cg *ConcreteCodeGenerator) extractFieldResults(method *domain.MethodResult) []*executor.FieldResult {
+	var results []*executor.FieldResult
 	for _, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			results = append(results, fr)
 		}
 	}
@@ -379,22 +380,22 @@ func (cg *ConcreteCodeGenerator) generateDocumentation(method *domain.MethodResu
 	return fmt.Sprintf("// %s converts SourceType to DestType\n", method.Method.Name)
 }
 
-func (cg *ConcreteCodeGenerator) generateSimpleAssignment(field *domain.FieldResult) string {
+func (cg *ConcreteCodeGenerator) generateSimpleAssignment(field *executor.FieldResult) string {
 	return fmt.Sprintf("dest.%s = src.%s", field.FieldID, field.FieldID)
 }
 
-func (cg *ConcreteCodeGenerator) generateComplexAssignment(field *domain.FieldResult) (string, string) {
+func (cg *ConcreteCodeGenerator) generateComplexAssignment(field *executor.FieldResult) (string, string) {
 	assignment := fmt.Sprintf("converted, err := converter.Convert(src.%s)", field.FieldID)
 	errorCheck := "if err != nil { return nil, fmt.Errorf(\"converting %s: %%w\", err) }"
 	return assignment, fmt.Sprintf(errorCheck, field.FieldID)
 }
 
-func (cg *ConcreteCodeGenerator) analyzeDependencies(field *domain.FieldResult) []string {
+func (cg *ConcreteCodeGenerator) analyzeDependencies(field *executor.FieldResult) []string {
 	// Simplified dependency analysis
 	return []string{}
 }
 
-func (cg *ConcreteCodeGenerator) analyzeFieldImports(field *domain.FieldResult) []*Import {
+func (cg *ConcreteCodeGenerator) analyzeFieldImports(field *executor.FieldResult) []*Import {
 	// Simplified import analysis
 	var imports []*Import
 	

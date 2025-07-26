@@ -415,7 +415,7 @@ func (e *ConcreteEmitter) generateMethodsSequentially(ctx context.Context, metho
 func (e *ConcreteEmitter) calculateConfigHash() string {
 	// Simple hash calculation for configuration
 	// In practice, this would be more sophisticated
-	return fmt.Sprintf("%x", e.config.OptimizationLevel*17+
+	return fmt.Sprintf("%x", int(e.config.OptimizationLevel)*17+
 		int(e.config.MaxFieldsForComposite)*31+
 		len(e.config.CustomTemplates)*47)
 }
@@ -430,7 +430,7 @@ func (e *ConcreteEmitter) emitEvent(ctx context.Context, eventType string, data 
 		event.WithMetadata(key, value)
 	}
 	
-	return e.eventBus.Publish(ctx, event)
+	return e.eventBus.Publish(event)
 }
 
 // SetEventBus sets the event bus for this emitter

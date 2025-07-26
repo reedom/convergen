@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/executor"
 )
 
 // OptimizationLevel defines the level of code optimization
@@ -266,7 +267,7 @@ type GenerationWarning struct {
 // TemplateData represents data passed to code templates
 type TemplateData struct {
 	Method          *domain.MethodResult     `json:"method"`
-	Fields          []*domain.FieldResult    `json:"fields"`
+	Fields          []*executor.FieldResult  `json:"fields"`
 	Package         string                   `json:"package"`
 	Imports         []*Import                `json:"imports"`
 	Config          *EmitterConfig           `json:"config"`
@@ -379,35 +380,46 @@ func NewCustomTemplate(name, content string) interface{} {
 // NewEmitterMetrics creates default emitter metrics
 func NewEmitterMetrics() *EmitterMetrics {
 	return &EmitterMetrics{
-		StartTime:        time.Now(),
-		TotalMethods:     0,
-		MethodsGenerated: 0,
-		MethodsFailed:    0,
-		LinesGenerated:   0,
-		ImportsGenerated: 0,
-		BytesGenerated:   0,
+		TotalGenerations:     0,
+		TotalMethods:         0,
+		TotalFields:          0,
+		TotalLines:           0,
+		TotalGenerationTime:  0,
+		AverageGenerationTime: 0,
+		ThroughputPerSecond:  0,
+		StrategyUsage:        make(map[string]int64),
+		StrategyPerformance:  make(map[string]time.Duration),
+		OptimizationsApplied: make(map[string]int64),
+		OptimizationTime:     0,
+		ErrorsEncountered:    0,
+		ErrorsByType:         make(map[string]int64),
 	}
 }
 
 // RecordGeneration records generation metrics
 func (m *EmitterMetrics) RecordGeneration(methodCode *MethodCode, packageName string, methods []*MethodCode) {
-	m.MethodsGenerated++
+	m.TotalMethods++
 	if methodCode != nil {
-		m.LinesGenerated += len(strings.Split(methodCode.Assignment, "\n"))
+		m.TotalLines += int64(len(strings.Split(methodCode.Body, "\n")))
 	}
 }
 
 // GetSnapshot returns a snapshot of current metrics
 func (m *EmitterMetrics) GetSnapshot() *EmitterMetrics {
 	return &EmitterMetrics{
-		StartTime:        m.StartTime,
-		EndTime:          m.EndTime,
-		TotalMethods:     m.TotalMethods,
-		MethodsGenerated: m.MethodsGenerated,
-		MethodsFailed:    m.MethodsFailed,
-		LinesGenerated:   m.LinesGenerated,
-		ImportsGenerated: m.ImportsGenerated,
-		BytesGenerated:   m.BytesGenerated,
+		TotalGenerations:      m.TotalGenerations,
+		TotalMethods:          m.TotalMethods,
+		TotalFields:           m.TotalFields,
+		TotalLines:            m.TotalLines,
+		TotalGenerationTime:   m.TotalGenerationTime,
+		AverageGenerationTime: m.AverageGenerationTime,
+		ThroughputPerSecond:   m.ThroughputPerSecond,
+		StrategyUsage:         m.StrategyUsage,
+		StrategyPerformance:   m.StrategyPerformance,
+		OptimizationsApplied:  m.OptimizationsApplied,
+		OptimizationTime:      m.OptimizationTime,
+		ErrorsEncountered:     m.ErrorsEncountered,
+		ErrorsByType:          m.ErrorsByType,
 	}
 }
 
@@ -443,11 +455,20 @@ const (
 // NewGenerationMetrics creates a new GenerationMetrics instance
 func NewGenerationMetrics() *GenerationMetrics {
 	return &GenerationMetrics{
-		StrategyUsage:        make(map[string]int64),
-		StrategyPerformance:  make(map[string]time.Duration),
-		OptimizationsApplied: make(map[string]int64),
-		ErrorsByType:         make(map[string]int64),
-		PerformanceHistory:   make([]PerformanceSnapshot, 0, 1000),
+		MethodsGenerated:       0,
+		FieldsGenerated:        0,
+		LinesGenerated:         0,
+		ImportsGenerated:       0,
+		TotalGenerationTime:    0,
+		AverageMethodTime:      0,
+		OptimizationTime:       0,
+		FormattingTime:         0,
+		ValidationTime:         0,
+		MemoryUsage:            0,
+		ConcurrencyLevel:       0,
+		OptimizationsApplied:   0,
+		ErrorsEncountered:      0,
+		WarningsGenerated:      0,
 	}
 }
 

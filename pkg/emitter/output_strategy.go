@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/executor"
 	"go.uber.org/zap"
 )
 
@@ -14,7 +15,7 @@ type OutputStrategy interface {
 	SelectStrategy(ctx context.Context, method *domain.MethodResult) ConstructionStrategy
 	
 	// AnalyzeFieldComplexity analyzes the complexity of fields for strategy selection
-	AnalyzeFieldComplexity(fields []*domain.FieldResult) *ComplexityMetrics
+	AnalyzeFieldComplexity(fields []*executor.FieldResult) *ComplexityMetrics
 	
 	// ShouldUseCompositeLiteral determines if composite literal approach is optimal
 	ShouldUseCompositeLiteral(method *domain.MethodResult) bool
@@ -72,7 +73,7 @@ func (os *ConcreteOutputStrategy) SelectStrategy(ctx context.Context, method *do
 	}
 
 	os.logger.Debug("selecting output strategy",
-		zap.String("method", method.MethodName))
+		zap.String("method", method.Method.Name))
 
 	// Extract field results for analysis
 	fields := os.extractFieldResults(method)
@@ -87,7 +88,7 @@ func (os *ConcreteOutputStrategy) SelectStrategy(ctx context.Context, method *do
 	strategy := os.selectOptimalStrategy(complexity, performance, len(fields))
 	
 	os.logger.Debug("strategy selected",
-		zap.String("method", method.MethodName),
+		zap.String("method", method.Method.Name),
 		zap.String("strategy", strategy.String()),
 		zap.Float64("complexity_score", complexity.ComplexityScore),
 		zap.Int("field_count", len(fields)))
@@ -96,7 +97,7 @@ func (os *ConcreteOutputStrategy) SelectStrategy(ctx context.Context, method *do
 }
 
 // AnalyzeFieldComplexity analyzes the complexity of fields for strategy selection
-func (os *ConcreteOutputStrategy) AnalyzeFieldComplexity(fields []*domain.FieldResult) *ComplexityMetrics {
+func (os *ConcreteOutputStrategy) AnalyzeFieldComplexity(fields []*executor.FieldResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
 	
 	if len(fields) == 0 {
@@ -217,7 +218,7 @@ func (os *ConcreteOutputStrategy) selectOptimalStrategy(complexity *ComplexityMe
 	return bestStrategy
 }
 
-func (os *ConcreteOutputStrategy) calculateFieldComplexity(field *domain.FieldResult) float64 {
+func (os *ConcreteOutputStrategy) calculateFieldComplexity(field *executor.FieldResult) float64 {
 	complexity := 1.0 // Base complexity
 
 	// Add complexity for errors
@@ -244,11 +245,11 @@ func (os *ConcreteOutputStrategy) calculateFieldComplexity(field *domain.FieldRe
 	return complexity
 }
 
-func (os *ConcreteOutputStrategy) isConverterField(field *domain.FieldResult) bool {
+func (os *ConcreteOutputStrategy) isConverterField(field *executor.FieldResult) bool {
 	return field.StrategyUsed == "converter" || field.StrategyUsed == "expression"
 }
 
-func (os *ConcreteOutputStrategy) isNestedField(field *domain.FieldResult) bool {
+func (os *ConcreteOutputStrategy) isNestedField(field *executor.FieldResult) bool {
 	// Simplified check - in practice would analyze field types
 	return field.StrategyUsed == "custom" || field.RetryCount > 0
 }
@@ -404,10 +405,10 @@ func (os *ConcreteOutputStrategy) getMixedApproachWeights() map[string]float64 {
 	}
 }
 
-func (os *ConcreteOutputStrategy) extractFieldResults(method *domain.MethodResult) []*domain.FieldResult {
-	var results []*domain.FieldResult
-	for _, fieldResult := range method.Data {
-		if fr, ok := fieldResult.(*domain.FieldResult); ok {
+func (os *ConcreteOutputStrategy) extractFieldResults(method *domain.MethodResult) []*executor.FieldResult {
+	var results []*executor.FieldResult
+	for _, fieldResult := range method.Metadata {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			results = append(results, fr)
 		}
 	}

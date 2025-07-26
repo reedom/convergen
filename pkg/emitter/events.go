@@ -205,7 +205,7 @@ func NewEmitterCompletedEvent(ctx context.Context, code *GeneratedCode, metrics 
 	base := events.NewBaseEvent(EventEmitterCompleted, ctx)
 	base.WithMetadata("package_name", code.PackageName)
 	base.WithMetadata("methods_generated", len(code.Methods))
-	base.WithMetadata("lines_generated", metrics.LinesGenerated)
+	base.WithMetadata("lines_generated", metrics.TotalLines)
 	return &EmitterCompletedEvent{
 		BaseEvent: base,
 		Code:      code,

@@ -3,7 +3,6 @@ package emitter
 import (
 	"context"
 	"fmt"
-	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/token"

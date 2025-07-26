@@ -3,10 +3,6 @@ package emitter
 import (
 	"context"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"path"
 	"sort"
 	"strings"
 

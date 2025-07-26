@@ -262,7 +262,7 @@ func (co *ConcreteCodeOptimizer) OptimizeCode(ctx context.Context, code *Generat
 	// Update code metrics
 	if optimizedCode.Metrics != nil {
 		optimizedCode.Metrics.OptimizationTime = time.Since(startTime)
-		optimizedCode.Metrics.OptimizationsApplied = co.countOptimizationsApplied()
+		optimizedCode.Metrics.OptimizationsApplied = int(co.countOptimizationsApplied())
 	}
 
 	co.logger.Debug("code optimization completed",
