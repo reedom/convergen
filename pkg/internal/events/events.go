@@ -72,12 +72,12 @@ func NewEvent(eventType string, data map[string]interface{}) Event {
 	}
 }
 
-func (e *BaseEvent) ID() string                         { return e.id }
-func (e *BaseEvent) Type() string                       { return e.eventType }
-func (e *BaseEvent) Data() map[string]interface{}       { return e.data }
-func (e *BaseEvent) Timestamp() time.Time               { return e.timestamp }
-func (e *BaseEvent) Context() context.Context           { return e.ctx }
-func (e *BaseEvent) Metadata() map[string]interface{}   { return e.metadata }
+func (e *BaseEvent) ID() string                       { return e.id }
+func (e *BaseEvent) Type() string                     { return e.eventType }
+func (e *BaseEvent) Data() map[string]interface{}     { return e.data }
+func (e *BaseEvent) Timestamp() time.Time             { return e.timestamp }
+func (e *BaseEvent) Context() context.Context         { return e.ctx }
+func (e *BaseEvent) Metadata() map[string]interface{} { return e.metadata }
 
 // WithMetadata adds metadata to the event
 func (e *BaseEvent) WithMetadata(key string, value interface{}) *BaseEvent {
@@ -109,31 +109,31 @@ func (bus *InMemoryEventBus) Publish(event Event) error {
 	ctx := event.Context()
 	bus.mutex.RLock()
 	defer bus.mutex.RUnlock()
-	
+
 	if bus.closed {
 		return fmt.Errorf("event bus is closed")
 	}
-	
+
 	eventType := event.Type()
 	handlers, exists := bus.handlers[eventType]
-	
+
 	bus.stats.incrementPublished(eventType)
-	
+
 	if !exists || len(handlers) == 0 {
-		bus.logger.Debug("no handlers for event type", 
+		bus.logger.Debug("no handlers for event type",
 			zap.String("event_type", eventType),
 			zap.String("event_id", event.ID()))
 		return nil
 	}
-	
+
 	bus.logger.Debug("publishing event",
 		zap.String("event_type", eventType),
 		zap.String("event_id", event.ID()),
 		zap.Int("handler_count", len(handlers)))
-	
+
 	// Process handlers concurrently
 	errChan := make(chan error, len(handlers))
-	
+
 	for _, handler := range handlers {
 		go func(h EventHandler) {
 			defer func() {
@@ -141,7 +141,7 @@ func (bus *InMemoryEventBus) Publish(event Event) error {
 					errChan <- fmt.Errorf("handler panic: %v", r)
 				}
 			}()
-			
+
 			if err := h.Handle(ctx, event); err != nil {
 				bus.stats.incrementHandlerError(eventType)
 				errChan <- fmt.Errorf("handler error: %w", err)
@@ -151,7 +151,7 @@ func (bus *InMemoryEventBus) Publish(event Event) error {
 			}
 		}(handler)
 	}
-	
+
 	// Collect results
 	var errors []error
 	for i := 0; i < len(handlers); i++ {
@@ -159,17 +159,17 @@ func (bus *InMemoryEventBus) Publish(event Event) error {
 			errors = append(errors, err)
 		}
 	}
-	
+
 	if len(errors) > 0 {
 		bus.logger.Error("handler errors during event processing",
 			zap.String("event_type", eventType),
 			zap.String("event_id", event.ID()),
 			zap.Int("error_count", len(errors)))
-		
+
 		// Return first error (could be enhanced to return all)
 		return errors[0]
 	}
-	
+
 	return nil
 }
 
@@ -177,22 +177,22 @@ func (bus *InMemoryEventBus) Publish(event Event) error {
 func (bus *InMemoryEventBus) Subscribe(eventType string, handler EventHandler) error {
 	bus.mutex.Lock()
 	defer bus.mutex.Unlock()
-	
+
 	if bus.closed {
 		return fmt.Errorf("event bus is closed")
 	}
-	
+
 	if !handler.CanHandle(eventType) {
 		return fmt.Errorf("handler cannot handle event type: %s", eventType)
 	}
-	
+
 	bus.handlers[eventType] = append(bus.handlers[eventType], handler)
 	bus.stats.incrementSubscriptions(eventType)
-	
+
 	bus.logger.Debug("handler subscribed",
 		zap.String("event_type", eventType),
 		zap.Int("total_handlers", len(bus.handlers[eventType])))
-	
+
 	return nil
 }
 
@@ -200,26 +200,26 @@ func (bus *InMemoryEventBus) Subscribe(eventType string, handler EventHandler) e
 func (bus *InMemoryEventBus) Unsubscribe(eventType string, handler EventHandler) error {
 	bus.mutex.Lock()
 	defer bus.mutex.Unlock()
-	
+
 	handlers, exists := bus.handlers[eventType]
 	if !exists {
 		return fmt.Errorf("no handlers for event type: %s", eventType)
 	}
-	
+
 	// Find and remove the handler
 	for i, h := range handlers {
 		if h == handler {
 			bus.handlers[eventType] = append(handlers[:i], handlers[i+1:]...)
 			bus.stats.decrementSubscriptions(eventType)
-			
+
 			bus.logger.Debug("handler unsubscribed",
 				zap.String("event_type", eventType),
 				zap.Int("remaining_handlers", len(bus.handlers[eventType])))
-			
+
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("handler not found for event type: %s", eventType)
 }
 
@@ -227,10 +227,10 @@ func (bus *InMemoryEventBus) Unsubscribe(eventType string, handler EventHandler)
 func (bus *InMemoryEventBus) Close() error {
 	bus.mutex.Lock()
 	defer bus.mutex.Unlock()
-	
+
 	bus.closed = true
 	bus.handlers = make(map[string][]EventHandler)
-	
+
 	bus.logger.Info("event bus closed")
 	return nil
 }
@@ -239,7 +239,7 @@ func (bus *InMemoryEventBus) Close() error {
 func (bus *InMemoryEventBus) Stats() *BusStats {
 	bus.mutex.RLock()
 	defer bus.mutex.RUnlock()
-	
+
 	// Return a copy to avoid race conditions
 	statsCopy := *bus.stats
 	return &statsCopy
@@ -252,17 +252,17 @@ func (bus *InMemoryEventBus) Emit(ctx context.Context, event Event) error {
 
 // BusStats tracks event bus statistics
 type BusStats struct {
-	publishedEvents    map[string]int64
-	subscriptions      map[string]int64
-	handlerSuccesses   map[string]int64
-	handlerErrors      map[string]int64
-	mutex              sync.RWMutex
+	publishedEvents  map[string]int64
+	subscriptions    map[string]int64
+	handlerSuccesses map[string]int64
+	handlerErrors    map[string]int64
+	mutex            sync.RWMutex
 }
 
 func (s *BusStats) incrementPublished(eventType string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	if s.publishedEvents == nil {
 		s.publishedEvents = make(map[string]int64)
 	}
@@ -272,7 +272,7 @@ func (s *BusStats) incrementPublished(eventType string) {
 func (s *BusStats) incrementSubscriptions(eventType string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	if s.subscriptions == nil {
 		s.subscriptions = make(map[string]int64)
 	}
@@ -282,7 +282,7 @@ func (s *BusStats) incrementSubscriptions(eventType string) {
 func (s *BusStats) decrementSubscriptions(eventType string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	if s.subscriptions == nil {
 		s.subscriptions = make(map[string]int64)
 	}
@@ -294,7 +294,7 @@ func (s *BusStats) decrementSubscriptions(eventType string) {
 func (s *BusStats) incrementHandlerSuccess(eventType string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	if s.handlerSuccesses == nil {
 		s.handlerSuccesses = make(map[string]int64)
 	}
@@ -304,7 +304,7 @@ func (s *BusStats) incrementHandlerSuccess(eventType string) {
 func (s *BusStats) incrementHandlerError(eventType string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	if s.handlerErrors == nil {
 		s.handlerErrors = make(map[string]int64)
 	}
@@ -315,7 +315,7 @@ func (s *BusStats) incrementHandlerError(eventType string) {
 func (s *BusStats) GetPublishedCount(eventType string) int64 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	
+
 	if s.publishedEvents == nil {
 		return 0
 	}
@@ -326,7 +326,7 @@ func (s *BusStats) GetPublishedCount(eventType string) int64 {
 func (s *BusStats) GetSubscriptionCount(eventType string) int64 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	
+
 	if s.subscriptions == nil {
 		return 0
 	}
@@ -337,7 +337,7 @@ func (s *BusStats) GetSubscriptionCount(eventType string) int64 {
 func (s *BusStats) GetHandlerSuccessCount(eventType string) int64 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	
+
 	if s.handlerSuccesses == nil {
 		return 0
 	}
@@ -348,7 +348,7 @@ func (s *BusStats) GetHandlerSuccessCount(eventType string) int64 {
 func (s *BusStats) GetHandlerErrorCount(eventType string) int64 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	
+
 	if s.handlerErrors == nil {
 		return 0
 	}
@@ -409,12 +409,12 @@ func (bus *MiddlewareEventBus) Publish(event Event) error {
 	if len(bus.middlewares) == 0 {
 		return bus.inner.Publish(event)
 	}
-	
+
 	// Build middleware chain
 	next := func(ctx context.Context, event Event) error {
 		return bus.inner.Publish(event)
 	}
-	
+
 	// Apply middlewares in reverse order
 	for i := len(bus.middlewares) - 1; i >= 0; i-- {
 		middleware := bus.middlewares[i]
@@ -423,7 +423,7 @@ func (bus *MiddlewareEventBus) Publish(event Event) error {
 			return middleware.Process(ctx, event, currentNext)
 		}
 	}
-	
+
 	return next(ctx, event)
 }
 
@@ -456,15 +456,15 @@ func NewLoggingMiddleware(logger *zap.Logger) *LoggingMiddleware {
 
 func (m *LoggingMiddleware) Process(ctx context.Context, event Event, next func(ctx context.Context, event Event) error) error {
 	start := time.Now()
-	
+
 	m.logger.Debug("processing event",
 		zap.String("event_type", event.Type()),
 		zap.String("event_id", event.ID()),
 		zap.Time("timestamp", event.Timestamp()))
-	
+
 	err := next(ctx, event)
 	duration := time.Since(start)
-	
+
 	if err != nil {
 		m.logger.Error("event processing failed",
 			zap.String("event_type", event.Type()),
@@ -477,7 +477,7 @@ func (m *LoggingMiddleware) Process(ctx context.Context, event Event, next func(
 			zap.String("event_id", event.ID()),
 			zap.Duration("duration", duration))
 	}
-	
+
 	return err
 }
 
@@ -498,13 +498,13 @@ func NewTimeoutMiddleware(timeout time.Duration, logger *zap.Logger) *TimeoutMid
 func (m *TimeoutMiddleware) Process(ctx context.Context, event Event, next func(ctx context.Context, event Event) error) error {
 	ctx, cancel := context.WithTimeout(ctx, m.timeout)
 	defer cancel()
-	
+
 	done := make(chan error, 1)
-	
+
 	go func() {
 		done <- next(ctx, event)
 	}()
-	
+
 	select {
 	case err := <-done:
 		return err

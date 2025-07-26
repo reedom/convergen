@@ -10,16 +10,16 @@ import (
 
 // Event type constants for the generation pipeline
 const (
-	EventTypeParseStarted    = "parse.started"
-	EventTypeParsed          = "parse.completed"
-	EventTypePlanStarted     = "plan.started"
-	EventTypePlanned         = "plan.completed"
-	EventTypeExecuteStarted  = "execute.started"
-	EventTypeExecuted        = "execute.completed"
-	EventTypeEmitStarted     = "emit.started"
-	EventTypeEmitted         = "emit.completed"
-	EventTypeProgress        = "progress.update"
-	EventTypeError           = "error.occurred"
+	EventTypeParseStarted   = "parse.started"
+	EventTypeParsed         = "parse.completed"
+	EventTypePlanStarted    = "plan.started"
+	EventTypePlanned        = "plan.completed"
+	EventTypeExecuteStarted = "execute.started"
+	EventTypeExecuted       = "execute.completed"
+	EventTypeEmitStarted    = "emit.started"
+	EventTypeEmitted        = "emit.completed"
+	EventTypeProgress       = "progress.update"
+	EventTypeError          = "error.occurred"
 )
 
 // ParseStartedEvent signals the beginning of parsing
@@ -56,11 +56,11 @@ func NewParsedEvent(ctx context.Context, methods []*domain.Method, baseCode stri
 
 // ParseMetrics tracks parsing performance
 type ParseMetrics struct {
-	ParseDurationMS      int64 `json:"parse_duration_ms"`
-	InterfacesFound      int   `json:"interfaces_found"`
-	MethodsProcessed     int   `json:"methods_processed"`
-	AnnotationsProcessed int   `json:"annotations_processed"`
-	TypesResolved        int   `json:"types_resolved"`
+	ParseDurationMS      int64   `json:"parse_duration_ms"`
+	InterfacesFound      int     `json:"interfaces_found"`
+	MethodsProcessed     int     `json:"methods_processed"`
+	AnnotationsProcessed int     `json:"annotations_processed"`
+	TypesResolved        int     `json:"types_resolved"`
 	CacheHitRate         float64 `json:"cache_hit_rate"`
 }
 
@@ -121,9 +121,9 @@ func NewExecuteStartedEvent(ctx context.Context, plan *domain.ExecutionPlan) *Ex
 // ExecutedEvent represents successful execution completion
 type ExecutedEvent struct {
 	*BaseEvent
-	Results []*domain.FieldResult `json:"results"`
+	Results []*domain.FieldResult     `json:"results"`
 	Errors  []*domain.GenerationError `json:"errors"`
-	Metrics *ExecutionMetrics     `json:"metrics"`
+	Metrics *ExecutionMetrics         `json:"metrics"`
 }
 
 // NewExecutedEvent creates a new executed event
@@ -178,11 +178,11 @@ func NewEmittedEvent(ctx context.Context, generated *domain.GeneratedFunction) *
 
 // EmissionMetrics tracks code emission performance
 type EmissionMetrics struct {
-	EmissionDurationMS  int64 `json:"emission_duration_ms"`
-	LinesGenerated      int   `json:"lines_generated"`
-	ImportsGenerated    int   `json:"imports_generated"`
+	EmissionDurationMS   int64 `json:"emission_duration_ms"`
+	LinesGenerated       int   `json:"lines_generated"`
+	ImportsGenerated     int   `json:"imports_generated"`
 	OptimizationsApplied int   `json:"optimizations_applied"`
-	CodeSizeBytes       int   `json:"code_size_bytes"`
+	CodeSizeBytes        int   `json:"code_size_bytes"`
 }
 
 // ProgressEvent represents progress updates during processing
@@ -203,7 +203,7 @@ func NewProgressEvent(ctx context.Context, phase domain.ProcessingPhase, current
 	if total == 0 {
 		progress = 0.0
 	}
-	
+
 	return &ProgressEvent{
 		BaseEvent:   NewBaseEvent(EventTypeProgress, ctx),
 		Phase:       phase,
@@ -251,8 +251,8 @@ func (e *ErrorEvent) WithContext(key string, value interface{}) *ErrorEvent {
 
 // EventCollector collects events for analysis and debugging
 type EventCollector struct {
-	events []Event
-	mutex  sync.RWMutex
+	events    []Event
+	mutex     sync.RWMutex
 	maxEvents int
 }
 
@@ -261,7 +261,7 @@ func NewEventCollector(maxEvents int) *EventCollector {
 	if maxEvents <= 0 {
 		maxEvents = 1000 // Default limit
 	}
-	
+
 	return &EventCollector{
 		events:    make([]Event, 0),
 		maxEvents: maxEvents,
@@ -272,12 +272,12 @@ func NewEventCollector(maxEvents int) *EventCollector {
 func (ec *EventCollector) Collect(event Event) {
 	ec.mutex.Lock()
 	defer ec.mutex.Unlock()
-	
+
 	// Add event, removing oldest if at capacity
 	if len(ec.events) >= ec.maxEvents {
 		ec.events = ec.events[1:]
 	}
-	
+
 	ec.events = append(ec.events, event)
 }
 
@@ -285,7 +285,7 @@ func (ec *EventCollector) Collect(event Event) {
 func (ec *EventCollector) Events() []Event {
 	ec.mutex.RLock()
 	defer ec.mutex.RUnlock()
-	
+
 	// Return defensive copy
 	events := make([]Event, len(ec.events))
 	copy(events, ec.events)
@@ -296,14 +296,14 @@ func (ec *EventCollector) Events() []Event {
 func (ec *EventCollector) EventsByType(eventType string) []Event {
 	ec.mutex.RLock()
 	defer ec.mutex.RUnlock()
-	
+
 	var filtered []Event
 	for _, event := range ec.events {
 		if event.Type() == eventType {
 			filtered = append(filtered, event)
 		}
 	}
-	
+
 	return filtered
 }
 
@@ -311,16 +311,16 @@ func (ec *EventCollector) EventsByType(eventType string) []Event {
 func (ec *EventCollector) EventsInTimeRange(start, end time.Time) []Event {
 	ec.mutex.RLock()
 	defer ec.mutex.RUnlock()
-	
+
 	var filtered []Event
 	for _, event := range ec.events {
 		timestamp := event.Timestamp()
-		if (timestamp.Equal(start) || timestamp.After(start)) && 
-		   (timestamp.Equal(end) || timestamp.Before(end)) {
+		if (timestamp.Equal(start) || timestamp.After(start)) &&
+			(timestamp.Equal(end) || timestamp.Before(end)) {
 			filtered = append(filtered, event)
 		}
 	}
-	
+
 	return filtered
 }
 
@@ -328,7 +328,7 @@ func (ec *EventCollector) EventsInTimeRange(start, end time.Time) []Event {
 func (ec *EventCollector) Clear() {
 	ec.mutex.Lock()
 	defer ec.mutex.Unlock()
-	
+
 	ec.events = ec.events[:0]
 }
 
@@ -336,7 +336,7 @@ func (ec *EventCollector) Clear() {
 func (ec *EventCollector) Count() int {
 	ec.mutex.RLock()
 	defer ec.mutex.RUnlock()
-	
+
 	return len(ec.events)
 }
 
@@ -369,11 +369,11 @@ func (h *PipelineEventHandler) CanHandle(eventType string) bool {
 
 // ProgressTracker tracks progress across the entire pipeline
 type ProgressTracker struct {
-	totalPhases int
-	currentPhase int
+	totalPhases   int
+	currentPhase  int
 	phaseProgress map[domain.ProcessingPhase]float64
-	mutex sync.RWMutex
-	startTime time.Time
+	mutex         sync.RWMutex
+	startTime     time.Time
 }
 
 // NewProgressTracker creates a new progress tracker
@@ -390,7 +390,7 @@ func NewProgressTracker() *ProgressTracker {
 func (pt *ProgressTracker) UpdatePhaseProgress(phase domain.ProcessingPhase, progress float64) {
 	pt.mutex.Lock()
 	defer pt.mutex.Unlock()
-	
+
 	pt.phaseProgress[phase] = progress
 }
 
@@ -398,14 +398,14 @@ func (pt *ProgressTracker) UpdatePhaseProgress(phase domain.ProcessingPhase, pro
 func (pt *ProgressTracker) OverallProgress() float64 {
 	pt.mutex.RLock()
 	defer pt.mutex.RUnlock()
-	
+
 	totalProgress := 0.0
 	for phase := domain.PhaseParsing; phase <= domain.PhaseEmission; phase++ {
 		if progress, exists := pt.phaseProgress[phase]; exists {
 			totalProgress += progress
 		}
 	}
-	
+
 	return totalProgress / float64(pt.totalPhases)
 }
 
@@ -420,7 +420,7 @@ func (pt *ProgressTracker) EstimatedTimeRemaining() time.Duration {
 	if progress <= 0 {
 		return 0
 	}
-	
+
 	elapsed := pt.ElapsedTime()
 	totalEstimated := time.Duration(float64(elapsed) / progress)
 	return totalEstimated - elapsed
