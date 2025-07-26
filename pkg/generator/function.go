@@ -1,8 +1,9 @@
 package generator
 
 import (
-	"strings"
 	"regexp"
+	"strings"
+
 	"github.com/reedom/convergen/v8/pkg/generator/model"
 )
 

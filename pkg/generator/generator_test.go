@@ -3,9 +3,10 @@ package generator_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/reedom/convergen/v8/pkg/generator"
 	"github.com/reedom/convergen/v8/pkg/generator/model"
-	"github.com/stretchr/testify/assert"
 )
 
 const pre = `package simple

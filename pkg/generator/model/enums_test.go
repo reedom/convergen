@@ -3,9 +3,10 @@ package model_test
 import (
 	"testing"
 
-	"github.com/reedom/convergen/v8/pkg/generator/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/reedom/convergen/v8/pkg/generator/model"
 )
 
 func TestDstVarStyle(t *testing.T) {
