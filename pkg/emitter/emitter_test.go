@@ -23,21 +23,22 @@ func TestEmitter_GenerateCode(t *testing.T) {
 		BaseCode:    "// Base code\n",
 		Methods: []*domain.MethodResult{
 			{
-				MethodName: "ConvertUser",
-				Data: map[string]interface{}{
-					"Name": &domain.FieldResult{
-						FieldID:      "Name",
-						Success:      true,
-						Result:       "src.Name",
-						StrategyUsed: "direct",
-						Duration:     time.Millisecond,
-					},
-					"Email": &domain.FieldResult{
-						FieldID:      "Email",
-						Success:      true,
-						Result:       "src.Email",
-						StrategyUsed: "direct",
-						Duration:     time.Millisecond,
+				Method: &domain.Method{
+					Name: "ConvertUser",
+				},
+				Success: true,
+				Metadata: map[string]interface{}{
+					"fields": map[string]interface{}{
+						"Name": map[string]interface{}{
+							"field_id": "Name",
+							"result":   "src.Name",
+							"strategy": "direct",
+						},
+						"Email": map[string]interface{}{
+							"field_id": "Email",
+							"result":   "src.Email",
+							"strategy": "direct",
+						},
 					},
 				},
 			},
@@ -79,14 +80,17 @@ func TestEmitter_GenerateMethod(t *testing.T) {
 	
 	// Create test method result
 	method := &domain.MethodResult{
-		MethodName: "ConvertSimple",
-		Data: map[string]interface{}{
-			"ID": &domain.FieldResult{
-				FieldID:      "ID",
-				Success:      true,
-				Result:       "src.ID",
-				StrategyUsed: "direct",
-				Duration:     time.Millisecond,
+		Method: &domain.Method{
+			Name: "ConvertSimple",
+		},
+		Success: true,
+		Metadata: map[string]interface{}{
+			"fields": map[string]interface{}{
+				"ID": map[string]interface{}{
+					"field_id": "ID",
+					"result":   "src.ID",
+					"strategy": "direct",
+				},
 			},
 		},
 	}
@@ -167,8 +171,8 @@ func TestEmitter_GetMetrics(t *testing.T) {
 	}
 	
 	// Initial metrics should be zero
-	if metrics.MethodsGenerated != 0 {
-		t.Errorf("Expected 0 methods generated initially, got %d", metrics.MethodsGenerated)
+	if metrics.TotalMethods != 0 {
+		t.Errorf("Expected 0 methods generated initially, got %d", metrics.TotalMethods)
 	}
 }
 
@@ -227,38 +231,41 @@ func TestEmitter_ConcurrentGeneration(t *testing.T) {
 		PackageName: "testpkg",
 		Methods: []*domain.MethodResult{
 			{
-				MethodName: "ConvertUser1",
-				Data: map[string]interface{}{
-					"Name": &domain.FieldResult{
-						FieldID:      "Name",
-						Success:      true,
-						Result:       "src.Name",
-						StrategyUsed: "direct",
-						Duration:     time.Millisecond,
+				Method: &domain.Method{Name: "ConvertUser1"},
+				Success: true,
+				Metadata: map[string]interface{}{
+					"fields": map[string]interface{}{
+						"Name": map[string]interface{}{
+							"field_id": "Name",
+							"result":   "src.Name",
+							"strategy": "direct",
+						},
 					},
 				},
 			},
 			{
-				MethodName: "ConvertUser2",
-				Data: map[string]interface{}{
-					"Email": &domain.FieldResult{
-						FieldID:      "Email",
-						Success:      true,
-						Result:       "src.Email",
-						StrategyUsed: "direct",
-						Duration:     time.Millisecond,
+				Method: &domain.Method{Name: "ConvertUser2"},
+				Success: true,
+				Metadata: map[string]interface{}{
+					"fields": map[string]interface{}{
+						"Email": map[string]interface{}{
+							"field_id": "Email",
+							"result":   "src.Email",
+							"strategy": "direct",
+						},
 					},
 				},
 			},
 			{
-				MethodName: "ConvertUser3",
-				Data: map[string]interface{}{
-					"ID": &domain.FieldResult{
-						FieldID:      "ID",
-						Success:      true,
-						Result:       "src.ID",
-						StrategyUsed: "direct",
-						Duration:     time.Millisecond,
+				Method: &domain.Method{Name: "ConvertUser3"},
+				Success: true,
+				Metadata: map[string]interface{}{
+					"fields": map[string]interface{}{
+						"ID": map[string]interface{}{
+							"field_id": "ID",
+							"result":   "src.ID",
+							"strategy": "direct",
+						},
 					},
 				},
 			},

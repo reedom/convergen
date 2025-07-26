@@ -6,33 +6,33 @@ import (
 	"time"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/executor"
 	"go.uber.org/zap/zaptest"
 )
 
 func TestCodeGenerator_GenerateMethodCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics(true)
+	metrics := NewEmitterMetrics()
 	
 	generator := NewCodeGenerator(config, logger, metrics)
 	
 	// Create test method result
 	method := &domain.MethodResult{
-		MethodName: "ConvertUser",
-		Data: map[string]interface{}{
-			"Name": &domain.FieldResult{
-				FieldID:      "Name",
-				Success:      true,
-				Result:       "src.Name",
-				StrategyUsed: "direct",
-				Duration:     time.Millisecond,
-			},
-			"Email": &domain.FieldResult{
-				FieldID:      "Email",
-				Success:      true,
-				Result:       "src.Email",
-				StrategyUsed: "direct",
-				Duration:     time.Millisecond,
+		Method: &domain.Method{
+			Name: "ConvertUser",
+		},
+		Success: true,
+		Metadata: map[string]interface{}{
+			"fields": []interface{}{
+				map[string]interface{}{
+					"field_id": "Name",
+					"result":   "src.Name",
+				},
+				map[string]interface{}{
+					"field_id": "Email",
+					"result":   "src.Email",
+				},
 			},
 		},
 	}
@@ -70,12 +70,12 @@ func TestCodeGenerator_GenerateMethodCode(t *testing.T) {
 func TestCodeGenerator_GenerateFieldCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics(true)
+	metrics := NewEmitterMetrics()
 	
 	generator := NewCodeGenerator(config, logger, metrics)
 	
 	// Test direct field
-	directField := &domain.FieldResult{
+	directField := &executor.FieldResult{
 		FieldID:      "DirectField",
 		Success:      true,
 		Result:       "src.DirectField",
@@ -99,7 +99,7 @@ func TestCodeGenerator_GenerateFieldCode(t *testing.T) {
 	}
 	
 	// Test converter field
-	converterField := &domain.FieldResult{
+	converterField := &executor.FieldResult{
 		FieldID:      "ConverterField",
 		Success:      true,
 		Result:       "converter.Convert(src.ConverterField)",
@@ -118,10 +118,10 @@ func TestCodeGenerator_GenerateFieldCode(t *testing.T) {
 	}
 	
 	// Test error field
-	errorField := &domain.FieldResult{
+	errorField := &executor.FieldResult{
 		FieldID:      "ErrorField",
 		Success:      false,
-		Error:        &domain.ExecutionError{FieldID: "ErrorField", Error: "conversion failed"},
+		Error:        &executor.ExecutionError{FieldID: "ErrorField", Error: "conversion failed"},
 		StrategyUsed: "converter",
 		Duration:     10 * time.Millisecond,
 		RetryCount:   2,
@@ -145,18 +145,24 @@ func TestCodeGenerator_GenerateFieldCode(t *testing.T) {
 func TestCodeGenerator_GenerateErrorHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics(true)
+	metrics := NewEmitterMetrics()
 	
 	generator := NewCodeGenerator(config, logger, metrics)
 	
 	errors := []domain.ExecutionError{
 		{
-			FieldID: "Field1",
-			Error:   "conversion error 1",
+			Type:      "conversion_error",
+			Message:   "conversion error 1",
+			Component: "emitter",
+			Field:     "Field1",
+			Timestamp: time.Now(),
 		},
 		{
-			FieldID: "Field2",
-			Error:   "conversion error 2",
+			Type:      "conversion_error",
+			Message:   "conversion error 2",
+			Component: "emitter",
+			Field:     "Field2",
+			Timestamp: time.Now(),
 		},
 	}
 	
@@ -171,17 +177,17 @@ func TestCodeGenerator_GenerateErrorHandling(t *testing.T) {
 		t.Fatal("Generated error code is nil")
 	}
 	
-	if errorCode.Code == "" {
+	if errorCode.HandlingCode == "" {
 		t.Error("Error handling code should not be empty")
 	}
 	
-	t.Logf("Generated error handling:\n%s", errorCode.Code)
+	t.Logf("Generated error handling:\n%s", errorCode.HandlingCode)
 }
 
 func TestCodeGenerator_GetMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics(true)
+	metrics := NewEmitterMetrics()
 	
 	generator := NewCodeGenerator(config, logger, metrics)
 	
@@ -200,7 +206,7 @@ func TestCodeGenerator_GetMetrics(t *testing.T) {
 func TestCodeGenerator_Shutdown(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics(true)
+	metrics := NewEmitterMetrics()
 	
 	generator := NewCodeGenerator(config, logger, metrics)
 	
@@ -217,7 +223,7 @@ func TestCodeGenerator_Shutdown(t *testing.T) {
 func TestCodeGenerator_HelperFunctions(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics(true)
+	metrics := NewEmitterMetrics()
 	
 	generator := NewCodeGenerator(config, logger, metrics).(*ConcreteCodeGenerator)
 	
@@ -244,7 +250,7 @@ func TestCodeGenerator_HelperFunctions(t *testing.T) {
 	}
 	
 	// Test snakeCase function
-	snakeCaseFn, exists := helpers["snakeCase"]
+	_, exists = helpers["snakeCase"]
 	if !exists {
 		t.Error("snakeCase helper function should exist")
 	}
@@ -268,7 +274,7 @@ func TestCodeGenerator_HelperFunctions(t *testing.T) {
 func TestCodeGenerator_ErrorHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics(true)
+	metrics := NewEmitterMetrics()
 	
 	generator := NewCodeGenerator(config, logger, metrics)
 	ctx := context.Background()
@@ -290,7 +296,7 @@ func TestCodeGenerator_ErrorHandling(t *testing.T) {
 	if err != nil {
 		t.Errorf("Should not error with empty error list: %v", err)
 	}
-	if errorCode != nil && errorCode.Code != "" {
+	if errorCode != nil && errorCode.HandlingCode != "" {
 		t.Error("Empty error list should result in empty error code")
 	}
 }
@@ -298,42 +304,36 @@ func TestCodeGenerator_ErrorHandling(t *testing.T) {
 func TestCodeGenerator_ComplexScenarios(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics(true)
+	metrics := NewEmitterMetrics()
 	
 	generator := NewCodeGenerator(config, logger, metrics)
 	
 	// Create a complex method with various field types
 	method := &domain.MethodResult{
-		MethodName: "ConvertComplex",
-		Data: map[string]interface{}{
-			"SimpleField": &domain.FieldResult{
-				FieldID:      "SimpleField",
-				Success:      true,
-				Result:       "src.SimpleField",
-				StrategyUsed: "direct",
-				Duration:     time.Millisecond,
-			},
-			"ConvertedField": &domain.FieldResult{
-				FieldID:      "ConvertedField",
-				Success:      true,
-				Result:       "converter.Convert(src.ConvertedField)",
-				StrategyUsed: "converter",
-				Duration:     5 * time.Millisecond,
-			},
-			"ErrorProneField": &domain.FieldResult{
-				FieldID:      "ErrorProneField",
-				Success:      false,
-				Error:        &domain.ExecutionError{FieldID: "ErrorProneField", Error: "complex conversion failed"},
-				StrategyUsed: "converter",
-				Duration:     15 * time.Millisecond,
-				RetryCount:   3,
-			},
-			"LiteralField": &domain.FieldResult{
-				FieldID:      "LiteralField",
-				Success:      true,
-				Result:       "\"constant_value\"",
-				StrategyUsed: "literal",
-				Duration:     time.Microsecond,
+		Method: &domain.Method{
+			Name: "ConvertComplex",
+		},
+		Success: true,
+		Metadata: map[string]interface{}{
+			"fields": map[string]interface{}{
+				"SimpleField": map[string]interface{}{
+					"field_id": "SimpleField",
+					"success":  true,
+					"result":   "src.SimpleField",
+					"strategy": "direct",
+				},
+				"ConvertedField": map[string]interface{}{
+					"field_id": "ConvertedField",
+					"success":  true,
+					"result":   "converter.Convert(src.ConvertedField)",
+					"strategy": "converter",
+				},
+				"LiteralField": map[string]interface{}{
+					"field_id": "LiteralField",
+					"success":  true,
+					"result":   "\"constant_value\"",
+					"strategy": "literal",
+				},
 			},
 		},
 	}
@@ -354,8 +354,8 @@ func TestCodeGenerator_ComplexScenarios(t *testing.T) {
 	}
 	
 	// Should generate appropriate strategy
-	if methodCode.Strategy == "" {
-		t.Error("Strategy should be selected for complex method")
+	if methodCode.Strategy != StrategyCompositeLiteral && methodCode.Strategy != StrategyAssignmentBlock && methodCode.Strategy != StrategyMixedApproach {
+		t.Errorf("Unexpected strategy: %v", methodCode.Strategy)
 	}
 	
 	// Should have complexity metrics
@@ -371,27 +371,30 @@ func TestCodeGenerator_StrategySelection(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
 	config.MaxFieldsForComposite = 3 // Set threshold for composite literal strategy
-	metrics := NewEmitterMetrics(true)
+	metrics := NewEmitterMetrics()
 	
 	generator := NewCodeGenerator(config, logger, metrics)
 	
 	// Test simple method that should use composite literal
 	simpleMethod := &domain.MethodResult{
-		MethodName: "ConvertSimple",
-		Data: map[string]interface{}{
-			"Field1": &domain.FieldResult{
-				FieldID:      "Field1",
-				Success:      true,
-				Result:       "src.Field1",
-				StrategyUsed: "direct",
-				Duration:     time.Millisecond,
-			},
-			"Field2": &domain.FieldResult{
-				FieldID:      "Field2",
-				Success:      true,
-				Result:       "src.Field2",
-				StrategyUsed: "direct",
-				Duration:     time.Millisecond,
+		Method: &domain.Method{
+			Name: "ConvertSimple",
+		},
+		Success: true,
+		Metadata: map[string]interface{}{
+			"fields": map[string]interface{}{
+				"Field1": map[string]interface{}{
+					"field_id": "Field1",
+					"success":  true,
+					"result":   "src.Field1",
+					"strategy": "direct",
+				},
+				"Field2": map[string]interface{}{
+					"field_id": "Field2",
+					"success":  true,
+					"result":   "src.Field2",
+					"strategy": "direct",
+				},
 			},
 		},
 	}
@@ -408,21 +411,30 @@ func TestCodeGenerator_StrategySelection(t *testing.T) {
 	
 	// Test complex method that should use assignment block
 	complexMethod := &domain.MethodResult{
-		MethodName: "ConvertComplex",
-		Data: map[string]interface{}{
-			"Field1": &domain.FieldResult{
-				FieldID:      "Field1",
-				Success:      false,
-				Error:        &domain.ExecutionError{FieldID: "Field1", Error: "error"},
-				StrategyUsed: "converter",
-				Duration:     10 * time.Millisecond,
-			},
-			"Field2": &domain.FieldResult{
-				FieldID:      "Field2",
-				Success:      true,
-				Result:       "converter.Convert(src.Field2)",
-				StrategyUsed: "converter",
-				Duration:     5 * time.Millisecond,
+		Method: &domain.Method{
+			Name: "ConvertComplex",
+		},
+		Success: false,
+		Error: &domain.ExecutionError{
+			Type:      "conversion_error",
+			Message:   "error",
+			Component: "emitter",
+			Field:     "Field1",
+			Timestamp: time.Now(),
+		},
+		Metadata: map[string]interface{}{
+			"fields": map[string]interface{}{
+				"Field1": map[string]interface{}{
+					"field_id": "Field1",
+					"success":  false,
+					"strategy": "converter",
+				},
+				"Field2": map[string]interface{}{
+					"field_id": "Field2",
+					"success":  true,
+					"result":   "converter.Convert(src.Field2)",
+					"strategy": "converter",
+				},
 			},
 		},
 	}
