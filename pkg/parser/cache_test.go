@@ -5,8 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
 func TestTypeCache_BasicOperations(t *testing.T) {
@@ -114,7 +115,7 @@ func TestTypeCache_Stats(t *testing.T) {
 
 	// Add item and test hit
 	cache.Put("string", testType)
-	cache.Get("string") // Hit
+	cache.Get("string")      // Hit
 	cache.Get("nonexistent") // Miss
 
 	stats = cache.Stats()

@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/reedom/convergen/v8/pkg/generator/model"
-	"github.com/reedom/convergen/v8/pkg/option"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/reedom/convergen/v8/pkg/generator/model"
+	"github.com/reedom/convergen/v8/pkg/option"
 )
 
 func TestNotations(t *testing.T) {

@@ -7,9 +7,10 @@ import (
 	"go/types"
 	"strings"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"go.uber.org/zap"
 	"golang.org/x/tools/go/packages"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
 // MethodProcessor handles analysis and processing of individual methods
@@ -146,22 +147,22 @@ func (p *ASTParser) extractMethodAnnotations(file *ast.File, methodObj types.Obj
 func (p *ASTParser) parseMethodOptions(annotations []*Annotation, interfaceOpts *domain.InterfaceOptions) (*domain.MethodOptions, error) {
 	// Start with interface options as base
 	options := &domain.MethodOptions{
-		Style:                interfaceOpts.Style,
-		MatchRule:            interfaceOpts.MatchRule,
-		CaseSensitive:        interfaceOpts.CaseSensitive,
-		UseGetter:            interfaceOpts.UseGetter,
-		UseStringer:          interfaceOpts.UseStringer,
-		UseTypecast:          interfaceOpts.UseTypecast,
-		AllowReverse:         interfaceOpts.AllowReverse,
-		SkipFields:           append([]string{}, interfaceOpts.SkipFields...),
-		FieldMappings:        p.copyStringMap(interfaceOpts.FieldMappings),
-		TypeConverters:       p.copyStringMap(interfaceOpts.TypeConverters),
-		LiteralAssignments:   p.copyStringMap(interfaceOpts.LiteralAssignments),
-		PreprocessFunction:   interfaceOpts.PreprocessFunction,
-		PostprocessFunction:  interfaceOpts.PostprocessFunction,
-		CustomValidation:     "",
-		ConcurrencyLevel:     1,
-		TimeoutDuration:      0,
+		Style:               interfaceOpts.Style,
+		MatchRule:           interfaceOpts.MatchRule,
+		CaseSensitive:       interfaceOpts.CaseSensitive,
+		UseGetter:           interfaceOpts.UseGetter,
+		UseStringer:         interfaceOpts.UseStringer,
+		UseTypecast:         interfaceOpts.UseTypecast,
+		AllowReverse:        interfaceOpts.AllowReverse,
+		SkipFields:          append([]string{}, interfaceOpts.SkipFields...),
+		FieldMappings:       p.copyStringMap(interfaceOpts.FieldMappings),
+		TypeConverters:      p.copyStringMap(interfaceOpts.TypeConverters),
+		LiteralAssignments:  p.copyStringMap(interfaceOpts.LiteralAssignments),
+		PreprocessFunction:  interfaceOpts.PreprocessFunction,
+		PostprocessFunction: interfaceOpts.PostprocessFunction,
+		CustomValidation:    "",
+		ConcurrencyLevel:    1,
+		TimeoutDuration:     0,
 	}
 
 	// Apply method-specific annotations
@@ -178,8 +179,8 @@ func (p *ASTParser) parseMethodOptions(annotations []*Annotation, interfaceOpts 
 func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotation *Annotation) error {
 	switch annotation.Type {
 	case "style", "match", "case", "case:off", "getter", "getter:off",
-		 "stringer", "stringer:off", "typecast", "typecast:off", "reverse",
-		 "skip", "map", "conv", "literal", "preprocess", "postprocess":
+		"stringer", "stringer:off", "typecast", "typecast:off", "reverse",
+		"skip", "map", "conv", "literal", "preprocess", "postprocess":
 		// These are handled the same way as interface annotations
 		return p.applyInterfaceAnnotationToMethod(options, annotation)
 
@@ -225,7 +226,7 @@ func (p *ASTParser) analyzeMethodParameters(ctx context.Context, params *types.T
 
 	for i := 0; i < params.Len(); i++ {
 		param := params.At(i)
-		
+
 		// Resolve type with generics support
 		resolvedType, err := p.typeResolverPool.Get().ResolveType(ctx, param.Type())
 		if err != nil {
@@ -255,7 +256,7 @@ func (p *ASTParser) analyzeMethodReturns(ctx context.Context, results *types.Tup
 
 	for i := 0; i < results.Len(); i++ {
 		result := results.At(i)
-		
+
 		// Resolve type with generics support
 		resolvedType, err := p.typeResolverPool.Get().ResolveType(ctx, result.Type())
 		if err != nil {
@@ -342,7 +343,7 @@ func (p *ASTParser) matchFields(source, dest *domain.TypeInfo, options *domain.M
 				if err != nil {
 					return nil, fmt.Errorf("failed to create source field spec: %w", err)
 				}
-				
+
 				destSpec, err := domain.NewFieldSpec([]string{destField.Name}, destField.Type)
 				if err != nil {
 					return nil, fmt.Errorf("failed to create dest field spec: %w", err)
@@ -351,12 +352,12 @@ func (p *ASTParser) matchFields(source, dest *domain.TypeInfo, options *domain.M
 				// Create mapping with direct assignment strategy
 				strategy := &domain.DirectAssignmentStrategy{}
 				mappingID := fmt.Sprintf("field_%d_%d", i, j)
-				
+
 				mapping, err := domain.NewFieldMapping(mappingID, sourceSpec, destSpec, strategy)
 				if err != nil {
 					return nil, fmt.Errorf("failed to create field mapping: %w", err)
 				}
-				
+
 				mappings = append(mappings, mapping)
 				break
 			}
@@ -419,19 +420,19 @@ func (p *ASTParser) copyStringMap(original map[string]string) map[string]string 
 func (p *ASTParser) applyInterfaceAnnotationToMethod(options *domain.MethodOptions, annotation *Annotation) error {
 	// Convert method options to interface options temporarily for reuse
 	interfaceOpts := &domain.InterfaceOptions{
-		Style:                options.Style,
-		MatchRule:            options.MatchRule,
-		CaseSensitive:        options.CaseSensitive,
-		UseGetter:            options.UseGetter,
-		UseStringer:          options.UseStringer,
-		UseTypecast:          options.UseTypecast,
-		AllowReverse:         options.AllowReverse,
-		SkipFields:           options.SkipFields,
-		FieldMappings:        options.FieldMappings,
-		TypeConverters:       options.TypeConverters,
-		LiteralAssignments:   options.LiteralAssignments,
-		PreprocessFunction:   options.PreprocessFunction,
-		PostprocessFunction:  options.PostprocessFunction,
+		Style:               options.Style,
+		MatchRule:           options.MatchRule,
+		CaseSensitive:       options.CaseSensitive,
+		UseGetter:           options.UseGetter,
+		UseStringer:         options.UseStringer,
+		UseTypecast:         options.UseTypecast,
+		AllowReverse:        options.AllowReverse,
+		SkipFields:          options.SkipFields,
+		FieldMappings:       options.FieldMappings,
+		TypeConverters:      options.TypeConverters,
+		LiteralAssignments:  options.LiteralAssignments,
+		PreprocessFunction:  options.PreprocessFunction,
+		PostprocessFunction: options.PostprocessFunction,
 	}
 
 	err := p.applyInterfaceAnnotation(interfaceOpts, annotation)

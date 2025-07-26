@@ -7,11 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
 func TestASTParser_NewASTParser(t *testing.T) {
@@ -28,9 +29,9 @@ func TestASTParser_NewASTParser(t *testing.T) {
 
 func TestASTParser_ParseSourceFile(t *testing.T) {
 	tests := []struct {
-		name           string
-		sourceContent  string
-		expectedError  bool
+		name            string
+		sourceContent   string
+		expectedError   bool
 		expectedMethods int
 	}{
 		{
@@ -296,7 +297,7 @@ type ComplexType struct {
 	initialCacheSize := parser.cache.Size()
 	_, _, err = parser.ParseSourceFile(ctx, sourceFile, destFile)
 	require.NoError(t, err)
-	
+
 	firstParseSize := parser.cache.Size()
 	assert.Greater(t, firstParseSize, initialCacheSize)
 
@@ -329,7 +330,7 @@ func TestASTParser_ErrorHandling(t *testing.T) {
 type Convergen interface {
 	Convert(src *Source) *Dest
 `,
-			expectedError: "failed to load package",
+			expectedError: "package errors:",
 		},
 		{
 			name: "method without parameters",

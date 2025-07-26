@@ -7,9 +7,10 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
 // TypeResolver provides concurrent type resolution with caching
@@ -36,10 +37,9 @@ func NewTypeResolver(cache *TypeCache, logger *zap.Logger) *TypeResolver {
 	}
 }
 
-// NewTypeResolverPool creates a pool of type resolvers
-func NewTypeResolverPool(size int, logger *zap.Logger) *TypeResolverPool {
+// NewTypeResolverPool creates a pool of type resolvers with a shared cache
+func NewTypeResolverPool(size int, cache *TypeCache, logger *zap.Logger) *TypeResolverPool {
 	resolvers := make([]*TypeResolver, size)
-	cache := NewTypeCache(1000) // Shared cache
 
 	for i := 0; i < size; i++ {
 		resolvers[i] = NewTypeResolver(cache, logger)
@@ -125,7 +125,7 @@ func (tr *TypeResolver) ResolveType(ctx context.Context, goType types.Type) (dom
 // resolveBasicType handles basic Go types (int, string, bool, etc.)
 func (tr *TypeResolver) resolveBasicType(basic *types.Basic) (domain.Type, error) {
 	kind := tr.mapBasicTypeKind(basic.Kind())
-	
+
 	return domain.NewBasicType(basic.Name(), kind), nil
 }
 
@@ -140,7 +140,7 @@ func (tr *TypeResolver) resolveNamedType(ctx context.Context, named *types.Named
 			if err != nil {
 				return nil, fmt.Errorf("failed to resolve type parameter constraint: %w", err)
 			}
-			
+
 			typeParams = append(typeParams, domain.TypeParam{
 				Name:       param.Obj().Name(),
 				Constraint: constraint,
@@ -209,7 +209,7 @@ func (tr *TypeResolver) resolveStructType(ctx context.Context, structType *types
 
 	// Use error group for concurrent field resolution
 	g, gctx := errgroup.WithContext(ctx)
-	
+
 	for i := 0; i < structType.NumFields(); i++ {
 		i := i // Capture for goroutine
 		g.Go(func() error {
@@ -324,7 +324,7 @@ func (p *ASTParser) analyzeTypeStructure(ctx context.Context, domainType domain.
 	}
 
 	var typeInfo *domain.TypeInfo
-	
+
 	switch domainType.Kind() {
 	case domain.KindStruct:
 		typeInfo = p.analyzeStructTypeInfo(ctx, domainType)

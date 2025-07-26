@@ -10,21 +10,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/tools/go/packages"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
 // ASTParser provides event-driven AST parsing with concurrent processing
 type ASTParser struct {
-	logger     *zap.Logger
-	eventBus   events.EventBus
-	cache      *TypeCache
-	config     *ParserConfig
-	fileSet    *token.FileSet
-	
+	logger   *zap.Logger
+	eventBus events.EventBus
+	cache    *TypeCache
+	config   *ParserConfig
+	fileSet  *token.FileSet
+
 	// Concurrent processing
 	typeResolverPool *TypeResolverPool
 	mutex            sync.RWMutex
@@ -52,7 +53,7 @@ func NewASTParser(logger *zap.Logger, eventBus events.EventBus, config *ParserCo
 	}
 
 	cache := NewTypeCache(config.CacheSize)
-	typeResolverPool := NewTypeResolverPool(config.MaxConcurrentWorkers, logger)
+	typeResolverPool := NewTypeResolverPool(config.MaxConcurrentWorkers, cache, logger)
 
 	return &ASTParser{
 		logger:           logger,

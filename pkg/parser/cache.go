@@ -73,7 +73,7 @@ func (tc *TypeCache) Put(key string, domainType domain.Type) {
 func (tc *TypeCache) evictLRU() {
 	var oldestKey string
 	var oldestTime time.Time
-	
+
 	for key, entry := range tc.cache {
 		if oldestKey == "" || entry.lastAccess.Before(oldestTime) {
 			oldestKey = key
@@ -111,11 +111,11 @@ func (tc *TypeCache) Stats() CacheStats {
 	defer tc.statsMux.RUnlock()
 
 	return CacheStats{
-		Size:     tc.Size(),
-		MaxSize:  tc.maxSize,
-		Hits:     tc.hits,
-		Misses:   tc.misses,
-		HitRate:  tc.HitRate(),
+		Size:    tc.Size(),
+		MaxSize: tc.maxSize,
+		Hits:    tc.hits,
+		Misses:  tc.misses,
+		HitRate: tc.HitRate(),
 	}
 }
 
@@ -125,7 +125,7 @@ func (tc *TypeCache) Clear() {
 	defer tc.mutex.Unlock()
 
 	tc.cache = make(map[string]*cacheEntry)
-	
+
 	tc.statsMux.Lock()
 	tc.hits = 0
 	tc.misses = 0

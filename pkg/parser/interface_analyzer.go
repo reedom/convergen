@@ -9,10 +9,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	gonanoid "github.com/matoous/go-nanoid"
 	"go.uber.org/zap"
 	"golang.org/x/tools/go/packages"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
 // InterfaceInfo contains comprehensive information about a convergen interface
@@ -161,20 +162,20 @@ func (p *ASTParser) parseAnnotation(comment *ast.Comment) *Annotation {
 // parseInterfaceOptions converts annotations to interface options
 func (p *ASTParser) parseInterfaceOptions(annotations []*Annotation) (*domain.InterfaceOptions, error) {
 	options := &domain.InterfaceOptions{
-		Style:                domain.StyleCamelCase,
-		MatchRule:            domain.MatchByName,
-		CaseSensitive:        false,
-		UseGetter:            false,
-		UseStringer:          false,
-		UseTypecast:          false,
-		ReceiverName:         "",
-		AllowReverse:         false,
-		SkipFields:           make([]string, 0),
-		FieldMappings:        make(map[string]string),
-		TypeConverters:       make(map[string]string),
-		LiteralAssignments:   make(map[string]string),
-		PreprocessFunction:   "",
-		PostprocessFunction:  "",
+		Style:               domain.StyleCamelCase,
+		MatchRule:           domain.MatchByName,
+		CaseSensitive:       false,
+		UseGetter:           false,
+		UseStringer:         false,
+		UseTypecast:         false,
+		ReceiverName:        "",
+		AllowReverse:        false,
+		SkipFields:          make([]string, 0),
+		FieldMappings:       make(map[string]string),
+		TypeConverters:      make(map[string]string),
+		LiteralAssignments:  make(map[string]string),
+		PreprocessFunction:  "",
+		PostprocessFunction: "",
 	}
 
 	// Apply annotations to options

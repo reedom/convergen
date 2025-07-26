@@ -9,12 +9,13 @@ import (
 	"os"
 	"regexp"
 
+	"golang.org/x/tools/go/packages"
+
 	"github.com/reedom/convergen/v8/pkg/builder"
 	"github.com/reedom/convergen/v8/pkg/builder/model"
 	"github.com/reedom/convergen/v8/pkg/logger"
 	"github.com/reedom/convergen/v8/pkg/option"
 	"github.com/reedom/convergen/v8/pkg/util"
-	"golang.org/x/tools/go/packages"
 )
 
 const buildTag = "convergen"

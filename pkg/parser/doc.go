@@ -14,11 +14,11 @@
 //   - Integration with the new domain models
 //
 // The parser operates in multiple phases:
-//   1. Source analysis and AST construction
-//   2. Interface discovery and annotation extraction
-//   3. Method signature analysis with type resolution
-//   4. Concurrent annotation processing and validation
-//   5. Result assembly with event emission
+//  1. Source analysis and AST construction
+//  2. Interface discovery and annotation extraction
+//  3. Method signature analysis with type resolution
+//  4. Concurrent annotation processing and validation
+//  5. Result assembly with event emission
 //
 // All operations are thread-safe and designed for high performance with large
 // codebases containing complex generic types and extensive annotations.

@@ -9,8 +9,9 @@ import (
 	"go/token"
 	"regexp"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"go.uber.org/zap"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
 // BaseCodeGenerator generates base code by stripping convergen annotations
@@ -297,14 +298,14 @@ func (p *ASTParser) insertMarkerComments(file *ast.File, typeSpec *ast.TypeSpec,
 func (p *ASTParser) replaceInterfaceWithMarker(code, marker string) string {
 	// Create regex to match the interface declaration with markers
 	escapedMarker := regexp.QuoteMeta(marker)
-	
+
 	// Pattern to match everything between two marker comments
 	pattern := fmt.Sprintf(`(?s).*?%s.*?\n.*?%s`, escapedMarker, escapedMarker)
 	re := regexp.MustCompile(pattern)
-	
+
 	// Replace with just the marker comment
 	replacement := fmt.Sprintf("// %s", marker)
-	
+
 	return re.ReplaceAllString(code, replacement)
 }
 
@@ -370,12 +371,12 @@ func (p *ASTParser) validateConverterCompatibility(mapping *domain.FieldMapping,
 	converterDestType := returns[0].Type
 
 	if !sourceType.AssignableTo(converterSourceType) {
-		return fmt.Errorf("source type %s not assignable to converter input %s", 
+		return fmt.Errorf("source type %s not assignable to converter input %s",
 			sourceType.Name(), converterSourceType.Name())
 	}
 
 	if !converterDestType.AssignableTo(destType) {
-		return fmt.Errorf("converter output %s not assignable to destination type %s", 
+		return fmt.Errorf("converter output %s not assignable to destination type %s",
 			converterDestType.Name(), destType.Name())
 	}
 
