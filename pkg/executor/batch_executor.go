@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/internal/events"
 	"go.uber.org/zap"
+
+	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
 // BatchExecutor handles the concurrent execution of field mapping batches
@@ -27,11 +28,11 @@ type BatchExecutor interface {
 
 // ConcreteBatchExecutor implements BatchExecutor
 type ConcreteBatchExecutor struct {
-	config       *ExecutorConfig
-	logger       *zap.Logger
-	eventBus     events.EventBus
-	resourcePool *ResourcePool
-	metrics      *ExecutionMetrics
+	config        *ExecutorConfig
+	logger        *zap.Logger
+	eventBus      events.EventBus
+	resourcePool  *ResourcePool
+	metrics       *ExecutionMetrics
 	fieldExecutor FieldExecutor
 
 	// Batch tracking
@@ -112,7 +113,7 @@ func (be *ConcreteBatchExecutor) ExecuteBatch(ctx context.Context, batch *BatchE
 	for fieldID, fieldResult := range fieldResults {
 		result.FieldResults[fieldID] = fieldResult.Result
 		batchMetrics.FieldsSuccessful++
-		
+
 		// Update timing metrics
 		if batchMetrics.AverageFieldDuration == 0 {
 			batchMetrics.AverageFieldDuration = fieldResult.Duration
@@ -215,7 +216,7 @@ func (be *ConcreteBatchExecutor) executeFieldsConcurrently(ctx context.Context, 
 			StartTime:     time.Now(),
 			Timeout:       batch.Configuration.FieldTimeout,
 		}
-		
+
 		select {
 		case jobChannel <- fieldExecution:
 		case <-ctx.Done():
@@ -351,10 +352,10 @@ func (be *ConcreteBatchExecutor) waitForDependencies(ctx context.Context, depend
 // calculateMemoryUsage estimates memory usage for a batch
 func (be *ConcreteBatchExecutor) calculateMemoryUsage(batch *BatchExecution) int {
 	// Simplified calculation - in practice this would be more sophisticated
-	baseMemory := 10 // Base 10MB per batch
+	baseMemory := 10                       // Base 10MB per batch
 	fieldMemory := len(batch.Mappings) * 2 // 2MB per field
 	calculated := baseMemory + fieldMemory
-	
+
 	// Respect memory limits in tests
 	if be.config.MaxMemoryMB > 0 && calculated > be.config.MaxMemoryMB {
 		return be.config.MaxMemoryMB
@@ -367,7 +368,7 @@ func (be *ConcreteBatchExecutor) calculateResourceEfficiency(batch *BatchExecuti
 	// Simplified efficiency calculation
 	idealTime := float64(len(batch.Mappings)) / float64(result.WorkersUsed)
 	actualTime := result.Duration.Seconds()
-	
+
 	if actualTime > 0 {
 		efficiency := idealTime / actualTime
 		if efficiency > 1.0 {
@@ -375,7 +376,7 @@ func (be *ConcreteBatchExecutor) calculateResourceEfficiency(batch *BatchExecuti
 		}
 		return efficiency
 	}
-	
+
 	return 0.0
 }
 
@@ -385,18 +386,18 @@ func (be *ConcreteBatchExecutor) GetMetrics() *BatchMetrics {
 	defer be.mutex.RUnlock()
 
 	metrics := &BatchMetrics{}
-	
+
 	// Aggregate metrics from completed batches
 	for _, result := range be.batchResults {
 		metrics.FieldsProcessed += result.Metrics.FieldsProcessed
 		metrics.FieldsSuccessful += result.Metrics.FieldsSuccessful
 		metrics.FieldsFailed += result.Metrics.FieldsFailed
 		metrics.RetryCount += result.Metrics.RetryCount
-		
+
 		if result.Metrics.ThroughputPerSecond > metrics.ThroughputPerSecond {
 			metrics.ThroughputPerSecond = result.Metrics.ThroughputPerSecond
 		}
-		
+
 		if result.Metrics.AverageFieldDuration > metrics.AverageFieldDuration {
 			metrics.AverageFieldDuration = result.Metrics.AverageFieldDuration
 		}
@@ -408,16 +409,16 @@ func (be *ConcreteBatchExecutor) GetMetrics() *BatchMetrics {
 // Shutdown gracefully shuts down the batch executor
 func (be *ConcreteBatchExecutor) Shutdown(ctx context.Context) error {
 	be.logger.Info("shutting down batch executor")
-	
+
 	close(be.shutdown)
-	
+
 	// Wait for active batches to complete
 	done := make(chan struct{})
 	go func() {
 		be.wg.Wait()
 		close(done)
 	}()
-	
+
 	select {
 	case <-done:
 		be.logger.Info("batch executor shutdown completed")
@@ -454,7 +455,7 @@ func (be *ConcreteBatchExecutor) emitBatchEvent(ctx context.Context, eventType s
 		"method_name": batch.MethodName,
 		"field_count": len(batch.Mappings),
 	}
-	
+
 	if result != nil {
 		data["success"] = result.Success
 		data["duration_ms"] = result.Duration.Milliseconds()
@@ -462,7 +463,7 @@ func (be *ConcreteBatchExecutor) emitBatchEvent(ctx context.Context, eventType s
 		data["fields_failed"] = result.Metrics.FieldsFailed
 		data["throughput"] = result.Metrics.ThroughputPerSecond
 	}
-	
+
 	event := events.NewEvent(eventType, data)
 	return be.eventBus.Publish(event)
 }

@@ -1,22 +1,23 @@
 package executor
 
 import (
-	"context" 
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/internal/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
 func TestNewBatchExecutor(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
-	
+
 	config := DefaultExecutorConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
@@ -268,7 +269,7 @@ func TestBatchExecutor_GetMetrics(t *testing.T) {
 	// Execute a batch to generate metrics
 	batch := createTestBatchExecution("metrics_test", 5)
 	ctx := context.Background()
-	
+
 	_, err := batchExecutor.ExecuteBatch(ctx, batch)
 	require.NoError(t, err)
 
@@ -285,7 +286,7 @@ func TestBatchExecutor_ContextCancellation(t *testing.T) {
 
 	config := DefaultExecutorConfig()
 	config.BatchTimeout = 1 * time.Minute // Long timeout
-	
+
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
 	defer func() {
@@ -302,7 +303,7 @@ func TestBatchExecutor_ContextCancellation(t *testing.T) {
 	}()
 
 	batch := createTestBatchExecution("cancellation_test", 50) // Large batch
-	
+
 	// Create context with short timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -323,8 +324,8 @@ func TestBatchExecutor_ResourceLimits(t *testing.T) {
 	defer eventBus.Close()
 
 	config := DefaultExecutorConfig()
-	config.MaxWorkers = 2          // Limited workers
-	config.MaxMemoryMB = 64        // Limited memory
+	config.MaxWorkers = 2   // Limited workers
+	config.MaxMemoryMB = 64 // Limited memory
 	config.EnableMetrics = true
 
 	metrics := NewExecutionMetrics(true)

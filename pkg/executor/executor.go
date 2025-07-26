@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"go.uber.org/zap"
 )
 
 // ExecutorConfig defines configuration parameters for the execution engine
@@ -20,82 +21,82 @@ type ExecutorConfig struct {
 
 	// Resource limits
 	MaxMemoryMB       int     `json:"max_memory_mb"`
-	MemoryThreshold   float64 `json:"memory_threshold"`   // Percentage for memory pressure detection
+	MemoryThreshold   float64 `json:"memory_threshold"` // Percentage for memory pressure detection
 	MaxConcurrentJobs int     `json:"max_concurrent_jobs"`
 
 	// Execution settings
-	ExecutionTimeout     time.Duration `json:"execution_timeout"`
-	BatchTimeout         time.Duration `json:"batch_timeout"`
-	FieldTimeout         time.Duration `json:"field_timeout"`
-	RetryAttempts        int           `json:"retry_attempts"`
-	RetryBackoffBase     time.Duration `json:"retry_backoff_base"`
-	RetryBackoffMax      time.Duration `json:"retry_backoff_max"`
+	ExecutionTimeout time.Duration `json:"execution_timeout"`
+	BatchTimeout     time.Duration `json:"batch_timeout"`
+	FieldTimeout     time.Duration `json:"field_timeout"`
+	RetryAttempts    int           `json:"retry_attempts"`
+	RetryBackoffBase time.Duration `json:"retry_backoff_base"`
+	RetryBackoffMax  time.Duration `json:"retry_backoff_max"`
 
 	// Performance tuning
-	EnablePipelining     bool    `json:"enable_pipelining"`
-	PipelineBufferSize   int     `json:"pipeline_buffer_size"`
-	EnableResourceReuse  bool    `json:"enable_resource_reuse"`
-	AdaptiveConcurrency  bool    `json:"adaptive_concurrency"`
-	ThroughputTarget     float64 `json:"throughput_target"` // Fields per second
+	EnablePipelining    bool    `json:"enable_pipelining"`
+	PipelineBufferSize  int     `json:"pipeline_buffer_size"`
+	EnableResourceReuse bool    `json:"enable_resource_reuse"`
+	AdaptiveConcurrency bool    `json:"adaptive_concurrency"`
+	ThroughputTarget    float64 `json:"throughput_target"` // Fields per second
 
 	// Monitoring and debugging
-	EnableMetrics        bool          `json:"enable_metrics"`
-	MetricsInterval      time.Duration `json:"metrics_interval"`
-	EnableProfiling      bool          `json:"enable_profiling"`
-	EnableTracing        bool          `json:"enable_tracing"`
-	DebugMode           bool          `json:"debug_mode"`
+	EnableMetrics   bool          `json:"enable_metrics"`
+	MetricsInterval time.Duration `json:"metrics_interval"`
+	EnableProfiling bool          `json:"enable_profiling"`
+	EnableTracing   bool          `json:"enable_tracing"`
+	DebugMode       bool          `json:"debug_mode"`
 }
 
 // DefaultExecutorConfig returns sensible default configuration
 func DefaultExecutorConfig() *ExecutorConfig {
 	return &ExecutorConfig{
-		MaxWorkers:           8,
-		MinWorkers:           2,
-		WorkerIdleTimeout:    30 * time.Second,
-		MaxMemoryMB:          512,
-		MemoryThreshold:      0.8,
-		MaxConcurrentJobs:    16,
-		ExecutionTimeout:     5 * time.Minute,
-		BatchTimeout:         30 * time.Second,
-		FieldTimeout:         10 * time.Second,
-		RetryAttempts:        3,
-		RetryBackoffBase:     100 * time.Millisecond,
-		RetryBackoffMax:      10 * time.Second,
-		EnablePipelining:     true,
-		PipelineBufferSize:   100,
-		EnableResourceReuse:  true,
-		AdaptiveConcurrency:  true,
-		ThroughputTarget:     1000.0,
-		EnableMetrics:        true,
-		MetricsInterval:      5 * time.Second,
-		EnableProfiling:      false,
-		EnableTracing:        false,
+		MaxWorkers:          8,
+		MinWorkers:          2,
+		WorkerIdleTimeout:   30 * time.Second,
+		MaxMemoryMB:         512,
+		MemoryThreshold:     0.8,
+		MaxConcurrentJobs:   16,
+		ExecutionTimeout:    5 * time.Minute,
+		BatchTimeout:        30 * time.Second,
+		FieldTimeout:        10 * time.Second,
+		RetryAttempts:       3,
+		RetryBackoffBase:    100 * time.Millisecond,
+		RetryBackoffMax:     10 * time.Second,
+		EnablePipelining:    true,
+		PipelineBufferSize:  100,
+		EnableResourceReuse: true,
+		AdaptiveConcurrency: true,
+		ThroughputTarget:    1000.0,
+		EnableMetrics:       true,
+		MetricsInterval:     5 * time.Second,
+		EnableProfiling:     false,
+		EnableTracing:       false,
 		DebugMode:           false,
 	}
 }
 
 // ExecutionResult represents the result of executing an execution plan
 type ExecutionResult struct {
-	PlanID       string                 `json:"plan_id"`
-	Success      bool                   `json:"success"`
-	StartTime    time.Time              `json:"start_time"`
-	EndTime      time.Time              `json:"end_time"`
-	Duration     time.Duration          `json:"duration"`
-	Metrics      *ExecutionMetrics      `json:"metrics"`
-	Results      map[string]interface{} `json:"results"`
-	Errors       []ExecutionError       `json:"errors,omitempty"`
-	PartialResults bool                 `json:"partial_results"`
+	PlanID         string                 `json:"plan_id"`
+	Success        bool                   `json:"success"`
+	StartTime      time.Time              `json:"start_time"`
+	EndTime        time.Time              `json:"end_time"`
+	Duration       time.Duration          `json:"duration"`
+	Metrics        *ExecutionMetrics      `json:"metrics"`
+	Results        map[string]interface{} `json:"results"`
+	Errors         []ExecutionError       `json:"errors,omitempty"`
+	PartialResults bool                   `json:"partial_results"`
 }
 
 // ExecutionError represents an error that occurred during execution
 type ExecutionError struct {
-	FieldID     string                 `json:"field_id"`
-	BatchID     string                 `json:"batch_id"`
-	Error       string                 `json:"error"`
-	ErrorType   string                 `json:"error_type"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Retryable   bool                   `json:"retryable"`
-	Context     map[string]interface{} `json:"context,omitempty"`
+	FieldID   string                 `json:"field_id"`
+	BatchID   string                 `json:"batch_id"`
+	Error     string                 `json:"error"`
+	ErrorType string                 `json:"error_type"`
+	Timestamp time.Time              `json:"timestamp"`
+	Retryable bool                   `json:"retryable"`
+	Context   map[string]interface{} `json:"context,omitempty"`
 }
 
 // Executor coordinates the execution of field mapping batches with comprehensive
@@ -122,21 +123,21 @@ type Executor interface {
 
 // ConcreteExecutor implements the Executor interface
 type ConcreteExecutor struct {
-	config       *ExecutorConfig
-	logger       *zap.Logger
-	eventBus     events.EventBus
-	
+	config   *ExecutorConfig
+	logger   *zap.Logger
+	eventBus events.EventBus
+
 	// Execution components
 	batchExecutor BatchExecutor
 	fieldExecutor FieldExecutor
 	resourcePool  *ResourcePool
 	metrics       *ExecutionMetrics
-	
+
 	// State management
-	status       *ExecutorStatus
-	shutdown     chan struct{}
-	wg           sync.WaitGroup
-	mutex        sync.RWMutex
+	status   *ExecutorStatus
+	shutdown chan struct{}
+	wg       sync.WaitGroup
+	mutex    sync.RWMutex
 }
 
 // NewExecutor creates a new execution engine
@@ -147,13 +148,13 @@ func NewExecutor(logger *zap.Logger, eventBus events.EventBus, config *ExecutorC
 
 	metrics := NewExecutionMetrics(config.EnableMetrics)
 	resourcePool := NewResourcePool(config, logger, metrics)
-	
+
 	status := &ExecutorStatus{
-		State:           ExecutorStateIdle,
-		StartTime:       time.Now(),
-		ActiveBatches:   make(map[string]*BatchExecution),
+		State:            ExecutorStateIdle,
+		StartTime:        time.Now(),
+		ActiveBatches:    make(map[string]*BatchExecution),
 		CompletedBatches: make(map[string]*BatchResult),
-		QueuedBatches:   make([]*BatchExecution, 0),
+		QueuedBatches:    make([]*BatchExecution, 0),
 	}
 
 	executor := &ConcreteExecutor{
@@ -196,18 +197,18 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 
 	startTime := time.Now()
 	result := &ExecutionResult{
-		PlanID:      plan.ID,
-		StartTime:   startTime,
-		Results:     make(map[string]interface{}),
-		Errors:      make([]ExecutionError, 0),
-		Metrics:     e.metrics.Clone(),
+		PlanID:    plan.ID,
+		StartTime: startTime,
+		Results:   make(map[string]interface{}),
+		Errors:    make([]ExecutionError, 0),
+		Metrics:   e.metrics.Clone(),
 	}
 
 	// Emit plan started event
 	if err := e.emitEvent(ctx, "execution.plan.started", map[string]interface{}{
-		"plan_id":     plan.ID,
-		"methods":     len(plan.Methods),
-		"start_time":  startTime,
+		"plan_id":    plan.ID,
+		"methods":    len(plan.Methods),
+		"start_time": startTime,
 	}); err != nil {
 		e.logger.Warn("failed to emit plan started event", zap.Error(err))
 	}
@@ -234,7 +235,7 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 			defer methodWg.Done()
 
 			methodResult, err := e.executeMethod(ctx, name, mPlan)
-			
+
 			resultMutex.Lock()
 			if methodResult != nil {
 				methodResults[name] = methodResult
@@ -281,12 +282,12 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 
 	// Emit plan completed event
 	if err := e.emitEvent(ctx, "execution.plan.completed", map[string]interface{}{
-		"plan_id":         plan.ID,
-		"success":         result.Success,
-		"duration_ms":     result.Duration.Milliseconds(),
+		"plan_id":          plan.ID,
+		"success":          result.Success,
+		"duration_ms":      result.Duration.Milliseconds(),
 		"fields_processed": result.Metrics.FieldsProcessed,
-		"errors":          len(result.Errors),
-		"end_time":        result.EndTime,
+		"errors":           len(result.Errors),
+		"end_time":         result.EndTime,
 	}); err != nil {
 		e.logger.Warn("failed to emit plan completed event", zap.Error(err))
 	}
@@ -323,13 +324,13 @@ func (e *ConcreteExecutor) GetMetrics() *ExecutionMetrics {
 func (e *ConcreteExecutor) GetStatus() *ExecutorStatus {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	
+
 	// Create a copy to avoid race conditions
 	status := *e.status
 	status.ActiveBatches = make(map[string]*BatchExecution)
 	status.CompletedBatches = make(map[string]*BatchResult)
 	status.QueuedBatches = make([]*BatchExecution, len(e.status.QueuedBatches))
-	
+
 	for k, v := range e.status.ActiveBatches {
 		status.ActiveBatches[k] = v
 	}
@@ -337,42 +338,42 @@ func (e *ConcreteExecutor) GetStatus() *ExecutorStatus {
 		status.CompletedBatches[k] = v
 	}
 	copy(status.QueuedBatches, e.status.QueuedBatches)
-	
+
 	return &status
 }
 
 // Shutdown gracefully shuts down the executor
 func (e *ConcreteExecutor) Shutdown(ctx context.Context) error {
 	e.logger.Info("shutting down executor")
-	
+
 	// Signal shutdown
 	close(e.shutdown)
-	
+
 	// Update status
 	e.updateStatus(func(status *ExecutorStatus) {
 		status.State = ExecutorStateShuttingDown
 	})
-	
+
 	// Shutdown components
 	if err := e.batchExecutor.Shutdown(ctx); err != nil {
 		e.logger.Warn("batch executor shutdown error", zap.Error(err))
 	}
-	
+
 	if err := e.fieldExecutor.Shutdown(ctx); err != nil {
 		e.logger.Warn("field executor shutdown error", zap.Error(err))
 	}
-	
+
 	if err := e.resourcePool.Shutdown(ctx); err != nil {
 		e.logger.Warn("resource pool shutdown error", zap.Error(err))
 	}
-	
+
 	// Wait for background tasks
 	done := make(chan struct{})
 	go func() {
 		e.wg.Wait()
 		close(done)
 	}()
-	
+
 	select {
 	case <-done:
 		e.logger.Info("executor shutdown completed")
@@ -401,13 +402,13 @@ func (e *ConcreteExecutor) executeMethod(ctx context.Context, methodName string,
 	// Execute batches in dependency order
 	for i, batch := range methodPlan.Batches {
 		batchExecution := &BatchExecution{
-			ID:             batch.ID,
-			Mappings:       batch.Fields,
-			MethodName:     methodName,
-			BatchIndex:     i,
-			DependsOn:      batch.DependsOn,
-			Configuration:  e.config,
-			StartTime:      time.Now(),
+			ID:            batch.ID,
+			Mappings:      batch.Fields,
+			MethodName:    methodName,
+			BatchIndex:    i,
+			DependsOn:     batch.DependsOn,
+			Configuration: e.config,
+			StartTime:     time.Now(),
 		}
 
 		batchResult, err := e.batchExecutor.ExecuteBatch(ctx, batchExecution)
@@ -471,11 +472,11 @@ func (e *ConcreteExecutor) startMetricsCollection() {
 func (e *ConcreteExecutor) collectMetrics() {
 	// Update resource pool metrics
 	e.metrics.UpdateResourceMetrics(e.resourcePool.GetMetrics())
-	
+
 	// Update executor status metrics
 	status := e.GetStatus()
 	e.metrics.RecordExecutorStatus(status)
-	
+
 	e.logger.Debug("metrics collected",
 		zap.Int("active_batches", len(status.ActiveBatches)),
 		zap.Int("completed_batches", len(status.CompletedBatches)),

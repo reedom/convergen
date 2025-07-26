@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"go.uber.org/zap"
 )
 
 // FieldExecutor handles the execution of individual field mappings
@@ -66,17 +67,17 @@ type ResourceRequirement struct {
 
 // ExecutionContext provides context and utilities for field execution
 type ExecutionContext struct {
-	FieldID        string                 `json:"field_id"`
-	BatchID        string                 `json:"batch_id"`
-	MethodName     string                 `json:"method_name"`
-	StartTime      time.Time              `json:"start_time"`
-	Timeout        time.Duration          `json:"timeout"`
-	Data           map[string]interface{} `json:"data"`
-	SourceValue    interface{}            `json:"source_value"`
-	TargetType     domain.Type            `json:"target_type"`
-	Configuration  *ExecutorConfig        `json:"configuration"`
-	Logger         *zap.Logger            `json:"-"`
-	Cache          map[string]interface{} `json:"-"`
+	FieldID       string                 `json:"field_id"`
+	BatchID       string                 `json:"batch_id"`
+	MethodName    string                 `json:"method_name"`
+	StartTime     time.Time              `json:"start_time"`
+	Timeout       time.Duration          `json:"timeout"`
+	Data          map[string]interface{} `json:"data"`
+	SourceValue   interface{}            `json:"source_value"`
+	TargetType    domain.Type            `json:"target_type"`
+	Configuration *ExecutorConfig        `json:"configuration"`
+	Logger        *zap.Logger            `json:"-"`
+	Cache         map[string]interface{} `json:"-"`
 }
 
 // NewFieldExecutor creates a new field executor
@@ -179,7 +180,7 @@ func (fe *ConcreteFieldExecutor) ExecuteField(ctx context.Context, field *FieldE
 
 	// Execute the field mapping strategy
 	resultValue, err := strategy.Execute(fieldCtx, field.Mapping, execContext)
-	
+
 	// Record strategy time
 	fieldMetrics.StrategyTime = time.Since(strategyStart)
 
@@ -232,7 +233,7 @@ func (fe *ConcreteFieldExecutor) ExecuteFieldWithRetry(ctx context.Context, fiel
 		if attempt > 0 {
 			// Calculate backoff delay
 			backoff := fe.calculateBackoff(attempt)
-			
+
 			fe.logger.Debug("retrying field execution",
 				zap.String("field_id", field.ID),
 				zap.Int("attempt", attempt),
@@ -301,16 +302,16 @@ func (fe *ConcreteFieldExecutor) registerDefaultStrategies() {
 	fe.strategies["literal"] = NewLiteralStrategy()
 	fe.strategies["expression"] = NewExpressionStrategy()
 	fe.strategies["custom"] = NewCustomStrategy()
-	
-	fe.logger.Debug("registered field mapping strategies", 
+
+	fe.logger.Debug("registered field mapping strategies",
 		zap.Int("strategy_count", len(fe.strategies)))
 }
 
 func (fe *ConcreteFieldExecutor) getStrategy(strategyName string) (FieldMappingStrategy, error) {
-	fe.logger.Debug("looking for strategy", 
+	fe.logger.Debug("looking for strategy",
 		zap.String("strategy_name", strategyName),
 		zap.Int("available_strategies", len(fe.strategies)))
-		
+
 	strategy, exists := fe.strategies[strategyName]
 	if !exists {
 		// Log available strategies for debugging
@@ -318,7 +319,7 @@ func (fe *ConcreteFieldExecutor) getStrategy(strategyName string) (FieldMappingS
 		for name := range fe.strategies {
 			availableStrategies = append(availableStrategies, name)
 		}
-		fe.logger.Error("strategy not found", 
+		fe.logger.Error("strategy not found",
 			zap.String("requested_strategy", strategyName),
 			zap.Strings("available_strategies", availableStrategies))
 		return nil, fmt.Errorf("strategy '%s' not found", strategyName)
@@ -332,7 +333,7 @@ func (fe *ConcreteFieldExecutor) isRetryableError(err error) bool {
 	// Determine if an error is retryable based on error type
 	// This is a simplified implementation
 	errorStr := err.Error()
-	
+
 	// Common retryable error patterns
 	retryablePatterns := []string{
 		"timeout",
@@ -341,33 +342,33 @@ func (fe *ConcreteFieldExecutor) isRetryableError(err error) bool {
 		"network",
 		"resource temporarily unavailable",
 	}
-	
+
 	for _, pattern := range retryablePatterns {
 		if contains(errorStr, pattern) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
 func (fe *ConcreteFieldExecutor) calculateBackoff(attempt int) time.Duration {
 	baseDelay := fe.config.RetryBackoffBase
 	maxDelay := fe.config.RetryBackoffMax
-	
+
 	// Exponential backoff with jitter
 	delay := time.Duration(int64(baseDelay) * int64(1<<(attempt-1)))
-	
+
 	if delay > maxDelay {
 		delay = maxDelay
 	}
-	
+
 	// Add jitter (up to 25% of delay)
 	jitter := time.Duration(float64(delay) * 0.25)
 	if jitter > 0 {
 		delay += time.Duration(int64(jitter) * int64(attempt) / int64(fe.config.RetryAttempts))
 	}
-	
+
 	return delay
 }
 
@@ -378,36 +379,36 @@ func (fe *ConcreteFieldExecutor) emitFieldEvent(ctx context.Context, eventType s
 		"method_name": field.MethodName,
 		"strategy":    field.Mapping.StrategyName,
 	}
-	
+
 	if result != nil {
 		data["success"] = result.Success
 		data["duration_ms"] = result.Duration.Milliseconds()
 		data["retry_count"] = result.RetryCount
 	}
-	
+
 	event := events.NewEvent(eventType, data)
 	return fe.eventBus.Emit(ctx, event)
 }
 
 func (fe *ConcreteFieldExecutor) emitRetryEvent(ctx context.Context, field *FieldExecution, attempt int) error {
 	data := map[string]interface{}{
-		"field_id":  field.ID,
-		"batch_id":  field.BatchID,
-		"attempt":   attempt,
+		"field_id":     field.ID,
+		"batch_id":     field.BatchID,
+		"attempt":      attempt,
 		"max_attempts": fe.config.RetryAttempts,
 	}
-	
+
 	event := events.NewEvent(EventRetryAttempt, data)
 	return fe.eventBus.Emit(ctx, event)
 }
 
 func (fe *ConcreteFieldExecutor) emitRetryExhaustedEvent(ctx context.Context, field *FieldExecution, attempts int) error {
 	data := map[string]interface{}{
-		"field_id":  field.ID,
-		"batch_id":  field.BatchID,
-		"attempts":  attempts,
+		"field_id": field.ID,
+		"batch_id": field.BatchID,
+		"attempts": attempts,
 	}
-	
+
 	event := events.NewEvent(EventRetryExhausted, data)
 	return fe.eventBus.Emit(ctx, event)
 }

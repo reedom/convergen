@@ -7,11 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
 func TestNewExecutor(t *testing.T) {
@@ -29,9 +30,9 @@ func TestNewExecutor(t *testing.T) {
 
 func TestExecutor_ExecutePlan(t *testing.T) {
 	tests := []struct {
-		name          string
-		plan          *domain.ExecutionPlan
-		expectedError bool
+		name            string
+		plan            *domain.ExecutionPlan
+		expectedError   bool
 		expectedSuccess bool
 	}{
 		{
@@ -88,7 +89,7 @@ func TestExecutor_ExecutePlan(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, result)
 			assert.Equal(t, tt.expectedSuccess, result.Success)
-			
+
 			if tt.plan != nil {
 				assert.Equal(t, tt.plan.ID, result.PlanID)
 				assert.NotZero(t, result.Duration)
@@ -224,7 +225,7 @@ func TestExecutor_ConcurrentExecution(t *testing.T) {
 	// Collect results
 	successCount := 0
 	errorCount := 0
-	
+
 	for i := 0; i < planCount; i++ {
 		select {
 		case result := <-results:
@@ -254,9 +255,9 @@ func TestExecutor_ResourceLimits(t *testing.T) {
 	defer eventBus.Close()
 
 	config := DefaultExecutorConfig()
-	config.MaxWorkers = 2          // Low worker limit
-	config.MaxMemoryMB = 64        // Low memory limit
-	config.MaxConcurrentJobs = 5   // Low job limit
+	config.MaxWorkers = 2        // Low worker limit
+	config.MaxMemoryMB = 64      // Low memory limit
+	config.MaxConcurrentJobs = 5 // Low job limit
 
 	executor := NewExecutor(logger, eventBus, config)
 	defer func() {
@@ -274,7 +275,7 @@ func TestExecutor_ResourceLimits(t *testing.T) {
 	// Should complete successfully despite resource limits
 	require.NoError(t, err)
 	assert.NotNil(t, result)
-	
+
 	// Verify that resource limits were respected
 	status := executor.GetStatus()
 	assert.LessOrEqual(t, len(status.ActiveBatches), config.MaxConcurrentJobs)
@@ -376,7 +377,7 @@ func createTestMethodBatches(fieldCount int) []*domain.ConcurrentBatch {
 	for i := 0; i < batchCount; i++ {
 		startIdx := i * batchSize
 		endIdx := min(startIdx+batchSize, fieldCount)
-		
+
 		mappings := make([]*domain.FieldMapping, endIdx-startIdx)
 		for j := startIdx; j < endIdx; j++ {
 			mappings[j-startIdx] = createTestFieldMapping(fmt.Sprintf("field_%d", j))
@@ -445,11 +446,10 @@ func createTestFieldMapping(id string) *domain.FieldMapping {
 
 	strategy := &domain.DirectAssignmentStrategy{}
 	mapping, _ := domain.NewFieldMapping(id, sourceSpec, destSpec, strategy)
-	
+
 	return mapping
 }
 
 func createTestType(name string) domain.Type {
 	return domain.NewBasicType(name, reflect.String)
 }
-

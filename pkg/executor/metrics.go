@@ -20,65 +20,65 @@ type ExecutionMetrics struct {
 	EstimatedSpeedupRatio float64       `json:"estimated_speedup_ratio"`
 
 	// Batch-level metrics
-	BatchesExecuted       int64         `json:"batches_executed"`
-	BatchesSuccessful     int64         `json:"batches_successful"`
-	BatchesFailed         int64         `json:"batches_failed"`
-	TotalBatchDuration    time.Duration `json:"total_batch_duration"`
-	AverageBatchDuration  time.Duration `json:"average_batch_duration"`
-	AverageBatchSize      float64       `json:"average_batch_size"`
-	MaxConcurrentBatches  int           `json:"max_concurrent_batches"`
+	BatchesExecuted      int64         `json:"batches_executed"`
+	BatchesSuccessful    int64         `json:"batches_successful"`
+	BatchesFailed        int64         `json:"batches_failed"`
+	TotalBatchDuration   time.Duration `json:"total_batch_duration"`
+	AverageBatchDuration time.Duration `json:"average_batch_duration"`
+	AverageBatchSize     float64       `json:"average_batch_size"`
+	MaxConcurrentBatches int           `json:"max_concurrent_batches"`
 
 	// Field-level metrics
-	FieldsProcessed       int64         `json:"fields_processed"`
-	FieldsSuccessful      int64         `json:"fields_successful"`
-	FieldsFailed          int64         `json:"fields_failed"`
-	TotalFieldDuration    time.Duration `json:"total_field_duration"`
-	AverageFieldDuration  time.Duration `json:"average_field_duration"`
-	ThroughputPerSecond   float64       `json:"throughput_per_second"`
-	MaxConcurrentFields   int           `json:"max_concurrent_fields"`
+	FieldsProcessed      int64         `json:"fields_processed"`
+	FieldsSuccessful     int64         `json:"fields_successful"`
+	FieldsFailed         int64         `json:"fields_failed"`
+	TotalFieldDuration   time.Duration `json:"total_field_duration"`
+	AverageFieldDuration time.Duration `json:"average_field_duration"`
+	ThroughputPerSecond  float64       `json:"throughput_per_second"`
+	MaxConcurrentFields  int           `json:"max_concurrent_fields"`
 
 	// Error metrics
-	TotalErrors           int64                    `json:"total_errors"`
-	ErrorsByType          map[string]int64         `json:"errors_by_type"`
-	RetryAttempts         int64                    `json:"retry_attempts"`
-	RetriesSuccessful     int64                    `json:"retries_successful"`
-	RetriesFailed         int64                    `json:"retries_failed"`
+	TotalErrors       int64            `json:"total_errors"`
+	ErrorsByType      map[string]int64 `json:"errors_by_type"`
+	RetryAttempts     int64            `json:"retry_attempts"`
+	RetriesSuccessful int64            `json:"retries_successful"`
+	RetriesFailed     int64            `json:"retries_failed"`
 
 	// Resource metrics
-	PeakMemoryUsageMB     int                      `json:"peak_memory_usage_mb"`
-	AverageMemoryUsageMB  int                      `json:"average_memory_usage_mb"`
-	PeakWorkerCount       int                      `json:"peak_worker_count"`
-	AverageWorkerCount    float64                  `json:"average_worker_count"`
-	ResourceEfficiency    float64                  `json:"resource_efficiency"`
+	PeakMemoryUsageMB    int     `json:"peak_memory_usage_mb"`
+	AverageMemoryUsageMB int     `json:"average_memory_usage_mb"`
+	PeakWorkerCount      int     `json:"peak_worker_count"`
+	AverageWorkerCount   float64 `json:"average_worker_count"`
+	ResourceEfficiency   float64 `json:"resource_efficiency"`
 
 	// Performance metrics
-	CPUTimeTotal          time.Duration            `json:"cpu_time_total"`
-	WaitTimeTotal         time.Duration            `json:"wait_time_total"`
-	IdleTimeTotal         time.Duration            `json:"idle_time_total"`
-	QueueWaitTimeTotal    time.Duration            `json:"queue_wait_time_total"`
+	CPUTimeTotal       time.Duration `json:"cpu_time_total"`
+	WaitTimeTotal      time.Duration `json:"wait_time_total"`
+	IdleTimeTotal      time.Duration `json:"idle_time_total"`
+	QueueWaitTimeTotal time.Duration `json:"queue_wait_time_total"`
 
 	// Strategy metrics
-	StrategyUsage         map[string]int64         `json:"strategy_usage"`
-	StrategyPerformance   map[string]time.Duration `json:"strategy_performance"`
-	StrategyErrors        map[string]int64         `json:"strategy_errors"`
+	StrategyUsage       map[string]int64         `json:"strategy_usage"`
+	StrategyPerformance map[string]time.Duration `json:"strategy_performance"`
+	StrategyErrors      map[string]int64         `json:"strategy_errors"`
 
 	// Time-series data for trending
-	MetricsHistory        []MetricsSnapshot        `json:"metrics_history"`
-	StartTime             time.Time                `json:"start_time"`
-	LastUpdated           time.Time                `json:"last_updated"`
+	MetricsHistory []MetricsSnapshot `json:"metrics_history"`
+	StartTime      time.Time         `json:"start_time"`
+	LastUpdated    time.Time         `json:"last_updated"`
 }
 
 // MetricsSnapshot captures metrics at a specific point in time
 type MetricsSnapshot struct {
-	Timestamp           time.Time `json:"timestamp"`
-	FieldsPerSecond     float64   `json:"fields_per_second"`
-	BatchesPerSecond    float64   `json:"batches_per_second"`
-	ErrorRate           float64   `json:"error_rate"`
-	MemoryUsageMB       int       `json:"memory_usage_mb"`
-	ActiveWorkers       int       `json:"active_workers"`
-	QueueSize           int       `json:"queue_size"`
-	MemoryPressure      float64   `json:"memory_pressure"`
-	CPUUsagePercent     float64   `json:"cpu_usage_percent"`
+	Timestamp        time.Time `json:"timestamp"`
+	FieldsPerSecond  float64   `json:"fields_per_second"`
+	BatchesPerSecond float64   `json:"batches_per_second"`
+	ErrorRate        float64   `json:"error_rate"`
+	MemoryUsageMB    int       `json:"memory_usage_mb"`
+	ActiveWorkers    int       `json:"active_workers"`
+	QueueSize        int       `json:"queue_size"`
+	MemoryPressure   float64   `json:"memory_pressure"`
+	CPUUsagePercent  float64   `json:"cpu_usage_percent"`
 }
 
 // NewExecutionMetrics creates a new metrics collector
@@ -282,7 +282,7 @@ func (em *ExecutionMetrics) RecordExecutorStatus(status *ExecutorStatus) {
 
 	// Add to history
 	em.MetricsHistory = append(em.MetricsHistory, snapshot)
-	
+
 	// Keep only last 1000 snapshots
 	if len(em.MetricsHistory) > 1000 {
 		em.MetricsHistory = em.MetricsHistory[1:]
@@ -420,10 +420,10 @@ func (em *ExecutionMetrics) Reset() {
 	em.StrategyUsage = make(map[string]int64)
 	em.StrategyPerformance = make(map[string]time.Duration)
 	em.StrategyErrors = make(map[string]int64)
-	
+
 	// Clear history
 	em.MetricsHistory = make([]MetricsSnapshot, 0, 1000)
-	
+
 	em.StartTime = time.Now()
 	em.LastUpdated = time.Now()
 }
@@ -434,12 +434,12 @@ func (em *ExecutionMetrics) calculateBatchesPerSecond() float64 {
 	if em.BatchesExecuted == 0 {
 		return 0
 	}
-	
+
 	totalTimeSeconds := time.Since(em.StartTime).Seconds()
 	if totalTimeSeconds > 0 {
 		return float64(em.BatchesExecuted) / totalTimeSeconds
 	}
-	
+
 	return 0
 }
 
@@ -447,7 +447,7 @@ func (em *ExecutionMetrics) calculateErrorRate() float64 {
 	if em.FieldsProcessed == 0 {
 		return 0
 	}
-	
+
 	return float64(em.FieldsFailed) / float64(em.FieldsProcessed)
 }
 
@@ -457,16 +457,16 @@ func (em *ExecutionMetrics) GetPerformanceSummary() map[string]interface{} {
 	defer em.mutex.RUnlock()
 
 	return map[string]interface{}{
-		"uptime_seconds":         time.Since(em.StartTime).Seconds(),
-		"plans_executed":         em.PlansExecuted,
-		"success_rate":          em.calculateSuccessRate(),
-		"throughput_per_second":  em.ThroughputPerSecond,
+		"uptime_seconds":            time.Since(em.StartTime).Seconds(),
+		"plans_executed":            em.PlansExecuted,
+		"success_rate":              em.calculateSuccessRate(),
+		"throughput_per_second":     em.ThroughputPerSecond,
 		"average_field_duration_ms": em.AverageFieldDuration.Milliseconds(),
-		"error_rate":            em.calculateErrorRate(),
-		"peak_memory_mb":        em.PeakMemoryUsageMB,
-		"peak_workers":          em.PeakWorkerCount,
-		"total_errors":          em.TotalErrors,
-		"retry_success_rate":    em.calculateRetrySuccessRate(),
+		"error_rate":                em.calculateErrorRate(),
+		"peak_memory_mb":            em.PeakMemoryUsageMB,
+		"peak_workers":              em.PeakWorkerCount,
+		"total_errors":              em.TotalErrors,
+		"retry_success_rate":        em.calculateRetrySuccessRate(),
 	}
 }
 
