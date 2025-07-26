@@ -5,8 +5,9 @@ import (
 	"go/types"
 	"testing"
 
-	"github.com/reedom/convergen/v8/pkg/option"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/reedom/convergen/v8/pkg/option"
 )
 
 func TestFieldConverter(t *testing.T) {
