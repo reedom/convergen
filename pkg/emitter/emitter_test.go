@@ -323,29 +323,34 @@ func TestEmitter_ComplexFieldHandling(t *testing.T) {
 	
 	// Create method with complex field scenarios
 	method := &domain.MethodResult{
-		MethodName: "ConvertComplex",
-		Data: map[string]interface{}{
-			"DirectField": &domain.FieldResult{
-				FieldID:      "DirectField",
-				Success:      true,
-				Result:       "src.DirectField",
-				StrategyUsed: "direct",
-				Duration:     time.Millisecond,
-			},
-			"ConverterField": &domain.FieldResult{
-				FieldID:      "ConverterField",
-				Success:      true,
-				Result:       "converter.Convert(src.ConverterField)",
-				StrategyUsed: "converter",
-				Duration:     5 * time.Millisecond,
-			},
-			"ErrorField": &domain.FieldResult{
-				FieldID:      "ErrorField",
-				Success:      false,
-				Error:        &domain.ExecutionError{FieldID: "ErrorField", Error: "conversion failed"},
-				StrategyUsed: "converter",
-				Duration:     10 * time.Millisecond,
-				RetryCount:   2,
+		Method: &domain.Method{
+			Name: "ConvertComplex",
+		},
+		Success: false,
+		Error: &domain.ExecutionError{
+			Type:      "conversion_error",
+			Message:   "conversion failed",
+			Component: "emitter",
+			Field:     "ErrorField",
+			Timestamp: time.Now(),
+		},
+		Metadata: map[string]interface{}{
+			"fields": map[string]interface{}{
+				"DirectField": map[string]interface{}{
+					"field_id": "DirectField",
+					"result":   "src.DirectField",
+					"strategy": "direct",
+				},
+				"ConverterField": map[string]interface{}{
+					"field_id": "ConverterField",
+					"result":   "converter.Convert(src.ConverterField)",
+					"strategy": "converter",
+				},
+				"ErrorField": map[string]interface{}{
+					"field_id": "ErrorField",
+					"success":  false,
+					"strategy": "converter",
+				},
 			},
 		},
 	}

@@ -73,8 +73,8 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 		Methods:     []*MethodCode{methodCode},
 	}
 	metrics := &EmitterMetrics{
-		MethodsGenerated: 1,
-		LinesGenerated:   10,
+		TotalMethods: 1,
+		TotalLines:   10,
 	}
 	err = handler.PublishEmitterCompleted(ctx, code, metrics)
 	if err != nil {
@@ -83,8 +83,11 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 	
 	// Test publishing emitter failed event
 	testErr := &domain.ExecutionError{
-		FieldID: "test",
-		Error:   "test error",
+		Type:      "test_error",
+		Message:   "test error",
+		Component: "emitter",
+		Field:     "test",
+		Timestamp: time.Now(),
 	}
 	err = handler.PublishEmitterFailed(ctx, testErr, nil)
 	if err != nil {
@@ -105,13 +108,17 @@ func TestEmitterEventHandler_HandleExecutorCompleted(t *testing.T) {
 		PackageName: "testpkg",
 		Methods: []*domain.MethodResult{
 			{
-				MethodName: "TestMethod",
-				Data: map[string]interface{}{
-					"Field1": &domain.FieldResult{
-						FieldID:      "Field1",
-						Success:      true,
-						Result:       "src.Field1",
-						StrategyUsed: "direct",
+				Method: &domain.Method{
+					Name: "TestMethod",
+				},
+				Success: true,
+				Metadata: map[string]interface{}{
+					"fields": map[string]interface{}{
+						"Field1": map[string]interface{}{
+							"field_id": "Field1",
+							"result":   "src.Field1",
+							"strategy": "direct",
+						},
 					},
 				},
 			},
@@ -165,14 +172,19 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	
 	// Test EmitterCompletedEvent
 	code := &GeneratedCode{PackageName: "testpkg", Methods: []*MethodCode{}}
-	metrics := &EmitterMetrics{MethodsGenerated: 3}
+	metrics := &EmitterMetrics{TotalMethods: 3}
 	completedEvent := NewEmitterCompletedEvent(ctx, code, metrics)
 	if completedEvent.Type() != EventEmitterCompleted {
 		t.Errorf("Expected event type %s, got %s", EventEmitterCompleted, completedEvent.Type())
 	}
 	
 	// Test EmitterFailedEvent
-	testErr := &domain.ExecutionError{Error: "test error"}
+	testErr := &domain.ExecutionError{
+		Type:      "test_error",
+		Message:   "test error",
+		Component: "emitter",
+		Timestamp: time.Now(),
+	}
 	failedEvent := NewEmitterFailedEvent(ctx, testErr, nil)
 	if failedEvent.Type() != EventEmitterFailed {
 		t.Errorf("Expected event type %s, got %s", EventEmitterFailed, failedEvent.Type())
@@ -226,14 +238,17 @@ func TestEventAwareEmitter_GenerateCode(t *testing.T) {
 		PackageName: "testpkg",
 		Methods: []*domain.MethodResult{
 			{
-				MethodName: "ConvertUser",
-				Data: map[string]interface{}{
-					"Name": &domain.FieldResult{
-						FieldID:      "Name",
-						Success:      true,
-						Result:       "src.Name",
-						StrategyUsed: "direct",
-						Duration:     time.Millisecond,
+				Method: &domain.Method{
+					Name: "ConvertUser",
+				},
+				Success: true,
+				Metadata: map[string]interface{}{
+					"fields": map[string]interface{}{
+						"Name": map[string]interface{}{
+							"field_id": "Name",
+							"result":   "src.Name",
+							"strategy": "direct",
+						},
 					},
 				},
 			},
@@ -265,14 +280,17 @@ func TestEventAwareEmitter_GenerateMethod(t *testing.T) {
 	
 	// Create test method result
 	method := &domain.MethodResult{
-		MethodName: "ConvertSimple",
-		Data: map[string]interface{}{
-			"ID": &domain.FieldResult{
-				FieldID:      "ID",
-				Success:      true,
-				Result:       "src.ID",
-				StrategyUsed: "direct",
-				Duration:     time.Millisecond,
+		Method: &domain.Method{
+			Name: "ConvertSimple",
+		},
+		Success: true,
+		Metadata: map[string]interface{}{
+			"fields": map[string]interface{}{
+				"ID": map[string]interface{}{
+					"field_id": "ID",
+					"result":   "src.ID",
+					"strategy": "direct",
+				},
 			},
 		},
 	}
