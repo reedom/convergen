@@ -22,7 +22,7 @@ lint:
 	docker run --rm --platform=linux/amd64 \
 		-v "${PWD}:/src" -w /src \
 		--rm \
-		golangci/golangci-lint:latest golangci-lint --go=1.19 run
+		golangci/golangci-lint:latest golangci-lint --go=1.23 run
 
 .PHONY: test
 test: ## Run all tests
