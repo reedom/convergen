@@ -5,12 +5,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/reedom/convergen/v8/pkg/generator"
 	"github.com/reedom/convergen/v8/pkg/generator/model"
 	"github.com/reedom/convergen/v8/pkg/logger"
 	"github.com/reedom/convergen/v8/pkg/parser"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestUseCases(t *testing.T) {

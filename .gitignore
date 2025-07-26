@@ -231,5 +231,6 @@ fabric.properties
 
 /.idea
 /build
-.claude/settings.local.json
 .env*
+.claude/settings.local.json
+CLAUDE.local.md

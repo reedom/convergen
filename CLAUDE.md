@@ -32,21 +32,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Some advanced linters are temporarily disabled. Consider upgrading golangci-lint when newer 
 versions become available that support Go 1.24+.
 
-### Code Formatting & Quality Checks (REQUIRED)
-- **ALWAYS run formatting and linting after writing code**: This ensures consistent code quality
+### Code Quality Workflow (REQUIRED)
+- **ALWAYS run unit tests and linting after modifying packages**: This ensures consistent code quality
+- **Required workflow after package modification**: 
+  1. `go test ./pkg/package-name/...` - Run unit tests for the modified package
+  2. `make lint` - Run comprehensive linting checks (includes formatting)
+  3. Commit only after all tests pass and linting is clean
+
+### Code Formatting & Linting Commands
 - `make fmt` - Format all Go code (includes gofmt + goimports)
-- `make lint` - Run comprehensive linting checks
+- `make lint` - Run comprehensive linting checks (includes formatting validation)
 - `make fmt-check` - Check if code is properly formatted (CI-friendly)
-- **Recommended workflow**: After writing code → `make fmt` → `make lint` → commit
+- **Package-specific linting**: `golangci-lint run ./pkg/package-name/...`
 - **Format specific packages**: `go fmt ./pkg/package-name/...`
 - **Format entire project**: `go fmt ./...`
 
-### Testing Individual Packages
+### Testing Individual Packages (REQUIRED)
+- **ALWAYS test modified packages before committing**: Ensures functionality remains intact
+- `go test ./pkg/package-name/...` - Test specific package (REQUIRED after modifications)
+- `go test -v ./pkg/package-name/...` - Run tests with verbose output for debugging
+- `go test -run TestSpecificTest ./pkg/package-name/...` - Run specific test by name
 - `go test github.com/reedom/convergen/v8/tests` - Run integration tests
 - `go test github.com/reedom/convergen/v8/pkg/...` - Run all package tests
-- `go test ./pkg/builder/...` - Test specific package
-- `go test -v ./pkg/builder/...` - Run tests with verbose output
-- `go test -run TestSpecificTest ./pkg/builder/...` - Run specific test by name
+- **Package-specific linting**: `golangci-lint run ./pkg/package-name/...`
 
 ## Current Module Information
 
