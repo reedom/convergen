@@ -15,13 +15,26 @@ The primary goal of this workflow is to move from a user request to a well-under
 
 For any significant task (new feature, refactoring, etc.), a `.spec` directory is created. This directory is co-located with the code it describes (e.g., `pkg/builder/.spec/` for the builder package, or a root `.spec/` for project-wide concerns).
 
-This directory contains three key documents:
+This directory contains three key documents with strict separation of concerns:
 
-1.  **`requirements.md`**: The **"What"**. This file lists the functional and non-functional requirements for the component using structured EARS (Easy Approach to Requirements Syntax) notation. Each requirement should be a clear, verifiable statement with proper EARS structure.
+1.  **`requirements.md`**: The **"What"** - Pure Requirements
+    - Lists functional and non-functional requirements using EARS notation
+    - Each requirement has simple PASS/FAIL status
+    - Contains acceptance criteria for each requirement
+    - **Does NOT contain**: Problem analysis, implementation details, or task planning
 
-2.  **`design.md`**: The **"How"**. This file describes the high-level architecture and design of the component. It should explain the key structs, interfaces, data flow, and design patterns used to meet the requirements.
+2.  **`design.md`**: The **"How"** - Technical Analysis & Architecture
+    - Describes high-level architecture and design patterns
+    - Contains problem analysis and technical investigation
+    - Explains current issues and proposed solutions
+    - Documents design decisions and trade-offs
+    - **Does NOT contain**: Requirements definitions or implementation steps
 
-3.  **`tasks.md`**: The **"Plan"**. This file is a checklist of the concrete, sequential steps that will be taken to implement the design. It translates the abstract design into an actionable implementation plan.
+3.  **`tasks.md`**: The **"When & Order"** - Pure Implementation Plan
+    - Provides concrete, sequential implementation steps
+    - Contains time estimates and dependencies
+    - Lists "Done When" criteria for each task
+    - **Does NOT contain**: Problem analysis, requirements, or architectural explanations
 
 ## 3. The Step-by-Step Workflow
 
@@ -29,19 +42,83 @@ This directory contains three key documents:
 
 2.  **Analyze the Codebase:** Use tools like `glob`, `read_file`, and `search_file_content` to thoroughly understand the existing code, its structure, and its conventions.
 
-3.  **Create the Specification (`.spec` files):**
-    *   Create the `.spec` directory in the appropriate location.
-    *   Write `requirements.md`, detailing what the final code must be able to do.
-    *   Write `design.md`, explaining how the code will be structured to meet those requirements.
-    *   Write `tasks.md`, providing a clear, step-by-step implementation plan.
+3.  **Prepare the Specification (`.spec` files):**
+    *   **ALWAYS ensure** the `.spec` directory exists in the appropriate location for significant tasks.
+    *   **If `.spec` files exist**: Read and understand them first, then update as needed.
+    *   **If `.spec` files don't exist**: Create them from scratch.
+    *   Ensure `requirements.md` details what the final code must be able to do.
+    *   Ensure `design.md` explains how the code will be structured to meet those requirements.
+    *   Ensure `tasks.md` provides a clear, step-by-step implementation plan.
+    *   **Note**: Preparing `.spec` documentation is **encouraged and expected** for complex work - this is separate from the general prohibition on creating other documentation files.
 
-4.  **Seek User Approval:** Present the plan (usually by showing the contents of `tasks.md` or summarizing the design) to the user for confirmation. **Do not proceed with major changes without this alignment.**
+4.  **Seek User Approval:** Present the plan (usually by showing the contents of `tasks.md` or summarizing the design) to the user for confirmation. **Do not proceed with major implementation changes without this alignment.**
 
 5.  **Implement:** Execute the plan outlined in `tasks.md`. This involves writing, modifying, and deleting code and tests using the available tools.
 
 6.  **Verify:** Run tests and any other checks to ensure the implementation is correct and fully meets the criteria defined in `requirements.md`.
 
 By following this structured process, we ensure that all work is deliberate, well-planned, and aligned with the user's goals, resulting in a more robust and maintainable codebase.
+
+## 3.1. Maintaining and Updating `.spec` Documents
+
+**Ongoing Responsibility**: `.spec` documents are **living documentation** that must be kept current with code changes.
+
+### When to Update `.spec` Files:
+
+1. **During Code Modifications**: When touching any package with existing `.spec` files
+2. **Architecture Changes**: When modifying interfaces, data flow, or design patterns
+3. **Requirement Changes**: When user needs evolve or new constraints are discovered
+4. **Bug Fixes**: When fixes reveal gaps in original requirements or design
+
+### Update Process:
+
+1. **Before Code Changes**: Review existing `.spec` files to understand current documented behavior
+2. **During Implementation**: Update relevant sections as changes are made:
+   - `requirements.md`: Add/modify requirements if scope changes
+   - `design.md`: Update architecture diagrams and design decisions
+   - `tasks.md`: Mark completed tasks, add new ones if scope expands
+3. **After Code Changes**: Verify `.spec` files accurately reflect the final implementation
+
+### Maintenance Triggers:
+
+- **Package Analysis**: When analyzing packages (like `/analyze`), always check and update `.spec` files
+- **Issue Discovery**: When finding problems (race conditions, TODOs), document them in appropriate `.spec` files
+- **Feature Additions**: Extend existing `.spec` files rather than creating disconnected new ones
+- **Refactoring**: Update design.md to reflect new patterns and architectural decisions
+
+**Key Principle**: `.spec` files should always represent the **current state** and **planned evolution** of the codebase, not just historical decisions.
+
+## 3.2. Separation of Concerns Guidelines
+
+**CRITICAL**: Maintain strict boundaries between the three spec files to avoid overlap and confusion.
+
+### What Goes Where
+
+**requirements.md**:
+✅ **Include**: REQ-001 style requirements, PASS/FAIL status, acceptance criteria  
+❌ **Never Include**: "Current Issues", "TODO items", "Implementation Priority", technical analysis
+
+**design.md**:
+✅ **Include**: Architecture diagrams, technical problem analysis, proposed solutions, current issues  
+❌ **Never Include**: Requirements definitions, implementation steps, task schedules
+
+**tasks.md**:
+✅ **Include**: TASK-001 style steps, time estimates, "Done When" criteria, implementation order  
+❌ **Never Include**: Problem analysis, requirements, architectural explanations
+
+### Common Anti-Patterns to Avoid
+
+❌ **Overlap**: Repeating the same information across multiple files  
+❌ **Task-like Requirements**: "Must fix race conditions immediately" (belongs in tasks.md)  
+❌ **Requirements in Design**: "REQ-30: Thread Safety" (belongs in requirements.md)  
+❌ **Analysis in Tasks**: "Race conditions occur because..." (belongs in design.md)
+
+### File Reference Pattern
+
+Each file should reference others appropriately:
+- **tasks.md**: "See design.md for technical analysis and requirements.md for acceptance criteria"
+- **design.md**: "Addresses REQ-30 from requirements.md"  
+- **requirements.md**: "Implementation tracked in tasks.md"
 
 ## 4. EARS Notation for Requirements
 
