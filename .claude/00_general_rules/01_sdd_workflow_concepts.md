@@ -21,7 +21,8 @@ This directory contains three key documents with strict separation of concerns:
     - Lists functional and non-functional requirements using EARS notation
     - Each requirement has simple PASS/FAIL status
     - Contains acceptance criteria for each requirement
-    - **Does NOT contain**: Problem analysis, implementation details, or task planning
+    - **Does NOT contain**: Problem analysis, implementation details, completion status, or task planning
+    - **CRITICAL**: Never add implementation progress, completion details, or technical solutions to requirements.md
 
 2.  **`design.md`**: The **"How"** - Technical Analysis & Architecture
     - Describes high-level architecture and design patterns
@@ -36,13 +37,83 @@ This directory contains three key documents with strict separation of concerns:
     - Lists "Done When" criteria for each task
     - **Does NOT contain**: Problem analysis, requirements, or architectural explanations
 
+## 2.5. CRITICAL: Documentation Discovery Methodology
+
+**⚠️ MANDATORY BEFORE ALL PACKAGE WORK: Always search for existing documentation first!**
+
+### The Documentation Discovery Protocol
+
+Before working on any package, ALWAYS execute this complete discovery sequence:
+
+1. **Primary Search - Direct .spec Discovery:**
+   ```bash
+   find /project/root -type d -name ".spec*"
+   ls -la /path/to/package/.spec/
+   ```
+
+2. **Secondary Search - Documentation Files:**
+   ```bash
+   find /path/to/package -name "*.md" -o -name "*.txt" -o -name "*spec*" -o -name "*doc*"
+   ```
+
+3. **Tertiary Search - Project-wide Documentation:**
+   ```bash
+   find /project/root -name "*package_name*" -type f | grep -E "\.(md|txt|spec)$"
+   ```
+
+4. **Validation Check - Always List Contents:**
+   - Use `ls -la` not just `LS` tool to see hidden/spec directories
+   - Check for both lowercase and uppercase variations (.spec, .SPEC, .Spec)
+   - Verify directory contents even if initial searches appear empty
+
+### Common Documentation Locations in This Project:
+
+- **Package-specific**: `/pkg/[package]/.spec/` (requirements.md, design.md, tasks.md)
+- **Component docs**: `/pkg/[package]/doc.go` (package-level documentation) 
+- **Project-wide**: `/.spec/` or `/.claude/` (project planning and architecture)
+- **Root documentation**: `/README.md`, `/DESIGN.md`, `/ARCHITECTURE.md`
+
+### Discovery Failure Recovery:
+
+When documentation discovery fails (as it did with parser and coordinator packages):
+
+1. **Acknowledge the Error**: Document what was missed and why
+2. **Correct the Search**: Use the complete discovery protocol above
+3. **Update Methodology**: Add lessons learned to this document
+4. **Verify Found Documentation**: Read existing docs before creating new ones
+
+### Real Examples from This Project:
+
+**❌ FAILURE EXAMPLE (Parser Package):**
+- Used incomplete search methods (only LS, Glob)
+- Failed to find existing `/pkg/parser/.spec/` directory
+- Created unnecessary documentation instead of updating existing
+
+**❌ FAILURE EXAMPLE (Coordinator Package):**
+- Repeated same search methodology error
+- Failed to find existing `/pkg/coordinator/.spec/` directory  
+- Did not use `find` command with proper directory search
+
+**✅ CORRECT APPROACH:**
+- ALWAYS start with: `find /project/root -type d -name ".spec*"`
+- ALWAYS verify with: `ls -la /path/to/package/.spec/`
+- ALWAYS read existing documentation before proposing new documentation
+
+### Documentation Update vs Creation:
+
+- **IF .spec/ directory EXISTS**: Update existing requirements.md, design.md, tasks.md
+- **IF .spec/ directory MISSING**: Create new .spec/ directory with full documentation
+- **NEVER**: Create duplicate documentation when existing docs are present
+
 ## 3. The Step-by-Step Workflow
 
 1.  **Understand the Goal:** Receive and clarify the user's request.
 
-2.  **Analyze the Codebase:** Use tools like `glob`, `read_file`, and `search_file_content` to thoroughly understand the existing code, its structure, and its conventions.
+2.  **Execute Documentation Discovery Protocol:** MANDATORY - Use the complete discovery methodology above to locate all existing documentation before proceeding.
 
-3.  **Prepare the Specification (`.spec` files):**
+3.  **Analyze the Codebase:** Use tools like `glob`, `read_file`, and `search_file_content` to thoroughly understand the existing code, its structure, and its conventions.
+
+4.  **Prepare the Specification (`.spec` files):**
     *   **ALWAYS ensure** the `.spec` directory exists in the appropriate location for significant tasks.
     *   **If `.spec` files exist**: Read and understand them first, then update as needed.
     *   **If `.spec` files don't exist**: Create them from scratch.
@@ -51,11 +122,11 @@ This directory contains three key documents with strict separation of concerns:
     *   Ensure `tasks.md` provides a clear, step-by-step implementation plan.
     *   **Note**: Preparing `.spec` documentation is **encouraged and expected** for complex work - this is separate from the general prohibition on creating other documentation files.
 
-4.  **Seek User Approval:** Present the plan (usually by showing the contents of `tasks.md` or summarizing the design) to the user for confirmation. **Do not proceed with major implementation changes without this alignment.**
+5.  **Seek User Approval:** Present the plan (usually by showing the contents of `tasks.md` or summarizing the design) to the user for confirmation. **Do not proceed with major implementation changes without this alignment.**
 
-5.  **Implement:** Execute the plan outlined in `tasks.md`. This involves writing, modifying, and deleting code and tests using the available tools.
+6.  **Implement:** Execute the plan outlined in `tasks.md`. This involves writing, modifying, and deleting code and tests using the available tools.
 
-6.  **Verify:** Run tests and any other checks to ensure the implementation is correct and fully meets the criteria defined in `requirements.md`.
+7.  **Verify:** Run tests and any other checks to ensure the implementation is correct and fully meets the criteria defined in `requirements.md`.
 
 By following this structured process, we ensure that all work is deliberate, well-planned, and aligned with the user's goals, resulting in a more robust and maintainable codebase.
 

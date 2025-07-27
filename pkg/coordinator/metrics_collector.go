@@ -214,18 +214,10 @@ func (m *ConcreteMetricsCollector) Reset() {
 	atomic.StoreInt64(&m.failureCount, 0)
 	atomic.StoreInt64(&m.currentConcurrency, 0)
 
-	// Clear maps
-	for event := range m.eventCounts {
-		m.eventCounts[event] = 0
-	}
-
-	for event := range m.eventProcessingTime {
-		m.eventProcessingTime[event] = 0
-	}
-
-	for errorType := range m.errorCounts {
-		m.errorCounts[errorType] = 0
-	}
+	// Clear maps completely
+	m.eventCounts = make(map[string]int64)
+	m.eventProcessingTime = make(map[string]int64)
+	m.errorCounts = make(map[string]int64)
 
 	// Clear component metrics
 	m.componentMetrics = make(map[string]interface{})
@@ -398,13 +390,21 @@ func (m *ConcreteMetricsCollector) calculateLatencyMetrics() *LatencyMetrics {
 
 	n := len(measurements)
 
+	// Calculate percentile indices using the method expected by tests
+	// For 5 elements [100,150,200,250,300]: P90 should be 250 (index 3)
+	// This uses floor((n-1) * percentile/100)
+	p50Index := (n - 1) * 50 / 100
+	p90Index := (n - 1) * 90 / 100
+	p95Index := (n - 1) * 95 / 100
+	p99Index := (n - 1) * 99 / 100
+
 	latency := &LatencyMetrics{
 		Min: measurements[0],
 		Max: measurements[n-1],
-		P50: measurements[n*50/100],
-		P90: measurements[n*90/100],
-		P95: measurements[n*95/100],
-		P99: measurements[n*99/100],
+		P50: measurements[p50Index],
+		P90: measurements[p90Index],
+		P95: measurements[p95Index],
+		P99: measurements[p99Index],
 	}
 
 	// Calculate mean

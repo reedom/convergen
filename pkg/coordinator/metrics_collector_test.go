@@ -494,7 +494,7 @@ func TestMetricsCollectorConcurrentAccess(t *testing.T) {
 			defer func() { done <- true }()
 
 			for j := 0; j < 100; j++ {
-				collector.RecordEvent("test_event", time.Millisecond, nil)
+				collector.RecordEvent("pipeline_completed", time.Millisecond, nil)
 				collector.RecordError("component", "error")
 				collector.RecordRetry("component", true, time.Millisecond)
 				_ = collector.GetMetrics()

@@ -3,6 +3,7 @@ package coordinator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -178,7 +179,8 @@ func (c *ConcreteComponentManager) Shutdown(ctx context.Context) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if !c.initialized {
+	// If not initialized but we have registered components, still shut them down
+	if !c.initialized && len(c.components) == 0 {
 		return nil
 	}
 
@@ -187,12 +189,36 @@ func (c *ConcreteComponentManager) Shutdown(ctx context.Context) error {
 	// Signal shutdown
 	close(c.shutdown)
 
-	// Shutdown components in reverse order
+	// Shutdown components in reverse order (predefined components first, then any additional ones)
 	componentOrder := []string{"emitter", "executor", "planner", "parser"}
 	var shutdownErrors []error
 
+	// Shutdown predefined components in reverse order
 	for _, name := range componentOrder {
 		if component, exists := c.components[name]; exists {
+			c.status[name] = StatusShutdown
+
+			// Create timeout context for component shutdown
+			shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+
+			if err := component.Shutdown(shutdownCtx); err != nil {
+				shutdownErrors = append(shutdownErrors,
+					fmt.Errorf("component %s shutdown failed: %w", name, err))
+			}
+
+			cancel()
+
+			c.logger.Debug("component shutdown complete", zap.String("component", name))
+		}
+	}
+
+	// Shutdown any additional registered components
+	predefinedSet := map[string]bool{
+		"emitter": true, "executor": true, "planner": true, "parser": true,
+	}
+
+	for name, component := range c.components {
+		if !predefinedSet[name] {
 			c.status[name] = StatusShutdown
 
 			// Create timeout context for component shutdown
@@ -212,7 +238,11 @@ func (c *ConcreteComponentManager) Shutdown(ctx context.Context) error {
 	c.initialized = false
 
 	if len(shutdownErrors) > 0 {
-		return fmt.Errorf("component shutdown errors: %v", shutdownErrors)
+		var errorStrings []string
+		for _, err := range shutdownErrors {
+			errorStrings = append(errorStrings, err.Error())
+		}
+		return fmt.Errorf("component shutdown errors: [%s]", strings.Join(errorStrings, ", "))
 	}
 
 	c.logger.Info("all pipeline components shutdown successfully")
