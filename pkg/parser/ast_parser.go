@@ -183,9 +183,11 @@ func (p *ASTParser) discoverInterfacesConcurrently(ctx context.Context, pkg *pac
 	scope := pkg.Types.Scope()
 	names := scope.Names()
 
-	// Progress tracking
+	// Progress tracking with completion signal
+	var progressDone chan struct{}
 	if p.config.EnableProgress {
-		go p.trackProgress(ctx, domain.PhaseParsing, len(names), "Discovering interfaces")
+		progressDone = make(chan struct{})
+		go p.trackProgress(ctx, domain.PhaseParsing, len(names), "Discovering interfaces", progressDone)
 	}
 
 	processed := 0
@@ -230,7 +232,16 @@ func (p *ASTParser) discoverInterfacesConcurrently(ctx context.Context, pkg *pac
 	}
 
 	if err := g.Wait(); err != nil {
+		// Signal progress completion before returning error
+		if progressDone != nil {
+			close(progressDone)
+		}
 		return nil, err
+	}
+
+	// Signal progress completion
+	if progressDone != nil {
+		close(progressDone)
 	}
 
 	if len(interfaces) == 0 {
@@ -258,9 +269,11 @@ func (p *ASTParser) processMethodsConcurrently(ctx context.Context, pkg *package
 		totalMethods += len(iface.Methods)
 	}
 
-	// Progress tracking
+	// Progress tracking with completion signal
+	var progressDone chan struct{}
 	if p.config.EnableProgress {
-		go p.trackProgress(ctx, domain.PhaseParsing, totalMethods, "Processing methods")
+		progressDone = make(chan struct{})
+		go p.trackProgress(ctx, domain.PhaseParsing, totalMethods, "Processing methods", progressDone)
 	}
 
 	for _, iface := range interfaces {
@@ -283,7 +296,16 @@ func (p *ASTParser) processMethodsConcurrently(ctx context.Context, pkg *package
 	}
 
 	if err := g.Wait(); err != nil {
+		// Signal progress completion before returning error
+		if progressDone != nil {
+			close(progressDone)
+		}
 		return nil, err
+	}
+
+	// Signal progress completion
+	if progressDone != nil {
+		close(progressDone)
 	}
 
 	// Resolve cross-references between methods
@@ -294,24 +316,90 @@ func (p *ASTParser) processMethodsConcurrently(ctx context.Context, pkg *package
 	return allMethods, nil
 }
 
-// trackProgress emits progress events during processing
-func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPhase, total int, message string) {
-	ticker := time.NewTicker(100 * time.Millisecond)
+// trackProgress emits progress events during processing with adaptive frequency
+func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPhase, total int, message string, done <-chan struct{}) {
+	// Adaptive reporting frequency based on operation complexity
+	interval := p.calculateProgressInterval(total)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+
+	lastProgressTime := time.Now()
+	reportCount := 0
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-done:
+			// Operation completed, emit final progress event
+			if reportCount > 0 { // Only emit final if we've been reporting
+				finalEvent := events.NewProgressEvent(ctx, phase, total, total, message+" (completed)")
+				if err := p.eventBus.Publish(finalEvent); err != nil {
+					p.logger.Debug("failed to publish final progress event", zap.Error(err))
+				}
+			}
+			return
 		case <-ticker.C:
-			// This is a simplified progress tracking - in a real implementation,
-			// you'd track actual progress through shared counters
-			progressEvent := events.NewProgressEvent(ctx, phase, 0, total, message)
-			if err := p.eventBus.Publish(progressEvent); err != nil {
-				p.logger.Warn("failed to publish progress event", zap.Error(err))
+			// Adaptive progress reporting with throttling
+			if p.shouldReportProgress(lastProgressTime, reportCount, total) {
+				progressEvent := events.NewProgressEvent(ctx, phase, 0, total, message)
+				if err := p.eventBus.Publish(progressEvent); err != nil {
+					// Demote to debug level to reduce noise
+					p.logger.Debug("failed to publish progress event", zap.Error(err))
+				}
+				lastProgressTime = time.Now()
+				reportCount++
+
+				// Dynamically adjust frequency for long-running operations
+				if reportCount > 10 && total > 100 {
+					ticker.Reset(interval * 2) // Slow down reporting for very long operations
+				}
 			}
 		}
 	}
+}
+
+// calculateProgressInterval determines the optimal progress reporting interval
+func (p *ASTParser) calculateProgressInterval(total int) time.Duration {
+	switch {
+	case total <= 5:
+		// Very small operations - no progress tracking needed
+		return 1 * time.Hour // Effectively disable
+	case total <= 20:
+		// Small operations - infrequent reporting
+		return 500 * time.Millisecond
+	case total <= 100:
+		// Medium operations - moderate reporting
+		return 200 * time.Millisecond
+	case total <= 500:
+		// Large operations - frequent reporting
+		return 100 * time.Millisecond
+	default:
+		// Very large operations - very frequent initial reporting
+		return 50 * time.Millisecond
+	}
+}
+
+// shouldReportProgress determines if progress should be reported based on various factors
+func (p *ASTParser) shouldReportProgress(lastReport time.Time, reportCount int, total int) bool {
+	// For very small operations, don't report at all
+	if total <= 5 {
+		return false
+	}
+
+	// For the first few reports, always report
+	if reportCount < 3 {
+		return true
+	}
+
+	// For long-running operations, throttle reporting
+	if total > 100 && reportCount > 20 {
+		// Report less frequently for very long operations
+		return time.Since(lastReport) > 1*time.Second
+	}
+
+	// Standard reporting
+	return true
 }
 
 // countAnnotations counts total annotations across all interfaces

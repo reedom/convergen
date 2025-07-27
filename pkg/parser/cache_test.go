@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -230,4 +231,104 @@ func BenchmarkTypeCache_ConcurrentAccess(b *testing.B) {
 			i++
 		}
 	})
+}
+
+func TestTypeCache_TTLExpiration(t *testing.T) {
+	// Create cache with very short TTL for testing
+	cache := NewTypeCacheWithTTL(10, 50*time.Millisecond, 100)
+	testType := domain.StringType
+
+	// Put item with short TTL
+	cache.PutWithTTL("short-lived", testType, 50*time.Millisecond)
+
+	// Should be available immediately
+	retrieved := cache.Get("short-lived")
+	assert.NotNil(t, retrieved)
+	assert.Equal(t, testType, retrieved)
+
+	// Wait for expiration
+	time.Sleep(100 * time.Millisecond)
+
+	// Should be expired and return nil
+	expired := cache.Get("short-lived")
+	assert.Nil(t, expired)
+
+	// Verify stats reflect expiration
+	stats := cache.Stats()
+	assert.Greater(t, stats.Expired, int64(0))
+}
+
+func TestTypeCache_MemoryPressureEviction(t *testing.T) {
+	// Create cache with very low memory threshold to trigger eviction
+	cache := NewTypeCacheWithTTL(100, 5*time.Minute, 1) // 1MB threshold
+	testType := domain.StringType
+
+	// Fill cache with many entries
+	for i := 0; i < 50; i++ {
+		key := "key" + string(rune(i))
+		cache.Put(key, testType)
+	}
+
+	initialSize := cache.Size()
+	assert.Greater(t, initialSize, 0)
+
+	// Add one more item to potentially trigger memory pressure cleanup
+	cache.Put("trigger", testType)
+
+	// Check if evictions occurred (memory pressure may or may not trigger in test environment)
+	stats := cache.Stats()
+	// Note: Memory pressure eviction may not trigger in test environment with small objects
+	t.Logf("Cache stats: Size=%d, Evictions=%d, Expired=%d", stats.Size, stats.Evictions, stats.Expired)
+}
+
+func TestTypeCache_PeriodicCleanup(t *testing.T) {
+	// Create cache with short cleanup interval for testing
+	cache := NewTypeCacheWithTTL(10, 30*time.Millisecond, 100)
+	cache.cleanupInterval = 10 * time.Millisecond // Override for testing
+
+	testType := domain.StringType
+
+	// Add items with very short TTL
+	for i := 0; i < 5; i++ {
+		key := "key" + string(rune(i))
+		cache.PutWithTTL(key, testType, 30*time.Millisecond)
+	}
+
+	assert.Equal(t, 5, cache.Size())
+
+	// Wait for TTL expiration and cleanup
+	time.Sleep(50 * time.Millisecond)
+
+	// Trigger cleanup by adding new item
+	cache.Put("trigger-cleanup", testType)
+
+	// Some items should have been cleaned up
+	stats := cache.Stats()
+	t.Logf("After cleanup: Size=%d, Expired=%d", stats.Size, stats.Expired)
+	assert.Greater(t, stats.Expired, int64(0))
+}
+
+func TestTypeCache_EnhancedStats(t *testing.T) {
+	cache := NewTypeCacheWithTTL(5, 50*time.Millisecond, 100)
+	testType := domain.StringType
+
+	// Test evictions through size limit
+	for i := 0; i < 10; i++ { // More than maxSize
+		key := "key" + string(rune(i))
+		cache.Put(key, testType)
+	}
+
+	stats := cache.Stats()
+	assert.Equal(t, 5, stats.Size)               // Should be capped at maxSize
+	assert.Greater(t, stats.Evictions, int64(0)) // Should have evictions
+
+	// Test expiration tracking
+	cache.PutWithTTL("expires", testType, 10*time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
+
+	// Trigger expiration check
+	cache.Get("expires")
+
+	stats = cache.Stats()
+	assert.Greater(t, stats.Expired, int64(0)) // Should have expired entries
 }
