@@ -179,16 +179,21 @@ func (h *EmitterEventHandler) handleMethodPlanned(ctx context.Context, event eve
 
 // EmitterStartedEvent represents the start of code generation
 type EmitterStartedEvent struct {
-	*events.BaseEvent
+	events.BaseEvent
 	PackageName string `json:"package_name"`
 	MethodCount int    `json:"method_count"`
+}
+
+// Type returns the event type
+func (e *EmitterStartedEvent) Type() string {
+	return e.BaseEvent.Type()
 }
 
 // NewEmitterStartedEvent creates a new emitter started event
 func NewEmitterStartedEvent(ctx context.Context, packageName string, methodCount int) *EmitterStartedEvent {
 	base := events.NewBaseEvent(EventEmitterStarted, ctx)
 	return &EmitterStartedEvent{
-		BaseEvent:   base,
+		BaseEvent:   *base,
 		PackageName: packageName,
 		MethodCount: methodCount,
 	}
@@ -196,9 +201,14 @@ func NewEmitterStartedEvent(ctx context.Context, packageName string, methodCount
 
 // EmitterCompletedEvent represents successful code generation completion
 type EmitterCompletedEvent struct {
-	*events.BaseEvent
+	events.BaseEvent
 	Code    *GeneratedCode  `json:"code"`
 	Metrics *EmitterMetrics `json:"metrics"`
+}
+
+// Type returns the event type
+func (e *EmitterCompletedEvent) Type() string {
+	return e.BaseEvent.Type()
 }
 
 // NewEmitterCompletedEvent creates a new emitter completed event
@@ -208,7 +218,7 @@ func NewEmitterCompletedEvent(ctx context.Context, code *GeneratedCode, metrics 
 	base.WithMetadata("methods_generated", len(code.Methods))
 	base.WithMetadata("lines_generated", metrics.TotalLines)
 	return &EmitterCompletedEvent{
-		BaseEvent: base,
+		BaseEvent: *base,
 		Code:      code,
 		Metrics:   metrics,
 	}
@@ -216,9 +226,14 @@ func NewEmitterCompletedEvent(ctx context.Context, code *GeneratedCode, metrics 
 
 // EmitterFailedEvent represents code generation failure
 type EmitterFailedEvent struct {
-	*events.BaseEvent
+	events.BaseEvent
 	Error       error          `json:"error"`
 	PartialCode *GeneratedCode `json:"partial_code,omitempty"`
+}
+
+// Type returns the event type
+func (e *EmitterFailedEvent) Type() string {
+	return e.BaseEvent.Type()
 }
 
 // NewEmitterFailedEvent creates a new emitter failed event
@@ -229,7 +244,7 @@ func NewEmitterFailedEvent(ctx context.Context, err error, partialCode *Generate
 		base.WithMetadata("partial_methods", len(partialCode.Methods))
 	}
 	return &EmitterFailedEvent{
-		BaseEvent:   base,
+		BaseEvent:   *base,
 		Error:       err,
 		PartialCode: partialCode,
 	}
@@ -237,9 +252,14 @@ func NewEmitterFailedEvent(ctx context.Context, err error, partialCode *Generate
 
 // CodeGenerationStartedEvent represents the start of method code generation
 type CodeGenerationStartedEvent struct {
-	*events.BaseEvent
+	events.BaseEvent
 	MethodName string               `json:"method_name"`
 	Strategy   ConstructionStrategy `json:"strategy"`
+}
+
+// Type returns the event type
+func (e *CodeGenerationStartedEvent) Type() string {
+	return e.BaseEvent.Type()
 }
 
 // NewCodeGenerationStartedEvent creates a new code generation started event
@@ -248,7 +268,7 @@ func NewCodeGenerationStartedEvent(ctx context.Context, methodName string, strat
 	base.WithMetadata("method_name", methodName)
 	base.WithMetadata("strategy", strategy.String())
 	return &CodeGenerationStartedEvent{
-		BaseEvent:  base,
+		BaseEvent:  *base,
 		MethodName: methodName,
 		Strategy:   strategy,
 	}
@@ -256,9 +276,14 @@ func NewCodeGenerationStartedEvent(ctx context.Context, methodName string, strat
 
 // MethodGeneratedEvent represents successful method generation
 type MethodGeneratedEvent struct {
-	*events.BaseEvent
+	events.BaseEvent
 	Method   *MethodCode   `json:"method"`
 	Duration time.Duration `json:"duration"`
+}
+
+// Type returns the event type
+func (e *MethodGeneratedEvent) Type() string {
+	return e.BaseEvent.Type()
 }
 
 // NewMethodGeneratedEvent creates a new method generated event
@@ -268,7 +293,7 @@ func NewMethodGeneratedEvent(ctx context.Context, method *MethodCode, duration t
 	base.WithMetadata("lines_generated", len(method.Body))
 	base.WithMetadata("generation_duration_ms", duration.Milliseconds())
 	return &MethodGeneratedEvent{
-		BaseEvent: base,
+		BaseEvent: *base,
 		Method:    method,
 		Duration:  duration,
 	}
@@ -276,10 +301,15 @@ func NewMethodGeneratedEvent(ctx context.Context, method *MethodCode, duration t
 
 // StrategySelectedEvent represents strategy selection for a method
 type StrategySelectedEvent struct {
-	*events.BaseEvent
+	events.BaseEvent
 	MethodName string               `json:"method_name"`
 	Strategy   ConstructionStrategy `json:"strategy"`
 	Reason     string               `json:"reason"`
+}
+
+// Type returns the event type
+func (e *StrategySelectedEvent) Type() string {
+	return e.BaseEvent.Type()
 }
 
 // NewStrategySelectedEvent creates a new strategy selected event
@@ -289,7 +319,7 @@ func NewStrategySelectedEvent(ctx context.Context, methodName string, strategy C
 	base.WithMetadata("strategy", strategy.String())
 	base.WithMetadata("selection_reason", reason)
 	return &StrategySelectedEvent{
-		BaseEvent:  base,
+		BaseEvent:  *base,
 		MethodName: methodName,
 		Strategy:   strategy,
 		Reason:     reason,

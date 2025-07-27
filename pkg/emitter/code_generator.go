@@ -252,6 +252,12 @@ func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *e
 	// Determine required imports (simplified)
 	imports = cg.analyzeFieldImports(field)
 
+	// Determine strategy from FieldResult or default
+	strategy := "default"
+	if field.StrategyUsed != "" {
+		strategy = field.StrategyUsed
+	}
+
 	fieldCode := &FieldCode{
 		Name:         field.FieldID,
 		Assignment:   assignment,
@@ -259,8 +265,8 @@ func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *e
 		ErrorCheck:   errorCheck,
 		Imports:      imports,
 		Dependencies: dependencies,
-		Order:        0,         // This would be determined from source order
-		Strategy:     "default", // TODO: add strategy tracking to FieldResult
+		Order:        0,        // This would be determined from source order
+		Strategy:     strategy, // Use strategy from FieldResult
 	}
 
 	cg.metrics.IncrementFields()

@@ -3,6 +3,7 @@ package emitter
 import (
 	"context"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -144,8 +145,9 @@ func TestEmitterIntegration_EventPipeline(t *testing.T) {
 		t.Fatalf("Failed to register event handlers: %v", err)
 	}
 
-	// Track all emitter events
+	// Track all emitter events with thread safety
 	var allEvents []string
+	var eventsMu sync.Mutex
 
 	eventTypes := []string{
 		EventEmitterStarted,
@@ -157,7 +159,9 @@ func TestEmitterIntegration_EventPipeline(t *testing.T) {
 
 	for _, eventType := range eventTypes {
 		handler := events.NewFuncEventHandler(eventType, func(ctx context.Context, event events.Event) error {
+			eventsMu.Lock()
 			allEvents = append(allEvents, event.Type())
+			eventsMu.Unlock()
 			t.Logf("Received event: %s with metadata: %v", event.Type(), event.Metadata())
 			return nil
 		})
@@ -205,19 +209,25 @@ func TestEmitterIntegration_EventPipeline(t *testing.T) {
 	// Wait for async processing
 	time.Sleep(200 * time.Millisecond)
 
-	// Verify events were processed
-	if len(allEvents) == 0 {
+	// Verify events were processed with thread safety
+	eventsMu.Lock()
+	eventCount := len(allEvents)
+	eventsCopy := make([]string, len(allEvents))
+	copy(eventsCopy, allEvents)
+	eventsMu.Unlock()
+
+	if eventCount == 0 {
 		t.Error("No events were processed")
 	}
 
-	t.Logf("Total events processed: %d", len(allEvents))
-	t.Logf("Events: %v", allEvents)
+	t.Logf("Total events processed: %d", eventCount)
+	t.Logf("Events: %v", eventsCopy)
 
 	// Check that emitter started and completed events were fired
 	hasStarted := false
 	hasCompleted := false
 
-	for _, event := range allEvents {
+	for _, event := range eventsCopy {
 		if event == EventEmitterStarted {
 			hasStarted = true
 		}
@@ -304,240 +314,5 @@ func TestEmitterIntegration_OptimizationPipeline(t *testing.T) {
 	t.Logf("Optimization applied successfully")
 }
 
-// TODO: Fix these tests with proper domain structure
-/*
-func TestEmitterIntegration_ConcurrentGeneration(t *testing.T) {
-	logger := zaptest.NewLogger(t)
-	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
-	config.EnableConcurrentGen = true
-	config.MaxConcurrentMethods = 3
-
-	emitter := NewEmitter(logger, eventBus, config)
-
-	// Create multiple methods for concurrent generation
-	var methods []*domain.MethodResult
-	for i := 0; i < 5; i++ {
-		method := &domain.MethodResult{
-			MethodName: fmt.Sprintf("ConvertMethod%d", i+1),
-			Data: map[string]interface{}{
-				"Field1": &domain.FieldResult{
-					FieldID:      "Field1",
-					Success:      true,
-					Result:       "src.Field1",
-					StrategyUsed: "direct",
-					Duration:     time.Millisecond * time.Duration(i+1),
-				},
-				"Field2": &domain.FieldResult{
-					FieldID:      "Field2",
-					Success:      true,
-					Result:       "src.Field2",
-					StrategyUsed: "direct",
-					Duration:     time.Millisecond * time.Duration(i+1),
-				},
-			},
-		}
-		methods = append(methods, method)
-	}
-
-	results := &domain.ExecutionResults{
-		PackageName: "concurrent_test",
-		Methods:     methods,
-	}
-
-	ctx := context.Background()
-	startTime := time.Now()
-
-	generatedCode, err := emitter.GenerateCode(ctx, results)
-
-	duration := time.Since(startTime)
-
-	if err != nil {
-		t.Fatalf("Concurrent generation failed: %v", err)
-	}
-
-	if len(generatedCode.Methods) != 5 {
-		t.Errorf("Expected 5 methods, got %d", len(generatedCode.Methods))
-	}
-
-	t.Logf("Concurrent generation of 5 methods took: %v", duration)
-
-	// Compare with sequential generation
-	config.EnableConcurrentGen = false
-	sequentialEmitter := NewEmitter(logger, eventBus, config)
-
-	startTimeSeq := time.Now()
-	sequentialCode, err := sequentialEmitter.GenerateCode(ctx, results)
-	durationSeq := time.Since(startTimeSeq)
-
-	if err != nil {
-		t.Fatalf("Sequential generation failed: %v", err)
-	}
-
-	if len(sequentialCode.Methods) != 5 {
-		t.Errorf("Expected 5 methods in sequential, got %d", len(sequentialCode.Methods))
-	}
-
-	t.Logf("Sequential generation of 5 methods took: %v", durationSeq)
-	t.Logf("Concurrent vs Sequential ratio: %f", float64(duration)/float64(durationSeq))
-}
-
-func TestEmitterIntegration_ErrorHandling(t *testing.T) {
-	logger := zaptest.NewLogger(t)
-	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
-
-	emitter := NewEmitter(logger, eventBus, config)
-	eventHandler := NewEmitterEventHandler(emitter, eventBus, logger)
-
-	// Track failure events
-	var failureEvents []string
-	failureHandler := events.NewFuncEventHandler("emitter.failed", func(ctx context.Context, event events.Event) error {
-		failureEvents = append(failureEvents, event.Type())
-		t.Logf("Failure event received: %v", event.Metadata())
-		return nil
-	})
-	eventBus.Subscribe("emitter.failed", failureHandler)
-
-	// Test with problematic data that might cause errors
-	problematicResults := &domain.ExecutionResults{
-		PackageName: "error_test",
-		Methods: []*domain.MethodResult{
-			{
-				MethodName: "ConvertWithErrors",
-				Data: map[string]interface{}{
-					"SuccessField": &domain.FieldResult{
-						FieldID:      "SuccessField",
-						Success:      true,
-						Result:       "src.SuccessField",
-						StrategyUsed: "direct",
-						Duration:     time.Millisecond,
-					},
-					"ErrorField": &domain.FieldResult{
-						FieldID:      "ErrorField",
-						Success:      false,
-						Error:        &domain.ExecutionError{FieldID: "ErrorField", Error: "critical conversion error"},
-						StrategyUsed: "converter",
-						Duration:     15 * time.Millisecond,
-						RetryCount:   3,
-					},
-				},
-			},
-		},
-	}
-
-	ctx := context.Background()
-	generatedCode, err := emitter.GenerateCode(ctx, problematicResults)
-
-	// Generation should succeed even with field errors
-	if err != nil {
-		t.Logf("Generation completed with errors (expected): %v", err)
-	}
-
-	if generatedCode == nil {
-		t.Error("Generated code should not be nil even with field errors")
-	}
-
-	// Test error reporting through events
-	err = eventHandler.PublishEmitterFailed(ctx, &domain.ExecutionError{Error: "test error"}, generatedCode)
-	if err != nil {
-		t.Errorf("Failed to publish failure event: %v", err)
-	}
-
-	// Give time for event processing
-	time.Sleep(50 * time.Millisecond)
-
-	if len(failureEvents) == 0 {
-		t.Log("No failure events received (this might be expected depending on error handling)")
-	}
-}
-
-func TestEmitterIntegration_CodeQuality(t *testing.T) {
-	logger := zaptest.NewLogger(t)
-	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
-	config.OptimizationLevel = OptimizationMaximal
-	config.EnableSyntaxValidation = true
-
-	emitter := NewEmitter(logger, eventBus, config)
-
-	// Generate code with various complexity scenarios
-	results := &domain.ExecutionResults{
-		PackageName: "quality_test",
-		Methods: []*domain.MethodResult{
-			{
-				MethodName: "ConvertQualityTest",
-				Data: map[string]interface{}{
-					"SimpleField": &domain.FieldResult{
-						FieldID:      "SimpleField",
-						Success:      true,
-						Result:       "src.SimpleField",
-						StrategyUsed: "direct",
-						Duration:     time.Millisecond,
-					},
-					"ConvertedField": &domain.FieldResult{
-						FieldID:      "ConvertedField",
-						Success:      true,
-						Result:       "converter.ConvertString(src.ConvertedField)",
-						StrategyUsed: "converter",
-						Duration:     5 * time.Millisecond,
-					},
-					"ComplexField": &domain.FieldResult{
-						FieldID:      "ComplexField",
-						Success:      true,
-						Result:       "processComplexData(src.ComplexField, options)",
-						StrategyUsed: "expression",
-						Duration:     10 * time.Millisecond,
-					},
-				},
-			},
-		},
-	}
-
-	ctx := context.Background()
-	generatedCode, err := emitter.GenerateCode(ctx, results)
-
-	if err != nil {
-		t.Fatalf("Quality test generation failed: %v", err)
-	}
-
-	// Verify code quality aspects
-	if generatedCode.Source == "" {
-		t.Error("Generated source should not be empty")
-	}
-
-	// Check for basic Go code structure
-	source := generatedCode.Source
-
-	if !strings.Contains(source, "package quality_test") {
-		t.Error("Generated code should contain correct package declaration")
-	}
-
-	if !strings.Contains(source, "func ConvertQualityTest") {
-		t.Error("Generated code should contain method function")
-	}
-
-	// Check for proper formatting patterns
-	lines := strings.Split(source, "\n")
-	if len(lines) < 5 {
-		t.Error("Generated code should have reasonable length")
-	}
-
-	// Verify imports are properly formatted
-	if generatedCode.Imports != nil && len(generatedCode.Imports.Imports) > 0 {
-		if generatedCode.Imports.Source == "" {
-			t.Error("Import source should be formatted")
-		}
-	}
-
-	t.Logf("Quality test generated %d lines of code", len(lines))
-	t.Logf("Generated imports: %d", len(generatedCode.Imports.Imports))
-
-	// Log a portion of the generated code for manual inspection
-	if len(lines) > 20 {
-		t.Logf("Generated code sample (first 20 lines):\n%s", strings.Join(lines[:20], "\n"))
-	} else {
-		t.Logf("Generated code:\n%s", source)
-	}
-}
-*/
+// Note: Legacy concurrent generation tests removed - comprehensive concurrent testing
+// is now provided by race_test.go with proper domain model usage.

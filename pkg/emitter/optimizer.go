@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -59,6 +60,7 @@ type ConcreteCodeOptimizer struct {
 
 // OptimizerMetrics tracks optimization performance and results
 type OptimizerMetrics struct {
+	mu                    sync.RWMutex
 	OptimizationsApplied  map[string]int64 `json:"optimizations_applied"`
 	TotalOptimizationTime time.Duration    `json:"total_optimization_time"`
 	DeadCodeEliminated    int64            `json:"dead_code_eliminated"`
@@ -257,7 +259,7 @@ func (co *ConcreteCodeOptimizer) OptimizeCode(ctx context.Context, code *Generat
 	}
 
 	// Update metrics
-	co.metrics.TotalOptimizationTime += time.Since(startTime)
+	co.updateOptimizationTime(time.Since(startTime))
 
 	// Update code metrics
 	if optimizedCode.Metrics != nil {
@@ -292,7 +294,7 @@ func (co *ConcreteCodeOptimizer) OptimizeMethodCode(method *MethodCode) error {
 			co.logger.Warn("method body optimization failed", zap.Error(err))
 		} else {
 			method.Body = optimized
-			co.metrics.OptimizationsApplied["method_body"] += int64(optimizations)
+			co.addOptimization("method_body", int64(optimizations))
 		}
 	}
 
@@ -303,7 +305,7 @@ func (co *ConcreteCodeOptimizer) OptimizeMethodCode(method *MethodCode) error {
 			co.logger.Warn("error handling optimization failed", zap.Error(err))
 		} else {
 			method.ErrorHandling = optimized
-			co.metrics.OptimizationsApplied["error_handling"] += int64(optimizations)
+			co.addOptimization("error_handling", int64(optimizations))
 		}
 	}
 
@@ -328,7 +330,7 @@ func (co *ConcreteCodeOptimizer) EliminateDeadCode(code *GeneratedCode) error {
 				continue
 			}
 			method.Body = optimized
-			co.metrics.DeadCodeEliminated += int64(eliminated)
+			co.updateDeadCodeEliminated(int64(eliminated))
 		}
 	}
 
@@ -353,7 +355,7 @@ func (co *ConcreteCodeOptimizer) OptimizeVariableNames(code *GeneratedCode) erro
 				continue
 			}
 			method.Body = optimized
-			co.metrics.VariablesOptimized += int64(optimizations)
+			co.updateVariablesOptimized(int64(optimizations))
 		}
 	}
 
@@ -374,7 +376,7 @@ func (co *ConcreteCodeOptimizer) SimplifyExpressions(code *GeneratedCode) error 
 				continue
 			}
 			method.Body = optimized
-			co.metrics.ExpressionsSimplified += int64(simplifications)
+			co.updateExpressionsSimplified(int64(simplifications))
 		}
 	}
 
@@ -395,7 +397,7 @@ func (co *ConcreteCodeOptimizer) RemoveRedundancy(code *GeneratedCode) error {
 				continue
 			}
 			method.Body = optimized
-			co.metrics.RedundancyRemoved += int64(removed)
+			co.updateRedundancyRemoved(int64(removed))
 		}
 	}
 
@@ -506,11 +508,55 @@ func (co *ConcreteCodeOptimizer) optimizeCodeBlock(code string) (string, int, er
 }
 
 func (co *ConcreteCodeOptimizer) countOptimizationsApplied() int64 {
+	co.metrics.mu.RLock()
+	defer co.metrics.mu.RUnlock()
 	total := int64(0)
 	for _, count := range co.metrics.OptimizationsApplied {
 		total += count
 	}
 	return total
+}
+
+// addOptimization safely adds optimization counts
+func (co *ConcreteCodeOptimizer) addOptimization(category string, count int64) {
+	co.metrics.mu.Lock()
+	defer co.metrics.mu.Unlock()
+	co.metrics.OptimizationsApplied[category] += count
+}
+
+// updateDeadCodeEliminated safely updates dead code eliminated count
+func (co *ConcreteCodeOptimizer) updateDeadCodeEliminated(count int64) {
+	co.metrics.mu.Lock()
+	defer co.metrics.mu.Unlock()
+	co.metrics.DeadCodeEliminated += count
+}
+
+// updateVariablesOptimized safely updates variables optimized count
+func (co *ConcreteCodeOptimizer) updateVariablesOptimized(count int64) {
+	co.metrics.mu.Lock()
+	defer co.metrics.mu.Unlock()
+	co.metrics.VariablesOptimized += count
+}
+
+// updateExpressionsSimplified safely updates expressions simplified count
+func (co *ConcreteCodeOptimizer) updateExpressionsSimplified(count int64) {
+	co.metrics.mu.Lock()
+	defer co.metrics.mu.Unlock()
+	co.metrics.ExpressionsSimplified += count
+}
+
+// updateRedundancyRemoved safely updates redundancy removed count
+func (co *ConcreteCodeOptimizer) updateRedundancyRemoved(count int64) {
+	co.metrics.mu.Lock()
+	defer co.metrics.mu.Unlock()
+	co.metrics.RedundancyRemoved += count
+}
+
+// updateOptimizationTime safely updates total optimization time
+func (co *ConcreteCodeOptimizer) updateOptimizationTime(duration time.Duration) {
+	co.metrics.mu.Lock()
+	defer co.metrics.mu.Unlock()
+	co.metrics.TotalOptimizationTime += duration
 }
 
 // NewOptimizerMetrics creates a new OptimizerMetrics instance

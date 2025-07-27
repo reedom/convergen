@@ -87,14 +87,15 @@ func TestFormatManager_ValidateFormat(t *testing.T) {
 	config := DefaultEmitterConfig()
 	formatMgr := NewFormatManager(config, logger)
 
-	// Test with valid code
+	// Test with valid, properly formatted code
 	validCode := `package main
 
 import "fmt"
 
 func main() {
 	fmt.Println("hello")
-}`
+}
+`
 
 	err := formatMgr.ValidateFormat(validCode)
 	if err != nil {
