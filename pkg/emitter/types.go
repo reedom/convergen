@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
@@ -177,6 +178,7 @@ type ImportAnalysis struct {
 
 // EmitterMetrics tracks overall emitter performance
 type EmitterMetrics struct {
+	mu                    sync.RWMutex
 	TotalGenerations      int64         `json:"total_generations"`
 	TotalMethods          int64         `json:"total_methods"`
 	TotalFields           int64         `json:"total_fields"`
@@ -396,16 +398,56 @@ func NewEmitterMetrics() *EmitterMetrics {
 	}
 }
 
-// RecordGeneration records generation metrics
+// RecordGeneration records generation metrics in a thread-safe manner
 func (m *EmitterMetrics) RecordGeneration(methodCode *MethodCode, packageName string, methods []*MethodCode) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.TotalMethods++
+	m.TotalGenerations++
+
 	if methodCode != nil {
-		m.TotalLines += int64(len(strings.Split(methodCode.Body, "\n")))
+		lines := int64(len(strings.Split(methodCode.Body, "\n")))
+		m.TotalLines += lines
+		m.TotalFields += int64(len(methodCode.Fields))
+	}
+
+	// Update average generation time if we have timing data
+	if m.TotalGenerations > 0 {
+		m.AverageGenerationTime = m.TotalGenerationTime / time.Duration(m.TotalGenerations)
 	}
 }
 
-// GetSnapshot returns a snapshot of current metrics
+// GetSnapshot returns a thread-safe snapshot of current metrics
 func (m *EmitterMetrics) GetSnapshot() *EmitterMetrics {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Create deep copies of maps to avoid concurrent access
+	strategyUsage := make(map[string]int64)
+	for k, v := range m.StrategyUsage {
+		strategyUsage[k] = v
+	}
+
+	strategyPerformance := make(map[string]time.Duration)
+	for k, v := range m.StrategyPerformance {
+		strategyPerformance[k] = v
+	}
+
+	optimizationsApplied := make(map[string]int64)
+	for k, v := range m.OptimizationsApplied {
+		optimizationsApplied[k] = v
+	}
+
+	errorsByType := make(map[string]int64)
+	for k, v := range m.ErrorsByType {
+		errorsByType[k] = v
+	}
+
+	// Copy performance history
+	performanceHistory := make([]PerformanceSnapshot, len(m.PerformanceHistory))
+	copy(performanceHistory, m.PerformanceHistory)
+
 	return &EmitterMetrics{
 		TotalGenerations:      m.TotalGenerations,
 		TotalMethods:          m.TotalMethods,
@@ -414,12 +456,74 @@ func (m *EmitterMetrics) GetSnapshot() *EmitterMetrics {
 		TotalGenerationTime:   m.TotalGenerationTime,
 		AverageGenerationTime: m.AverageGenerationTime,
 		ThroughputPerSecond:   m.ThroughputPerSecond,
-		StrategyUsage:         m.StrategyUsage,
-		StrategyPerformance:   m.StrategyPerformance,
-		OptimizationsApplied:  m.OptimizationsApplied,
+		StrategyUsage:         strategyUsage,
+		StrategyPerformance:   strategyPerformance,
+		OptimizationsApplied:  optimizationsApplied,
 		OptimizationTime:      m.OptimizationTime,
 		ErrorsEncountered:     m.ErrorsEncountered,
-		ErrorsByType:          m.ErrorsByType,
+		ErrorsByType:          errorsByType,
+		PeakMemoryUsage:       m.PeakMemoryUsage,
+		AverageMemoryUsage:    m.AverageMemoryUsage,
+		PerformanceHistory:    performanceHistory,
+		StartTime:             m.StartTime,
+		LastGeneration:        m.LastGeneration,
+	}
+}
+
+// AddGenerationTime safely adds generation time to metrics
+func (m *EmitterMetrics) AddGenerationTime(duration time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.TotalGenerationTime += duration
+	if m.TotalGenerations > 0 {
+		m.AverageGenerationTime = m.TotalGenerationTime / time.Duration(m.TotalGenerations)
+	}
+}
+
+// RecordStrategyUsage safely records strategy usage
+func (m *EmitterMetrics) RecordStrategyUsage(strategy string, duration time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.StrategyUsage == nil {
+		m.StrategyUsage = make(map[string]int64)
+	}
+	if m.StrategyPerformance == nil {
+		m.StrategyPerformance = make(map[string]time.Duration)
+	}
+
+	m.StrategyUsage[strategy]++
+	m.StrategyPerformance[strategy] += duration
+}
+
+// RecordError safely records error occurrences
+func (m *EmitterMetrics) RecordError(errorType string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.ErrorsEncountered++
+
+	if m.ErrorsByType == nil {
+		m.ErrorsByType = make(map[string]int64)
+	}
+	m.ErrorsByType[errorType]++
+}
+
+// UpdateMemoryUsage safely updates memory usage statistics
+func (m *EmitterMetrics) UpdateMemoryUsage(current int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if current > m.PeakMemoryUsage {
+		m.PeakMemoryUsage = current
+	}
+
+	// Simple moving average for average memory usage
+	if m.AverageMemoryUsage == 0 {
+		m.AverageMemoryUsage = current
+	} else {
+		m.AverageMemoryUsage = (m.AverageMemoryUsage + current) / 2
 	}
 }
 

@@ -360,7 +360,7 @@ func TestImportManager_PrivateMethods(t *testing.T) {
 		{Path: "fmt", Used: true},
 		{Path: "unused", Used: false},
 	}
-	
+
 	sourceCode := "fmt.Println(\"hello\")"
 	filtered := importMgr.RemoveUnusedImports(unusedImports, sourceCode)
 	t.Logf("RemoveUnusedImports filtered %d imports to %d", len(unusedImports), len(filtered))
@@ -457,7 +457,7 @@ func TestImportManager_EdgeCases(t *testing.T) {
 
 	// Test with malformed import paths
 	malformedImports := []*Import{
-		{Path: "", Standard: false}, // Empty path
+		{Path: "", Standard: false},              // Empty path
 		{Path: "invalid..path", Standard: false}, // Invalid format
 	}
 

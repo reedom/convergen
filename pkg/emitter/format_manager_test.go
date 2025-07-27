@@ -155,7 +155,7 @@ func TestFormatManager_OptimizeLayout(t *testing.T) {
 				Body:      "return nil",
 			},
 			{
-				Name:      "Method2", 
+				Name:      "Method2",
 				Signature: "func Method2() error",
 				Body:      "return nil",
 			},
@@ -325,7 +325,7 @@ func TestFormatManager_PrivateMethods(t *testing.T) {
 			},
 		},
 		{
-			name: "third_party_only", 
+			name: "third_party_only",
 			imports: []*Import{
 				{Path: "github.com/example/pkg", Standard: false, Used: true},
 			},

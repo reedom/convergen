@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -50,6 +51,7 @@ type ConcreteCodeGenerator struct {
 
 // CodeGenMetrics tracks code generation performance
 type CodeGenMetrics struct {
+	mu                     sync.RWMutex
 	MethodsGenerated       int64            `json:"methods_generated"`
 	FieldsGenerated        int64            `json:"fields_generated"`
 	ErrorHandlersGenerated int64            `json:"error_handlers_generated"`
@@ -199,10 +201,9 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 
 	// Update metrics
 	duration := time.Since(startTime)
-	cg.metrics.MethodsGenerated++
-	cg.metrics.TotalGenerationTime += duration
-	cg.metrics.AverageMethodTime = cg.metrics.TotalGenerationTime / time.Duration(cg.metrics.MethodsGenerated)
-	cg.metrics.StrategyUsage[strategy.String()]++
+	cg.metrics.IncrementMethods()
+	cg.metrics.AddGenerationTime(duration)
+	cg.metrics.IncrementStrategy(strategy.String())
 
 	// Validate generated code if enabled
 	if cg.config.EnableSyntaxValidation && cg.validator != nil {
@@ -210,7 +211,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 			cg.logger.Warn("method code validation failed",
 				zap.String("method", method.Method.Name),
 				zap.Error(err))
-			cg.metrics.ErrorsEncountered++
+			cg.metrics.IncrementErrors()
 		}
 	}
 
@@ -262,7 +263,7 @@ func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *e
 		Strategy:     "default", // TODO: add strategy tracking to FieldResult
 	}
 
-	cg.metrics.FieldsGenerated++
+	cg.metrics.IncrementFields()
 	return fieldCode, nil
 }
 
@@ -308,7 +309,7 @@ func (cg *ConcreteCodeGenerator) GenerateErrorHandling(ctx context.Context, erro
 		Imports:      imports,
 	}
 
-	cg.metrics.ErrorHandlersGenerated++
+	cg.metrics.IncrementErrorHandlers()
 	return errorCode, nil
 }
 
@@ -475,5 +476,79 @@ func NewCodeGenMetrics() *CodeGenMetrics {
 	return &CodeGenMetrics{
 		StrategyUsage: make(map[string]int64),
 		TemplateUsage: make(map[string]int64),
+	}
+}
+
+// IncrementMethods safely increments the methods generated counter
+func (m *CodeGenMetrics) IncrementMethods() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.MethodsGenerated++
+}
+
+// AddGenerationTime safely adds generation time and updates average
+func (m *CodeGenMetrics) AddGenerationTime(duration time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.TotalGenerationTime += duration
+	if m.MethodsGenerated > 0 {
+		m.AverageMethodTime = m.TotalGenerationTime / time.Duration(m.MethodsGenerated)
+	}
+}
+
+// IncrementStrategy safely increments strategy usage counter
+func (m *CodeGenMetrics) IncrementStrategy(strategy string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.StrategyUsage[strategy]++
+}
+
+// IncrementFields safely increments the fields generated counter
+func (m *CodeGenMetrics) IncrementFields() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.FieldsGenerated++
+}
+
+// IncrementErrors safely increments the errors encountered counter
+func (m *CodeGenMetrics) IncrementErrors() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ErrorsEncountered++
+}
+
+// IncrementErrorHandlers safely increments the error handlers generated counter
+func (m *CodeGenMetrics) IncrementErrorHandlers() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ErrorHandlersGenerated++
+}
+
+// GetSnapshot returns a thread-safe copy of current metrics
+func (m *CodeGenMetrics) GetSnapshot() *CodeGenMetrics {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Create deep copy of maps
+	strategyUsage := make(map[string]int64)
+	for k, v := range m.StrategyUsage {
+		strategyUsage[k] = v
+	}
+
+	templateUsage := make(map[string]int64)
+	for k, v := range m.TemplateUsage {
+		templateUsage[k] = v
+	}
+
+	return &CodeGenMetrics{
+		MethodsGenerated:       m.MethodsGenerated,
+		FieldsGenerated:        m.FieldsGenerated,
+		ErrorHandlersGenerated: m.ErrorHandlersGenerated,
+		TotalGenerationTime:    m.TotalGenerationTime,
+		AverageMethodTime:      m.AverageMethodTime,
+		StrategyUsage:          strategyUsage,
+		TemplateUsage:          templateUsage,
+		ValidationTime:         m.ValidationTime,
+		ErrorsEncountered:      m.ErrorsEncountered,
 	}
 }
