@@ -1,14 +1,15 @@
 package emitter
 
-// TODO: Fix these strategy tests with proper domain structure
-/*
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v8/pkg/executor"
 )
 
 func TestCompositeLiteralStrategy(t *testing.T) {
@@ -20,18 +21,31 @@ func TestCompositeLiteralStrategy(t *testing.T) {
 		t.Errorf("Expected strategy name 'composite_literal', got '%s'", strategy.Name())
 	}
 
+	// Create test method with proper domain constructors
+	sourceType := domain.NewBasicType("User", reflect.Struct)
+	destType := domain.NewBasicType("UserDTO", reflect.Struct)
+	method, err := domain.NewMethod("ConvertSimple", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create method: %v", err)
+	}
+
 	// Test with simple method that can be handled
 	simpleMethod := &domain.MethodResult{
-		MethodName: "ConvertSimple",
-		Data: map[string]interface{}{
-			"Name": &domain.FieldResult{
+		Method:      method,
+		Success:     true,
+		Error:       nil,
+		Code:        "",
+		ProcessedAt: time.Now(),
+		DurationMS:  5,
+		Metadata: map[string]interface{}{
+			"Name": &executor.FieldResult{
 				FieldID:      "Name",
 				Success:      true,
 				Result:       "src.Name",
 				StrategyUsed: "direct",
 				Duration:     time.Millisecond,
 			},
-			"Email": &domain.FieldResult{
+			"Email": &executor.FieldResult{
 				FieldID:      "Email",
 				Success:      true,
 				Result:       "src.Email",
@@ -47,9 +61,8 @@ func TestCompositeLiteralStrategy(t *testing.T) {
 
 	// Test code generation
 	templateData := &TemplateData{
-		Method:  simpleMethod,
-		Strategy: StrategyCompositeLiteral,
-		Config:  config,
+		Method: simpleMethod,
+		Config: config,
 	}
 
 	ctx := context.Background()
@@ -90,13 +103,22 @@ func TestCompositeLiteralStrategy_CannotHandle(t *testing.T) {
 	config.MaxFieldsForComposite = 2 // Low threshold for testing
 	strategy := NewCompositeLiteralStrategy(config, logger)
 
+	// Create test method for too many fields
+	sourceType := domain.NewBasicType("Source", reflect.Struct)
+	destType := domain.NewBasicType("Dest", reflect.Struct)
+	method, err := domain.NewMethod("ConvertMany", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create method: %v", err)
+	}
+
 	// Test with too many fields
 	manyFieldsMethod := &domain.MethodResult{
-		MethodName: "ConvertMany",
-		Data: map[string]interface{}{
-			"Field1": &domain.FieldResult{FieldID: "Field1", Success: true, StrategyUsed: "direct"},
-			"Field2": &domain.FieldResult{FieldID: "Field2", Success: true, StrategyUsed: "direct"},
-			"Field3": &domain.FieldResult{FieldID: "Field3", Success: true, StrategyUsed: "direct"},
+		Method:  method,
+		Success: true,
+		Metadata: map[string]interface{}{
+			"Field1": &executor.FieldResult{FieldID: "Field1", Success: true, StrategyUsed: "direct"},
+			"Field2": &executor.FieldResult{FieldID: "Field2", Success: true, StrategyUsed: "direct"},
+			"Field3": &executor.FieldResult{FieldID: "Field3", Success: true, StrategyUsed: "direct"},
 		},
 	}
 
@@ -105,13 +127,19 @@ func TestCompositeLiteralStrategy_CannotHandle(t *testing.T) {
 	}
 
 	// Test with error fields
+	errorMethod2, err := domain.NewMethod("ConvertWithError", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create error method: %v", err)
+	}
+
 	errorMethod := &domain.MethodResult{
-		MethodName: "ConvertWithError",
-		Data: map[string]interface{}{
-			"Field1": &domain.FieldResult{
-				FieldID: "Field1",
-				Success: false,
-				Error: &domain.ExecutionError{FieldID: "Field1", Error: "error"},
+		Method:  errorMethod2,
+		Success: false,
+		Metadata: map[string]interface{}{
+			"Field1": &executor.FieldResult{
+				FieldID:      "Field1",
+				Success:      false,
+				Error:        &executor.ExecutionError{FieldID: "Field1", Error: "error"},
 				StrategyUsed: "converter",
 			},
 		},
@@ -136,11 +164,20 @@ func TestAssignmentBlockStrategy(t *testing.T) {
 		t.Errorf("Expected strategy name 'assignment_block', got '%s'", strategy.Name())
 	}
 
+	// Create test method
+	sourceType := domain.NewBasicType("Source", reflect.Struct)
+	destType := domain.NewBasicType("Dest", reflect.Struct)
+	method, err := domain.NewMethod("ConvertAny", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create method: %v", err)
+	}
+
 	// Assignment block strategy should handle any method
 	simpleMethod := &domain.MethodResult{
-		MethodName: "ConvertAny",
-		Data: map[string]interface{}{
-			"Field1": &domain.FieldResult{
+		Method:  method,
+		Success: true,
+		Metadata: map[string]interface{}{
+			"Field1": &executor.FieldResult{
 				FieldID:      "Field1",
 				Success:      true,
 				Result:       "src.Field1",
@@ -154,25 +191,31 @@ func TestAssignmentBlockStrategy(t *testing.T) {
 		t.Error("Assignment block strategy should handle any method")
 	}
 
-	if !strategy.CanHandle(nil) {
-		t.Error("Assignment block strategy should handle nil gracefully")
+	if strategy.CanHandle(nil) {
+		t.Error("Assignment block strategy should not handle nil")
 	}
 
 	// Test with complex method including errors
+	complexMethod2, err := domain.NewMethod("ConvertComplex", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create complex method: %v", err)
+	}
+
 	complexMethod := &domain.MethodResult{
-		MethodName: "ConvertComplex",
-		Data: map[string]interface{}{
-			"SuccessField": &domain.FieldResult{
+		Method:  complexMethod2,
+		Success: false,
+		Metadata: map[string]interface{}{
+			"SuccessField": &executor.FieldResult{
 				FieldID:      "SuccessField",
 				Success:      true,
 				Result:       "src.SuccessField",
 				StrategyUsed: "direct",
 				Duration:     time.Millisecond,
 			},
-			"ErrorField": &domain.FieldResult{
+			"ErrorField": &executor.FieldResult{
 				FieldID:      "ErrorField",
 				Success:      false,
-				Error:        &domain.ExecutionError{FieldID: "ErrorField", Error: "conversion failed"},
+				Error:        &executor.ExecutionError{FieldID: "ErrorField", Error: "conversion failed"},
 				StrategyUsed: "converter",
 				Duration:     10 * time.Millisecond,
 			},
@@ -180,9 +223,8 @@ func TestAssignmentBlockStrategy(t *testing.T) {
 	}
 
 	templateData := &TemplateData{
-		Method:   complexMethod,
-		Strategy: StrategyAssignmentBlock,
-		Config:   config,
+		Method: complexMethod,
+		Config: config,
 	}
 
 	ctx := context.Background()
@@ -232,35 +274,44 @@ func TestMixedApproachStrategy(t *testing.T) {
 		t.Errorf("Expected strategy name 'mixed_approach', got '%s'", strategy.Name())
 	}
 
+	// Create test method
+	sourceType := domain.NewBasicType("Source", reflect.Struct)
+	destType := domain.NewBasicType("Dest", reflect.Struct)
+	method, err := domain.NewMethod("ConvertMixed", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create method: %v", err)
+	}
+
 	// Test with method that has both simple and complex fields
 	mixedMethod := &domain.MethodResult{
-		MethodName: "ConvertMixed",
-		Data: map[string]interface{}{
-			"SimpleField1": &domain.FieldResult{
+		Method:  method,
+		Success: true,
+		Metadata: map[string]interface{}{
+			"SimpleField1": &executor.FieldResult{
 				FieldID:      "SimpleField1",
 				Success:      true,
 				Result:       "src.SimpleField1",
 				StrategyUsed: "direct",
 				Duration:     time.Millisecond,
 			},
-			"SimpleField2": &domain.FieldResult{
+			"SimpleField2": &executor.FieldResult{
 				FieldID:      "SimpleField2",
 				Success:      true,
 				Result:       "src.SimpleField2",
 				StrategyUsed: "literal",
 				Duration:     time.Millisecond,
 			},
-			"ComplexField": &domain.FieldResult{
+			"ComplexField": &executor.FieldResult{
 				FieldID:      "ComplexField",
 				Success:      true,
 				Result:       "converter.Convert(src.ComplexField)",
 				StrategyUsed: "converter",
 				Duration:     5 * time.Millisecond,
 			},
-			"ErrorField": &domain.FieldResult{
+			"ErrorField": &executor.FieldResult{
 				FieldID:      "ErrorField",
 				Success:      false,
-				Error:        &domain.ExecutionError{FieldID: "ErrorField", Error: "failed"},
+				Error:        &executor.ExecutionError{FieldID: "ErrorField", Error: "failed"},
 				StrategyUsed: "converter",
 				Duration:     10 * time.Millisecond,
 			},
@@ -273,9 +324,8 @@ func TestMixedApproachStrategy(t *testing.T) {
 
 	// Test code generation
 	templateData := &TemplateData{
-		Method:   mixedMethod,
-		Strategy: StrategyMixedApproach,
-		Config:   config,
+		Method: mixedMethod,
+		Config: config,
 	}
 
 	ctx := context.Background()
@@ -308,12 +358,21 @@ func TestMixedApproachStrategy_CannotHandle(t *testing.T) {
 	config := DefaultEmitterConfig()
 	strategy := NewMixedApproachStrategy(config, logger)
 
+	// Create test method
+	sourceType := domain.NewBasicType("Source", reflect.Struct)
+	destType := domain.NewBasicType("Dest", reflect.Struct)
+	method, err := domain.NewMethod("ConvertFew", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create method: %v", err)
+	}
+
 	// Test with too few fields
 	fewFieldsMethod := &domain.MethodResult{
-		MethodName: "ConvertFew",
-		Data: map[string]interface{}{
-			"Field1": &domain.FieldResult{FieldID: "Field1", Success: true, StrategyUsed: "direct"},
-			"Field2": &domain.FieldResult{FieldID: "Field2", Success: true, StrategyUsed: "direct"},
+		Method:  method,
+		Success: true,
+		Metadata: map[string]interface{}{
+			"Field1": &executor.FieldResult{FieldID: "Field1", Success: true, StrategyUsed: "direct"},
+			"Field2": &executor.FieldResult{FieldID: "Field2", Success: true, StrategyUsed: "direct"},
 		},
 	}
 
@@ -321,13 +380,20 @@ func TestMixedApproachStrategy_CannotHandle(t *testing.T) {
 		t.Error("Mixed approach strategy should not handle methods with too few fields")
 	}
 
+	// Create method for all simple fields test
+	method2, err := domain.NewMethod("ConvertAllSimple", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create all simple method: %v", err)
+	}
+
 	// Test with all simple fields
 	allSimpleMethod := &domain.MethodResult{
-		MethodName: "ConvertAllSimple",
-		Data: map[string]interface{}{
-			"Field1": &domain.FieldResult{FieldID: "Field1", Success: true, StrategyUsed: "direct"},
-			"Field2": &domain.FieldResult{FieldID: "Field2", Success: true, StrategyUsed: "direct"},
-			"Field3": &domain.FieldResult{FieldID: "Field3", Success: true, StrategyUsed: "literal"},
+		Method:  method2,
+		Success: true,
+		Metadata: map[string]interface{}{
+			"Field1": &executor.FieldResult{FieldID: "Field1", Success: true, StrategyUsed: "direct"},
+			"Field2": &executor.FieldResult{FieldID: "Field2", Success: true, StrategyUsed: "direct"},
+			"Field3": &executor.FieldResult{FieldID: "Field3", Success: true, StrategyUsed: "literal"},
 		},
 	}
 
@@ -345,14 +411,23 @@ func TestStrategies_RequiredImports(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
 
+	// Create test method
+	sourceType := domain.NewBasicType("Source", reflect.Struct)
+	destType := domain.NewBasicType("Dest", reflect.Struct)
+	method, err := domain.NewMethod("ConvertWithErrors", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create method: %v", err)
+	}
+
 	// Test method with error handling needs
 	errorMethod := &domain.MethodResult{
-		MethodName: "ConvertWithErrors",
-		Data: map[string]interface{}{
-			"ErrorField": &domain.FieldResult{
+		Method:  method,
+		Success: false,
+		Metadata: map[string]interface{}{
+			"ErrorField": &executor.FieldResult{
 				FieldID:      "ErrorField",
 				Success:      false,
-				Error:        &domain.ExecutionError{FieldID: "ErrorField", Error: "failed"},
+				Error:        &executor.ExecutionError{FieldID: "ErrorField", Error: "failed"},
 				StrategyUsed: "converter",
 			},
 		},
@@ -388,25 +463,40 @@ func TestStrategies_ComplexityMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultEmitterConfig()
 
+	// Create test methods
+	sourceType := domain.NewBasicType("Source", reflect.Struct)
+	destType := domain.NewBasicType("Dest", reflect.Struct)
+	simpleMethodObj, err := domain.NewMethod("Simple", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create simple method: %v", err)
+	}
+
+	complexMethodObj, err := domain.NewMethod("Complex", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create complex method: %v", err)
+	}
+
 	// Create methods with different complexity levels
 	simpleMethod := &domain.MethodResult{
-		MethodName: "Simple",
-		Data: map[string]interface{}{
-			"Field1": &domain.FieldResult{FieldID: "Field1", Success: true, StrategyUsed: "direct"},
+		Method:  simpleMethodObj,
+		Success: true,
+		Metadata: map[string]interface{}{
+			"Field1": &executor.FieldResult{FieldID: "Field1", Success: true, StrategyUsed: "direct"},
 		},
 	}
 
 	complexMethod := &domain.MethodResult{
-		MethodName: "Complex",
-		Data: map[string]interface{}{
-			"Field1": &domain.FieldResult{
-				FieldID: "Field1",
-				Success: false,
-				Error: &domain.ExecutionError{FieldID: "Field1", Error: "error"},
+		Method:  complexMethodObj,
+		Success: false,
+		Metadata: map[string]interface{}{
+			"Field1": &executor.FieldResult{
+				FieldID:      "Field1",
+				Success:      false,
+				Error:        &executor.ExecutionError{FieldID: "Field1", Error: "error"},
 				StrategyUsed: "converter",
 			},
-			"Field2": &domain.FieldResult{FieldID: "Field2", Success: true, StrategyUsed: "converter"},
-			"Field3": &domain.FieldResult{FieldID: "Field3", Success: true, StrategyUsed: "expression"},
+			"Field2": &executor.FieldResult{FieldID: "Field2", Success: true, StrategyUsed: "converter"},
+			"Field3": &executor.FieldResult{FieldID: "Field3", Success: true, StrategyUsed: "expression"},
 		},
 	}
 
@@ -451,10 +541,19 @@ func TestStrategies_EdgeCases(t *testing.T) {
 		NewMixedApproachStrategy(config, logger),
 	}
 
+	// Create test method
+	sourceType := domain.NewBasicType("Source", reflect.Struct)
+	destType := domain.NewBasicType("Dest", reflect.Struct)
+	method, err := domain.NewMethod("Empty", sourceType, destType)
+	if err != nil {
+		t.Fatalf("Failed to create empty method: %v", err)
+	}
+
 	// Test with empty method
 	emptyMethod := &domain.MethodResult{
-		MethodName: "Empty",
-		Data:       map[string]interface{}{},
+		Method:   method,
+		Success:  true,
+		Metadata: map[string]interface{}{},
 	}
 
 	for _, strategy := range strategies {
@@ -465,9 +564,8 @@ func TestStrategies_EdgeCases(t *testing.T) {
 
 		if canHandle {
 			templateData := &TemplateData{
-				Method:   emptyMethod,
-				Strategy: StrategyAssignmentBlock, // Default strategy
-				Config:   config,
+				Method: emptyMethod,
+				Config: config,
 			}
 
 			ctx := context.Background()
@@ -489,4 +587,3 @@ func TestStrategies_EdgeCases(t *testing.T) {
 		t.Logf("%s strategy requires %d imports for empty method", strategy.Name(), len(imports))
 	}
 }
-*/
