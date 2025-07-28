@@ -1,11 +1,14 @@
 package parser
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go/types"
 	"os"
 	"regexp"
+
+	"go.uber.org/zap"
 
 	"github.com/reedom/convergen/v8/pkg/builder/model"
 	"github.com/reedom/convergen/v8/pkg/logger"
@@ -22,11 +25,50 @@ var (
 	errAbort = errors.New("abort")
 )
 
-// parseMethods parses all the methods in an interface type.
+// parseMethods parses all the methods in an interface type with optional concurrency.
 func (p *Parser) parseMethods(intf *intfEntry) ([]*model.MethodEntry, error) {
+	// Use concurrent processing if enabled and we have sufficient methods
+	if p.config != nil && p.config.EnableMethodConcurrency {
+		return p.parseMethodsConcurrent(intf)
+	}
+
+	// Fallback to sequential processing
+	return p.parseMethodsSequential(intf)
+}
+
+// parseMethodsConcurrent processes methods concurrently for better performance
+func (p *Parser) parseMethodsConcurrent(intf *intfEntry) ([]*model.MethodEntry, error) {
+	iface := intf.intf.Type().Underlying().(*types.Interface)
+	mset := types.NewMethodSet(iface)
+
+	if mset.Len() == 0 {
+		return []*model.MethodEntry{}, nil
+	}
+
+	// Create logger for concurrent processing
+	zapLogger := zap.NewNop() // Use nop logger for now, can be enhanced later
+
+	// Create concurrent processor
+	processor := NewConcurrentMethodProcessor(
+		p,
+		p.config.MaxConcurrentWorkers,
+		p.config.TypeResolutionTimeout,
+		zapLogger,
+	)
+
+	// Process methods concurrently
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.TypeResolutionTimeout*2)
+	defer cancel()
+
+	return processor.ProcessMethodsConcurrent(ctx, intf)
+}
+
+// parseMethodsSequential processes methods sequentially (legacy behavior)
+func (p *Parser) parseMethodsSequential(intf *intfEntry) ([]*model.MethodEntry, error) {
 	iface := intf.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
 	methods := make([]*model.MethodEntry, 0)
+
 	for i := 0; i < mset.Len(); i++ {
 		method, err := p.parseMethod(mset.At(i).Obj(), intf.opts)
 		if err != nil {
@@ -35,6 +77,7 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*model.MethodEntry, error) {
 		}
 		methods = append(methods, method)
 	}
+
 	if len(methods) < mset.Len() {
 		return nil, errAbort
 	}

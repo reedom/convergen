@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"context"
 	"go/ast"
 	"go/parser"
 	"go/printer"
@@ -22,21 +23,71 @@ const buildTag = "convergen"
 
 // Parser represents a parser for a Go source file that contains convergen blocks.
 type Parser struct {
-	srcPath     string            // The path to the source file being parsed.
-	file        *ast.File         // The parsed AST of the source file.
-	fset        *token.FileSet    // The token file set used for parsing.
-	pkg         *packages.Package // The package information for the parsed file.
-	opts        option.Options    // The options for the parser.
-	imports     util.ImportNames  // The import names used in the parsed file.
-	intfEntries []*intfEntry      // The interface entries parsed from the file.
+	srcPath       string            // The path to the source file being parsed.
+	file          *ast.File         // The parsed AST of the source file.
+	fset          *token.FileSet    // The token file set used for parsing.
+	pkg           *packages.Package // The package information for the parsed file.
+	opts          option.Options    // The options for the parser.
+	imports       util.ImportNames  // The import names used in the parsed file.
+	intfEntries   []*intfEntry      // The interface entries parsed from the file.
+	packageLoader *PackageLoader    // Concurrent package loader (optional)
+	config        *ParserConfig     // Parser configuration
 }
 
 // parserLoadMode is a packages.Load mode that loads types and syntax trees.
 const parserLoadMode = packages.NeedName | packages.NeedImports | packages.NeedDeps |
 	packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo
 
-// NewParser returns a new parser for convergen annotations.
+// NewParser returns a new parser for convergen annotations with default configuration.
 func NewParser(srcPath, dstPath string) (*Parser, error) {
+	return NewParserWithConfig(srcPath, dstPath, nil)
+}
+
+// NewParserWithConfig returns a new parser with custom configuration for performance tuning.
+func NewParserWithConfig(srcPath, dstPath string, config *ParserConfig) (*Parser, error) {
+	validConfig := EnsureValidConfig(config)
+
+	// Use concurrent package loading if enabled
+	if validConfig.EnableConcurrentLoading {
+		return newParserWithConcurrentLoading(srcPath, dstPath, validConfig)
+	}
+
+	// Fallback to legacy loading for compatibility
+	return newParserLegacy(srcPath, dstPath, validConfig)
+}
+
+// newParserWithConcurrentLoading creates parser using concurrent package loading
+func newParserWithConcurrentLoading(srcPath, dstPath string, config *ParserConfig) (*Parser, error) {
+	// Create concurrent package loader
+	loader := NewPackageLoader(config.MaxConcurrentWorkers, config.TypeResolutionTimeout)
+
+	// Load package concurrently
+	ctx, cancel := context.WithTimeout(context.Background(), config.TypeResolutionTimeout)
+	defer cancel()
+
+	result, err := loader.LoadPackageConcurrent(ctx, srcPath, dstPath)
+	if err != nil {
+		return nil, logger.Errorf("%v: concurrent package loading failed: %w", srcPath, err)
+	}
+
+	if result.Package == nil || result.File == nil {
+		return nil, logger.Errorf("%v: package loading incomplete", srcPath)
+	}
+
+	return &Parser{
+		srcPath:       result.FileSet.Position(result.File.Pos()).Filename,
+		fset:          result.FileSet,
+		file:          result.File,
+		pkg:           result.Package,
+		opts:          option.NewOptions(),
+		imports:       util.NewImportNames(result.File.Imports),
+		packageLoader: loader, // Store for potential reuse
+		config:        config,
+	}, nil
+}
+
+// newParserLegacy creates parser using legacy synchronous loading
+func newParserLegacy(srcPath, dstPath string, config *ParserConfig) (*Parser, error) {
 	fileSet := token.NewFileSet()
 	var fileSrc *ast.File
 
@@ -93,6 +144,7 @@ func NewParser(srcPath, dstPath string) (*Parser, error) {
 		pkg:     pkgs[0],
 		opts:    option.NewOptions(),
 		imports: util.NewImportNames(fileSrc.Imports),
+		config:  config,
 	}, nil
 }
 

@@ -33,33 +33,27 @@ type ASTParser struct {
 
 // ParserConfig configures the parser behavior
 type ParserConfig struct {
-	BuildTag              string
-	MaxConcurrentWorkers  int
-	TypeResolutionTimeout time.Duration
-	CacheSize             int
-	EnableProgress        bool
+	BuildTag                string
+	MaxConcurrentWorkers    int
+	TypeResolutionTimeout   time.Duration
+	CacheSize               int
+	EnableProgress          bool
+	EnableConcurrentLoading bool // Enable concurrent package loading
+	EnableMethodConcurrency bool // Enable concurrent method processing
 }
 
 // NewASTParser creates a new event-driven AST parser
 func NewASTParser(logger *zap.Logger, eventBus events.EventBus, config *ParserConfig) *ASTParser {
-	if config == nil {
-		config = &ParserConfig{
-			BuildTag:              "convergen",
-			MaxConcurrentWorkers:  4,
-			TypeResolutionTimeout: 30 * time.Second,
-			CacheSize:             1000,
-			EnableProgress:        true,
-		}
-	}
+	validConfig := EnsureValidConfig(config)
 
-	cache := NewTypeCache(config.CacheSize)
-	typeResolverPool := NewTypeResolverPool(config.MaxConcurrentWorkers, cache, logger)
+	cache := NewTypeCache(validConfig.CacheSize)
+	typeResolverPool := NewTypeResolverPool(validConfig.MaxConcurrentWorkers, cache, logger)
 
 	return &ASTParser{
 		logger:           logger,
 		eventBus:         eventBus,
 		cache:            cache,
-		config:           config,
+		config:           validConfig,
 		fileSet:          token.NewFileSet(),
 		typeResolverPool: typeResolverPool,
 	}
