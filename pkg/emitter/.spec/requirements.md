@@ -46,156 +46,92 @@ The `pkg/emitter` package MUST:
 
 * **REQ-12: Assignment Block Optimization:** When using assignment blocks, the package MUST optimize variable declarations and assignments for efficiency.
 
+## Non-Functional Requirements
+
 ### Performance Requirements
 
-* **REQ-13: Concurrent Code Generation:** The package MUST support concurrent generation of multiple methods while maintaining output stability.
+**EREQ-008: Concurrent Generation**
+- **Type**: Non-Functional
+- **Priority**: Should Have
+- **Description**: The emitter SHALL support concurrent generation while maintaining consistency
+- **Acceptance Criteria**:
+  - Multiple method implementations generated concurrently
+  - Output consistency maintained across threads
+  - Thread safety verified in all operations
+- **Verification Method**: Concurrency tests with race detection
 
-* **REQ-14: Memory Efficiency:** The package MUST minimize memory usage during code generation, especially for large structs with many fields.
+**EREQ-009: Memory Efficiency**
+- **Type**: Non-Functional
+- **Priority**: Should Have
+- **Description**: The emitter SHALL minimize memory allocations and optimize GC pressure
+- **Acceptance Criteria**:
+  - Memory usage remains bounded during generation
+  - Garbage collection pressure is minimized
+  - Resource cleanup is properly handled
+- **Verification Method**: Memory profiling and benchmarks
 
-* **REQ-15: Generation Speed:** The package MUST generate code efficiently, leveraging available CPU cores where beneficial.
+**EREQ-010: Generation Speed**
+- **Type**: Non-Functional
+- **Priority**: Should Have
+- **Description**: The emitter SHALL generate code efficiently with target performance
+- **Acceptance Criteria**:
+  - Sub-100ms generation for typical methods (up to 50 fields)
+  - Performance scales linearly with complexity
+  - Generation speed meets user expectations
+- **Verification Method**: Performance benchmarks
+
+### Quality Requirements
+
+**EREQ-011: Generated Code Quality**
+- **Type**: Non-Functional
+- **Priority**: Must Have
+- **Description**: The emitter SHALL generate idiomatic, readable, and maintainable Go code
+- **Acceptance Criteria**:
+  - Code follows Go community best practices
+  - Generated code is readable and well-structured
+  - Code maintainability is high
+- **Verification Method**: Code quality analysis and review
+
+**EREQ-012: Compilation Guarantee**
+- **Type**: Non-Functional
+- **Priority**: Must Have
+- **Description**: The emitter SHALL generate code that compiles successfully without errors
+- **Acceptance Criteria**:
+  - All generated code compiles without errors
+  - No compilation warnings are generated
+  - Integration with valid Go projects is seamless
+- **Verification Method**: Compilation validation tests
+
+**EREQ-013: Test Coverage**
+- **Type**: Non-Functional
+- **Priority**: Should Have
+- **Description**: The emitter SHALL maintain comprehensive test coverage
+- **Acceptance Criteria**:
+  - Test coverage exceeds 90% across all paths
+  - Edge cases are covered by tests
+  - All code generation scenarios are tested
+- **Verification Method**: Coverage analysis and testing
 
 ### Integration Requirements
 
-* **REQ-16: Event Bus Integration:** The package MUST emit appropriate events for generation progress, completion, and errors.
-
-* **REQ-17: Context Support:** The package MUST respect context cancellation and timeout throughout the generation process.
-
-* **REQ-18: Metrics Collection:** The package MUST collect and report detailed metrics about code generation performance and output characteristics.
-
-* **REQ-19: Error Reporting:** The package MUST provide rich, actionable error messages with sufficient context for debugging generation issues.
-
-### Output Quality Requirements
-
-* **REQ-20: Idiomatic Go Code:** The package MUST generate code that follows Go best practices and conventions.
-
-* **REQ-21: Code Documentation:** The package MUST generate appropriate code comments for generated functions when beneficial.
-
-* **REQ-22: Build Tag Support:** The package MUST handle build tags and conditional compilation directives appropriately.
-
-* **REQ-23: Package Declaration:** The package MUST generate correct package declarations and maintain package-level consistency.
+**EREQ-014: Event Integration**
+- **Type**: Non-Functional
+- **Priority**: Must Have
+- **Description**: The emitter SHALL integrate with the event bus for pipeline communication
+- **Acceptance Criteria**:
+  - Events are emitted for generation progress and completion
+  - Error events provide actionable context
+  - Context cancellation is respected
+- **Verification Method**: Event integration tests
 
 ### Extensibility Requirements
 
-* **REQ-24: Strategy Pattern:** The package MUST use a strategy pattern for different code generation approaches, allowing for easy extension and customization.
-
-* **REQ-25: Template System:** The package MUST support customizable code templates for different generation scenarios.
-
-* **REQ-26: Plugin Architecture:** The package MUST provide extension points for custom code generation logic and post-processing.
-
-### Validation Requirements
-
-* **REQ-27: Syntax Validation:** The package MUST validate that generated code is syntactically correct Go code.
-
-* **REQ-28: Semantic Validation:** The package MUST perform basic semantic validation to ensure generated code will compile.
-
-* **REQ-29: Output Verification:** The package MUST provide mechanisms to verify that generated code meets expectations and requirements.
-
-## Non-Functional Requirements
-
-### Performance Targets
-
-* **PERF-1:** Code generation MUST complete within 100ms for structs with up to 50 fields
-* **PERF-2:** Memory usage MUST remain linear with respect to the number of fields being processed
-* **PERF-3:** The package MUST scale efficiently with available CPU cores for concurrent generation
-
-### Quality Targets
-
-* **QUAL-1:** Generated code MUST pass all standard Go formatting and linting tools
-* **QUAL-2:** Output stability MUST be 100% - identical input produces identical output
-* **QUAL-3:** Error messages MUST provide actionable information for resolution
-
-### Maintainability Targets
-
-* **MAIN-1:** New code generation strategies MUST be addable in fewer than 100 lines of code
-* **MAIN-2:** All components MUST be unit testable in isolation
-* **MAIN-3:** The package MUST maintain clean separation between generation logic and output formatting
-
-## Integration Points
-
-### Input Interface
-
-The emitter receives `ExecuteEvent` containing:
-- Method execution results
-- Field mapping results with generated code fragments
-- Error information
-- Execution context and metadata
-
-### Output Interface
-
-The emitter produces:
-- Complete, formatted Go source code
-- Import declarations
-- Function implementations
-- Error handling code
-
-### Event Emissions
-
-The emitter emits:
-- `EmitEvent` with generation progress and results
-- Error events for generation failures
-- Metrics events for performance monitoring
-
-## Implementation Status
-
-✅ **COMPLETED** - All functional requirements (REQ-1 through REQ-29) have been fully implemented:
-
-### Core Generation Features
-- ✅ Event-driven code generation with pipeline integration
-- ✅ Stable output ordering with deterministic results  
-- ✅ Adaptive construction strategies (composite literal, assignment block, mixed approach)
-- ✅ Field order preservation in generated output
-
-### Advanced Features  
-- ✅ Automatic import management with conflict resolution
-- ✅ Professional code formatting with gofmt/goimports integration
-- ✅ Comprehensive error handling with proper propagation
-- ✅ Generic type support and constraint handling
-
-### Optimization Engine
-- ✅ Dead code elimination and unused variable removal
-- ✅ Variable name optimization and conflict resolution
-- ✅ Multi-level optimization strategies (none/basic/aggressive/maximal)
-- ✅ Performance-optimized code generation patterns
-
-### Performance & Integration
-- ✅ Concurrent code generation with stability guarantees
-- ✅ Memory-efficient processing for large structs
-- ✅ Event bus integration with comprehensive event types
-- ✅ Context support and timeout handling
-- ✅ Detailed metrics collection and reporting
-
-### Quality & Extensibility  
-- ✅ Idiomatic Go code generation with best practices
-- ✅ Strategy pattern implementation for extensibility
-- ✅ Template system for customizable generation
-- ✅ Syntax and semantic validation
-- ✅ Comprehensive test coverage (30+ test cases)
-
-## Success Criteria
-
-✅ **Functional Completeness:** All 29 functional requirements implemented and tested
-✅ **Performance Targets:** Efficient generation with concurrent processing support
-✅ **Quality Assurance:** Generated code passes gofmt, goimports, and validation
-✅ **Integration Success:** Seamless event-driven pipeline integration  
-✅ **Extensibility Verification:** Three generation strategies implemented with plugin architecture
-
-### REQ-30: Thread Safety Compliance
-**Type**: Non-Functional  
-**Priority**: Must Have  
-**Description**: The emitter SHALL operate safely under concurrent access with zero race conditions  
-**Rationale**: System reliability requires thread-safe operation for concurrent code generation  
-**Acceptance Criteria**:
-- Zero race conditions detected by Go race detector  
-- All shared state protected by appropriate synchronization  
-- Metrics collection thread-safe across all operations  
-- Concurrent method generation produces correct and consistent results  
-**Dependencies**: Proper mutex usage, atomic operations, thread-safe data structures  
-**Verification Method**: Race detector tests, stress testing with high concurrency
-
-**Current Status**: ✅ **PASSING**
-
-## Implementation Status Summary
-
-**Functional Requirements**: ✅ 29/29 PASSING  
-**Non-Functional Requirements**: ✅ 4/4 PASSING (Including REQ-30: Thread Safety)  
-**Overall Status**: ✅ **ALL REQUIREMENTS SATISFIED - PRODUCTION READY**
+**EREQ-015: Strategy Plugin System**
+- **Type**: Non-Functional
+- **Priority**: Should Have
+- **Description**: The emitter SHALL support pluggable code generation strategies
+- **Acceptance Criteria**:
+  - Custom generation strategies can be added
+  - Core emitter logic remains unchanged
+  - Plugin system is well-documented
+- **Verification Method**: Plugin integration tests

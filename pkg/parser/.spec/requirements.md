@@ -28,129 +28,114 @@ This document outlines the requirements for the `pkg/parser` package, which is r
     *   Pointer and slice types
     *   Map types with complex key/value types
 
-### Annotation Processing System
+### Annotation Processing
 
-*   **REQ-8: Extensible Annotation Parsing**: MUST support a registry-based annotation system allowing:
-    *   Registration of new annotation processors
-    *   Validation of annotation syntax and semantics
-    *   Composition of multiple annotations per method
-*   **REQ-9: Standard Annotation Support**: MUST parse all existing annotations:
-    *   `:match`, `:style`, `:recv`, `:reverse`
-    *   `:case`, `:getter`, `:stringer`, `:typecast`
-    *   `:skip`, `:map`, `:conv`, `:literal`
-    *   `:preprocess`, `:postprocess`
-*   **REQ-10: Annotation Validation**: MUST validate annotation parameters and detect conflicts
+**PREQ-006: Annotation Extraction**
+- **Type**: Functional
+- **Priority**: Must Have
+- **Description**: The parser SHALL extract and parse all supported annotation types from method comments
+- **Acceptance Criteria**:
+  - All annotation types are recognized and parsed
+  - Annotation arguments are correctly extracted
+  - Position information is preserved for error reporting
+- **Verification Method**: Comprehensive annotation parsing test suite
 
-### Type System Integration
+**PREQ-007: Annotation Validation**
+- **Type**: Functional
+- **Priority**: Must Have
+- **Description**: The parser SHALL validate annotation syntax and provide clear error messages
+- **Acceptance Criteria**:
+  - Invalid annotation syntax is detected
+  - Error messages include line numbers and context
+  - Multiple validation errors are collected and reported
+- **Verification Method**: Error handling tests with malformed annotations
 
-*   **REQ-11: Comprehensive Type Resolution**: MUST resolve all referenced types with full type information including:
-    *   Type identity and underlying types  
-    *   Generic type instantiation
-    *   Method sets and interface satisfaction
-    *   Type constraints and bounds
-*   **REQ-12: Cross-Package Type Support**: MUST resolve types across package boundaries
-*   **REQ-13: Type Caching**: MUST cache resolved type information for performance
+### Event System Integration
 
-### Source Code Processing
+**PREQ-008: Event Publishing**
+- **Type**: Functional
+- **Priority**: Must Have
+- **Description**: The parser SHALL publish ParseEvent with parsed domain models to the event bus
+- **Acceptance Criteria**:
+  - ParseEvent contains all discovered methods
+  - Domain models are properly constructed
+  - Event publishing is reliable and error-free
+- **Verification Method**: Event system integration tests
 
-*   **REQ-14: Field Order Preservation**: MUST capture and preserve exact field declaration order from source structs
-*   **REQ-15: Source Location Tracking**: MUST maintain source file locations for error reporting
-*   **REQ-16: Comment Association**: MUST correctly associate comments with their target elements
-*   **REQ-17: Base Code Generation**: MUST produce clean source code with converter interfaces removed
-
-### Error Handling and Validation
-
-*   **REQ-18: Rich Error Context**: MUST provide detailed error messages with:
-    *   Source file locations (line, column)
-    *   Context about what was being parsed
-    *   Suggestions for fixing common errors
-*   **REQ-19: Error Aggregation**: MUST collect multiple parsing errors and report them together
-*   **REQ-20: Validation Integration**: MUST validate parsed models for consistency and correctness
-
-## Event Integration Requirements
-
-*   **REQ-21: Event Emission**: MUST emit `ParseEvent` with parsed domain models and context
-*   **REQ-22: Context Propagation**: MUST accept and propagate context.Context throughout parsing
-*   **REQ-23: Cancellation Support**: MUST respect context cancellation during long-running parsing operations
-*   **REQ-24: Progress Reporting**: MUST emit progress events for large source files
-
-## Performance Requirements
-
-*   **REQ-25: Concurrent Processing**: MUST support concurrent parsing of multiple interfaces/methods where possible
-*   **REQ-26: Memory Efficiency**: MUST minimize memory usage during AST processing
-*   **REQ-27: Incremental Parsing**: MUST support incremental re-parsing of modified source regions
-*   **REQ-28: Parse Caching**: MUST cache parsing results to avoid redundant work
+**PREQ-009: Context Propagation**
+- **Type**: Functional
+- **Priority**: Must Have
+- **Description**: The parser SHALL maintain and propagate context throughout the parsing pipeline
+- **Acceptance Criteria**:
+  - Context cancellation is respected
+  - Context values are preserved across operations
+  - Timeouts are properly handled
+- **Verification Method**: Context handling tests with cancellation scenarios
 
 ## Non-Functional Requirements
 
-*   **REQ-29: AST Compatibility**: MUST work with standard Go AST packages and toolchain
-*   **REQ-30: Go Version Support**: MUST support Go 1.21+ features including generics
-*   **REQ-31: Large File Handling**: MUST handle source files with thousands of fields efficiently
-*   **REQ-32: Thread Safety**: All parsing operations MUST be thread-safe for concurrent use
+### Performance Requirements
 
-## 📋 **Requirements Implementation Status**
+**PREQ-010: Processing Performance**
+- **Type**: Non-Functional
+- **Priority**: Should Have
+- **Description**: The parser SHALL process files efficiently with bounded resource usage
+- **Acceptance Criteria**:
+  - Files under 1MB processed within 500ms
+  - Memory usage stays below 50MB for large files
+  - Cache hit rate exceeds 80% for repeated operations
+- **Verification Method**: Performance benchmarks and resource monitoring
 
-### ✅ **Fully Implemented (28/32 requirements)**
+**PREQ-011: Concurrent Safety**
+- **Type**: Non-Functional
+- **Priority**: Must Have
+- **Description**: The parser SHALL support concurrent operation without race conditions
+- **Acceptance Criteria**:
+  - Multiple files can be parsed concurrently
+  - No data races detected in concurrent tests
+  - Thread-safe caching and shared resources
+- **Verification Method**: Concurrency tests with race detection
 
-| Requirement | Status | Implementation Details |
-|------------|---------|----------------------|
-| REQ-1 to REQ-7 | ✅ **COMPLETE** | Advanced interface discovery with concurrent processing |
-| REQ-8 to REQ-10 | ✅ **COMPLETE** | Comprehensive annotation system with validation |
-| REQ-11 to REQ-13 | ✅ **COMPLETE** | Sophisticated type resolution with LRU caching |
-| REQ-14 to REQ-17 | ✅ **COMPLETE** | Source code processing with precise location tracking |
-| REQ-18 to REQ-20 | ✅ **COMPLETE** | Rich error context with aggregation |
-| REQ-21 to REQ-24 | ✅ **COMPLETE** | Event-driven architecture with progress tracking |
-| REQ-25 to REQ-26 | ✅ **COMPLETE** | Concurrent processing with worker pools |
-| REQ-29 to REQ-32 | ✅ **COMPLETE** | Full AST compatibility and thread safety |
+### Quality Requirements
 
-### 🟡 **Partially Implemented (2/32 requirements)**
+**PREQ-012: Error Handling**
+- **Type**: Non-Functional
+- **Priority**: Must Have
+- **Description**: The parser SHALL provide comprehensive error messages with context
+- **Acceptance Criteria**:
+  - Error messages include file position and line numbers
+  - Context information helps identify the issue
+  - Suggested fixes are provided where possible
+- **Verification Method**: Error message quality tests
 
-| Requirement | Status | Gap Analysis |
-|------------|---------|--------------|
-| REQ-27: Incremental Parsing | 🟡 **PARTIAL** | Basic support exists, needs optimization for large changes |
-| REQ-28: Parse Caching | 🟡 **PARTIAL** | Type-level caching implemented, file-level caching pending |
+**PREQ-013: Robustness**
+- **Type**: Non-Functional
+- **Priority**: Must Have
+- **Description**: The parser SHALL handle malformed Go code gracefully without crashing
+- **Acceptance Criteria**:
+  - Invalid syntax is detected and reported
+  - Parser continues processing after recoverable errors
+  - No panics occur during error conditions
+- **Verification Method**: Robustness tests with malformed input
 
-### 🔴 **Implementation Gaps (2/32 requirements)**
+### Extensibility Requirements
 
-| Requirement | Priority | Mitigation Strategy |
-|------------|----------|-------------------|
-| REQ-27: Incremental Parsing | Medium | Current full re-parsing acceptable for most use cases |
-| REQ-28: File-Level Caching | Low | Type caching provides significant performance benefits |
+**PREQ-014: Plugin Architecture**
+- **Type**: Non-Functional
+- **Priority**: Should Have
+- **Description**: The parser SHALL support adding new annotation processors without core changes
+- **Acceptance Criteria**:
+  - New annotation types can be registered dynamically
+  - Plugin system is well-documented and stable
+  - Core parsing logic remains unchanged
+- **Verification Method**: Plugin integration tests
 
-## 🎯 **Quality Assurance Results**
-
-### **Code Quality Metrics**
-- **18 source files** with clear separation of concerns
-- **60 error-returning functions** with comprehensive error handling
-- **Test Coverage**: 95%+ across core functionality
-- **Concurrency Safety**: All operations properly synchronized
-
-### **Performance Characteristics**
-- **LRU Type Cache**: Hit rates >80% in typical workloads
-- **Worker Pools**: Configurable concurrency with resource bounds
-- **Memory Efficiency**: Strategic pre-allocation and cleanup
-- **Processing Speed**: 50%+ improvement over legacy implementation
-
-### **Security Assessment**
-- **No Security Vulnerabilities**: Zero unsafe operations detected
-- **Input Validation**: Comprehensive annotation and identifier validation
-- **Resource Management**: Proper cleanup and bounded operations
-- **Thread Safety**: Proper synchronization throughout
-
-## 🚀 **Production Readiness Assessment**
-
-### **✅ Production Ready Indicators**
-1. **Architecture Excellence**: Event-driven, concurrent, well-layered design
-2. **Type Safety**: Full Go generics support with comprehensive type resolution
-3. **Error Handling**: Rich context with proper aggregation and reporting
-4. **Performance**: Intelligent caching and concurrent processing
-5. **Testing**: Comprehensive test coverage including edge cases
-6. **Documentation**: Complete API documentation and examples
-
-### **✅ Recent Improvements Completed**
-1. **Goroutine Cleanup**: ✅ **RESOLVED** - Enhanced progress tracking with completion signals
-2. **Cache Enhancement**: ✅ **IMPLEMENTED** - TTL-based eviction with memory pressure awareness
-3. **Progress Tracking**: ✅ **OPTIMIZED** - Adaptive reporting intervals with intelligent throttling
-4. **Test Coverage**: ✅ **IMPROVED** - Comprehensive tests added (57.4% coverage, +4% improvement)
-
-**Updated Assessment**: **PRODUCTION READY** with all critical improvements implemented and comprehensive test coverage validated.
+**PREQ-015: Configuration Flexibility**
+- **Type**: Non-Functional
+- **Priority**: Should Have
+- **Description**: The parser SHALL provide configurable parsing options and behaviors
+- **Acceptance Criteria**:
+  - Parsing behavior can be customized
+  - Configuration is well-documented
+  - Default settings work for common use cases
+- **Verification Method**: Configuration option tests
