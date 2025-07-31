@@ -33,7 +33,7 @@ type Coordinator interface {
 	GenerateFromSource(ctx context.Context, source string, config *Config) (*GenerationResult, error)
 
 	// Get coordinator metrics
-	GetMetrics() *CoordinatorMetrics
+	GetMetrics() *Metrics
 
 	// Get current pipeline status
 	GetStatus() *PipelineStatus
@@ -176,7 +176,7 @@ func (c *ConcreteCoordinator) GenerateFromSource(ctx context.Context, source str
 }
 
 // GetMetrics returns current coordinator metrics.
-func (c *ConcreteCoordinator) GetMetrics() *CoordinatorMetrics {
+func (c *ConcreteCoordinator) GetMetrics() *Metrics {
 	return c.metricsCollector.GetMetrics()
 }
 

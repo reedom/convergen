@@ -17,7 +17,7 @@ type MetricsCollector interface {
 	RecordComponent(component string, metrics interface{})
 
 	// Get aggregated metrics
-	GetMetrics() *CoordinatorMetrics
+	GetMetrics() *Metrics
 
 	// Reset all metrics
 	Reset()
@@ -161,7 +161,7 @@ func (m *ConcreteMetricsCollector) RecordComponent(component string, metrics int
 }
 
 // GetMetrics returns the aggregated coordinator metrics.
-func (m *ConcreteMetricsCollector) GetMetrics() *CoordinatorMetrics {
+func (m *ConcreteMetricsCollector) GetMetrics() *Metrics {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -186,7 +186,7 @@ func (m *ConcreteMetricsCollector) GetMetrics() *CoordinatorMetrics {
 		}
 	}
 
-	metrics := &CoordinatorMetrics{
+	metrics := &Metrics{
 		PipelineExecutions:  executions,
 		TotalDuration:       time.Duration(totalDur),
 		AverageDuration:     avgDuration,

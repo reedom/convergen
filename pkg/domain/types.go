@@ -397,6 +397,7 @@ type GenericType struct {
 	importPath string
 }
 
+// NewGenericType creates a new generic type with the given name, constraint, index, and package.
 func NewGenericType(name string, constraint Type, index int, pkg string) *GenericType {
 	return &GenericType{
 		name:       name,
@@ -407,19 +408,39 @@ func NewGenericType(name string, constraint Type, index int, pkg string) *Generi
 	}
 }
 
-func (t *GenericType) Name() string   { return t.name }
+// Name returns the name of the generic type.
+func (t *GenericType) Name() string { return t.name }
+
+// Kind returns the type kind, always KindGeneric for generic types.
 func (t *GenericType) Kind() TypeKind { return KindGeneric }
+
+// String returns the string representation of the generic type.
 func (t *GenericType) String() string { return t.name }
-func (t *GenericType) Generic() bool  { return true }
+
+// Generic returns true as this is a generic type.
+func (t *GenericType) Generic() bool { return true }
+
+// TypeParams returns the type parameters for this generic type.
 func (t *GenericType) TypeParams() []TypeParam {
 	return []TypeParam{{Name: t.name, Constraint: t.constraint, Index: t.index}}
 }
-func (t *GenericType) Underlying() Type   { return t.constraint }
-func (t *GenericType) Package() string    { return t.pkg }
-func (t *GenericType) ImportPath() string { return t.importPath }
-func (t *GenericType) Constraint() Type   { return t.constraint }
-func (t *GenericType) Index() int         { return t.index }
 
+// Underlying returns the constraint type as the underlying type.
+func (t *GenericType) Underlying() Type { return t.constraint }
+
+// Package returns the package name for the generic type.
+func (t *GenericType) Package() string { return t.pkg }
+
+// ImportPath returns the import path for the generic type.
+func (t *GenericType) ImportPath() string { return t.importPath }
+
+// Constraint returns the constraint type for this generic type.
+func (t *GenericType) Constraint() Type { return t.constraint }
+
+// Index returns the index of this type parameter.
+func (t *GenericType) Index() int { return t.index }
+
+// AssignableTo checks if this generic type is assignable to another type.
 func (t *GenericType) AssignableTo(other Type) bool {
 	if other == nil {
 		return false
@@ -428,10 +449,12 @@ func (t *GenericType) AssignableTo(other Type) bool {
 	return t.constraint.AssignableTo(other)
 }
 
+// Implements checks if this generic type implements an interface.
 func (t *GenericType) Implements(iface Type) bool {
 	return t.constraint.Implements(iface)
 }
 
+// Comparable returns true if the constraint type is comparable.
 func (t *GenericType) Comparable() bool {
 	return t.constraint.Comparable()
 }
@@ -441,6 +464,7 @@ type TypeBuilder struct {
 	cache map[string]Type
 }
 
+// NewTypeBuilder creates a new type builder with caching.
 func NewTypeBuilder() *TypeBuilder {
 	return &TypeBuilder{
 		cache: make(map[string]Type),
@@ -456,6 +480,7 @@ func NewNamedType(name string, underlying Type, typeParams []TypeParam) Type {
 	}
 }
 
+// NewArrayType creates a new array type with the given element type and length.
 func NewArrayType(elem Type, length int) Type {
 	return &SliceType{
 		elem: elem,
@@ -463,6 +488,7 @@ func NewArrayType(elem Type, length int) Type {
 	}
 }
 
+// NewMapType creates a new map type with the given key and value types.
 func NewMapType(key, value Type) Type {
 	return &mapType{
 		name:  "map[" + key.Name() + "]" + value.Name(),
@@ -490,6 +516,7 @@ func (t *mapType) AssignableTo(other Type) bool { return false }
 func (t *mapType) Implements(iface Type) bool   { return false }
 func (t *mapType) Comparable() bool             { return false }
 
+// NewInterfaceType creates a new interface type with the given methods.
 func NewInterfaceType(methods []*Method) Type {
 	return &BasicType{
 		name: "interface{}",
@@ -498,6 +525,7 @@ func NewInterfaceType(methods []*Method) Type {
 	}
 }
 
+// NewChannelType creates a new channel type with the given element type and direction.
 func NewChannelType(elem Type, direction ChannelDirection) Type {
 	return &BasicType{
 		name: "chan " + elem.Name(),
@@ -506,6 +534,7 @@ func NewChannelType(elem Type, direction ChannelDirection) Type {
 	}
 }
 
+// NewFunctionType creates a new function type with the given parameters, returns, and variadic flag.
 func NewFunctionType(params, returns []Type, variadic bool) Type {
 	return &functionType{
 		name:     "func",
@@ -535,6 +564,7 @@ func (t *functionType) AssignableTo(other Type) bool { return false }
 func (t *functionType) Implements(iface Type) bool   { return false }
 func (t *functionType) Comparable() bool             { return false }
 
+// NewTypeParameterType creates a new type parameter with the given name and constraint.
 func NewTypeParameterType(name string, constraint Type) Type {
 	return &GenericType{
 		name:       name,

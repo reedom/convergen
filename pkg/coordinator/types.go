@@ -1,3 +1,4 @@
+// Package coordinator provides pipeline orchestration and coordination services.
 package coordinator
 
 import (
@@ -154,10 +155,10 @@ type GenerationResult struct {
 	Metadata *GenerationMetadata    `json:"metadata"`
 
 	// Execution information
-	Duration time.Duration       `json:"duration"`
-	Metrics  *CoordinatorMetrics `json:"metrics"`
-	Errors   *ErrorReport        `json:"errors,omitempty"`
-	Warnings []string            `json:"warnings,omitempty"`
+	Duration time.Duration `json:"duration"`
+	Metrics  *Metrics      `json:"metrics"`
+	Errors   *ErrorReport  `json:"errors,omitempty"`
+	Warnings []string      `json:"warnings,omitempty"`
 
 	// Pipeline status
 	Status     PipelineStage              `json:"status"`
@@ -220,8 +221,8 @@ type ErrorReport struct {
 	LastError     *ComponentError  `json:"last_error,omitempty"`
 }
 
-// CoordinatorMetrics tracks coordinator performance and statistics.
-type CoordinatorMetrics struct {
+// Metrics tracks coordinator performance and statistics.
+type Metrics struct {
 	// Execution statistics
 	PipelineExecutions int64         `json:"pipeline_executions"`
 	TotalDuration      time.Duration `json:"total_duration"`
