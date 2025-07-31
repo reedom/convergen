@@ -298,6 +298,7 @@ func (t *SliceType) ImportPath() string { return t.importPath }
 // Elem returns the element type of the slice.
 func (t *SliceType) Elem() Type { return t.elem }
 
+// AssignableTo checks if this slice type is assignable to another type.
 func (t *SliceType) AssignableTo(other Type) bool {
 	if other == nil {
 		return false
@@ -310,10 +311,12 @@ func (t *SliceType) AssignableTo(other Type) bool {
 	return false
 }
 
+// Implements checks if this slice type implements an interface.
 func (t *SliceType) Implements(iface Type) bool {
 	return false
 }
 
+// Comparable returns false as slice types are not comparable.
 func (t *SliceType) Comparable() bool {
 	return false // Slices are not comparable
 }
@@ -325,6 +328,7 @@ type PointerType struct {
 	importPath string
 }
 
+// NewPointerType creates a new pointer type with the given element type and package.
 func NewPointerType(elem Type, pkg string) *PointerType {
 	return &PointerType{
 		elem:       elem,
@@ -333,16 +337,34 @@ func NewPointerType(elem Type, pkg string) *PointerType {
 	}
 }
 
-func (t *PointerType) Name() string            { return "*" + t.elem.Name() }
-func (t *PointerType) Kind() TypeKind          { return KindPointer }
-func (t *PointerType) String() string          { return "*" + t.elem.String() }
-func (t *PointerType) Generic() bool           { return t.elem.Generic() }
-func (t *PointerType) TypeParams() []TypeParam { return t.elem.TypeParams() }
-func (t *PointerType) Underlying() Type        { return t }
-func (t *PointerType) Package() string         { return t.pkg }
-func (t *PointerType) ImportPath() string      { return t.importPath }
-func (t *PointerType) Elem() Type              { return t.elem }
+// Name returns the name of the pointer type.
+func (t *PointerType) Name() string { return "*" + t.elem.Name() }
 
+// Kind returns the type kind, always KindPointer for pointer types.
+func (t *PointerType) Kind() TypeKind { return KindPointer }
+
+// String returns the string representation of the pointer type.
+func (t *PointerType) String() string { return "*" + t.elem.String() }
+
+// Generic returns true if the element type is generic.
+func (t *PointerType) Generic() bool { return t.elem.Generic() }
+
+// TypeParams returns the type parameters from the element type.
+func (t *PointerType) TypeParams() []TypeParam { return t.elem.TypeParams() }
+
+// Underlying returns the type itself as pointer types are their own underlying type.
+func (t *PointerType) Underlying() Type { return t }
+
+// Package returns the package name for the pointer type.
+func (t *PointerType) Package() string { return t.pkg }
+
+// ImportPath returns the import path for the pointer type.
+func (t *PointerType) ImportPath() string { return t.importPath }
+
+// Elem returns the element type that this pointer points to.
+func (t *PointerType) Elem() Type { return t.elem }
+
+// AssignableTo checks if this pointer type is assignable to another type.
 func (t *PointerType) AssignableTo(other Type) bool {
 	if other == nil {
 		return false
@@ -355,11 +377,13 @@ func (t *PointerType) AssignableTo(other Type) bool {
 	return false
 }
 
+// Implements checks if this pointer type implements an interface.
 func (t *PointerType) Implements(iface Type) bool {
 	// Pointer types can implement interfaces through their element type
 	return t.elem.Implements(iface)
 }
 
+// Comparable returns true as pointer types are always comparable.
 func (t *PointerType) Comparable() bool {
 	return true // Pointers are always comparable
 }
