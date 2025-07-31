@@ -17,14 +17,23 @@ var (
 type TypeKind int
 
 const (
+	// KindBasic represents basic types like int, string, bool.
 	KindBasic TypeKind = iota
+	// KindStruct represents struct types.
 	KindStruct
+	// KindSlice represents slice types.
 	KindSlice
+	// KindMap represents map types.
 	KindMap
+	// KindInterface represents interface types.
 	KindInterface
+	// KindPointer represents pointer types.
 	KindPointer
+	// KindGeneric represents generic types.
 	KindGeneric
+	// KindNamed represents named types.
 	KindNamed
+	// KindFunction represents function types.
 	KindFunction
 
 	// TypeKindInterface is an alias for KindInterface for compatibility.
@@ -92,6 +101,7 @@ type BasicType struct {
 	pkg  string
 }
 
+// NewBasicType creates a new basic type with the given name and kind.
 func NewBasicType(name string, kind reflect.Kind) *BasicType {
 	return &BasicType{
 		name: name,
@@ -100,15 +110,31 @@ func NewBasicType(name string, kind reflect.Kind) *BasicType {
 	}
 }
 
-func (t *BasicType) Name() string            { return t.name }
-func (t *BasicType) Kind() TypeKind          { return KindBasic }
-func (t *BasicType) String() string          { return t.name }
-func (t *BasicType) Generic() bool           { return false }
-func (t *BasicType) TypeParams() []TypeParam { return nil }
-func (t *BasicType) Underlying() Type        { return t }
-func (t *BasicType) Package() string         { return t.pkg }
-func (t *BasicType) ImportPath() string      { return "" }
+// Name returns the name of the basic type.
+func (t *BasicType) Name() string { return t.name }
 
+// Kind returns the type kind, always KindBasic for basic types.
+func (t *BasicType) Kind() TypeKind { return KindBasic }
+
+// String returns the string representation of the basic type.
+func (t *BasicType) String() string { return t.name }
+
+// Generic returns false as basic types are not generic.
+func (t *BasicType) Generic() bool { return false }
+
+// TypeParams returns nil as basic types have no type parameters.
+func (t *BasicType) TypeParams() []TypeParam { return nil }
+
+// Underlying returns the type itself as basic types are their own underlying type.
+func (t *BasicType) Underlying() Type { return t }
+
+// Package returns the package name for the basic type.
+func (t *BasicType) Package() string { return t.pkg }
+
+// ImportPath returns the import path, empty for basic types.
+func (t *BasicType) ImportPath() string { return "" }
+
+// AssignableTo checks if this basic type is assignable to another type.
 func (t *BasicType) AssignableTo(other Type) bool {
 	if other == nil {
 		return false
@@ -121,11 +147,13 @@ func (t *BasicType) AssignableTo(other Type) bool {
 	return false
 }
 
+// Implements checks if this basic type implements an interface.
 func (t *BasicType) Implements(iface Type) bool {
 	// Basic types don't implement interfaces directly
 	return false
 }
 
+// Comparable returns true if the basic type is comparable.
 func (t *BasicType) Comparable() bool {
 	// Most basic types are comparable except functions, maps, slices
 	switch t.kind {
@@ -145,6 +173,7 @@ type StructType struct {
 	importPath string
 }
 
+// NewStructType creates a new struct type with the given name, fields, and package.
 func NewStructType(name string, fields []Field, pkg string) *StructType {
 	return &StructType{
 		name:       name,
@@ -155,14 +184,29 @@ func NewStructType(name string, fields []Field, pkg string) *StructType {
 	}
 }
 
-func (t *StructType) Name() string            { return t.name }
-func (t *StructType) Kind() TypeKind          { return KindStruct }
-func (t *StructType) String() string          { return t.name }
-func (t *StructType) Generic() bool           { return len(t.typeParams) > 0 }
+// Name returns the name of the struct type.
+func (t *StructType) Name() string { return t.name }
+
+// Kind returns the type kind, always KindStruct for struct types.
+func (t *StructType) Kind() TypeKind { return KindStruct }
+
+// String returns the string representation of the struct type.
+func (t *StructType) String() string { return t.name }
+
+// Generic returns true if the struct type has type parameters.
+func (t *StructType) Generic() bool { return len(t.typeParams) > 0 }
+
+// TypeParams returns a copy of the type parameters.
 func (t *StructType) TypeParams() []TypeParam { return append([]TypeParam(nil), t.typeParams...) }
-func (t *StructType) Underlying() Type        { return t }
-func (t *StructType) Package() string         { return t.pkg }
-func (t *StructType) ImportPath() string      { return t.importPath }
+
+// Underlying returns the type itself as struct types are their own underlying type.
+func (t *StructType) Underlying() Type { return t }
+
+// Package returns the package name for the struct type.
+func (t *StructType) Package() string { return t.pkg }
+
+// ImportPath returns the import path for the struct type.
+func (t *StructType) ImportPath() string { return t.importPath }
 
 // Fields returns a defensive copy of the fields.
 func (t *StructType) Fields() []Field {
@@ -180,6 +224,7 @@ func (t *StructType) FieldByName(name string) (Field, bool) {
 	return Field{}, false
 }
 
+// AssignableTo checks if this struct type is assignable to another type.
 func (t *StructType) AssignableTo(other Type) bool {
 	if other == nil {
 		return false
@@ -192,11 +237,13 @@ func (t *StructType) AssignableTo(other Type) bool {
 	return false
 }
 
+// Implements checks if this struct type implements an interface.
 func (t *StructType) Implements(iface Type) bool {
 	// TODO: Implement interface satisfaction checking
 	return false
 }
 
+// Comparable returns true if the struct type is comparable.
 func (t *StructType) Comparable() bool {
 	// Structs are comparable if all their fields are comparable
 	for _, field := range t.fields {
@@ -215,6 +262,7 @@ type SliceType struct {
 	importPath string
 }
 
+// NewSliceType creates a new slice type with the given element type and package.
 func NewSliceType(elem Type, pkg string) *SliceType {
 	return &SliceType{
 		elem:       elem,
@@ -223,15 +271,32 @@ func NewSliceType(elem Type, pkg string) *SliceType {
 	}
 }
 
-func (t *SliceType) Name() string            { return "[]" + t.elem.Name() }
-func (t *SliceType) Kind() TypeKind          { return KindSlice }
-func (t *SliceType) String() string          { return "[]" + t.elem.String() }
-func (t *SliceType) Generic() bool           { return t.elem.Generic() }
+// Name returns the name of the slice type.
+func (t *SliceType) Name() string { return "[]" + t.elem.Name() }
+
+// Kind returns the type kind, always KindSlice for slice types.
+func (t *SliceType) Kind() TypeKind { return KindSlice }
+
+// String returns the string representation of the slice type.
+func (t *SliceType) String() string { return "[]" + t.elem.String() }
+
+// Generic returns true if the element type is generic.
+func (t *SliceType) Generic() bool { return t.elem.Generic() }
+
+// TypeParams returns the type parameters from the element type.
 func (t *SliceType) TypeParams() []TypeParam { return t.elem.TypeParams() }
-func (t *SliceType) Underlying() Type        { return t }
-func (t *SliceType) Package() string         { return t.pkg }
-func (t *SliceType) ImportPath() string      { return t.importPath }
-func (t *SliceType) Elem() Type              { return t.elem }
+
+// Underlying returns the type itself as slice types are their own underlying type.
+func (t *SliceType) Underlying() Type { return t }
+
+// Package returns the package name for the slice type.
+func (t *SliceType) Package() string { return t.pkg }
+
+// ImportPath returns the import path for the slice type.
+func (t *SliceType) ImportPath() string { return t.importPath }
+
+// Elem returns the element type of the slice.
+func (t *SliceType) Elem() Type { return t.elem }
 
 func (t *SliceType) AssignableTo(other Type) bool {
 	if other == nil {

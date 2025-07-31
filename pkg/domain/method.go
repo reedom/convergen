@@ -169,8 +169,10 @@ func NewMethodConfig() *MethodConfig {
 type StyleConfig int
 
 const (
-	StyleReturn StyleConfig = iota // func Convert(src *Source) (dst *Dest)
-	StyleArg                       // func Convert(dst *Dest, src *Source)
+	// StyleReturn represents return-style function signature: func Convert(src *Source) (dst *Dest).
+	StyleReturn StyleConfig = iota
+	// StyleArg represents argument-style function signature: func Convert(dst *Dest, src *Source).
+	StyleArg
 )
 
 func (s StyleConfig) String() string {
@@ -332,9 +334,13 @@ type GoroutinePoolConfig struct {
 type ExecutionStrategy int
 
 const (
+	// StrategySequential processes methods one by one sequentially.
 	StrategySequential ExecutionStrategy = iota
+	// StrategyBatched processes methods in small batches for balanced performance.
 	StrategyBatched
+	// StrategyFullyConcurrent processes all methods concurrently for maximum speed.
 	StrategyFullyConcurrent
+	// StrategyAdaptive dynamically adjusts strategy based on method complexity.
 	StrategyAdaptive
 )
 
@@ -430,8 +436,11 @@ type Diagnostic struct {
 type DiagnosticLevel int
 
 const (
+	// DiagnosticInfo represents informational diagnostic messages.
 	DiagnosticInfo DiagnosticLevel = iota
+	// DiagnosticWarning represents warning diagnostic messages.
 	DiagnosticWarning
+	// DiagnosticError represents error diagnostic messages.
 	DiagnosticError
 )
 
@@ -509,9 +518,13 @@ func estimateBatchTime(fields []*FieldMapping) int64 {
 type MethodStrategy int
 
 const (
+	// MethodStrategyDirect executes methods directly without optimization.
 	MethodStrategyDirect MethodStrategy = iota
+	// MethodStrategyPipelined uses pipelined execution for better throughput.
 	MethodStrategyPipelined
+	// MethodStrategyBatched processes methods in batches for efficiency.
 	MethodStrategyBatched
+	// MethodStrategyAdaptive dynamically selects the best strategy.
 	MethodStrategyAdaptive
 )
 

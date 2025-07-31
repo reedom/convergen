@@ -6,8 +6,11 @@ import "time"
 type VariableStyle int
 
 const (
+	// StyleCamelCase uses camelCase naming convention.
 	StyleCamelCase VariableStyle = iota
+	// StyleSnakeCase uses snake_case naming convention.
 	StyleSnakeCase
+	// StylePascalCase uses PascalCase naming convention.
 	StylePascalCase
 )
 
@@ -28,8 +31,11 @@ func (v VariableStyle) String() string {
 type MatchRule int
 
 const (
+	// MatchByName matches fields by their names.
 	MatchByName MatchRule = iota
+	// MatchByType matches fields by their types.
 	MatchByType
+	// MatchByTag matches fields by their struct tags.
 	MatchByTag
 )
 
@@ -50,10 +56,15 @@ func (m MatchRule) String() string {
 type ConversionType int
 
 const (
+	// ConversionDirect performs direct field assignment.
 	ConversionDirect ConversionType = iota
+	// ConversionCast performs type casting conversion.
 	ConversionCast
+	// ConversionMethod uses method calls for conversion.
 	ConversionMethod
+	// ConversionCustom uses custom converter functions.
 	ConversionCustom
+	// ConversionLiteral assigns literal values.
 	ConversionLiteral
 )
 
@@ -78,9 +89,13 @@ func (c ConversionType) String() string {
 type ErrorHandlingMethod int
 
 const (
+	// ErrorHandlingNone ignores errors during conversion.
 	ErrorHandlingNone ErrorHandlingMethod = iota
+	// ErrorHandlingReturn returns errors to the caller.
 	ErrorHandlingReturn
+	// ErrorHandlingPanic panics on conversion errors.
 	ErrorHandlingPanic
+	// ErrorHandlingLog logs errors and continues.
 	ErrorHandlingLog
 )
 
@@ -141,8 +156,11 @@ type MethodOptions struct {
 type ChannelDirection int
 
 const (
+	// ChannelBidirectional represents a bidirectional channel.
 	ChannelBidirectional ChannelDirection = iota
+	// ChannelSendOnly represents a send-only channel.
 	ChannelSendOnly
+	// ChannelReceiveOnly represents a receive-only channel.
 	ChannelReceiveOnly
 )
 
