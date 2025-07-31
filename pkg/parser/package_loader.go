@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -14,7 +15,15 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-// PackageLoadResult contains the result of loading a package
+// Static errors for err113 compliance.
+var (
+	ErrNoPackagesToLoad                = errors.New("no packages to load")
+	ErrNoPackagesFoundForPath          = errors.New("no packages found")
+	ErrFailedToLoadPackageInformation  = errors.New("failed to load package information")
+	ErrFailedToParseSourceFile         = errors.New("failed to parse source file")
+)
+
+// PackageLoadResult contains the result of loading a package.
 type PackageLoadResult struct {
 	Package    *packages.Package
 	File       *ast.File
@@ -23,7 +32,7 @@ type PackageLoadResult struct {
 	Error      error
 }
 
-// PackageLoader provides concurrent package loading capabilities
+// PackageLoader provides concurrent package loading capabilities.
 type PackageLoader struct {
 	maxWorkers int
 	timeout    time.Duration
@@ -32,7 +41,7 @@ type PackageLoader struct {
 	cache      map[string]*PackageLoadResult
 }
 
-// NewPackageLoader creates a new concurrent package loader
+// NewPackageLoader creates a new concurrent package loader.
 func NewPackageLoader(maxWorkers int, timeout time.Duration) *PackageLoader {
 	return &PackageLoader{
 		maxWorkers: maxWorkers,
@@ -49,7 +58,7 @@ func NewPackageLoader(maxWorkers int, timeout time.Duration) *PackageLoader {
 	}
 }
 
-// LoadPackageConcurrent loads a single package with concurrent optimization
+// LoadPackageConcurrent loads a single package with concurrent optimization.
 func (pl *PackageLoader) LoadPackageConcurrent(ctx context.Context, sourcePath, destPath string) (*PackageLoadResult, error) {
 	// Check cache first
 	pl.mutex.RLock()
@@ -81,10 +90,10 @@ func (pl *PackageLoader) LoadPackageConcurrent(ctx context.Context, sourcePath, 
 	return result, nil
 }
 
-// LoadPackagesConcurrent loads multiple packages concurrently
+// LoadPackagesConcurrent loads multiple packages concurrently.
 func (pl *PackageLoader) LoadPackagesConcurrent(ctx context.Context, paths []string) ([]*PackageLoadResult, error) {
 	if len(paths) == 0 {
-		return nil, fmt.Errorf("no packages to load")
+		return nil, ErrNoPackagesToLoad
 	}
 
 	// Use errgroup for concurrent loading with limited workers
@@ -95,9 +104,11 @@ func (pl *PackageLoader) LoadPackagesConcurrent(ctx context.Context, paths []str
 
 	for i, path := range paths {
 		i, path := i, path // Capture loop variables
+
 		g.Go(func() error {
 			result, err := pl.LoadPackageConcurrent(gctx, path, "")
 			results[i] = result
+
 			return err
 		})
 	}
@@ -109,7 +120,7 @@ func (pl *PackageLoader) LoadPackagesConcurrent(ctx context.Context, paths []str
 	return results, nil
 }
 
-// loadPackageInfo performs the actual package loading
+// loadPackageInfo performs the actual package loading.
 func (pl *PackageLoader) loadPackageInfo(ctx context.Context, sourcePath, destPath string, result *PackageLoadResult) error {
 	// Check file stats for optimization decisions
 	srcStat, err := os.Stat(sourcePath)
@@ -119,6 +130,7 @@ func (pl *PackageLoader) loadPackageInfo(ctx context.Context, sourcePath, destPa
 
 	// Prepare file set and config
 	result.FileSet = token.NewFileSet()
+
 	cfg := pl.pool.Get().(*packages.Config)
 	defer pl.pool.Put(cfg)
 
@@ -137,7 +149,9 @@ func (pl *PackageLoader) loadPackageInfo(ctx context.Context, sourcePath, destPa
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse file %s: %w", filename, err)
 		}
+
 		result.File = file
+
 		return file, nil
 	}
 
@@ -149,10 +163,12 @@ func (pl *PackageLoader) loadPackageInfo(ctx context.Context, sourcePath, destPa
 			loadChan <- fmt.Errorf("failed to load package info for %s: %w", sourcePath, err)
 			return
 		}
+
 		if len(pkgs) == 0 {
-			loadChan <- fmt.Errorf("no packages found for %s", sourcePath)
+			loadChan <- fmt.Errorf("%w for %s", ErrNoPackagesFoundForPath, sourcePath)
 			return
 		}
+
 		result.Package = pkgs[0]
 		loadChan <- nil
 	}()
@@ -168,10 +184,11 @@ func (pl *PackageLoader) loadPackageInfo(ctx context.Context, sourcePath, destPa
 
 	// Validate loaded package
 	if result.Package == nil {
-		return fmt.Errorf("failed to load package information for %s", sourcePath)
+		return fmt.Errorf("%w for %s", ErrFailedToLoadPackageInformation, sourcePath)
 	}
+
 	if result.File == nil {
-		return fmt.Errorf("failed to parse source file %s", sourcePath)
+		return fmt.Errorf("%w %s", ErrFailedToParseSourceFile, sourcePath)
 	}
 
 	// Perform optimization checks
@@ -183,16 +200,17 @@ func (pl *PackageLoader) loadPackageInfo(ctx context.Context, sourcePath, destPa
 	return nil
 }
 
-// ClearCache clears the package loading cache
+// ClearCache clears the package loading cache.
 func (pl *PackageLoader) ClearCache() {
 	pl.mutex.Lock()
 	defer pl.mutex.Unlock()
 	pl.cache = make(map[string]*PackageLoadResult)
 }
 
-// GetCacheStats returns cache statistics
+// GetCacheStats returns cache statistics.
 func (pl *PackageLoader) GetCacheStats() (hits, misses int) {
 	pl.mutex.RLock()
 	defer pl.mutex.RUnlock()
+
 	return len(pl.cache), 0 // Simplified stats for now
 }

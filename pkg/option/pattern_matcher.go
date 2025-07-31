@@ -1,9 +1,15 @@
 package option
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
+)
+
+// Static errors for err113 compliance.
+var (
+	ErrInvalidRegexp = errors.New("invalid regexp")
 )
 
 // PatternMatcher matches a string against a pattern.
@@ -19,6 +25,7 @@ func NewPatternMatcher(pattern string, exactCase bool) (*PatternMatcher, error) 
 	if err != nil {
 		return nil, err
 	}
+
 	return &PatternMatcher{
 		pattern:   pattern,
 		re:        re,
@@ -37,6 +44,7 @@ func (m *PatternMatcher) Match(ident string, exactCase bool) bool {
 	if !exactCase {
 		s = strings.ToLower(s)
 	}
+
 	return m.re.MatchString(s)
 }
 
@@ -49,12 +57,15 @@ func compileRegexp(pattern string, exactCase bool) (*regexp.Regexp, error) {
 	} else {
 		expr = fmt.Sprintf("^%v$", regexp.QuoteMeta(pattern))
 	}
+
 	if !exactCase {
 		expr = strings.ToLower(expr)
 	}
+
 	re, err := regexp.Compile(expr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid regexp")
+		return nil, fmt.Errorf("%w: %s", ErrInvalidRegexp, err.Error())
 	}
+
 	return re, nil
 }

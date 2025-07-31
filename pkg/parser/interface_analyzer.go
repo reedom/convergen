@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -16,7 +17,23 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// InterfaceInfo contains comprehensive information about a convergen interface
+// Static errors for err113 compliance.
+var (
+	ErrStyleAnnotationRequiresArgument       = errors.New("style annotation requires an argument")
+	ErrMatchAnnotationRequiresArgument       = errors.New("match annotation requires an argument")
+	ErrRecvAnnotationRequiresReceiverName    = errors.New("recv annotation requires a receiver name")
+	ErrInvalidReceiverName                   = errors.New("invalid receiver name")
+	ErrSkipAnnotationRequiresFieldPattern    = errors.New("skip annotation requires a field pattern")
+	ErrMapAnnotationRequiresArguments        = errors.New("map annotation requires source and destination arguments")
+	ErrConvAnnotationRequiresArguments       = errors.New("conv annotation requires converter and type arguments")
+	ErrLiteralAnnotationRequiresArguments    = errors.New("literal annotation requires field and value arguments")
+	ErrPreprocessAnnotationRequiresFunction  = errors.New("preprocess annotation requires a function name")
+	ErrPostprocessAnnotationRequiresFunction = errors.New("postprocess annotation requires a function name")
+	ErrUnknownStyle                          = errors.New("unknown style")
+	ErrUnknownMatchRule                      = errors.New("unknown match rule")
+)
+
+// InterfaceInfo contains comprehensive information about a convergen interface.
 type InterfaceInfo struct {
 	Object      types.Object
 	Interface   *types.Interface
@@ -27,7 +44,7 @@ type InterfaceInfo struct {
 	Position    token.Pos
 }
 
-// Annotation represents a parsed annotation from interface or method comments
+// Annotation represents a parsed annotation from interface or method comments.
 type Annotation struct {
 	Type     string
 	Args     []string
@@ -35,18 +52,18 @@ type Annotation struct {
 	Raw      string
 }
 
-// Interface name constants
+// Interface name constants.
 const (
 	DefaultInterfaceName = "Convergen"
 )
 
-// Annotation regular expressions for interface analyzer
+// Annotation regular expressions for interface analyzer.
 var (
 	reConvergenInterface = regexp.MustCompile(`^\s*//\s*:convergen\b`)
 	reNotationInterface  = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
 )
 
-// isConvergenInterface checks if an interface is a convergen target
+// isConvergenInterface checks if an interface is a convergen target.
 func (p *ASTParser) isConvergenInterface(file *ast.File, obj types.Object) bool {
 	// Check by name first
 	if obj.Name() == DefaultInterfaceName {
@@ -68,7 +85,7 @@ func (p *ASTParser) isConvergenInterface(file *ast.File, obj types.Object) bool 
 	return false
 }
 
-// analyzeInterface performs comprehensive analysis of a convergen interface
+// analyzeInterface performs comprehensive analysis of a convergen interface.
 func (p *ASTParser) analyzeInterface(ctx context.Context, pkg *packages.Package, file *ast.File, obj types.Object, iface *types.Interface) (*InterfaceInfo, error) {
 	// Generate unique marker for this interface
 	marker, err := gonanoid.Nanoid()
@@ -90,6 +107,7 @@ func (p *ASTParser) analyzeInterface(ctx context.Context, pkg *packages.Package,
 
 	// Get all methods from the interface
 	methods := make([]types.Object, 0, iface.NumMethods())
+
 	for i := 0; i < iface.NumMethods(); i++ {
 		method := iface.Method(i)
 		if method.Exported() {
@@ -116,7 +134,7 @@ func (p *ASTParser) analyzeInterface(ctx context.Context, pkg *packages.Package,
 	return interfaceInfo, nil
 }
 
-// extractInterfaceAnnotations extracts all annotations from interface comments
+// extractInterfaceAnnotations extracts all annotations from interface comments.
 func (p *ASTParser) extractInterfaceAnnotations(file *ast.File, obj types.Object) ([]*Annotation, error) {
 	docComment := p.getDocComment(file, obj)
 	if docComment == nil {
@@ -124,6 +142,7 @@ func (p *ASTParser) extractInterfaceAnnotations(file *ast.File, obj types.Object
 	}
 
 	var annotations []*Annotation
+
 	for _, comment := range docComment.List {
 		if annotation := p.parseAnnotation(comment); annotation != nil {
 			annotations = append(annotations, annotation)
@@ -133,7 +152,7 @@ func (p *ASTParser) extractInterfaceAnnotations(file *ast.File, obj types.Object
 	return annotations, nil
 }
 
-// parseAnnotation parses a single annotation from a comment
+// parseAnnotation parses a single annotation from a comment.
 func (p *ASTParser) parseAnnotation(comment *ast.Comment) *Annotation {
 	matches := reNotationInterface.FindStringSubmatch(comment.Text)
 	if len(matches) < 2 {
@@ -141,6 +160,7 @@ func (p *ASTParser) parseAnnotation(comment *ast.Comment) *Annotation {
 	}
 
 	annotationType := matches[1]
+
 	argsString := ""
 	if len(matches) > 2 {
 		argsString = strings.TrimSpace(matches[2])
@@ -159,7 +179,7 @@ func (p *ASTParser) parseAnnotation(comment *ast.Comment) *Annotation {
 	}
 }
 
-// parseInterfaceOptions converts annotations to interface options
+// parseInterfaceOptions converts annotations to interface options.
 func (p *ASTParser) parseInterfaceOptions(annotations []*Annotation) (*domain.InterfaceOptions, error) {
 	options := &domain.InterfaceOptions{
 		Style:               domain.StyleCamelCase,
@@ -188,7 +208,7 @@ func (p *ASTParser) parseInterfaceOptions(annotations []*Annotation) (*domain.In
 	return options, nil
 }
 
-// applyInterfaceAnnotation applies a single annotation to interface options
+// applyInterfaceAnnotation applies a single annotation to interface options.
 func (p *ASTParser) applyInterfaceAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
 	switch annotation.Type {
 	case "convergen":
@@ -197,22 +217,26 @@ func (p *ASTParser) applyInterfaceAnnotation(options *domain.InterfaceOptions, a
 
 	case "style":
 		if len(annotation.Args) == 0 {
-			return fmt.Errorf("style annotation requires an argument")
+			return ErrStyleAnnotationRequiresArgument
 		}
+
 		style, err := p.parseStyle(annotation.Args[0])
 		if err != nil {
 			return fmt.Errorf("invalid style: %w", err)
 		}
+
 		options.Style = style
 
 	case "match":
 		if len(annotation.Args) == 0 {
-			return fmt.Errorf("match annotation requires an argument")
+			return ErrMatchAnnotationRequiresArgument
 		}
+
 		rule, err := p.parseMatchRule(annotation.Args[0])
 		if err != nil {
 			return fmt.Errorf("invalid match rule: %w", err)
 		}
+
 		options.MatchRule = rule
 
 	case "case":
@@ -241,11 +265,13 @@ func (p *ASTParser) applyInterfaceAnnotation(options *domain.InterfaceOptions, a
 
 	case "recv":
 		if len(annotation.Args) == 0 {
-			return fmt.Errorf("recv annotation requires a receiver name")
+			return ErrRecvAnnotationRequiresReceiverName
 		}
+
 		if !p.isValidIdentifier(annotation.Args[0]) {
-			return fmt.Errorf("invalid receiver name: %s", annotation.Args[0])
+			return fmt.Errorf("%w: %s", ErrInvalidReceiverName, annotation.Args[0])
 		}
+
 		options.ReceiverName = annotation.Args[0]
 
 	case "reverse":
@@ -253,25 +279,28 @@ func (p *ASTParser) applyInterfaceAnnotation(options *domain.InterfaceOptions, a
 
 	case "skip":
 		if len(annotation.Args) == 0 {
-			return fmt.Errorf("skip annotation requires a field pattern")
+			return ErrSkipAnnotationRequiresFieldPattern
 		}
+
 		options.SkipFields = append(options.SkipFields, annotation.Args[0])
 
 	case "map":
 		if len(annotation.Args) < 2 {
-			return fmt.Errorf("map annotation requires source and destination arguments")
+			return ErrMapAnnotationRequiresArguments
 		}
+
 		options.FieldMappings[annotation.Args[0]] = annotation.Args[1]
 
 	case "conv":
 		if len(annotation.Args) < 2 {
-			return fmt.Errorf("conv annotation requires converter and type arguments")
+			return ErrConvAnnotationRequiresArguments
 		}
+
 		options.TypeConverters[annotation.Args[1]] = annotation.Args[0]
 
 	case "literal":
 		if len(annotation.Args) < 2 {
-			return fmt.Errorf("literal annotation requires field and value arguments")
+			return ErrLiteralAnnotationRequiresArguments
 		}
 		// Parse the literal value (may contain spaces)
 		value := strings.Join(annotation.Args[1:], " ")
@@ -279,14 +308,16 @@ func (p *ASTParser) applyInterfaceAnnotation(options *domain.InterfaceOptions, a
 
 	case "preprocess":
 		if len(annotation.Args) == 0 {
-			return fmt.Errorf("preprocess annotation requires a function name")
+			return ErrPreprocessAnnotationRequiresFunction
 		}
+
 		options.PreprocessFunction = annotation.Args[0]
 
 	case "postprocess":
 		if len(annotation.Args) == 0 {
-			return fmt.Errorf("postprocess annotation requires a function name")
+			return ErrPostprocessAnnotationRequiresFunction
 		}
+
 		options.PostprocessFunction = annotation.Args[0]
 
 	default:
@@ -298,7 +329,7 @@ func (p *ASTParser) applyInterfaceAnnotation(options *domain.InterfaceOptions, a
 	return nil
 }
 
-// parseStyle converts string to domain.VariableStyle
+// parseStyle converts string to domain.VariableStyle.
 func (p *ASTParser) parseStyle(styleStr string) (domain.VariableStyle, error) {
 	switch strings.ToLower(styleStr) {
 	case "camel", "camelcase":
@@ -308,11 +339,11 @@ func (p *ASTParser) parseStyle(styleStr string) (domain.VariableStyle, error) {
 	case "pascal", "pascalcase":
 		return domain.StylePascalCase, nil
 	default:
-		return domain.StyleCamelCase, fmt.Errorf("unknown style: %s", styleStr)
+		return domain.StyleCamelCase, fmt.Errorf("%w: %s", ErrUnknownStyle, styleStr)
 	}
 }
 
-// parseMatchRule converts string to domain.MatchRule
+// parseMatchRule converts string to domain.MatchRule.
 func (p *ASTParser) parseMatchRule(ruleStr string) (domain.MatchRule, error) {
 	switch strings.ToLower(ruleStr) {
 	case "name", "byname":
@@ -322,11 +353,11 @@ func (p *ASTParser) parseMatchRule(ruleStr string) (domain.MatchRule, error) {
 	case "tag", "bytag":
 		return domain.MatchByTag, nil
 	default:
-		return domain.MatchByName, fmt.Errorf("unknown match rule: %s", ruleStr)
+		return domain.MatchByName, fmt.Errorf("%w: %s", ErrUnknownMatchRule, ruleStr)
 	}
 }
 
-// isValidIdentifier checks if a string is a valid Go identifier
+// isValidIdentifier checks if a string is a valid Go identifier.
 func (p *ASTParser) isValidIdentifier(id string) bool {
 	if id == "" {
 		return false
@@ -347,7 +378,7 @@ func (p *ASTParser) isValidIdentifier(id string) bool {
 	return true
 }
 
-// getDocComment retrieves the documentation comment for an object
+// getDocComment retrieves the documentation comment for an object.
 func (p *ASTParser) getDocComment(file *ast.File, obj types.Object) *ast.CommentGroup {
 	// Find the AST node corresponding to the object
 	for _, decl := range file.Decls {
@@ -358,6 +389,7 @@ func (p *ASTParser) getDocComment(file *ast.File, obj types.Object) *ast.Comment
 						if genDecl.Doc != nil {
 							return genDecl.Doc
 						}
+
 						if typeSpec.Doc != nil {
 							return typeSpec.Doc
 						}

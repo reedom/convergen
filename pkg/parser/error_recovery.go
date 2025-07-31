@@ -2,12 +2,18 @@ package parser
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 )
 
-// RecoveryStrategy defines different approaches to error recovery
+// Static errors for err113 compliance.
+var (
+	ErrCircuitBreakerOpen                 = errors.New("circuit breaker is open")
+	ErrCircuitBreakerHalfOpenLimitExceeded = errors.New("circuit breaker half-open request limit exceeded")
+)
+
+// RecoveryStrategy defines different approaches to error recovery.
 type RecoveryStrategy int
 
 const (
@@ -17,7 +23,7 @@ const (
 	RecoveryAbort
 )
 
-// String returns the string representation of RecoveryStrategy
+// String returns the string representation of RecoveryStrategy.
 func (rs RecoveryStrategy) String() string {
 	switch rs {
 	case RecoveryRetry:
@@ -33,7 +39,7 @@ func (rs RecoveryStrategy) String() string {
 	}
 }
 
-// RecoveryConfig contains configuration for error recovery
+// RecoveryConfig contains configuration for error recovery.
 type RecoveryConfig struct {
 	MaxRetries      int
 	RetryDelay      time.Duration
@@ -43,14 +49,14 @@ type RecoveryConfig struct {
 	CircuitBreaker  *CircuitBreakerConfig
 }
 
-// CircuitBreakerConfig configures circuit breaker behavior
+// CircuitBreakerConfig configures circuit breaker behavior.
 type CircuitBreakerConfig struct {
 	FailureThreshold int
 	ResetTimeout     time.Duration
 	MaxRequests      int
 }
 
-// DefaultRecoveryConfig returns a sensible default recovery configuration
+// DefaultRecoveryConfig returns a sensible default recovery configuration.
 func DefaultRecoveryConfig() *RecoveryConfig {
 	return &RecoveryConfig{
 		MaxRetries:      3,
@@ -66,16 +72,15 @@ func DefaultRecoveryConfig() *RecoveryConfig {
 	}
 }
 
-// RecoveryManager manages error recovery operations
+// RecoveryManager manages error recovery operations.
 type RecoveryManager struct {
 	config         *RecoveryConfig
 	errorHandler   *ErrorHandler
 	circuitBreaker *CircuitBreaker
 	metrics        *RecoveryMetrics
-	mutex          sync.RWMutex
 }
 
-// NewRecoveryManager creates a new recovery manager
+// NewRecoveryManager creates a new recovery manager.
 func NewRecoveryManager(config *RecoveryConfig, errorHandler *ErrorHandler) *RecoveryManager {
 	if config == nil {
 		config = DefaultRecoveryConfig()
@@ -89,7 +94,7 @@ func NewRecoveryManager(config *RecoveryConfig, errorHandler *ErrorHandler) *Rec
 	}
 }
 
-// ExecuteWithRecovery executes an operation with comprehensive error recovery
+// ExecuteWithRecovery executes an operation with comprehensive error recovery.
 func (rm *RecoveryManager) ExecuteWithRecovery(ctx context.Context, operation func() error, options ...RecoveryOption) error {
 	// Apply options
 	opts := &RecoveryOptions{
@@ -114,7 +119,7 @@ func (rm *RecoveryManager) ExecuteWithRecovery(ctx context.Context, operation fu
 	})
 }
 
-// executeWithRetry handles retry logic
+// executeWithRetry handles retry logic.
 func (rm *RecoveryManager) executeWithRetry(ctx context.Context, operation func() error, opts *RecoveryOptions) error {
 	var lastError error
 
@@ -144,9 +149,10 @@ func (rm *RecoveryManager) executeWithRetry(ctx context.Context, operation func(
 			select {
 			case <-ctx.Done():
 				return rm.errorHandler.WrapWithContext(ctx, ctx.Err(), "operation cancelled during retry")
+			// Continue to next attempt
 			case <-time.After(delay):
-				// Continue to next attempt
 			}
+
 			continue
 		}
 
@@ -157,6 +163,7 @@ func (rm *RecoveryManager) executeWithRetry(ctx context.Context, operation func(
 				rm.metrics.RecordFallbackSuccess()
 				return nil
 			}
+
 			rm.metrics.RecordFallbackFailure()
 		}
 
@@ -170,6 +177,7 @@ func (rm *RecoveryManager) executeWithRetry(ctx context.Context, operation func(
 	}
 
 	rm.metrics.RecordFailure()
+
 	return rm.errorHandler.Wrap(lastError, ErrorOptions{
 		Message:  "operation failed after all recovery attempts",
 		Code:     "RECOVERY_EXHAUSTED",
@@ -182,7 +190,7 @@ func (rm *RecoveryManager) executeWithRetry(ctx context.Context, operation func(
 	})
 }
 
-// executeWithPanicRecovery executes a function with panic recovery
+// executeWithPanicRecovery executes a function with panic recovery.
 func (rm *RecoveryManager) executeWithPanicRecovery(operation func() error) (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -193,7 +201,7 @@ func (rm *RecoveryManager) executeWithPanicRecovery(operation func() error) (err
 	return operation()
 }
 
-// shouldRetry determines if an error is retryable
+// shouldRetry determines if an error is retryable.
 func (rm *RecoveryManager) shouldRetry(err error, attempt int) bool {
 	// Don't retry panic errors
 	if contextual, ok := err.(*ContextualError); ok {
@@ -201,24 +209,26 @@ func (rm *RecoveryManager) shouldRetry(err error, attempt int) bool {
 			return false
 		}
 	}
+
 	return rm.errorHandler.ShouldRetry(err, attempt, rm.config.MaxRetries)
 }
 
-// canSkip determines if an error can be safely skipped
+// canSkip determines if an error can be safely skipped.
 func (rm *RecoveryManager) canSkip(err error) bool {
 	if contextual, ok := err.(*ContextualError); ok {
 		return contextual.Severity == SeverityWarning ||
 			contextual.Category == CategoryValidation
 	}
+
 	return false
 }
 
-// calculateRetryDelay calculates the delay before retry with exponential backoff
+// calculateRetryDelay calculates the delay before retry with exponential backoff.
 func (rm *RecoveryManager) calculateRetryDelay(attempt int, baseDelay time.Duration) time.Duration {
 	return rm.errorHandler.GetRetryDelay(attempt)
 }
 
-// RecoveryOptions contains options for recovery execution
+// RecoveryOptions contains options for recovery execution.
 type RecoveryOptions struct {
 	MaxRetries     int
 	RetryDelay     time.Duration
@@ -228,24 +238,24 @@ type RecoveryOptions struct {
 	FallbackFunc   func() error
 }
 
-// RecoveryOption is a function that modifies RecoveryOptions
+// RecoveryOption is a function that modifies RecoveryOptions.
 type RecoveryOption func(*RecoveryOptions)
 
-// WithMaxRetries sets the maximum number of retries
+// WithMaxRetries sets the maximum number of retries.
 func WithMaxRetries(maxRetries int) RecoveryOption {
 	return func(opts *RecoveryOptions) {
 		opts.MaxRetries = maxRetries
 	}
 }
 
-// WithRetryDelay sets the base retry delay
+// WithRetryDelay sets the base retry delay.
 func WithRetryDelay(delay time.Duration) RecoveryOption {
 	return func(opts *RecoveryOptions) {
 		opts.RetryDelay = delay
 	}
 }
 
-// WithFallback enables fallback with the specified fallback function
+// WithFallback enables fallback with the specified fallback function.
 func WithFallback(fallbackFunc func() error) RecoveryOption {
 	return func(opts *RecoveryOptions) {
 		opts.EnableFallback = true
@@ -253,21 +263,21 @@ func WithFallback(fallbackFunc func() error) RecoveryOption {
 	}
 }
 
-// WithSkipping enables skipping of non-critical errors
+// WithSkipping enables skipping of non-critical errors.
 func WithSkipping() RecoveryOption {
 	return func(opts *RecoveryOptions) {
 		opts.EnableSkipping = true
 	}
 }
 
-// WithRecoveryTimeout sets the operation timeout
+// WithRecoveryTimeout sets the operation timeout.
 func WithRecoveryTimeout(timeout time.Duration) RecoveryOption {
 	return func(opts *RecoveryOptions) {
 		opts.Timeout = timeout
 	}
 }
 
-// CircuitBreaker implements circuit breaker pattern for fault tolerance
+// CircuitBreaker implements circuit breaker pattern for fault tolerance.
 type CircuitBreaker struct {
 	config       *CircuitBreakerConfig
 	state        CircuitBreakerState
@@ -277,7 +287,7 @@ type CircuitBreaker struct {
 	mutex        sync.RWMutex
 }
 
-// CircuitBreakerState represents the state of a circuit breaker
+// CircuitBreakerState represents the state of a circuit breaker.
 type CircuitBreakerState int
 
 const (
@@ -286,7 +296,7 @@ const (
 	StateHalfOpen
 )
 
-// String returns the string representation of CircuitBreakerState
+// String returns the string representation of CircuitBreakerState.
 func (cbs CircuitBreakerState) String() string {
 	switch cbs {
 	case StateClosed:
@@ -300,7 +310,7 @@ func (cbs CircuitBreakerState) String() string {
 	}
 }
 
-// NewCircuitBreaker creates a new circuit breaker
+// NewCircuitBreaker creates a new circuit breaker.
 func NewCircuitBreaker(config *CircuitBreakerConfig) *CircuitBreaker {
 	return &CircuitBreaker{
 		config: config,
@@ -308,7 +318,7 @@ func NewCircuitBreaker(config *CircuitBreakerConfig) *CircuitBreaker {
 	}
 }
 
-// Execute executes a function with circuit breaker protection
+// Execute executes a function with circuit breaker protection.
 func (cb *CircuitBreaker) Execute(operation func() error) error {
 	cb.mutex.Lock()
 
@@ -318,13 +328,13 @@ func (cb *CircuitBreaker) Execute(operation func() error) error {
 			cb.requests = 0
 		} else {
 			cb.mutex.Unlock()
-			return fmt.Errorf("circuit breaker is open")
+			return ErrCircuitBreakerOpen
 		}
 	}
 
 	if cb.state == StateHalfOpen && cb.requests >= cb.config.MaxRequests {
 		cb.mutex.Unlock()
-		return fmt.Errorf("circuit breaker half-open request limit exceeded")
+		return ErrCircuitBreakerHalfOpenLimitExceeded
 	}
 
 	cb.requests++
@@ -355,14 +365,15 @@ func (cb *CircuitBreaker) Execute(operation func() error) error {
 	return nil
 }
 
-// GetState returns the current state of the circuit breaker
+// GetState returns the current state of the circuit breaker.
 func (cb *CircuitBreaker) GetState() CircuitBreakerState {
 	cb.mutex.RLock()
 	defer cb.mutex.RUnlock()
+
 	return cb.state
 }
 
-// RecoveryMetrics tracks recovery-related metrics
+// RecoveryMetrics tracks recovery-related metrics.
 type RecoveryMetrics struct {
 	TotalAttempts    int64
 	SuccessfulRetrys int64
@@ -373,65 +384,81 @@ type RecoveryMetrics struct {
 	mutex            sync.RWMutex
 }
 
-// NewRecoveryMetrics creates new recovery metrics
+// NewRecoveryMetrics creates new recovery metrics.
 func NewRecoveryMetrics() *RecoveryMetrics {
 	return &RecoveryMetrics{}
 }
 
-// RecordAttempt records an operation attempt
+// RecordAttempt records an operation attempt.
 func (rm *RecoveryMetrics) RecordAttempt(attempt int, err error) {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
+
 	rm.TotalAttempts++
 }
 
-// RecordSuccess records a successful operation
+// RecordSuccess records a successful operation.
 func (rm *RecoveryMetrics) RecordSuccess(attempt int) {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
+
 	if attempt > 0 {
 		rm.SuccessfulRetrys++
 	}
 }
 
-// RecordFailure records a failed operation
+// RecordFailure records a failed operation.
 func (rm *RecoveryMetrics) RecordFailure() {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
+
 	rm.FailedOperations++
 }
 
-// RecordFallbackSuccess records a successful fallback
+// RecordFallbackSuccess records a successful fallback.
 func (rm *RecoveryMetrics) RecordFallbackSuccess() {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
+
 	rm.FallbackUses++
 }
 
-// RecordFallbackFailure records a failed fallback
+// RecordFallbackFailure records a failed fallback.
 func (rm *RecoveryMetrics) RecordFallbackFailure() {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
 	// Could add separate metric for fallback failures if needed
+	rm.FallbackUses++ // Track fallback failure metric
 }
 
-// RecordSkip records a skipped error
+// RecordSkip records a skipped error.
 func (rm *RecoveryMetrics) RecordSkip() {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
+
 	rm.SkippedErrors++
 }
 
-// RecordPanicRecovery records a panic recovery
+// RecordPanicRecovery records a panic recovery.
 func (rm *RecoveryMetrics) RecordPanicRecovery() {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
+
 	rm.PanicRecoveries++
 }
 
-// GetMetrics returns a copy of the current metrics
+// GetMetrics returns a copy of the current metrics.
 func (rm *RecoveryMetrics) GetMetrics() RecoveryMetrics {
 	rm.mutex.RLock()
 	defer rm.mutex.RUnlock()
-	return *rm
+
+	// Return a copy without the mutex to avoid copying locks
+	return RecoveryMetrics{
+		TotalAttempts:    rm.TotalAttempts,
+		SuccessfulRetrys: rm.SuccessfulRetrys,
+		FailedOperations: rm.FailedOperations,
+		FallbackUses:     rm.FallbackUses,
+		SkippedErrors:    rm.SkippedErrors,
+		PanicRecoveries:  rm.PanicRecoveries,
+	}
 }

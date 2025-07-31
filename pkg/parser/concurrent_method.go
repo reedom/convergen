@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go/types"
 	"sync"
@@ -15,7 +16,17 @@ import (
 	"github.com/reedom/convergen/v8/pkg/option"
 )
 
-// MethodProcessingResult contains the result of processing a method
+// Static errors for err113 compliance.
+var (
+	ErrMethodProcessingPanic     = errors.New("method processing panic")
+	ErrExpectedSignature         = errors.New("expected signature but got different type")
+	ErrMethodMustHaveParameters  = errors.New("method must have one or more parameters as copy source")
+	ErrMethodMustHaveReturnValues = errors.New("method must have one or more return values as copy destination")
+	ErrAllMethodsFailed          = errors.New("all methods failed to process")
+	ErrPartialProcessingFailure  = errors.New("partial processing failure")
+)
+
+// MethodProcessingResult contains the result of processing a method.
 type MethodProcessingResult struct {
 	Method         *model.MethodEntry
 	DomainMethod   *domain.Method
@@ -24,7 +35,7 @@ type MethodProcessingResult struct {
 	ProcessingTime time.Duration
 }
 
-// ConcurrentMethodProcessor handles concurrent method processing with error recovery
+// ConcurrentMethodProcessor handles concurrent method processing with error recovery.
 type ConcurrentMethodProcessor struct {
 	parser     *Parser
 	maxWorkers int
@@ -33,7 +44,7 @@ type ConcurrentMethodProcessor struct {
 	metrics    *ProcessingMetrics
 }
 
-// ProcessingMetrics tracks method processing performance
+// ProcessingMetrics tracks method processing performance.
 type ProcessingMetrics struct {
 	TotalMethods        int
 	SuccessfulMethods   int
@@ -43,7 +54,7 @@ type ProcessingMetrics struct {
 	mutex               sync.RWMutex
 }
 
-// NewConcurrentMethodProcessor creates a new concurrent method processor
+// NewConcurrentMethodProcessor creates a new concurrent method processor.
 func NewConcurrentMethodProcessor(parser *Parser, maxWorkers int, timeout time.Duration, logger *zap.Logger) *ConcurrentMethodProcessor {
 	return &ConcurrentMethodProcessor{
 		parser:     parser,
@@ -54,7 +65,7 @@ func NewConcurrentMethodProcessor(parser *Parser, maxWorkers int, timeout time.D
 	}
 }
 
-// ProcessMethodsConcurrent processes methods concurrently with error recovery
+// ProcessMethodsConcurrent processes methods concurrently with error recovery.
 func (cmp *ConcurrentMethodProcessor) ProcessMethodsConcurrent(ctx context.Context, intf *intfEntry) ([]*model.MethodEntry, error) {
 	iface := intf.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
@@ -78,7 +89,7 @@ func (cmp *ConcurrentMethodProcessor) ProcessMethodsConcurrent(ctx context.Conte
 
 	// Process methods concurrently
 	for i := 0; i < mset.Len(); i++ {
-		i := i // Capture loop variable
+		// Capture loop variable
 		methodObj := mset.At(i).Obj()
 
 		g.Go(func() error {
@@ -113,7 +124,7 @@ func (cmp *ConcurrentMethodProcessor) ProcessMethodsConcurrent(ctx context.Conte
 	return cmp.collectResults(results, startTime)
 }
 
-// processMethodWithRecovery processes a single method with error recovery
+// processMethodWithRecovery processes a single method with error recovery.
 func (cmp *ConcurrentMethodProcessor) processMethodWithRecovery(ctx context.Context, methodObj types.Object, opts option.Options, index int) *MethodProcessingResult {
 	startTime := time.Now()
 	result := &MethodProcessingResult{
@@ -128,7 +139,7 @@ func (cmp *ConcurrentMethodProcessor) processMethodWithRecovery(ctx context.Cont
 	defer func() {
 		result.ProcessingTime = time.Since(startTime)
 		if r := recover(); r != nil {
-			result.Error = fmt.Errorf("method processing panic: %v", r)
+			result.Error = fmt.Errorf("%w: %v", ErrMethodProcessingPanic, r)
 			cmp.logger.Error("Method processing panic recovered",
 				zap.String("method", methodObj.Name()),
 				zap.Any("panic", r),
@@ -144,30 +155,32 @@ func (cmp *ConcurrentMethodProcessor) processMethodWithRecovery(ctx context.Cont
 	}
 
 	result.Method = method
+
 	return result
 }
 
-// processMethodSafely processes a method with enhanced error handling
+// processMethodSafely processes a method with enhanced error handling.
 func (cmp *ConcurrentMethodProcessor) processMethodSafely(ctx context.Context, methodObj types.Object, opts option.Options) (*model.MethodEntry, error) {
 	// Check context cancellation
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, fmt.Errorf("method processing context cancelled: %w", ctx.Err())
 	default:
 	}
 
 	// Validate method signature
 	signature, ok := methodObj.Type().(*types.Signature)
 	if !ok {
-		return nil, fmt.Errorf("expected signature but got %T", methodObj.Type())
+		return nil, fmt.Errorf("%w but got %T", ErrExpectedSignature, methodObj.Type())
 	}
 
 	// Enhanced validation with specific error messages
 	if signature.Params().Len() == 0 {
-		return nil, fmt.Errorf("method %s must have one or more parameters as copy source", methodObj.Name())
+		return nil, fmt.Errorf("%w: method %s", ErrMethodMustHaveParameters, methodObj.Name())
 	}
+
 	if signature.Results().Len() == 0 {
-		return nil, fmt.Errorf("method %s must have one or more return values as copy destination", methodObj.Name())
+		return nil, fmt.Errorf("%w: method %s", ErrMethodMustHaveReturnValues, methodObj.Name())
 	}
 
 	// Process method using the original parser logic with error recovery
@@ -177,18 +190,21 @@ func (cmp *ConcurrentMethodProcessor) processMethodSafely(ctx context.Context, m
 		if isTypeResolutionError(err) {
 			return nil, fmt.Errorf("type resolution failed for method %s: %w (suggestion: check import statements and type definitions)", methodObj.Name(), err)
 		}
+
 		if isAnnotationError(err) {
 			return nil, fmt.Errorf("annotation processing failed for method %s: %w (suggestion: check annotation syntax)", methodObj.Name(), err)
 		}
+
 		return nil, err
 	}
 
 	return method, nil
 }
 
-// collectResults collects successful results and handles partial failures
+// collectResults collects successful results and handles partial failures.
 func (cmp *ConcurrentMethodProcessor) collectResults(results []*MethodProcessingResult, startTime time.Time) ([]*model.MethodEntry, error) {
 	var successfulMethods []*model.MethodEntry
+
 	var errors []error
 
 	for _, result := range results {
@@ -201,6 +217,7 @@ func (cmp *ConcurrentMethodProcessor) collectResults(results []*MethodProcessing
 
 	// Update final metrics
 	cmp.metrics.mutex.Lock()
+
 	cmp.metrics.TotalProcessingTime = time.Since(startTime)
 	if cmp.metrics.SuccessfulMethods > 0 {
 		cmp.metrics.AverageMethodTime = cmp.metrics.TotalProcessingTime / time.Duration(cmp.metrics.SuccessfulMethods)
@@ -220,7 +237,7 @@ func (cmp *ConcurrentMethodProcessor) collectResults(results []*MethodProcessing
 
 	if successRate == 0 {
 		// Complete failure
-		return nil, fmt.Errorf("all %d methods failed to process", len(results))
+		return nil, fmt.Errorf("%w: %d methods", ErrAllMethodsFailed, len(results))
 	}
 
 	if successRate < 0.5 {
@@ -230,7 +247,7 @@ func (cmp *ConcurrentMethodProcessor) collectResults(results []*MethodProcessing
 			zap.Int("failed_count", len(errors)))
 
 		// Return partial results with warning
-		return successfulMethods, fmt.Errorf("partial processing failure: %d of %d methods failed", len(errors), len(results))
+		return successfulMethods, fmt.Errorf("%w: %d of %d methods failed", ErrPartialProcessingFailure, len(errors), len(results))
 	}
 
 	if len(errors) > 0 {
@@ -243,7 +260,7 @@ func (cmp *ConcurrentMethodProcessor) collectResults(results []*MethodProcessing
 	return successfulMethods, nil
 }
 
-// updateMetrics updates processing metrics in a thread-safe manner
+// updateMetrics updates processing metrics in a thread-safe manner.
 func (cmp *ConcurrentMethodProcessor) updateMetrics(result *MethodProcessingResult) {
 	cmp.metrics.mutex.Lock()
 	defer cmp.metrics.mutex.Unlock()
@@ -255,14 +272,22 @@ func (cmp *ConcurrentMethodProcessor) updateMetrics(result *MethodProcessingResu
 	}
 }
 
-// GetMetrics returns current processing metrics
+// GetMetrics returns current processing metrics.
 func (cmp *ConcurrentMethodProcessor) GetMetrics() ProcessingMetrics {
 	cmp.metrics.mutex.RLock()
 	defer cmp.metrics.mutex.RUnlock()
-	return *cmp.metrics
+
+	// Return a copy without the mutex to avoid copying locks
+	return ProcessingMetrics{
+		TotalMethods:        cmp.metrics.TotalMethods,
+		SuccessfulMethods:   cmp.metrics.SuccessfulMethods,
+		FailedMethods:       cmp.metrics.FailedMethods,
+		TotalProcessingTime: cmp.metrics.TotalProcessingTime,
+		AverageMethodTime:   cmp.metrics.AverageMethodTime,
+	}
 }
 
-// Helper functions for error classification
+// Helper functions for error classification.
 func isTypeResolutionError(err error) bool {
 	// Check if error is related to type resolution
 	return false // Placeholder - implement based on actual error types

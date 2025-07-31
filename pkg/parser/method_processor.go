@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/types"
@@ -13,14 +14,24 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// MethodProcessor handles analysis and processing of individual methods
+// Static errors for err113 compliance.
+var (
+	ErrExpectedMethodSignature               = errors.New("expected method signature")
+	ErrMethodMustHaveAtLeastOneParameter     = errors.New("method must have at least one parameter")
+	ErrMethodMustHaveAtLeastOneReturnValue   = errors.New("method must have at least one return value")
+	ErrMultipleReturnsLastMustBeError        = errors.New("if multiple returns, last must be error type")
+	ErrValidationAnnotationRequiresFuncName  = errors.New("validation annotation requires a function name")
+	ErrTimeoutAnnotationRequiresDuration     = errors.New("timeout annotation requires a duration")
+)
+
+// MethodProcessor handles analysis and processing of individual methods.
 type MethodProcessor struct {
 	parser       *ASTParser
 	typeResolver *TypeResolver
 	logger       *zap.Logger
 }
 
-// NewMethodProcessor creates a new method processor
+// NewMethodProcessor creates a new method processor.
 func NewMethodProcessor(parser *ASTParser, typeResolver *TypeResolver, logger *zap.Logger) *MethodProcessor {
 	return &MethodProcessor{
 		parser:       parser,
@@ -29,11 +40,11 @@ func NewMethodProcessor(parser *ASTParser, typeResolver *TypeResolver, logger *z
 	}
 }
 
-// processMethod analyzes a single method and converts it to domain.Method
+// processMethod analyzes a single method and converts it to domain.Method.
 func (p *ASTParser) processMethod(ctx context.Context, pkg *packages.Package, file *ast.File, methodObj types.Object, interfaceOpts *domain.InterfaceOptions) (*domain.Method, error) {
 	signature, ok := methodObj.Type().(*types.Signature)
 	if !ok {
-		return nil, fmt.Errorf("expected method signature, got %T", methodObj.Type())
+		return nil, fmt.Errorf("%w, got %T", ErrExpectedMethodSignature, methodObj.Type())
 	}
 
 	// Validate method signature
@@ -105,28 +116,28 @@ func (p *ASTParser) processMethod(ctx context.Context, pkg *packages.Package, fi
 	return method, nil
 }
 
-// validateMethodSignature ensures the method signature is valid for conversion
+// validateMethodSignature ensures the method signature is valid for conversion.
 func (p *ASTParser) validateMethodSignature(signature *types.Signature, methodObj types.Object) error {
 	if signature.Params().Len() == 0 {
-		return fmt.Errorf("method %s must have at least one parameter", methodObj.Name())
+		return fmt.Errorf("%w: method %s", ErrMethodMustHaveAtLeastOneParameter, methodObj.Name())
 	}
 
 	if signature.Results().Len() == 0 {
-		return fmt.Errorf("method %s must have at least one return value", methodObj.Name())
+		return fmt.Errorf("%w: method %s", ErrMethodMustHaveAtLeastOneReturnValue, methodObj.Name())
 	}
 
 	// Check if last return is error (optional)
 	if signature.Results().Len() > 1 {
 		lastReturn := signature.Results().At(signature.Results().Len() - 1)
 		if !isGoErrorType(lastReturn.Type()) {
-			return fmt.Errorf("method %s: if multiple returns, last must be error type", methodObj.Name())
+			return fmt.Errorf("%w: method %s", ErrMultipleReturnsLastMustBeError, methodObj.Name())
 		}
 	}
 
 	return nil
 }
 
-// extractMethodAnnotations extracts annotations from method comments
+// extractMethodAnnotations extracts annotations from method comments.
 func (p *ASTParser) extractMethodAnnotations(file *ast.File, methodObj types.Object) ([]*Annotation, error) {
 	docComment := p.getMethodDocComment(file, methodObj)
 	if docComment == nil {
@@ -134,6 +145,7 @@ func (p *ASTParser) extractMethodAnnotations(file *ast.File, methodObj types.Obj
 	}
 
 	var annotations []*Annotation
+
 	for _, comment := range docComment.List {
 		if annotation := p.parseAnnotation(comment); annotation != nil {
 			annotations = append(annotations, annotation)
@@ -143,7 +155,7 @@ func (p *ASTParser) extractMethodAnnotations(file *ast.File, methodObj types.Obj
 	return annotations, nil
 }
 
-// parseMethodOptions converts method annotations to options, inheriting from interface options
+// parseMethodOptions converts method annotations to options, inheriting from interface options.
 func (p *ASTParser) parseMethodOptions(annotations []*Annotation, interfaceOpts *domain.InterfaceOptions) (*domain.MethodOptions, error) {
 	// Start with interface options as base
 	options := &domain.MethodOptions{
@@ -175,7 +187,7 @@ func (p *ASTParser) parseMethodOptions(annotations []*Annotation, interfaceOpts 
 	return options, nil
 }
 
-// applyMethodAnnotation applies a method-level annotation to options
+// applyMethodAnnotation applies a method-level annotation to options.
 func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotation *Annotation) error {
 	switch annotation.Type {
 	case "style", "match", "case", "case:off", "getter", "getter:off",
@@ -186,8 +198,9 @@ func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotat
 
 	case "validation":
 		if len(annotation.Args) == 0 {
-			return fmt.Errorf("validation annotation requires a function name")
+			return ErrValidationAnnotationRequiresFuncName
 		}
+
 		options.CustomValidation = annotation.Args[0]
 
 	case "concurrent":
@@ -196,6 +209,7 @@ func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotat
 			if err != nil {
 				return fmt.Errorf("invalid concurrent level: %w", err)
 			}
+
 			options.ConcurrencyLevel = level
 		} else {
 			options.ConcurrencyLevel = 4 // Default concurrency level
@@ -203,12 +217,14 @@ func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotat
 
 	case "timeout":
 		if len(annotation.Args) == 0 {
-			return fmt.Errorf("timeout annotation requires a duration")
+			return ErrTimeoutAnnotationRequiresDuration
 		}
+
 		duration, err := parseDurationArg(annotation.Args[0])
 		if err != nil {
 			return fmt.Errorf("invalid timeout duration: %w", err)
 		}
+
 		options.TimeoutDuration = duration
 
 	default:
@@ -220,7 +236,7 @@ func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotat
 	return nil
 }
 
-// analyzeMethodParameters analyzes all parameters of a method
+// analyzeMethodParameters analyzes all parameters of a method.
 func (p *ASTParser) analyzeMethodParameters(ctx context.Context, params *types.Tuple) ([]*domain.Parameter, error) {
 	parameters := make([]*domain.Parameter, params.Len())
 
@@ -250,7 +266,7 @@ func (p *ASTParser) analyzeMethodParameters(ctx context.Context, params *types.T
 	return parameters, nil
 }
 
-// analyzeMethodReturns analyzes return types of a method
+// analyzeMethodReturns analyzes return types of a method.
 func (p *ASTParser) analyzeMethodReturns(ctx context.Context, results *types.Tuple) ([]*domain.ReturnValue, error) {
 	returns := make([]*domain.ReturnValue, results.Len())
 
@@ -268,11 +284,13 @@ func (p *ASTParser) analyzeMethodReturns(ctx context.Context, results *types.Tup
 
 		// Analyze type structure for non-error types
 		var typeInfo *domain.TypeInfo
+
 		if !isError {
 			info, err := p.analyzeTypeStructure(ctx, resolvedType)
 			if err != nil {
 				return nil, fmt.Errorf("failed to analyze return type structure: %w", err)
 			}
+
 			typeInfo = info
 		}
 
@@ -288,7 +306,7 @@ func (p *ASTParser) analyzeMethodReturns(ctx context.Context, results *types.Tup
 	return returns, nil
 }
 
-// analyzeReceiver analyzes method receiver
+// analyzeReceiver analyzes method receiver.
 func (p *ASTParser) analyzeReceiver(ctx context.Context, recv *types.Var) (*domain.Parameter, error) {
 	resolvedType, err := p.typeResolverPool.Get().ResolveType(ctx, recv.Type())
 	if err != nil {
@@ -308,7 +326,7 @@ func (p *ASTParser) analyzeReceiver(ctx context.Context, recv *types.Var) (*doma
 	}, nil
 }
 
-// createFieldMappings creates field mappings between source and destination types
+// createFieldMappings creates field mappings between source and destination types.
 func (p *ASTParser) createFieldMappings(ctx context.Context, params []*domain.Parameter, returns []*domain.ReturnValue, options *domain.MethodOptions) ([]*domain.FieldMapping, error) {
 	var mappings []*domain.FieldMapping
 
@@ -323,6 +341,7 @@ func (p *ASTParser) createFieldMappings(ctx context.Context, params []*domain.Pa
 			if err != nil {
 				return nil, err
 			}
+
 			mappings = append(mappings, fieldMappings...)
 		}
 	}
@@ -330,7 +349,7 @@ func (p *ASTParser) createFieldMappings(ctx context.Context, params []*domain.Pa
 	return mappings, nil
 }
 
-// matchFields matches fields between source and destination types
+// matchFields matches fields between source and destination types.
 func (p *ASTParser) matchFields(source, dest *domain.TypeInfo, options *domain.MethodOptions) ([]*domain.FieldMapping, error) {
 	var mappings []*domain.FieldMapping
 
@@ -359,6 +378,7 @@ func (p *ASTParser) matchFields(source, dest *domain.TypeInfo, options *domain.M
 				}
 
 				mappings = append(mappings, mapping)
+
 				break
 			}
 		}
@@ -367,13 +387,14 @@ func (p *ASTParser) matchFields(source, dest *domain.TypeInfo, options *domain.M
 	return mappings, nil
 }
 
-// fieldsMatch determines if two fields match based on options
+// fieldsMatch determines if two fields match based on options.
 func (p *ASTParser) fieldsMatch(source, dest *domain.Field, options *domain.MethodOptions) bool {
 	switch options.MatchRule {
 	case domain.MatchByName:
 		if options.CaseSensitive {
 			return source.Name == dest.Name
 		}
+
 		return strings.EqualFold(source.Name, dest.Name)
 	case domain.MatchByType:
 		return source.Type.String() == dest.Type.String()
@@ -385,24 +406,16 @@ func (p *ASTParser) fieldsMatch(source, dest *domain.Field, options *domain.Meth
 	}
 }
 
-// getMethodDocComment retrieves the documentation comment for a method
+// getMethodDocComment retrieves the documentation comment for a method.
 func (p *ASTParser) getMethodDocComment(file *ast.File, methodObj types.Object) *ast.CommentGroup {
 	// This is a simplified implementation
 	// In practice, you'd need to find the method declaration in the AST
 	return nil
 }
 
-// determineErrorHandling determines the error handling strategy for the method
-func (p *ASTParser) determineErrorHandling(returns []*domain.ReturnValue) domain.ErrorHandlingMethod {
-	for _, ret := range returns {
-		if ret.IsError {
-			return domain.ErrorHandlingReturn
-		}
-	}
-	return domain.ErrorHandlingNone
-}
+// determineErrorHandling function removed - was unused
 
-// isErrorType checks if a type is the built-in error type
+// isErrorType checks if a type is the built-in error type.
 func (p *ASTParser) isErrorType(t domain.Type) bool {
 	return t.Name() == "error" && t.Kind() == domain.TypeKindInterface
 }
@@ -414,6 +427,7 @@ func (p *ASTParser) copyStringMap(original map[string]string) map[string]string 
 	for k, v := range original {
 		copy[k] = v
 	}
+
 	return copy
 }
 
@@ -458,10 +472,11 @@ func (p *ASTParser) applyInterfaceAnnotationToMethod(options *domain.MethodOptio
 	return nil
 }
 
-// isGoErrorType checks if a Go types.Type is the built-in error interface
+// isGoErrorType checks if a Go types.Type is the built-in error interface.
 func isGoErrorType(t types.Type) bool {
 	if named, ok := t.(*types.Named); ok {
 		return named.Obj().Name() == "error" && named.Obj().Pkg() == nil
 	}
+
 	return false
 }

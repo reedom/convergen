@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -12,7 +13,12 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// ParseStrategy defines different parsing approaches
+// Static errors for err113 compliance.
+var (
+	ErrConfigCannotBeNil = errors.New("config cannot be nil")
+)
+
+// ParseStrategy defines different parsing approaches.
 type ParseStrategy int
 
 const (
@@ -21,7 +27,7 @@ const (
 	StrategyAuto                        // Automatically choose based on input complexity
 )
 
-// ParseResult contains comprehensive parsing results
+// ParseResult contains comprehensive parsing results.
 type ParseResult struct {
 	Methods        []*model.MethodEntry   `json:"methods"`
 	DomainMethods  []*domain.Method       `json:"domain_methods,omitempty"`
@@ -34,7 +40,7 @@ type ParseResult struct {
 	Strategy       ParseStrategy          `json:"strategy"`
 }
 
-// ParseMetrics provides detailed parsing performance information
+// ParseMetrics provides detailed parsing performance information.
 type ParseMetrics struct {
 	TotalFiles         int           `json:"total_files"`
 	TotalInterfaces    int           `json:"total_interfaces"`
@@ -48,7 +54,7 @@ type ParseMetrics struct {
 	MemoryUsagePeakMB  float64       `json:"memory_usage_peak_mb"`
 }
 
-// ParsedInterfaceInfo contains information about discovered interfaces for unified parser results
+// ParsedInterfaceInfo contains information about discovered interfaces for unified parser results.
 type ParsedInterfaceInfo struct {
 	Name        string   `json:"name"`
 	PackageName string   `json:"package_name"`
@@ -58,7 +64,7 @@ type ParsedInterfaceInfo struct {
 	Location    string   `json:"location"`
 }
 
-// ParseError represents a parsing error with rich context
+// ParseError represents a parsing error with rich context.
 type ParseError struct {
 	Code        string                 `json:"code"`
 	Phase       ProcessingPhase        `json:"phase"`
@@ -70,7 +76,7 @@ type ParseError struct {
 	Context     map[string]interface{} `json:"context,omitempty"`
 }
 
-// ParseWarning represents a non-fatal parsing issue
+// ParseWarning represents a non-fatal parsing issue.
 type ParseWarning struct {
 	Code       string                 `json:"code"`
 	Message    string                 `json:"message"`
@@ -79,7 +85,7 @@ type ParseWarning struct {
 	Context    map[string]interface{} `json:"context,omitempty"`
 }
 
-// ProcessingPhase represents different phases of parsing
+// ProcessingPhase represents different phases of parsing.
 type ProcessingPhase string
 
 const (
@@ -92,7 +98,7 @@ const (
 	PhaseCodeGeneration       ProcessingPhase = "code_generation"
 )
 
-// ConvergenParser defines the unified interface for all parser implementations
+// ConvergenParser defines the unified interface for all parser implementations.
 type ConvergenParser interface {
 	// ParseSourceFile parses a source file and returns comprehensive results
 	ParseSourceFile(ctx context.Context, sourcePath, destPath string) (*ParseResult, error)
@@ -119,7 +125,7 @@ type ConvergenParser interface {
 	GetStrategy() ParseStrategy
 }
 
-// SourceFile represents a source file to be parsed
+// SourceFile represents a source file to be parsed.
 type SourceFile struct {
 	Path       string        `json:"path"`
 	DestPath   string        `json:"dest_path,omitempty"`
@@ -128,19 +134,19 @@ type SourceFile struct {
 	Timeout    time.Duration `json:"timeout,omitempty"`
 }
 
-// ParserFactory creates parser instances based on strategy
+// ParserFactory creates parser instances based on strategy.
 type ParserFactory struct {
 	defaultConfig *ParserConfig
 }
 
-// NewParserFactory creates a new parser factory
+// NewParserFactory creates a new parser factory.
 func NewParserFactory(defaultConfig *ParserConfig) *ParserFactory {
 	return &ParserFactory{
 		defaultConfig: EnsureValidConfig(defaultConfig),
 	}
 }
 
-// CreateParser creates a parser instance using the specified strategy
+// CreateParser creates a parser instance using the specified strategy.
 func (pf *ParserFactory) CreateParser(strategy ParseStrategy) (ConvergenParser, error) {
 	switch strategy {
 	case StrategyLegacy:
@@ -154,7 +160,7 @@ func (pf *ParserFactory) CreateParser(strategy ParseStrategy) (ConvergenParser, 
 	}
 }
 
-// CreateParserWithConfig creates a parser with custom configuration
+// CreateParserWithConfig creates a parser with custom configuration.
 func (pf *ParserFactory) CreateParserWithConfig(strategy ParseStrategy, config *ParserConfig) (ConvergenParser, error) {
 	switch strategy {
 	case StrategyLegacy:
@@ -168,12 +174,12 @@ func (pf *ParserFactory) CreateParserWithConfig(strategy ParseStrategy, config *
 	}
 }
 
-// GetSupportedStrategies returns all supported parsing strategies
+// GetSupportedStrategies returns all supported parsing strategies.
 func (pf *ParserFactory) GetSupportedStrategies() []ParseStrategy {
 	return []ParseStrategy{StrategyLegacy, StrategyModern, StrategyAuto}
 }
 
-// GetStrategyName returns the human-readable name of a parsing strategy
+// GetStrategyName returns the human-readable name of a parsing strategy.
 func GetStrategyName(strategy ParseStrategy) string {
 	switch strategy {
 	case StrategyLegacy:
@@ -187,7 +193,7 @@ func GetStrategyName(strategy ParseStrategy) string {
 	}
 }
 
-// GetRecommendedStrategy returns the recommended strategy based on input characteristics
+// GetRecommendedStrategy returns the recommended strategy based on input characteristics.
 func GetRecommendedStrategy(fileCount int, averageMethodsPerInterface int, totalMethods int) ParseStrategy {
 	// Simple heuristics for strategy selection
 	if totalMethods > 50 || fileCount > 3 {
@@ -201,23 +207,25 @@ func GetRecommendedStrategy(fileCount int, averageMethodsPerInterface int, total
 	return StrategyLegacy // Use legacy parsing for simple scenarios
 }
 
-// Error implements the error interface for ParseError
+// Error implements the error interface for ParseError.
 func (pe *ParseError) Error() string {
 	if pe.Location != "" {
 		return pe.Location + ": " + pe.Message
 	}
+
 	return pe.Message
 }
 
-// Error implements the error interface for ParseWarning
+// Error implements the error interface for ParseWarning.
 func (pw *ParseWarning) Error() string {
 	if pw.Location != "" {
 		return pw.Location + ": " + pw.Message
 	}
+
 	return pw.Message
 }
 
-// LegacyParser wraps the existing Parser for backward compatibility
+// LegacyParser wraps the existing Parser for backward compatibility.
 type LegacyParser struct {
 	config   *ParserConfig
 	metrics  *ParseMetrics
@@ -225,7 +233,7 @@ type LegacyParser struct {
 	strategy ParseStrategy
 }
 
-// NewLegacyParser creates a new legacy parser instance
+// NewLegacyParser creates a new legacy parser instance.
 func NewLegacyParser(config *ParserConfig) *LegacyParser {
 	validConfig := EnsureValidConfig(config)
 	// Legacy parser should never have concurrency enabled
@@ -239,7 +247,7 @@ func NewLegacyParser(config *ParserConfig) *LegacyParser {
 	}
 }
 
-// ParseSourceFile implements ConvergenParser interface
+// ParseSourceFile implements ConvergenParser interface.
 func (lp *LegacyParser) ParseSourceFile(ctx context.Context, sourcePath, destPath string) (*ParseResult, error) {
 	startTime := time.Now()
 
@@ -277,6 +285,7 @@ func (lp *LegacyParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 
 	// Collect all methods
 	var allMethods []*model.MethodEntry
+
 	var interfaces []*ParsedInterfaceInfo
 
 	for _, info := range methodsInfo {
@@ -301,7 +310,7 @@ func (lp *LegacyParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	}, nil
 }
 
-// ParseSourceFiles implements ConvergenParser interface
+// ParseSourceFiles implements ConvergenParser interface.
 func (lp *LegacyParser) ParseSourceFiles(ctx context.Context, files []SourceFile) ([]*ParseResult, error) {
 	results := make([]*ParseResult, len(files))
 
@@ -314,32 +323,35 @@ func (lp *LegacyParser) ParseSourceFiles(ctx context.Context, files []SourceFile
 				Strategy:       lp.strategy,
 			}
 		}
+
 		results[i] = result
 	}
 
 	return results, nil
 }
 
-// SetConfig implements ConvergenParser interface
+// SetConfig implements ConvergenParser interface.
 func (lp *LegacyParser) SetConfig(config *ParserConfig) error {
 	if config == nil {
-		return fmt.Errorf("config cannot be nil")
+		return ErrConfigCannotBeNil
 	}
+
 	lp.config = config
+
 	return nil
 }
 
-// GetConfig implements ConvergenParser interface
+// GetConfig implements ConvergenParser interface.
 func (lp *LegacyParser) GetConfig() *ParserConfig {
 	return lp.config
 }
 
-// GetMetrics implements ConvergenParser interface
+// GetMetrics implements ConvergenParser interface.
 func (lp *LegacyParser) GetMetrics() *ParseMetrics {
 	return lp.metrics
 }
 
-// Validate implements ConvergenParser interface
+// Validate implements ConvergenParser interface.
 func (lp *LegacyParser) Validate(ctx context.Context, sourcePath string) ([]ParseError, []ParseWarning, error) {
 	// Basic validation - check if file exists and is readable
 	if _, err := os.Stat(sourcePath); err != nil {
@@ -347,24 +359,24 @@ func (lp *LegacyParser) Validate(ctx context.Context, sourcePath string) ([]Pars
 			Code:    "FILE_NOT_FOUND",
 			Message: fmt.Sprintf("source file not found: %s", sourcePath),
 			Phase:   PhasePackageLoading,
-		}}, nil, err
+		}}, nil, fmt.Errorf("failed to stat source file %s: %w", sourcePath, err)
 	}
 
 	return nil, nil, nil
 }
 
-// Close implements ConvergenParser interface
+// Close implements ConvergenParser interface.
 func (lp *LegacyParser) Close() error {
 	// Legacy parser doesn't require cleanup
 	return nil
 }
 
-// GetStrategy implements ConvergenParser interface
+// GetStrategy implements ConvergenParser interface.
 func (lp *LegacyParser) GetStrategy() ParseStrategy {
 	return lp.strategy
 }
 
-// updateMetrics updates internal metrics
+// updateMetrics updates internal metrics.
 func (lp *LegacyParser) updateMetrics(interfaceCount, methodCount int, processingTime time.Duration) {
 	lp.metrics.TotalInterfaces = interfaceCount
 	lp.metrics.TotalMethods = methodCount
@@ -373,7 +385,7 @@ func (lp *LegacyParser) updateMetrics(interfaceCount, methodCount int, processin
 	lp.metrics.ConcurrencyLevel = 1 // Legacy is always sequential
 }
 
-// ModernParser uses concurrent processing and enhanced features
+// ModernParser uses concurrent processing and enhanced features.
 type ModernParser struct {
 	config        *ParserConfig
 	metrics       *ParseMetrics
@@ -382,7 +394,7 @@ type ModernParser struct {
 	strategy      ParseStrategy
 }
 
-// NewModernParser creates a new modern parser instance with concurrent capabilities
+// NewModernParser creates a new modern parser instance with concurrent capabilities.
 func NewModernParser(config *ParserConfig) *ModernParser {
 	validConfig := EnsureValidConfig(config)
 	// Modern parser should always have concurrency enabled
@@ -397,7 +409,7 @@ func NewModernParser(config *ParserConfig) *ModernParser {
 	}
 }
 
-// ParseSourceFile implements ConvergenParser interface with concurrent processing
+// ParseSourceFile implements ConvergenParser interface with concurrent processing.
 func (mp *ModernParser) ParseSourceFile(ctx context.Context, sourcePath, destPath string) (*ParseResult, error) {
 	startTime := time.Now()
 
@@ -435,6 +447,7 @@ func (mp *ModernParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 
 	// Collect all methods and enhanced interface information
 	var allMethods []*model.MethodEntry
+
 	var interfaces []*ParsedInterfaceInfo
 
 	for _, info := range methodsInfo {
@@ -449,6 +462,7 @@ func (mp *ModernParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	// Get package loader metrics for enhanced reporting
 	cacheHits, cacheMisses := mp.packageLoader.GetCacheStats()
 	cacheHitRate := 0.0
+
 	if cacheHits+cacheMisses > 0 {
 		cacheHitRate = float64(cacheHits) / float64(cacheHits+cacheMisses)
 	}
@@ -466,7 +480,7 @@ func (mp *ModernParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	}, nil
 }
 
-// ParseSourceFiles implements ConvergenParser interface with enhanced concurrent processing
+// ParseSourceFiles implements ConvergenParser interface with enhanced concurrent processing.
 func (mp *ModernParser) ParseSourceFiles(ctx context.Context, files []SourceFile) ([]*ParseResult, error) {
 	results := make([]*ParseResult, len(files))
 
@@ -485,13 +499,14 @@ func (mp *ModernParser) ParseSourceFiles(ctx context.Context, files []SourceFile
 				Strategy:       mp.strategy,
 			}
 		}
+
 		results[i] = result
 	}
 
 	return results, nil
 }
 
-// parseSourceFilesConcurrent processes multiple files concurrently
+// parseSourceFilesConcurrent processes multiple files concurrently.
 func (mp *ModernParser) parseSourceFilesConcurrent(ctx context.Context, files []SourceFile) ([]*ParseResult, error) {
 	results := make([]*ParseResult, len(files))
 
@@ -501,6 +516,7 @@ func (mp *ModernParser) parseSourceFilesConcurrent(ctx context.Context, files []
 
 	for i, file := range files {
 		i, file := i, file // Capture loop variables
+
 		g.Go(func() error {
 			result, err := mp.ParseSourceFile(gctx, file.Path, file.DestPath)
 			if err != nil {
@@ -510,7 +526,9 @@ func (mp *ModernParser) parseSourceFilesConcurrent(ctx context.Context, files []
 					Strategy:       mp.strategy,
 				}
 			}
+
 			results[i] = result
+
 			return nil // Don't fail the entire group for individual file failures
 		})
 	}
@@ -522,10 +540,10 @@ func (mp *ModernParser) parseSourceFilesConcurrent(ctx context.Context, files []
 	return results, nil
 }
 
-// SetConfig implements ConvergenParser interface
+// SetConfig implements ConvergenParser interface.
 func (mp *ModernParser) SetConfig(config *ParserConfig) error {
 	if config == nil {
-		return fmt.Errorf("config cannot be nil")
+		return ErrConfigCannotBeNil
 	}
 
 	// Ensure concurrency is enabled for modern parser
@@ -540,19 +558,20 @@ func (mp *ModernParser) SetConfig(config *ParserConfig) error {
 	return nil
 }
 
-// GetConfig implements ConvergenParser interface
+// GetConfig implements ConvergenParser interface.
 func (mp *ModernParser) GetConfig() *ParserConfig {
 	return mp.config
 }
 
-// GetMetrics implements ConvergenParser interface
+// GetMetrics implements ConvergenParser interface.
 func (mp *ModernParser) GetMetrics() *ParseMetrics {
 	return mp.metrics
 }
 
-// Validate implements ConvergenParser interface with enhanced validation
+// Validate implements ConvergenParser interface with enhanced validation.
 func (mp *ModernParser) Validate(ctx context.Context, sourcePath string) ([]ParseError, []ParseWarning, error) {
 	var errors []ParseError
+
 	var warnings []ParseWarning
 
 	// Check if file exists and is readable
@@ -562,7 +581,8 @@ func (mp *ModernParser) Validate(ctx context.Context, sourcePath string) ([]Pars
 			Message: fmt.Sprintf("source file not found: %s", sourcePath),
 			Phase:   PhasePackageLoading,
 		})
-		return errors, warnings, err
+
+		return errors, warnings, fmt.Errorf("failed to stat source file %s: %w", sourcePath, err)
 	}
 
 	// Enhanced validation using package loader
@@ -573,6 +593,7 @@ func (mp *ModernParser) Validate(ctx context.Context, sourcePath string) ([]Pars
 			Message: fmt.Sprintf("package loading failed: %s", err.Error()),
 			Phase:   PhasePackageLoading,
 		})
+
 		return errors, warnings, err
 	}
 
@@ -593,20 +614,21 @@ func (mp *ModernParser) Validate(ctx context.Context, sourcePath string) ([]Pars
 	return errors, warnings, nil
 }
 
-// Close implements ConvergenParser interface
+// Close implements ConvergenParser interface.
 func (mp *ModernParser) Close() error {
 	if mp.packageLoader != nil {
 		mp.packageLoader.ClearCache()
 	}
+
 	return nil
 }
 
-// GetStrategy implements ConvergenParser interface
+// GetStrategy implements ConvergenParser interface.
 func (mp *ModernParser) GetStrategy() ParseStrategy {
 	return mp.strategy
 }
 
-// updateMetrics updates internal metrics with concurrent processing information
+// updateMetrics updates internal metrics with concurrent processing information.
 func (mp *ModernParser) updateMetrics(interfaceCount, methodCount int, processingTime time.Duration, cacheHitRate float64) {
 	mp.metrics.TotalInterfaces = interfaceCount
 	mp.metrics.TotalMethods = methodCount
@@ -616,7 +638,7 @@ func (mp *ModernParser) updateMetrics(interfaceCount, methodCount int, processin
 	mp.metrics.CacheHitRate = cacheHitRate
 }
 
-// AdaptiveParser dynamically chooses between legacy and modern strategies
+// AdaptiveParser dynamically chooses between legacy and modern strategies.
 type AdaptiveParser struct {
 	config           *ParserConfig
 	metrics          *ParseMetrics
@@ -625,7 +647,7 @@ type AdaptiveParser struct {
 	adaptiveStrategy ParseStrategy
 }
 
-// NewAdaptiveParser creates a new adaptive parser instance
+// NewAdaptiveParser creates a new adaptive parser instance.
 func NewAdaptiveParser(config *ParserConfig) *AdaptiveParser {
 	validConfig := EnsureValidConfig(config)
 	// Adaptive parser starts with concurrency disabled and enables it as needed
@@ -639,7 +661,7 @@ func NewAdaptiveParser(config *ParserConfig) *AdaptiveParser {
 	}
 }
 
-// ParseSourceFile implements ConvergenParser interface with adaptive strategy selection
+// ParseSourceFile implements ConvergenParser interface with adaptive strategy selection.
 func (ap *AdaptiveParser) ParseSourceFile(ctx context.Context, sourcePath, destPath string) (*ParseResult, error) {
 	startTime := time.Now()
 
@@ -662,7 +684,7 @@ func (ap *AdaptiveParser) ParseSourceFile(ctx context.Context, sourcePath, destP
 	// Parse using selected strategy
 	result, err := parser.ParseSourceFile(ctx, sourcePath, destPath)
 	if err != nil {
-		return result, err
+		return result, fmt.Errorf("adaptive parser source file parsing failed: %w", err)
 	}
 
 	// Update result to reflect adaptive strategy
@@ -674,7 +696,7 @@ func (ap *AdaptiveParser) ParseSourceFile(ctx context.Context, sourcePath, destP
 	return result, nil
 }
 
-// ParseSourceFiles implements ConvergenParser interface with adaptive multi-file strategy
+// ParseSourceFiles implements ConvergenParser interface with adaptive multi-file strategy.
 func (ap *AdaptiveParser) ParseSourceFiles(ctx context.Context, files []SourceFile) ([]*ParseResult, error) {
 	if len(files) == 0 {
 		return []*ParseResult{}, nil
@@ -695,7 +717,7 @@ func (ap *AdaptiveParser) ParseSourceFiles(ctx context.Context, files []SourceFi
 	// Parse using selected strategy
 	results, err := parser.ParseSourceFiles(ctx, files)
 	if err != nil {
-		return results, err
+		return results, fmt.Errorf("adaptive parser source files parsing failed: %w", err)
 	}
 
 	// Update all results to reflect adaptive strategy
@@ -708,27 +730,30 @@ func (ap *AdaptiveParser) ParseSourceFiles(ctx context.Context, files []SourceFi
 	return results, nil
 }
 
-// SetConfig implements ConvergenParser interface
+// SetConfig implements ConvergenParser interface.
 func (ap *AdaptiveParser) SetConfig(config *ParserConfig) error {
 	if config == nil {
-		return fmt.Errorf("config cannot be nil")
+		return ErrConfigCannotBeNil
 	}
+
 	ap.config = config
 
 	// Update current parser if it exists
 	if ap.currentParser != nil {
-		return ap.currentParser.SetConfig(config)
+		if err := ap.currentParser.SetConfig(config); err != nil {
+			return fmt.Errorf("failed to set config on current parser: %w", err)
+		}
 	}
 
 	return nil
 }
 
-// GetConfig implements ConvergenParser interface
+// GetConfig implements ConvergenParser interface.
 func (ap *AdaptiveParser) GetConfig() *ParserConfig {
 	return ap.config
 }
 
-// GetMetrics implements ConvergenParser interface
+// GetMetrics implements ConvergenParser interface.
 func (ap *AdaptiveParser) GetMetrics() *ParseMetrics {
 	if ap.currentParser != nil {
 		// Get metrics from current parser and merge with adaptive metrics
@@ -744,10 +769,11 @@ func (ap *AdaptiveParser) GetMetrics() *ParseMetrics {
 		ap.metrics.ConcurrencyLevel = currentMetrics.ConcurrencyLevel
 		ap.metrics.MemoryUsagePeakMB = currentMetrics.MemoryUsagePeakMB
 	}
+
 	return ap.metrics
 }
 
-// Validate implements ConvergenParser interface
+// Validate implements ConvergenParser interface.
 func (ap *AdaptiveParser) Validate(ctx context.Context, sourcePath string) ([]ParseError, []ParseWarning, error) {
 	// Use modern parser for validation as it has more comprehensive validation
 	modernParser := NewModernParser(ap.config)
@@ -756,28 +782,30 @@ func (ap *AdaptiveParser) Validate(ctx context.Context, sourcePath string) ([]Pa
 	return modernParser.Validate(ctx, sourcePath)
 }
 
-// Close implements ConvergenParser interface
+// Close implements ConvergenParser interface.
 func (ap *AdaptiveParser) Close() error {
 	if ap.currentParser != nil {
-		return ap.currentParser.Close()
+		if err := ap.currentParser.Close(); err != nil {
+			return fmt.Errorf("failed to close current parser: %w", err)
+		}
 	}
+
 	return nil
 }
 
-// GetStrategy implements ConvergenParser interface
+// GetStrategy implements ConvergenParser interface.
 func (ap *AdaptiveParser) GetStrategy() ParseStrategy {
 	return ap.strategy
 }
 
-// GetAdaptiveStrategy returns the actual strategy being used by the adaptive parser
+// GetAdaptiveStrategy returns the actual strategy being used by the adaptive parser.
 func (ap *AdaptiveParser) GetAdaptiveStrategy() ParseStrategy {
 	return ap.adaptiveStrategy
 }
 
-// determineStrategy analyzes input characteristics to determine optimal parsing strategy
+// determineStrategy analyzes input characteristics to determine optimal parsing strategy.
 func (ap *AdaptiveParser) determineStrategy(sourcePath, destPath string) ParseStrategy {
 	// Quick heuristics for single file analysis
-
 	// Check file size - large files benefit from concurrent processing
 	if stat, err := os.Stat(sourcePath); err == nil {
 		fileSize := stat.Size()
@@ -790,7 +818,7 @@ func (ap *AdaptiveParser) determineStrategy(sourcePath, destPath string) ParseSt
 	return StrategyLegacy
 }
 
-// determineMultiFileStrategy analyzes multiple files to determine optimal strategy
+// determineMultiFileStrategy analyzes multiple files to determine optimal strategy.
 func (ap *AdaptiveParser) determineMultiFileStrategy(files []SourceFile) ParseStrategy {
 	fileCount := len(files)
 
@@ -802,7 +830,7 @@ func (ap *AdaptiveParser) determineMultiFileStrategy(files []SourceFile) ParseSt
 	return GetRecommendedStrategy(fileCount, averageMethodsPerInterface, estimatedMethods)
 }
 
-// createParserForStrategy creates the appropriate parser for the given strategy
+// createParserForStrategy creates the appropriate parser for the given strategy.
 func (ap *AdaptiveParser) createParserForStrategy(strategy ParseStrategy) (ConvergenParser, error) {
 	// Clone config to avoid modifying the original
 	configCopy := CloneConfig(ap.config)
@@ -818,7 +846,7 @@ func (ap *AdaptiveParser) createParserForStrategy(strategy ParseStrategy) (Conve
 	}
 }
 
-// updateMetricsFromParser updates adaptive parser metrics from underlying parser
+// updateMetricsFromParser updates adaptive parser metrics from underlying parser.
 func (ap *AdaptiveParser) updateMetricsFromParser(parser ConvergenParser, totalTime time.Duration) {
 	if parser == nil {
 		return

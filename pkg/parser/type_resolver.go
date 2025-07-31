@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go/types"
 	"reflect"
@@ -13,14 +14,20 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// TypeResolver provides concurrent type resolution with caching
+// Static errors for err113 compliance.
+var (
+	ErrUnsupportedType                = errors.New("unsupported type")
+	ErrExpectedSignatureForMethod     = errors.New("expected signature for method")
+)
+
+// TypeResolver provides concurrent type resolution with caching.
 type TypeResolver struct {
 	cache       *TypeCache
 	logger      *zap.Logger
 	typeInfoMap sync.Map // Cache for domain.TypeInfo
 }
 
-// TypeResolverPool manages a pool of type resolvers for concurrent processing
+// TypeResolverPool manages a pool of type resolvers for concurrent processing.
 type TypeResolverPool struct {
 	resolvers []*TypeResolver
 	current   int
@@ -29,7 +36,7 @@ type TypeResolverPool struct {
 	closed    bool
 }
 
-// NewTypeResolver creates a new type resolver
+// NewTypeResolver creates a new type resolver.
 func NewTypeResolver(cache *TypeCache, logger *zap.Logger) *TypeResolver {
 	return &TypeResolver{
 		cache:  cache,
@@ -37,7 +44,7 @@ func NewTypeResolver(cache *TypeCache, logger *zap.Logger) *TypeResolver {
 	}
 }
 
-// NewTypeResolverPool creates a pool of type resolvers with a shared cache
+// NewTypeResolverPool creates a pool of type resolvers with a shared cache.
 func NewTypeResolverPool(size int, cache *TypeCache, logger *zap.Logger) *TypeResolverPool {
 	resolvers := make([]*TypeResolver, size)
 
@@ -51,7 +58,7 @@ func NewTypeResolverPool(size int, cache *TypeCache, logger *zap.Logger) *TypeRe
 	}
 }
 
-// Get returns the next available type resolver in round-robin fashion
+// Get returns the next available type resolver in round-robin fashion.
 func (p *TypeResolverPool) Get() *TypeResolver {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -62,19 +69,21 @@ func (p *TypeResolverPool) Get() *TypeResolver {
 
 	resolver := p.resolvers[p.current]
 	p.current = (p.current + 1) % len(p.resolvers)
+
 	return resolver
 }
 
-// Close closes the type resolver pool
+// Close closes the type resolver pool.
 func (p *TypeResolverPool) Close() error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
 	p.closed = true
+
 	return nil
 }
 
-// ResolveType converts a go/types.Type to domain.Type with full generics support
+// ResolveType converts a go/types.Type to domain.Type with full generics support.
 func (tr *TypeResolver) ResolveType(ctx context.Context, goType types.Type) (domain.Type, error) {
 	// Check cache first
 	if cached := tr.cache.Get(goType.String()); cached != nil {
@@ -83,6 +92,7 @@ func (tr *TypeResolver) ResolveType(ctx context.Context, goType types.Type) (dom
 
 	// Resolve type based on its underlying structure
 	var domainType domain.Type
+
 	var err error
 
 	switch t := goType.(type) {
@@ -109,7 +119,7 @@ func (tr *TypeResolver) ResolveType(ctx context.Context, goType types.Type) (dom
 	case *types.TypeParam:
 		domainType, err = tr.resolveTypeParam(ctx, t)
 	default:
-		err = fmt.Errorf("unsupported type: %T", goType)
+		err = fmt.Errorf("%w: %T", ErrUnsupportedType, goType)
 	}
 
 	if err != nil {
@@ -129,13 +139,15 @@ func (tr *TypeResolver) resolveBasicType(basic *types.Basic) (domain.Type, error
 	return domain.NewBasicType(basic.Name(), kind), nil
 }
 
-// resolveNamedType handles named types with generics support
+// resolveNamedType handles named types with generics support.
 func (tr *TypeResolver) resolveNamedType(ctx context.Context, named *types.Named) (domain.Type, error) {
 	// Check if this is a generic type
 	var typeParams []domain.TypeParam
+
 	if named.TypeParams() != nil {
 		for i := 0; i < named.TypeParams().Len(); i++ {
 			param := named.TypeParams().At(i)
+
 			constraint, err := tr.ResolveType(ctx, param.Constraint())
 			if err != nil {
 				return nil, fmt.Errorf("failed to resolve type parameter constraint: %w", err)
@@ -158,7 +170,7 @@ func (tr *TypeResolver) resolveNamedType(ctx context.Context, named *types.Named
 	return domain.NewNamedType(named.Obj().Name(), underlying, typeParams), nil
 }
 
-// resolvePointerType handles pointer types
+// resolvePointerType handles pointer types.
 func (tr *TypeResolver) resolvePointerType(ctx context.Context, ptr *types.Pointer) (domain.Type, error) {
 	elem, err := tr.ResolveType(ctx, ptr.Elem())
 	if err != nil {
@@ -168,7 +180,7 @@ func (tr *TypeResolver) resolvePointerType(ctx context.Context, ptr *types.Point
 	return domain.NewPointerType(elem, ""), nil
 }
 
-// resolveSliceType handles slice types
+// resolveSliceType handles slice types.
 func (tr *TypeResolver) resolveSliceType(ctx context.Context, slice *types.Slice) (domain.Type, error) {
 	elem, err := tr.ResolveType(ctx, slice.Elem())
 	if err != nil {
@@ -178,7 +190,7 @@ func (tr *TypeResolver) resolveSliceType(ctx context.Context, slice *types.Slice
 	return domain.NewSliceType(elem, ""), nil
 }
 
-// resolveArrayType handles array types
+// resolveArrayType handles array types.
 func (tr *TypeResolver) resolveArrayType(ctx context.Context, array *types.Array) (domain.Type, error) {
 	elem, err := tr.ResolveType(ctx, array.Elem())
 	if err != nil {
@@ -188,7 +200,7 @@ func (tr *TypeResolver) resolveArrayType(ctx context.Context, array *types.Array
 	return domain.NewArrayType(elem, int(array.Len())), nil
 }
 
-// resolveMapType handles map types
+// resolveMapType handles map types.
 func (tr *TypeResolver) resolveMapType(ctx context.Context, mapType *types.Map) (domain.Type, error) {
 	key, err := tr.ResolveType(ctx, mapType.Key())
 	if err != nil {
@@ -203,7 +215,7 @@ func (tr *TypeResolver) resolveMapType(ctx context.Context, mapType *types.Map) 
 	return domain.NewMapType(key, value), nil
 }
 
-// resolveStructType handles struct types
+// resolveStructType handles struct types.
 func (tr *TypeResolver) resolveStructType(ctx context.Context, structType *types.Struct) (domain.Type, error) {
 	fields := make([]*domain.Field, structType.NumFields())
 
@@ -211,10 +223,11 @@ func (tr *TypeResolver) resolveStructType(ctx context.Context, structType *types
 	g, gctx := errgroup.WithContext(ctx)
 
 	for i := 0; i < structType.NumFields(); i++ {
-		i := i // Capture for goroutine
+		// Capture for goroutine
 		g.Go(func() error {
 			field := structType.Field(i)
 			fieldType, err := tr.ResolveType(gctx, field.Type())
+
 			if err != nil {
 				return fmt.Errorf("failed to resolve field %s: %w", field.Name(), err)
 			}
@@ -238,7 +251,7 @@ func (tr *TypeResolver) resolveStructType(ctx context.Context, structType *types
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("concurrent type resolution failed: %w", err)
 	}
 
 	// Convert []*domain.Field to []domain.Field
@@ -246,18 +259,20 @@ func (tr *TypeResolver) resolveStructType(ctx context.Context, structType *types
 	for i, field := range fields {
 		fieldSlice[i] = *field
 	}
+
 	return domain.NewStructType("", fieldSlice, ""), nil
 }
 
-// resolveInterfaceType handles interface types
+// resolveInterfaceType handles interface types.
 func (tr *TypeResolver) resolveInterfaceType(ctx context.Context, iface *types.Interface) (domain.Type, error) {
 	methods := make([]*domain.Method, iface.NumMethods())
 
 	for i := 0; i < iface.NumMethods(); i++ {
 		method := iface.Method(i)
 		_, ok := method.Type().(*types.Signature)
+
 		if !ok {
-			return nil, fmt.Errorf("expected signature for method %s", method.Name())
+			return nil, fmt.Errorf("%w %s", ErrExpectedSignatureForMethod, method.Name())
 		}
 
 		// Convert signature to domain method
@@ -270,7 +285,7 @@ func (tr *TypeResolver) resolveInterfaceType(ctx context.Context, iface *types.I
 	return domain.NewInterfaceType(methods), nil
 }
 
-// resolveChanType handles channel types
+// resolveChanType handles channel types.
 func (tr *TypeResolver) resolveChanType(ctx context.Context, chanType *types.Chan) (domain.Type, error) {
 	elem, err := tr.ResolveType(ctx, chanType.Elem())
 	if err != nil {
@@ -278,35 +293,40 @@ func (tr *TypeResolver) resolveChanType(ctx context.Context, chanType *types.Cha
 	}
 
 	direction := tr.mapChanDirection(chanType.Dir())
+
 	return domain.NewChannelType(elem, direction), nil
 }
 
-// resolveSignatureType handles function signature types
+// resolveSignatureType handles function signature types.
 func (tr *TypeResolver) resolveSignatureType(ctx context.Context, sig *types.Signature) (domain.Type, error) {
 	// Resolve parameters
 	params := make([]domain.Type, sig.Params().Len())
+
 	for i := 0; i < sig.Params().Len(); i++ {
 		param, err := tr.ResolveType(ctx, sig.Params().At(i).Type())
 		if err != nil {
 			return nil, err
 		}
+
 		params[i] = param
 	}
 
 	// Resolve returns
 	returns := make([]domain.Type, sig.Results().Len())
+
 	for i := 0; i < sig.Results().Len(); i++ {
 		result, err := tr.ResolveType(ctx, sig.Results().At(i).Type())
 		if err != nil {
 			return nil, err
 		}
+
 		returns[i] = result
 	}
 
 	return domain.NewFunctionType(params, returns, sig.Variadic()), nil
 }
 
-// resolveTypeParam handles type parameters (generics)
+// resolveTypeParam handles type parameters (generics).
 func (tr *TypeResolver) resolveTypeParam(ctx context.Context, param *types.TypeParam) (domain.Type, error) {
 	constraint, err := tr.ResolveType(ctx, param.Constraint())
 	if err != nil {
@@ -316,7 +336,7 @@ func (tr *TypeResolver) resolveTypeParam(ctx context.Context, param *types.TypeP
 	return domain.NewTypeParameterType(param.Obj().Name(), constraint), nil
 }
 
-// analyzeTypeStructure creates detailed type information for field mapping
+// analyzeTypeStructure creates detailed type information for field mapping.
 func (p *ASTParser) analyzeTypeStructure(ctx context.Context, domainType domain.Type) (*domain.TypeInfo, error) {
 	// Check if already cached
 	if cached, ok := p.typeResolverPool.resolvers[0].typeInfoMap.Load(domainType.Name()); ok {
@@ -413,6 +433,7 @@ func (p *ASTParser) analyzeStructTypeInfo(ctx context.Context, domainType domain
 	// Get fields and convert to pointer slice
 	fields := structType.Fields()
 	fieldPtrs := make([]*domain.Field, len(fields))
+
 	for i := range fields {
 		fieldPtrs[i] = &fields[i]
 	}

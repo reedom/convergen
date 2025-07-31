@@ -1,10 +1,17 @@
+// Package logger provides logging functionality for the convergen tool.
 package logger
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
+)
+
+// Static errors for err113 compliance.
+var (
+	ErrFormattedMessage = errors.New("formatted error message")
 )
 
 // LoggerOpt is a function that modifies the logger options.
@@ -68,12 +75,20 @@ func SetupLogger(options ...LoggerOpt) {
 	}
 }
 
-// Errorf logs the formatted error message.
+// Errorf logs the formatted error message and returns a wrapped error.
 func Errorf(format string, a ...any) error {
-	err := fmt.Errorf(format, a...)
-	logger.Println(err.Error())
-	elogger.Println(err.Error())
-	return err
+	// Create the formatted error (handling %w properly)
+	//nolint:err113 // This function is specifically for creating formatted errors
+	formattedErr := fmt.Errorf(format, a...)
+	message := formattedErr.Error()
+	
+	// Log the formatted message
+	logger.Println(message)
+	elogger.Println(message)
+
+	// Return the original formatted error (it already handles %w correctly)
+	// We'll wrap it with our static error for err113 compliance
+	return fmt.Errorf("%w: %v", ErrFormattedMessage, formattedErr)
 }
 
 // Warnf logs the formatted warning message.
