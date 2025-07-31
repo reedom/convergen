@@ -27,6 +27,11 @@ const (
 	SeverityCritical
 )
 
+// String constants for goconst compliance.
+const (
+	unknownSeverity = "UNKNOWN"
+)
+
 // String returns the string representation of ErrorSeverity.
 func (s ErrorSeverity) String() string {
 	switch s {
@@ -39,7 +44,7 @@ func (s ErrorSeverity) String() string {
 	case SeverityCritical:
 		return "CRITICAL"
 	default:
-		return "UNKNOWN"
+		return unknownSeverity
 	}
 }
 
@@ -77,7 +82,7 @@ func (c ErrorCategory) String() string {
 	case CategoryPerformance:
 		return "PERFORMANCE"
 	default:
-		return "UNKNOWN"
+		return unknownSeverity
 	}
 }
 

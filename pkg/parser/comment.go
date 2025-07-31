@@ -21,6 +21,27 @@ var (
 	ErrInvalidNotationFormat = errors.New("invalid notation format")
 )
 
+// Annotation keywords for goconst compliance.
+const (
+	annotationStyle       = "style"
+	annotationMatch       = "match"
+	annotationCase        = "case"
+	annotationCaseOff     = "case:off"
+	annotationGetter      = "getter"
+	annotationGetterOff   = "getter:off"
+	annotationStringer    = "stringer"
+	annotationStringerOff = "stringer:off"
+	annotationTypecast    = "typecast"
+	annotationTypeCastOff = "typecast:off"
+	annotationReverse     = "reverse"
+	annotationSkip        = "skip"
+	annotationMap         = "map"
+	annotationConv        = "conv"
+	annotationLiteral     = "literal"
+	annotationPreprocess  = "preprocess"
+	annotationPostprocess = "postprocess"
+)
+
 var (
 	// reNotation is a regular expression that matches a notation.
 	reNotation = regexp.MustCompile(`^\s*//\s*:(\S+)\s*(.*)$`)
@@ -54,9 +75,9 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 		}
 
 		switch m[1] {
-		case "convergen":
+		case buildTag:
 			// do nothing
-		case "style":
+		case annotationStyle:
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <style> arg", p.fset.Position(n.Pos()))
 			} else if style, ok := gmodel.NewDstVarStyleFromValue(args[0]); !ok {
@@ -64,7 +85,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			} else {
 				opts.Style = style
 			}
-		case "match":
+		case annotationMatch:
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <algorithm> arg", p.fset.Position(n.Pos()))
 			} else if rule, ok := gmodel.NewMatchRuleFromValue(args[0]); !ok {
@@ -72,21 +93,21 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			} else {
 				opts.Rule = rule
 			}
-		case "case":
+		case annotationCase:
 			opts.ExactCase = true
-		case "case:off":
+		case annotationCaseOff:
 			opts.ExactCase = false
-		case "getter":
+		case annotationGetter:
 			opts.Getter = true
-		case "getter:off":
+		case annotationGetterOff:
 			opts.Getter = false
-		case "stringer":
+		case annotationStringer:
 			opts.Stringer = true
-		case "stringer:off":
+		case annotationStringerOff:
 			opts.Stringer = false
-		case "typecast":
+		case annotationTypecast:
 			opts.Typecast = true
-		case "typecast:off":
+		case annotationTypeCastOff:
 			opts.Typecast = false
 		case "recv":
 			if len(args) == 0 {
@@ -96,10 +117,10 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			}
 
 			opts.Receiver = args[0]
-		case "reverse":
+		case annotationReverse:
 			opts.Reverse = true
 			posReverse = n.Pos()
-		case "skip":
+		case annotationSkip:
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
 			}
@@ -110,7 +131,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			}
 
 			opts.SkipFields = append(opts.SkipFields, matcher)
-		case "map":
+		case annotationMap:
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
@@ -124,7 +145,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			} else {
 				opts.NameMapper = append(opts.NameMapper, matcher)
 			}
-		case "conv":
+		case annotationConv:
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
@@ -138,7 +159,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 
 			converter := option.NewFieldConverter(args[0], src, dst, n.Pos())
 			opts.Converters = append(opts.Converters, converter)
-		case "literal":
+		case annotationLiteral:
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <dst> <literal> args", p.fset.Position(n.Pos()))
 			}
@@ -146,7 +167,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			m = reLiteral.FindStringSubmatch(m[2])
 			setter := option.NewLiteralSetter(args[0], m[1], n.Pos())
 			opts.Literals = append(opts.Literals, setter)
-		case "preprocess":
+		case annotationPreprocess:
 			if len(args) < 1 {
 				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
 			}
@@ -157,7 +178,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			}
 
 			opts.PreProcess = pp
-		case "postprocess":
+		case annotationPostprocess:
 			if len(args) < 1 {
 				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
 			}

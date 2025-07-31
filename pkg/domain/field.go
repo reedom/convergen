@@ -35,6 +35,10 @@ const (
 	ConverterStrategyType = "converter"
 	// LiteralStrategyType represents the literal value strategy type.
 	LiteralStrategyType = "literal"
+	// ExpressionStrategyType represents the expression evaluation strategy type.
+	ExpressionStrategyType = "expression"
+	// CustomStrategyType represents the custom strategy type.
+	CustomStrategyType = "custom"
 )
 
 // Field represents a struct field with complete metadata.

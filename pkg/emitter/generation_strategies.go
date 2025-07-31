@@ -134,11 +134,11 @@ func (cls *CompositeLiteralStrategy) GetRequiredImports(method *domain.MethodRes
 func (cls *CompositeLiteralStrategy) generateFieldAssignment(fieldName string, field *executor.FieldResult) string {
 	// Generate simple field assignment for composite literal
 	switch field.StrategyUsed {
-	case "direct":
+	case domain.DirectStrategyType:
 		return fmt.Sprintf("%s: src.%s", fieldName, fieldName)
-	case "converter":
+	case domain.ConverterStrategyType:
 		return fmt.Sprintf("%s: converter.Convert(src.%s)", fieldName, fieldName)
-	case "literal":
+	case domain.LiteralStrategyType:
 		return fmt.Sprintf("%s: %v", fieldName, field.Result)
 	default:
 		return fmt.Sprintf("%s: src.%s", fieldName, fieldName)
@@ -249,10 +249,10 @@ func (abs *AssignmentBlockStrategy) generateFieldAssignment(fieldName string, fi
 	var assignment, errorHandling string
 
 	switch field.StrategyUsed {
-	case "direct":
+	case domain.DirectStrategyType:
 		assignment = fmt.Sprintf("dest.%s = src.%s", fieldName, fieldName)
 
-	case "converter":
+	case domain.ConverterStrategyType:
 		if field.Error != nil || !field.Success {
 			assignment = fmt.Sprintf("converted_%s, err := converter.Convert(src.%s)", fieldName, fieldName)
 			errorHandling = fmt.Sprintf("if err != nil {\n%s%sreturn nil, fmt.Errorf(\"converting %s: %%w\", err)\n%s}",
@@ -262,10 +262,10 @@ func (abs *AssignmentBlockStrategy) generateFieldAssignment(fieldName string, fi
 			assignment = fmt.Sprintf("dest.%s = converter.Convert(src.%s)", fieldName, fieldName)
 		}
 
-	case "literal":
+	case domain.LiteralStrategyType:
 		assignment = fmt.Sprintf("dest.%s = %v", fieldName, field.Result)
 
-	case "expression":
+	case domain.ExpressionStrategyType:
 		if field.Error != nil || !field.Success {
 			assignment = fmt.Sprintf("result_%s, err := expression.Evaluate(src.%s)", fieldName, fieldName)
 			errorHandling = fmt.Sprintf("if err != nil {\n%s%sreturn nil, fmt.Errorf(\"evaluating expression for %s: %%w\", err)\n%s}",
@@ -441,14 +441,14 @@ func (mas *MixedApproachStrategy) isSimpleField(field *executor.FieldResult) boo
 	return field.Success &&
 		field.Error == nil &&
 		field.RetryCount == 0 &&
-		(field.StrategyUsed == "direct" || field.StrategyUsed == "literal")
+		(field.StrategyUsed == domain.DirectStrategyType || field.StrategyUsed == domain.LiteralStrategyType)
 }
 
 func (mas *MixedApproachStrategy) generateSimpleAssignment(fieldName string, field *executor.FieldResult) string {
 	switch field.StrategyUsed {
-	case "direct":
+	case domain.DirectStrategyType:
 		return fmt.Sprintf("%s: src.%s", fieldName, fieldName)
-	case "literal":
+	case domain.LiteralStrategyType:
 		return fmt.Sprintf("%s: %v", fieldName, field.Result)
 	default:
 		return fmt.Sprintf("%s: src.%s", fieldName, fieldName)
@@ -459,7 +459,7 @@ func (mas *MixedApproachStrategy) generateComplexAssignment(fieldName string, fi
 	var assignment, errorHandling string
 
 	switch field.StrategyUsed {
-	case "converter":
+	case domain.ConverterStrategyType:
 		if field.Error != nil || !field.Success {
 			assignment = fmt.Sprintf("converted_%s, err := converter.Convert(src.%s)", fieldName, fieldName)
 			errorHandling = fmt.Sprintf("if err != nil {\n%s%sreturn nil, fmt.Errorf(\"converting %s: %%w\", err)\n%s}",
@@ -469,7 +469,7 @@ func (mas *MixedApproachStrategy) generateComplexAssignment(fieldName string, fi
 			assignment = fmt.Sprintf("dest.%s = converter.Convert(src.%s)", fieldName, fieldName)
 		}
 
-	case "expression":
+	case domain.ExpressionStrategyType:
 		if field.Error != nil || !field.Success {
 			assignment = fmt.Sprintf("result_%s, err := expression.Evaluate(src.%s)", fieldName, fieldName)
 			errorHandling = fmt.Sprintf("if err != nil {\n%s%sreturn nil, fmt.Errorf(\"evaluating expression for %s: %%w\", err)\n%s}",
@@ -479,7 +479,7 @@ func (mas *MixedApproachStrategy) generateComplexAssignment(fieldName string, fi
 			assignment = fmt.Sprintf("dest.%s = expression.Evaluate(src.%s)", fieldName, fieldName)
 		}
 
-	case "custom":
+	case domain.CustomStrategyType:
 		assignment = fmt.Sprintf("dest.%s = custom.Transform(src.%s)", fieldName, fieldName)
 
 	default:

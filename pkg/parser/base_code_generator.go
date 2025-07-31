@@ -25,6 +25,11 @@ var (
 	ErrSecondReturnMustBeError            = errors.New("second return value must be error type")
 )
 
+// Type name constants for goconst compliance.
+const (
+	errorTypeName = "error"
+)
+
 // BaseCodeGenerator generates base code by stripping convergen annotations.
 type BaseCodeGenerator struct {
 	fileSet *token.FileSet
@@ -399,7 +404,7 @@ func (p *ASTParser) validateConverterCompatibility(mapping *domain.FieldMapping,
 
 	// If two returns, second must be error
 	if len(returns) == 2 {
-		if returns[1].Type.Name() != "error" {
+		if returns[1].Type.Name() != errorTypeName {
 			return ErrSecondReturnMustBeError
 		}
 	}

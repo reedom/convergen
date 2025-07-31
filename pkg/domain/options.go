@@ -20,7 +20,7 @@ func (v VariableStyle) String() string {
 	case StylePascalCase:
 		return "PascalCase"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
@@ -42,7 +42,7 @@ func (m MatchRule) String() string {
 	case MatchByTag:
 		return "tag"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
@@ -70,7 +70,7 @@ func (c ConversionType) String() string {
 	case ConversionLiteral:
 		return "literal"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
@@ -95,7 +95,7 @@ func (e ErrorHandlingMethod) String() string {
 	case ErrorHandlingLog:
 		return "log"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
@@ -155,6 +155,6 @@ func (c ChannelDirection) String() string {
 	case ChannelReceiveOnly:
 		return "receive-only"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
