@@ -64,6 +64,7 @@ func (n StructFieldNode) MatcherExpr() string {
 	if parentExpr == "" {
 		return n.field.Name()
 	}
+
 	return fmt.Sprintf("%v.%v", parentExpr, n.field.Name())
 }
 
@@ -121,6 +122,7 @@ func (n StructMethodNode) MatcherExpr() string {
 	if parentExpr == "" {
 		return n.method.Name() + "()"
 	}
+
 	return fmt.Sprintf("%v.%v()", parentExpr, n.method.Name())
 }
 

@@ -16,8 +16,8 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrUnsupportedType                = errors.New("unsupported type")
-	ErrExpectedSignatureForMethod     = errors.New("expected signature for method")
+	ErrUnsupportedType            = errors.New("unsupported type")
+	ErrExpectedSignatureForMethod = errors.New("expected signature for method")
 )
 
 // TypeResolver provides concurrent type resolution with caching.
@@ -264,7 +264,7 @@ func (tr *TypeResolver) resolveStructType(ctx context.Context, structType *types
 }
 
 // resolveInterfaceType handles interface types.
-func (tr *TypeResolver) resolveInterfaceType(ctx context.Context, iface *types.Interface) (domain.Type, error) {
+func (tr *TypeResolver) resolveInterfaceType(_ context.Context, iface *types.Interface) (domain.Type, error) {
 	methods := make([]*domain.Method, iface.NumMethods())
 
 	for i := 0; i < iface.NumMethods(); i++ {
@@ -424,7 +424,7 @@ func (tr *TypeResolver) mapChanDirection(dir types.ChanDir) domain.ChannelDirect
 	}
 }
 
-func (p *ASTParser) analyzeStructTypeInfo(ctx context.Context, domainType domain.Type) *domain.TypeInfo {
+func (p *ASTParser) analyzeStructTypeInfo(_ context.Context, domainType domain.Type) *domain.TypeInfo {
 	structType, ok := domainType.(*domain.StructType)
 	if !ok {
 		return nil
@@ -447,7 +447,7 @@ func (p *ASTParser) analyzeStructTypeInfo(ctx context.Context, domainType domain
 	}
 }
 
-func (p *ASTParser) analyzeCollectionTypeInfo(ctx context.Context, domainType domain.Type) *domain.TypeInfo {
+func (p *ASTParser) analyzeCollectionTypeInfo(_ context.Context, domainType domain.Type) *domain.TypeInfo {
 	return &domain.TypeInfo{
 		Name:       domainType.Name(),
 		Kind:       domainType.Kind(),
@@ -457,7 +457,7 @@ func (p *ASTParser) analyzeCollectionTypeInfo(ctx context.Context, domainType do
 	}
 }
 
-func (p *ASTParser) analyzeMapTypeInfo(ctx context.Context, domainType domain.Type) *domain.TypeInfo {
+func (p *ASTParser) analyzeMapTypeInfo(_ context.Context, domainType domain.Type) *domain.TypeInfo {
 	return &domain.TypeInfo{
 		Name:       domainType.Name(),
 		Kind:       domainType.Kind(),

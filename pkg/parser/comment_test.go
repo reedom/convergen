@@ -95,6 +95,7 @@ func testCommonNotations(t *testing.T, validOpts map[string]struct{}) {
 	require.Nil(t, err)
 
 	expected := option.NewOptions()
+
 	for _, tt := range cases {
 		notations := []*ast.Comment{{Text: "// " + tt.notation}}
 		actual := expected
@@ -143,6 +144,7 @@ func testMethodNotations(t *testing.T) {
 
 func assertOptionsEquals(t *testing.T, a, b option.Options, msg string) {
 	t.Helper()
+
 	cmpOpts := []cmp.Option{
 		cmp.AllowUnexported(option.Options{}),
 	}

@@ -6,7 +6,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// ExecutorState represents the current state of the executor
+// ExecutorState represents the current state of the executor.
 type ExecutorState string
 
 const (
@@ -16,7 +16,7 @@ const (
 	ExecutorStateError        ExecutorState = "error"
 )
 
-// ExecutorStatus provides comprehensive status information about the executor
+// ExecutorStatus provides comprehensive status information about the executor.
 type ExecutorStatus struct {
 	State                ExecutorState              `json:"state"`
 	StartTime            time.Time                  `json:"start_time"`
@@ -33,7 +33,7 @@ type ExecutorStatus struct {
 	TotalErrors          int                        `json:"total_errors"`
 }
 
-// BatchExecution represents a batch being executed
+// BatchExecution represents a batch being executed.
 type BatchExecution struct {
 	ID            string                 `json:"id"`
 	Mappings      []*domain.FieldMapping `json:"mappings"`
@@ -45,7 +45,7 @@ type BatchExecution struct {
 	Context       map[string]interface{} `json:"context,omitempty"`
 }
 
-// BatchResult represents the result of executing a batch
+// BatchResult represents the result of executing a batch.
 type BatchResult struct {
 	BatchID      string                 `json:"batch_id"`
 	Success      bool                   `json:"success"`
@@ -59,7 +59,7 @@ type BatchResult struct {
 	MemoryUsedMB int                    `json:"memory_used_mb"`
 }
 
-// FieldExecution represents a field mapping being executed
+// FieldExecution represents a field mapping being executed.
 type FieldExecution struct {
 	ID            string                 `json:"id"`
 	Mapping       *domain.FieldMapping   `json:"mapping"`
@@ -71,7 +71,7 @@ type FieldExecution struct {
 	Timeout       time.Duration          `json:"timeout"`
 }
 
-// FieldResult represents the result of executing a field mapping
+// FieldResult represents the result of executing a field mapping.
 type FieldResult struct {
 	FieldID      string          `json:"field_id"`
 	Success      bool            `json:"success"`
@@ -85,7 +85,7 @@ type FieldResult struct {
 	StrategyUsed string          `json:"strategy_used"`
 }
 
-// MethodResult represents the result of executing all batches for a method
+// MethodResult represents the result of executing all batches for a method.
 type MethodResult struct {
 	MethodName string                 `json:"method_name"`
 	Success    bool                   `json:"success"`
@@ -96,7 +96,7 @@ type MethodResult struct {
 	Errors     []ExecutionError       `json:"errors,omitempty"`
 }
 
-// ResourceMetrics tracks resource usage during execution
+// ResourceMetrics tracks resource usage during execution.
 type ResourceMetrics struct {
 	WorkersActive     int       `json:"workers_active"`
 	WorkersIdle       int       `json:"workers_idle"`
@@ -110,7 +110,7 @@ type ResourceMetrics struct {
 	LastUpdated       time.Time `json:"last_updated"`
 }
 
-// BatchMetrics contains detailed metrics for batch execution
+// BatchMetrics contains detailed metrics for batch execution.
 type BatchMetrics struct {
 	FieldsProcessed      int           `json:"fields_processed"`
 	FieldsSuccessful     int           `json:"fields_successful"`
@@ -124,7 +124,7 @@ type BatchMetrics struct {
 	RetryCount           int           `json:"retry_count"`
 }
 
-// FieldMetrics contains detailed metrics for individual field execution
+// FieldMetrics contains detailed metrics for individual field execution.
 type FieldMetrics struct {
 	ExecutionTime      time.Duration `json:"execution_time"`
 	MemoryAllocated    int           `json:"memory_allocated"`
@@ -137,7 +137,7 @@ type FieldMetrics struct {
 	TransformationTime time.Duration `json:"transformation_time"`
 }
 
-// WorkerMetrics tracks individual worker performance
+// WorkerMetrics tracks individual worker performance.
 type WorkerMetrics struct {
 	WorkerID        string        `json:"worker_id"`
 	TasksCompleted  int           `json:"tasks_completed"`
@@ -150,7 +150,7 @@ type WorkerMetrics struct {
 	PeakMemoryMB    int           `json:"peak_memory_mb"`
 }
 
-// QueueMetrics tracks job queue performance
+// QueueMetrics tracks job queue performance.
 type QueueMetrics struct {
 	QueueSize        int           `json:"queue_size"`
 	EnqueueRate      float64       `json:"enqueue_rate"` // Jobs per second
@@ -163,7 +163,7 @@ type QueueMetrics struct {
 	ThroughputActual float64       `json:"throughput_actual"`
 }
 
-// ExecutionEvent represents events emitted during execution
+// ExecutionEvent represents events emitted during execution.
 type ExecutionEvent struct {
 	Type       string                 `json:"type"`
 	Timestamp  time.Time              `json:"timestamp"`
@@ -175,7 +175,7 @@ type ExecutionEvent struct {
 	Severity   string                 `json:"severity"`
 }
 
-// Event type constants
+// Event type constants.
 const (
 	EventExecutionStarted   = "execution.started"
 	EventExecutionCompleted = "execution.completed"
@@ -197,7 +197,7 @@ const (
 	EventRetryExhausted     = "execution.retry.exhausted"
 )
 
-// Severity levels for events
+// Severity levels for events.
 const (
 	SeverityDebug    = "debug"
 	SeverityInfo     = "info"
@@ -206,7 +206,7 @@ const (
 	SeverityCritical = "critical"
 )
 
-// WorkerState represents the state of a worker
+// WorkerState represents the state of a worker.
 type WorkerState string
 
 const (
@@ -216,7 +216,7 @@ const (
 	WorkerStateError    WorkerState = "error"
 )
 
-// Worker represents a worker in the resource pool
+// Worker represents a worker in the resource pool.
 type Worker struct {
 	ID           string               `json:"id"`
 	State        WorkerState          `json:"state"`
@@ -229,7 +229,7 @@ type Worker struct {
 	Done         chan struct{}        `json:"-"`
 }
 
-// JobQueue represents a queue for managing execution jobs
+// JobQueue represents a queue for managing execution jobs.
 type JobQueue struct {
 	Capacity int                  `json:"capacity"`
 	Size     int                  `json:"size"`
@@ -238,7 +238,7 @@ type JobQueue struct {
 	Closed   bool                 `json:"closed"`
 }
 
-// ResourceLimits defines resource constraints for execution
+// ResourceLimits defines resource constraints for execution.
 type ResourceLimits struct {
 	MaxWorkers        int     `json:"max_workers"`
 	MaxMemoryMB       int     `json:"max_memory_mb"`
@@ -247,7 +247,7 @@ type ResourceLimits struct {
 	CPUThreshold      float64 `json:"cpu_threshold"`
 }
 
-// PerformanceProfile contains performance tuning parameters
+// PerformanceProfile contains performance tuning parameters.
 type PerformanceProfile struct {
 	Name               string  `json:"name"`
 	WorkerPoolSize     int     `json:"worker_pool_size"`
@@ -260,7 +260,7 @@ type PerformanceProfile struct {
 	Description        string  `json:"description"`
 }
 
-// Predefined performance profiles
+// Predefined performance profiles.
 var (
 	HighThroughputProfile = &PerformanceProfile{
 		Name:               "high_throughput",

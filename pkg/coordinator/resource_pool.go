@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -12,7 +13,14 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// ResourcePool manages shared resources across the pipeline
+// Static errors for err113 compliance.
+var (
+	ErrResourcePoolReleased = errors.New("resource pool has been released")
+	ErrWorkerPanic          = errors.New("worker panic")
+	ErrWorkerPoolQueueFull  = errors.New("worker pool task queue full")
+)
+
+// ResourcePool manages shared resources across the pipeline.
 type ResourcePool interface {
 	// Get worker pool for concurrent processing
 	GetWorkerPool(ctx context.Context, size int) (*WorkerPool, error)
@@ -33,7 +41,7 @@ type ResourcePool interface {
 	ForceGC()
 }
 
-// ConcreteResourcePool implements ResourcePool
+// ConcreteResourcePool implements ResourcePool.
 type ConcreteResourcePool struct {
 	logger *zap.Logger
 	config *Config
@@ -53,7 +61,7 @@ type ConcreteResourcePool struct {
 	released bool
 }
 
-// NewResourcePool creates a new resource pool
+// NewResourcePool creates a new resource pool.
 func NewResourcePool(logger *zap.Logger, config *Config) ResourcePool {
 	pool := &ConcreteResourcePool{
 		logger:      logger,
@@ -83,13 +91,13 @@ func NewResourcePool(logger *zap.Logger, config *Config) ResourcePool {
 	return pool
 }
 
-// GetWorkerPool retrieves or creates a worker pool
+// GetWorkerPool retrieves or creates a worker pool.
 func (r *ConcreteResourcePool) GetWorkerPool(ctx context.Context, size int) (*WorkerPool, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
 	if r.released {
-		return nil, fmt.Errorf("resource pool has been released")
+		return nil, ErrResourcePoolReleased
 	}
 
 	// Create unique key for worker pool
@@ -127,17 +135,17 @@ func (r *ConcreteResourcePool) GetWorkerPool(ctx context.Context, size int) (*Wo
 	return pool, nil
 }
 
-// GetBufferPool returns the shared buffer pool
+// GetBufferPool returns the shared buffer pool.
 func (r *ConcreteResourcePool) GetBufferPool() *BufferPool {
 	return r.bufferPool
 }
 
-// GetChannelPool returns the shared channel pool
+// GetChannelPool returns the shared channel pool.
 func (r *ConcreteResourcePool) GetChannelPool() *ChannelPool {
 	return r.channelPool
 }
 
-// Release shuts down all resources
+// Release shuts down all resources.
 func (r *ConcreteResourcePool) Release(ctx context.Context) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -169,7 +177,7 @@ func (r *ConcreteResourcePool) Release(ctx context.Context) error {
 	return nil
 }
 
-// GetResourceUsage returns current resource usage statistics
+// GetResourceUsage returns current resource usage statistics.
 func (r *ConcreteResourcePool) GetResourceUsage() *ResourceUsage {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
@@ -179,10 +187,11 @@ func (r *ConcreteResourcePool) GetResourceUsage() *ResourceUsage {
 
 	// Return a copy
 	usage := *r.resourceUsage
+
 	return &usage
 }
 
-// ForceGC triggers garbage collection
+// ForceGC triggers garbage collection.
 func (r *ConcreteResourcePool) ForceGC() {
 	// This would typically call runtime.GC() but we'll simulate it
 	r.logger.Debug("forcing garbage collection")
@@ -247,9 +256,9 @@ func (r *ConcreteResourcePool) startWorker(pool *WorkerPool, workerID int) {
 							zap.Any("panic", err))
 
 						select {
-						case pool.Error <- fmt.Errorf("worker panic: %v", err):
+						case pool.Error <- fmt.Errorf("%w: %v", ErrWorkerPanic, err):
+						// Error channel full, log and continue
 						default:
-							// Error channel full, log and continue
 						}
 					}
 
@@ -312,6 +321,7 @@ func (r *ConcreteResourcePool) releaseBufferPool() {
 
 	// Drain the buffer pool
 	close(r.bufferPool.pool)
+
 	for range r.bufferPool.pool {
 		// Drain remaining buffers
 	}
@@ -328,6 +338,7 @@ func (r *ConcreteResourcePool) releaseChannelPool() {
 
 	// Drain the channel pool
 	close(r.channelPool.eventChans)
+
 	for ch := range r.channelPool.eventChans {
 		close(ch)
 	}
@@ -339,7 +350,7 @@ func (r *ConcreteResourcePool) releaseChannelPool() {
 
 // Buffer pool methods
 
-// GetBuffer retrieves a buffer from the pool
+// GetBuffer retrieves a buffer from the pool.
 func (b *BufferPool) GetBuffer() []byte {
 	select {
 	case buf := <-b.pool:
@@ -352,7 +363,7 @@ func (b *BufferPool) GetBuffer() []byte {
 	}
 }
 
-// PutBuffer returns a buffer to the pool
+// PutBuffer returns a buffer to the pool.
 func (b *BufferPool) PutBuffer(buf []byte) {
 	if cap(buf) != b.bufSize {
 		return // Wrong size, don't return to pool
@@ -361,14 +372,14 @@ func (b *BufferPool) PutBuffer(buf []byte) {
 	select {
 	case b.pool <- buf:
 		// Successfully returned to pool
+	// Pool full, buffer will be garbage collected
 	default:
-		// Pool full, buffer will be garbage collected
 	}
 }
 
 // Channel pool methods
 
-// GetEventChannel retrieves an event channel from the pool
+// GetEventChannel retrieves an event channel from the pool.
 func (c *ChannelPool) GetEventChannel() chan events.Event {
 	select {
 	case ch := <-c.eventChans:
@@ -381,7 +392,7 @@ func (c *ChannelPool) GetEventChannel() chan events.Event {
 	}
 }
 
-// PutEventChannel returns an event channel to the pool
+// PutEventChannel returns an event channel to the pool.
 func (c *ChannelPool) PutEventChannel(ch chan events.Event) {
 	// Drain the channel before returning
 	for {
@@ -397,6 +408,7 @@ func (c *ChannelPool) PutEventChannel(ch chan events.Event) {
 				// Pool full, close channel
 				close(ch)
 			}
+
 			return
 		}
 	}
@@ -404,17 +416,17 @@ func (c *ChannelPool) PutEventChannel(ch chan events.Event) {
 
 // Worker pool methods
 
-// SubmitTask submits a task to the worker pool
+// SubmitTask submits a task to the worker pool.
 func (w *WorkerPool) SubmitTask(task func()) error {
 	select {
 	case w.Tasks <- task:
 		return nil
 	default:
-		return fmt.Errorf("worker pool task queue full")
+		return ErrWorkerPoolQueueFull
 	}
 }
 
-// GetStats returns worker pool statistics
+// GetStats returns worker pool statistics.
 func (w *WorkerPool) GetStats() map[string]interface{} {
 	return map[string]interface{}{
 		"size":      w.Size,

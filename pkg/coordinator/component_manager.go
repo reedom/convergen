@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -16,7 +17,26 @@ import (
 	"github.com/reedom/convergen/v8/pkg/planner"
 )
 
-// ComponentManager manages the lifecycle of all pipeline components
+// Static errors for err113 compliance.
+var (
+	ErrNoFactoryRegistered     = errors.New("no factory registered for component")
+	ErrCannotRegisterAfterInit = errors.New("cannot register component after initialization")
+	ErrComponentNotFound       = errors.New("component not found")
+	ErrComponentShutdownErrors = errors.New("component shutdown errors")
+)
+
+const (
+	// ComponentParser is the parser component name.
+	ComponentParser = "parser"
+	// ComponentPlanner is the planner component name.
+	ComponentPlanner = "planner"
+	// ComponentEmitter is the emitter component name.
+	ComponentEmitter = "emitter"
+	// ComponentExecutor is the executor component name.
+	ComponentExecutor = "executor"
+)
+
+// ComponentManager manages the lifecycle of all pipeline components.
 type ComponentManager interface {
 	// Initialize all pipeline components
 	Initialize(ctx context.Context, config *Config) error
@@ -40,7 +60,7 @@ type ComponentManager interface {
 	UpdateComponentStatus(name string, status ComponentStatus)
 }
 
-// ConcreteComponentManager implements ComponentManager
+// ConcreteComponentManager implements ComponentManager.
 type ConcreteComponentManager struct {
 	logger   *zap.Logger
 	config   *Config
@@ -57,7 +77,7 @@ type ConcreteComponentManager struct {
 	shutdown    chan struct{}
 }
 
-// NewComponentManager creates a new component manager
+// NewComponentManager creates a new component manager.
 func NewComponentManager(logger *zap.Logger, config *Config) ComponentManager {
 	mgr := &ConcreteComponentManager{
 		logger:     logger,
@@ -74,7 +94,7 @@ func NewComponentManager(logger *zap.Logger, config *Config) ComponentManager {
 	return mgr
 }
 
-// Initialize all pipeline components
+// Initialize all pipeline components.
 func (c *ConcreteComponentManager) Initialize(ctx context.Context, config *Config) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -90,10 +110,10 @@ func (c *ConcreteComponentManager) Initialize(ctx context.Context, config *Confi
 		name   string
 		config interface{}
 	}{
-		{"parser", config.ParserConfig},
-		{"planner", config.PlannerConfig},
+		{ComponentParser, config.ParserConfig},
+		{ComponentPlanner, config.PlannerConfig},
 		{"executor", config.ExecutorConfig},
-		{"emitter", config.EmitterConfig},
+		{ComponentEmitter, config.EmitterConfig},
 	}
 
 	// Initialize each component
@@ -102,7 +122,7 @@ func (c *ConcreteComponentManager) Initialize(ctx context.Context, config *Confi
 
 		factory, exists := c.factories[comp.name]
 		if !exists {
-			return fmt.Errorf("no factory registered for component: %s", comp.name)
+			return fmt.Errorf("%w: %s", ErrNoFactoryRegistered, comp.name)
 		}
 
 		component, err := factory(comp.config)
@@ -131,13 +151,13 @@ func (c *ConcreteComponentManager) Initialize(ctx context.Context, config *Confi
 	return nil
 }
 
-// RegisterComponent registers a component with event handlers
+// RegisterComponent registers a component with event handlers.
 func (c *ConcreteComponentManager) RegisterComponent(name string, component PipelineComponent) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	if c.initialized {
-		return fmt.Errorf("cannot register component after initialization: %s", name)
+		return fmt.Errorf("%w: %s", ErrCannotRegisterAfterInit, name)
 	}
 
 	c.components[name] = component
@@ -148,20 +168,20 @@ func (c *ConcreteComponentManager) RegisterComponent(name string, component Pipe
 	return nil
 }
 
-// GetComponent retrieves a component by name
+// GetComponent retrieves a component by name.
 func (c *ConcreteComponentManager) GetComponent(name string) (PipelineComponent, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
 	component, exists := c.components[name]
 	if !exists {
-		return nil, fmt.Errorf("component not found: %s", name)
+		return nil, fmt.Errorf("%w: %s", ErrComponentNotFound, name)
 	}
 
 	return component, nil
 }
 
-// GetComponents returns all registered components
+// GetComponents returns all registered components.
 func (c *ConcreteComponentManager) GetComponents() map[string]PipelineComponent {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -174,7 +194,7 @@ func (c *ConcreteComponentManager) GetComponents() map[string]PipelineComponent 
 	return result
 }
 
-// Shutdown gracefully shuts down all components
+// Shutdown gracefully shuts down all components.
 func (c *ConcreteComponentManager) Shutdown(ctx context.Context) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -189,67 +209,76 @@ func (c *ConcreteComponentManager) Shutdown(ctx context.Context) error {
 	// Signal shutdown
 	close(c.shutdown)
 
-	// Shutdown components in reverse order (predefined components first, then any additional ones)
-	componentOrder := []string{"emitter", "executor", "planner", "parser"}
 	var shutdownErrors []error
 
 	// Shutdown predefined components in reverse order
-	for _, name := range componentOrder {
-		if component, exists := c.components[name]; exists {
-			c.status[name] = StatusShutdown
-
-			// Create timeout context for component shutdown
-			shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-
-			if err := component.Shutdown(shutdownCtx); err != nil {
-				shutdownErrors = append(shutdownErrors,
-					fmt.Errorf("component %s shutdown failed: %w", name, err))
-			}
-
-			cancel()
-
-			c.logger.Debug("component shutdown complete", zap.String("component", name))
-		}
-	}
+	c.shutdownPredefinedComponents(ctx, &shutdownErrors)
 
 	// Shutdown any additional registered components
+	c.shutdownAdditionalComponents(ctx, &shutdownErrors)
+
+	c.initialized = false
+
+	return c.handleShutdownErrors(shutdownErrors)
+}
+
+// shutdownPredefinedComponents shuts down predefined components in reverse order.
+func (c *ConcreteComponentManager) shutdownPredefinedComponents(ctx context.Context, shutdownErrors *[]error) {
+	componentOrder := []string{ComponentEmitter, "executor", ComponentPlanner, ComponentParser}
+
+	for _, name := range componentOrder {
+		if component, exists := c.components[name]; exists {
+			c.shutdownSingleComponent(ctx, name, component, shutdownErrors)
+		}
+	}
+}
+
+// shutdownAdditionalComponents shuts down any additional registered components.
+func (c *ConcreteComponentManager) shutdownAdditionalComponents(ctx context.Context, shutdownErrors *[]error) {
 	predefinedSet := map[string]bool{
-		"emitter": true, "executor": true, "planner": true, "parser": true,
+		ComponentEmitter: true, "executor": true, ComponentPlanner: true, ComponentParser: true,
 	}
 
 	for name, component := range c.components {
 		if !predefinedSet[name] {
-			c.status[name] = StatusShutdown
-
-			// Create timeout context for component shutdown
-			shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-
-			if err := component.Shutdown(shutdownCtx); err != nil {
-				shutdownErrors = append(shutdownErrors,
-					fmt.Errorf("component %s shutdown failed: %w", name, err))
-			}
-
-			cancel()
-
-			c.logger.Debug("component shutdown complete", zap.String("component", name))
+			c.shutdownSingleComponent(ctx, name, component, shutdownErrors)
 		}
 	}
+}
 
-	c.initialized = false
+// shutdownSingleComponent shuts down a single component with timeout.
+func (c *ConcreteComponentManager) shutdownSingleComponent(ctx context.Context, name string, component PipelineComponent, shutdownErrors *[]error) {
+	c.status[name] = StatusShutdown
 
+	// Create timeout context for component shutdown
+	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	if err := component.Shutdown(shutdownCtx); err != nil {
+		*shutdownErrors = append(*shutdownErrors,
+			fmt.Errorf("component %s shutdown failed: %w", name, err))
+	}
+
+	c.logger.Debug("component shutdown complete", zap.String("component", name))
+}
+
+// handleShutdownErrors processes and returns shutdown errors.
+func (c *ConcreteComponentManager) handleShutdownErrors(shutdownErrors []error) error {
 	if len(shutdownErrors) > 0 {
 		var errorStrings []string
 		for _, err := range shutdownErrors {
 			errorStrings = append(errorStrings, err.Error())
 		}
-		return fmt.Errorf("component shutdown errors: [%s]", strings.Join(errorStrings, ", "))
+
+		return fmt.Errorf("%w: [%s]", ErrComponentShutdownErrors, strings.Join(errorStrings, ", "))
 	}
 
 	c.logger.Info("all pipeline components shutdown successfully")
+
 	return nil
 }
 
-// GetComponentStatus returns the status of a specific component
+// GetComponentStatus returns the status of a specific component.
 func (c *ConcreteComponentManager) GetComponentStatus(name string) ComponentStatus {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -261,7 +290,7 @@ func (c *ConcreteComponentManager) GetComponentStatus(name string) ComponentStat
 	return StatusFailed // Component not found
 }
 
-// UpdateComponentStatus updates the status of a component
+// UpdateComponentStatus updates the status of a component.
 func (c *ConcreteComponentManager) UpdateComponentStatus(name string, status ComponentStatus) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -279,7 +308,7 @@ func (c *ConcreteComponentManager) UpdateComponentStatus(name string, status Com
 
 func (c *ConcreteComponentManager) registerDefaultFactories() {
 	// Parser factory
-	c.factories["parser"] = func(config interface{}) (PipelineComponent, error) {
+	c.factories[ComponentParser] = func(config interface{}) (PipelineComponent, error) {
 		parserConfig, ok := config.(*parser.ParserConfig)
 		if !ok {
 			// Create default parser config since DefaultConfig doesn't exist
@@ -296,7 +325,7 @@ func (c *ConcreteComponentManager) registerDefaultFactories() {
 	}
 
 	// Planner factory
-	c.factories["planner"] = func(config interface{}) (PipelineComponent, error) {
+	c.factories[ComponentPlanner] = func(config interface{}) (PipelineComponent, error) {
 		plannerConfig, ok := config.(*planner.PlannerConfig)
 		if !ok {
 			// Use the default from planner package
@@ -314,6 +343,7 @@ func (c *ConcreteComponentManager) registerDefaultFactories() {
 		}
 
 		p := planner.NewExecutionPlanner(c.logger, c.eventBus, plannerConfig)
+
 		return &PlannerAdapter{planner: p}, nil
 	}
 
@@ -325,41 +355,47 @@ func (c *ConcreteComponentManager) registerDefaultFactories() {
 		}
 
 		e := executor.NewExecutor(c.logger, c.eventBus, executorConfig)
+
 		return &ExecutorAdapter{executor: e}, nil
 	}
 
 	// Emitter factory
-	c.factories["emitter"] = func(config interface{}) (PipelineComponent, error) {
+	c.factories[ComponentEmitter] = func(config interface{}) (PipelineComponent, error) {
 		emitterConfig, ok := config.(*emitter.EmitterConfig)
 		if !ok {
 			emitterConfig = emitter.DefaultEmitterConfig()
 		}
 
 		e := emitter.NewEmitter(c.logger, c.eventBus, emitterConfig)
+
 		return &EmitterAdapter{emitter: e}, nil
 	}
 }
 
 // Component adapters to implement PipelineComponent interface
 
-// ParserAdapter adapts parser.Parser to PipelineComponent
+// ParserAdapter adapts parser.Parser to PipelineComponent.
 type ParserAdapter struct {
 	config *parser.ParserConfig
 	status ComponentStatus
 }
 
-func (p *ParserAdapter) Name() string { return "parser" }
+// Name returns the parser component name.
+func (p *ParserAdapter) Name() string { return ComponentParser }
 
+// Initialize initializes the parser adapter.
 func (p *ParserAdapter) Initialize(ctx context.Context, eventBus events.EventBus) error {
 	p.status = StatusReady
 	return nil
 }
 
+// Shutdown shuts down the parser adapter.
 func (p *ParserAdapter) Shutdown(ctx context.Context) error {
 	p.status = StatusShutdown
 	return nil
 }
 
+// GetMetrics returns parser metrics.
 func (p *ParserAdapter) GetMetrics() interface{} {
 	// TODO: Implement parser metrics collection
 	return map[string]interface{}{
@@ -368,28 +404,33 @@ func (p *ParserAdapter) GetMetrics() interface{} {
 	}
 }
 
+// GetStatus returns the parser adapter status.
 func (p *ParserAdapter) GetStatus() ComponentStatus {
 	return p.status
 }
 
-// PlannerAdapter adapts planner.ExecutionPlanner to PipelineComponent
+// PlannerAdapter adapts planner.ExecutionPlanner to PipelineComponent.
 type PlannerAdapter struct {
 	planner *planner.ExecutionPlanner
 	status  ComponentStatus
 }
 
-func (p *PlannerAdapter) Name() string { return "planner" }
+// Name returns the planner component name.
+func (p *PlannerAdapter) Name() string { return ComponentPlanner }
 
+// Initialize initializes the planner adapter.
 func (p *PlannerAdapter) Initialize(ctx context.Context, eventBus events.EventBus) error {
 	p.status = StatusReady
 	return nil
 }
 
+// Shutdown shuts down the planner adapter.
 func (p *PlannerAdapter) Shutdown(ctx context.Context) error {
 	p.status = StatusShutdown
 	return nil
 }
 
+// GetMetrics returns planner metrics.
 func (p *PlannerAdapter) GetMetrics() interface{} {
 	// TODO: Access ExecutionPlanner internal metrics
 	return map[string]interface{}{
@@ -398,58 +439,69 @@ func (p *PlannerAdapter) GetMetrics() interface{} {
 	}
 }
 
+// GetStatus returns the planner adapter status.
 func (p *PlannerAdapter) GetStatus() ComponentStatus {
 	return p.status
 }
 
-// ExecutorAdapter adapts executor.Executor to PipelineComponent
+// ExecutorAdapter adapts executor.Executor to PipelineComponent.
 type ExecutorAdapter struct {
 	executor executor.Executor
 	status   ComponentStatus
 }
 
-func (e *ExecutorAdapter) Name() string { return "executor" }
+// Name returns the executor component name.
+func (e *ExecutorAdapter) Name() string { return ComponentExecutor }
 
+// Initialize initializes the executor adapter.
 func (e *ExecutorAdapter) Initialize(ctx context.Context, eventBus events.EventBus) error {
 	e.status = StatusReady
 	return nil
 }
 
+// Shutdown shuts down the executor adapter.
 func (e *ExecutorAdapter) Shutdown(ctx context.Context) error {
 	e.status = StatusShutdown
 	return nil
 }
 
+// GetMetrics returns executor metrics.
 func (e *ExecutorAdapter) GetMetrics() interface{} {
 	return e.executor.GetMetrics()
 }
 
+// GetStatus returns the executor adapter status.
 func (e *ExecutorAdapter) GetStatus() ComponentStatus {
 	return e.status
 }
 
-// EmitterAdapter adapts emitter.Emitter to PipelineComponent
+// EmitterAdapter adapts emitter.Emitter to PipelineComponent.
 type EmitterAdapter struct {
 	emitter emitter.Emitter
 	status  ComponentStatus
 }
 
-func (e *EmitterAdapter) Name() string { return "emitter" }
+// Name returns the emitter component name.
+func (e *EmitterAdapter) Name() string { return ComponentEmitter }
 
+// Initialize initializes the emitter adapter.
 func (e *EmitterAdapter) Initialize(ctx context.Context, eventBus events.EventBus) error {
 	e.status = StatusReady
 	return nil
 }
 
+// Shutdown shuts down the emitter adapter.
 func (e *EmitterAdapter) Shutdown(ctx context.Context) error {
 	e.status = StatusShutdown
 	return nil
 }
 
+// GetMetrics returns emitter metrics.
 func (e *EmitterAdapter) GetMetrics() interface{} {
 	return e.emitter.GetMetrics()
 }
 
+// GetStatus returns the emitter adapter status.
 func (e *EmitterAdapter) GetStatus() ComponentStatus {
 	return e.status
 }

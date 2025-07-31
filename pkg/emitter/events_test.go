@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -63,6 +64,7 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 		Signature: "func TestMethod() error",
 		Body:      "return nil",
 	}
+
 	err = handler.PublishMethodGenerated(ctx, methodCode, time.Millisecond*100)
 	if err != nil {
 		t.Errorf("Failed to publish method generated event: %v", err)
@@ -77,6 +79,7 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 		TotalMethods: 1,
 		TotalLines:   10,
 	}
+
 	err = handler.PublishEmitterCompleted(ctx, code, metrics)
 	if err != nil {
 		t.Errorf("Failed to publish emitter completed event: %v", err)
@@ -90,6 +93,7 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 		Field:     "test",
 		Timestamp: time.Now(),
 	}
+
 	err = handler.PublishEmitterFailed(ctx, testErr, nil)
 	if err != nil {
 		t.Errorf("Failed to publish emitter failed event: %v", err)
@@ -164,9 +168,11 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	if startedEvent.Type() != EventEmitterStarted {
 		t.Errorf("Expected event type %s, got %s", EventEmitterStarted, startedEvent.Type())
 	}
+
 	if startedEvent.PackageName != "testpkg" {
 		t.Errorf("Expected package name 'testpkg', got '%s'", startedEvent.PackageName)
 	}
+
 	if startedEvent.MethodCount != 5 {
 		t.Errorf("Expected method count 5, got %d", startedEvent.MethodCount)
 	}
@@ -174,6 +180,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	// Test EmitterCompletedEvent
 	code := &GeneratedCode{PackageName: "testpkg", Methods: []*MethodCode{}}
 	metrics := &EmitterMetrics{TotalMethods: 3}
+
 	completedEvent := NewEmitterCompletedEvent(ctx, code, metrics)
 	if completedEvent.Type() != EventEmitterCompleted {
 		t.Errorf("Expected event type %s, got %s", EventEmitterCompleted, completedEvent.Type())
@@ -186,11 +193,13 @@ func TestEmitterEvents_Creation(t *testing.T) {
 		Component: "emitter",
 		Timestamp: time.Now(),
 	}
+
 	failedEvent := NewEmitterFailedEvent(ctx, testErr, nil)
 	if failedEvent.Type() != EventEmitterFailed {
 		t.Errorf("Expected event type %s, got %s", EventEmitterFailed, failedEvent.Type())
 	}
-	if failedEvent.Error != testErr {
+
+	if !errors.Is(failedEvent.Error, testErr) {
 		t.Error("Failed event should contain the original error")
 	}
 
@@ -199,6 +208,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	if codeGenEvent.Type() != EventCodeGenerationStarted {
 		t.Errorf("Expected event type %s, got %s", EventCodeGenerationStarted, codeGenEvent.Type())
 	}
+
 	if codeGenEvent.MethodName != "TestMethod" {
 		t.Errorf("Expected method name 'TestMethod', got '%s'", codeGenEvent.MethodName)
 	}
@@ -206,10 +216,12 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	// Test MethodGeneratedEvent
 	methodCode := &MethodCode{Name: "TestMethod"}
 	duration := time.Millisecond * 150
+
 	methodEvent := NewMethodGeneratedEvent(ctx, methodCode, duration)
 	if methodEvent.Type() != EventMethodGenerated {
 		t.Errorf("Expected event type %s, got %s", EventMethodGenerated, methodEvent.Type())
 	}
+
 	if methodEvent.Duration != duration {
 		t.Errorf("Expected duration %v, got %v", duration, methodEvent.Duration)
 	}
@@ -219,9 +231,11 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	if strategyEvent.Type() != EventStrategySelected {
 		t.Errorf("Expected event type %s, got %s", EventStrategySelected, strategyEvent.Type())
 	}
+
 	if strategyEvent.Strategy != StrategyMixedApproach {
 		t.Errorf("Expected strategy %s, got %s", StrategyMixedApproach, strategyEvent.Strategy)
 	}
+
 	if strategyEvent.Reason != "complexity_analysis" {
 		t.Errorf("Expected reason 'complexity_analysis', got '%s'", strategyEvent.Reason)
 	}
@@ -328,10 +342,12 @@ func TestEventAwareEmitter_DelegatedMethods(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	optimized, err := eventAwareEmitter.OptimizeOutput(ctx, code)
 	if err != nil {
 		t.Errorf("OptimizeOutput delegation failed: %v", err)
 	}
+
 	if optimized == nil {
 		t.Error("OptimizeOutput should return non-nil result")
 	}
@@ -368,6 +384,7 @@ func TestEmitterEventHandler_ErrorHandling(t *testing.T) {
 
 	// Test handling unknown event type
 	unknownEvent := events.NewBaseEvent("unknown.event", ctx)
+
 	err = handler.Handle(ctx, unknownEvent)
 	if err != nil {
 		t.Errorf("Should not error on unknown event types: %v", err)

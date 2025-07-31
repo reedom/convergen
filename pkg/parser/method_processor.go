@@ -16,12 +16,12 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrExpectedMethodSignature               = errors.New("expected method signature")
-	ErrMethodMustHaveAtLeastOneParameter     = errors.New("method must have at least one parameter")
-	ErrMethodMustHaveAtLeastOneReturnValue   = errors.New("method must have at least one return value")
-	ErrMultipleReturnsLastMustBeError        = errors.New("if multiple returns, last must be error type")
-	ErrValidationAnnotationRequiresFuncName  = errors.New("validation annotation requires a function name")
-	ErrTimeoutAnnotationRequiresDuration     = errors.New("timeout annotation requires a duration")
+	ErrExpectedMethodSignature              = errors.New("expected method signature")
+	ErrMethodMustHaveAtLeastOneParameter    = errors.New("method must have at least one parameter")
+	ErrMethodMustHaveAtLeastOneReturnValue  = errors.New("method must have at least one return value")
+	ErrMultipleReturnsLastMustBeError       = errors.New("if multiple returns, last must be error type")
+	ErrValidationAnnotationRequiresFuncName = errors.New("validation annotation requires a function name")
+	ErrTimeoutAnnotationRequiresDuration    = errors.New("timeout annotation requires a duration")
 )
 
 // MethodProcessor handles analysis and processing of individual methods.
@@ -327,7 +327,7 @@ func (p *ASTParser) analyzeReceiver(ctx context.Context, recv *types.Var) (*doma
 }
 
 // createFieldMappings creates field mappings between source and destination types.
-func (p *ASTParser) createFieldMappings(ctx context.Context, params []*domain.Parameter, returns []*domain.ReturnValue, options *domain.MethodOptions) ([]*domain.FieldMapping, error) {
+func (p *ASTParser) createFieldMappings(_ context.Context, params []*domain.Parameter, returns []*domain.ReturnValue, options *domain.MethodOptions) ([]*domain.FieldMapping, error) {
 	var mappings []*domain.FieldMapping
 
 	// For now, we'll create basic mappings between the first parameter and first return

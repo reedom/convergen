@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// ExecutionMetrics provides comprehensive metrics collection for the execution system
+// ExecutionMetrics provides comprehensive metrics collection for the execution system.
 type ExecutionMetrics struct {
 	enabled bool
 	mutex   sync.RWMutex
@@ -68,7 +68,7 @@ type ExecutionMetrics struct {
 	LastUpdated    time.Time         `json:"last_updated"`
 }
 
-// MetricsSnapshot captures metrics at a specific point in time
+// MetricsSnapshot captures metrics at a specific point in time.
 type MetricsSnapshot struct {
 	Timestamp        time.Time `json:"timestamp"`
 	FieldsPerSecond  float64   `json:"fields_per_second"`
@@ -81,7 +81,7 @@ type MetricsSnapshot struct {
 	CPUUsagePercent  float64   `json:"cpu_usage_percent"`
 }
 
-// NewExecutionMetrics creates a new metrics collector
+// NewExecutionMetrics creates a new metrics collector.
 func NewExecutionMetrics(enabled bool) *ExecutionMetrics {
 	return &ExecutionMetrics{
 		enabled:             enabled,
@@ -95,7 +95,7 @@ func NewExecutionMetrics(enabled bool) *ExecutionMetrics {
 	}
 }
 
-// RecordPlanExecution records metrics for a completed plan execution
+// RecordPlanExecution records metrics for a completed plan execution.
 func (em *ExecutionMetrics) RecordPlanExecution(result *ExecutionResult) {
 	if !em.enabled {
 		return
@@ -129,7 +129,7 @@ func (em *ExecutionMetrics) RecordPlanExecution(result *ExecutionResult) {
 	em.LastUpdated = time.Now()
 }
 
-// RecordBatchExecution records metrics for a completed batch execution
+// RecordBatchExecution records metrics for a completed batch execution.
 func (em *ExecutionMetrics) RecordBatchExecution(result *BatchResult) {
 	if !em.enabled {
 		return
@@ -175,7 +175,7 @@ func (em *ExecutionMetrics) RecordBatchExecution(result *BatchResult) {
 	em.LastUpdated = time.Now()
 }
 
-// RecordFieldExecution records metrics for a completed field execution
+// RecordFieldExecution records metrics for a completed field execution.
 func (em *ExecutionMetrics) RecordFieldExecution(result *FieldResult) {
 	if !em.enabled {
 		return
@@ -227,7 +227,7 @@ func (em *ExecutionMetrics) RecordFieldExecution(result *FieldResult) {
 	em.LastUpdated = time.Now()
 }
 
-// UpdateResourceMetrics updates resource-related metrics
+// UpdateResourceMetrics updates resource-related metrics.
 func (em *ExecutionMetrics) UpdateResourceMetrics(resourceMetrics *ResourceMetrics) {
 	if !em.enabled {
 		return
@@ -261,7 +261,7 @@ func (em *ExecutionMetrics) UpdateResourceMetrics(resourceMetrics *ResourceMetri
 	em.LastUpdated = time.Now()
 }
 
-// RecordExecutorStatus records executor status metrics
+// RecordExecutorStatus records executor status metrics.
 func (em *ExecutionMetrics) RecordExecutorStatus(status *ExecutorStatus) {
 	if !em.enabled {
 		return
@@ -291,7 +291,7 @@ func (em *ExecutionMetrics) RecordExecutorStatus(status *ExecutorStatus) {
 	em.LastUpdated = time.Now()
 }
 
-// GetSnapshot returns a copy of current metrics
+// GetSnapshot returns a copy of current metrics.
 func (em *ExecutionMetrics) GetSnapshot() *ExecutionMetrics {
 	em.mutex.RLock()
 	defer em.mutex.RUnlock()
@@ -365,12 +365,12 @@ func (em *ExecutionMetrics) GetSnapshot() *ExecutionMetrics {
 	return snapshot
 }
 
-// Clone creates a deep copy of the metrics
+// Clone creates a deep copy of the metrics.
 func (em *ExecutionMetrics) Clone() *ExecutionMetrics {
 	return em.GetSnapshot()
 }
 
-// Reset resets all metrics to zero
+// Reset resets all metrics to zero.
 func (em *ExecutionMetrics) Reset() {
 	if !em.enabled {
 		return
@@ -451,7 +451,7 @@ func (em *ExecutionMetrics) calculateErrorRate() float64 {
 	return float64(em.FieldsFailed) / float64(em.FieldsProcessed)
 }
 
-// GetPerformanceSummary returns a summary of key performance metrics
+// GetPerformanceSummary returns a summary of key performance metrics.
 func (em *ExecutionMetrics) GetPerformanceSummary() map[string]interface{} {
 	em.mutex.RLock()
 	defer em.mutex.RUnlock()
@@ -474,6 +474,7 @@ func (em *ExecutionMetrics) calculateSuccessRate() float64 {
 	if em.FieldsProcessed == 0 {
 		return 0
 	}
+
 	return float64(em.FieldsSuccessful) / float64(em.FieldsProcessed)
 }
 
@@ -482,5 +483,6 @@ func (em *ExecutionMetrics) calculateRetrySuccessRate() float64 {
 	if totalRetries == 0 {
 		return 0
 	}
+
 	return float64(em.RetriesSuccessful) / float64(totalRetries)
 }

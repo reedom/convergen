@@ -22,6 +22,7 @@ func TestIdentMatcher_Match(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			m := option.NewIdentMatcher(tc.pattern)
+
 			got := m.Match(tc.ident, tc.exactCase)
 			if got != tc.wantResult {
 				t.Errorf("m.Match(%q, %v) = %v; want %v", tc.ident, tc.exactCase, got, tc.wantResult)
@@ -50,6 +51,7 @@ func TestIdentMatcher_PartialMatch(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			m := option.NewIdentMatcher(tc.pattern)
+
 			got := m.PartialMatch(tc.ident, tc.exactCase)
 			if got != tc.wantResult {
 				t.Errorf("m.PartialMatch(%q, %v) = %v; want %v", tc.ident, tc.exactCase, got, tc.wantResult)

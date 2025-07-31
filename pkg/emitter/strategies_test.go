@@ -24,6 +24,7 @@ func TestCompositeLiteralStrategy(t *testing.T) {
 	// Create test method with proper domain constructors
 	sourceType := domain.NewBasicType("User", reflect.Struct)
 	destType := domain.NewBasicType("UserDTO", reflect.Struct)
+
 	method, err := domain.NewMethod("ConvertSimple", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create method: %v", err)
@@ -82,6 +83,7 @@ func TestCompositeLiteralStrategy(t *testing.T) {
 	complexity := strategy.GetComplexity(simpleMethod)
 	if complexity == nil {
 		t.Error("Complexity metrics should not be nil")
+		return
 	}
 
 	if complexity.RecommendedStrategy != StrategyCompositeLiteral {
@@ -106,6 +108,7 @@ func TestCompositeLiteralStrategy_CannotHandle(t *testing.T) {
 	// Create test method for too many fields
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
 	destType := domain.NewBasicType("Dest", reflect.Struct)
+
 	method, err := domain.NewMethod("ConvertMany", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create method: %v", err)
@@ -167,6 +170,7 @@ func TestAssignmentBlockStrategy(t *testing.T) {
 	// Create test method
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
 	destType := domain.NewBasicType("Dest", reflect.Struct)
+
 	method, err := domain.NewMethod("ConvertAny", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create method: %v", err)
@@ -244,6 +248,7 @@ func TestAssignmentBlockStrategy(t *testing.T) {
 	complexity := strategy.GetComplexity(complexMethod)
 	if complexity == nil {
 		t.Error("Complexity metrics should not be nil")
+		return
 	}
 
 	if complexity.ErrorFields == 0 {
@@ -253,6 +258,7 @@ func TestAssignmentBlockStrategy(t *testing.T) {
 	// Test required imports (should include fmt for error handling)
 	imports := strategy.GetRequiredImports(complexMethod)
 	fmtImportFound := false
+
 	for _, imp := range imports {
 		if imp.Path == "fmt" {
 			fmtImportFound = true
@@ -277,6 +283,7 @@ func TestMixedApproachStrategy(t *testing.T) {
 	// Create test method
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
 	destType := domain.NewBasicType("Dest", reflect.Struct)
+
 	method, err := domain.NewMethod("ConvertMixed", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create method: %v", err)
@@ -345,6 +352,7 @@ func TestMixedApproachStrategy(t *testing.T) {
 	complexity := strategy.GetComplexity(mixedMethod)
 	if complexity == nil {
 		t.Error("Complexity metrics should not be nil")
+		return
 	}
 
 	if complexity.RecommendedStrategy != StrategyMixedApproach {
@@ -361,6 +369,7 @@ func TestMixedApproachStrategy_CannotHandle(t *testing.T) {
 	// Create test method
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
 	destType := domain.NewBasicType("Dest", reflect.Struct)
+
 	method, err := domain.NewMethod("ConvertFew", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create method: %v", err)
@@ -414,6 +423,7 @@ func TestStrategies_RequiredImports(t *testing.T) {
 	// Create test method
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
 	destType := domain.NewBasicType("Dest", reflect.Struct)
+
 	method, err := domain.NewMethod("ConvertWithErrors", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create method: %v", err)
@@ -445,6 +455,7 @@ func TestStrategies_RequiredImports(t *testing.T) {
 
 		// Check if fmt import is included for error handling
 		fmtFound := false
+
 		for _, imp := range imports {
 			if imp.Path == "fmt" && imp.Standard && imp.Required {
 				fmtFound = true
@@ -466,6 +477,7 @@ func TestStrategies_ComplexityMetrics(t *testing.T) {
 	// Create test methods
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
 	destType := domain.NewBasicType("Dest", reflect.Struct)
+
 	simpleMethodObj, err := domain.NewMethod("Simple", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create simple method: %v", err)
@@ -544,6 +556,7 @@ func TestStrategies_EdgeCases(t *testing.T) {
 	// Create test method
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
 	destType := domain.NewBasicType("Dest", reflect.Struct)
+
 	method, err := domain.NewMethod("Empty", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create empty method: %v", err)

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Regular expression pattern to match text inside the parentheses
+// Regular expression pattern to match text inside the parentheses.
 var reFromParen = regexp.MustCompile(`\(.*`)
 
 // IdentMatcher is used to match field or method names in a struct.
@@ -31,6 +31,7 @@ func (m *IdentMatcher) Match(ident string, exactCase bool) bool {
 	if exactCase {
 		return m.pattern == ident
 	}
+
 	return strings.EqualFold(m.pattern, ident)
 }
 

@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -12,7 +13,26 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// EventOrchestrator manages event-driven coordination between components
+// Static errors for err113 compliance.
+var (
+	ErrPipelineAlreadyStarted      = errors.New("pipeline already started")
+	ErrPipelineCancelled           = errors.New("pipeline cancelled")
+	ErrOrchestratorShutdown        = errors.New("orchestrator shutdown")
+	ErrParseResultsNotFound        = errors.New("parse results not found in event data")
+	ErrParsingStageFailed          = errors.New("parsing stage failed")
+	ErrPlanResultsNotFound         = errors.New("plan results not found in event data")
+	ErrPlanningStageFailed         = errors.New("planning stage failed")
+	ErrExecuteResultsNotFound      = errors.New("execute results not found in event data")
+	ErrExecutionStageFailed        = errors.New("execution stage failed")
+	ErrEmitResultsNotFound         = errors.New("emit results not found in event data")
+	ErrEmissionStageFailed         = errors.New("emission stage failed")
+	ErrComponentNameNotFound       = errors.New("component name not found in status change event")
+	ErrStatusNotFound              = errors.New("status not found in status change event")
+	ErrEmissionResultsNotAvailable = errors.New("emission results not available")
+	ErrInvalidEmissionResultType   = errors.New("invalid emission result type")
+)
+
+// EventOrchestrator manages event-driven coordination between components.
 type EventOrchestrator interface {
 	// Start pipeline execution
 	StartPipeline(ctx context.Context, input *PipelineInput) error
@@ -33,7 +53,7 @@ type EventOrchestrator interface {
 	SetErrorHandler(handler ErrorHandler)
 }
 
-// ConcreteEventOrchestrator implements EventOrchestrator
+// ConcreteEventOrchestrator implements EventOrchestrator.
 type ConcreteEventOrchestrator struct {
 	logger       *zap.Logger
 	config       *Config
@@ -55,7 +75,7 @@ type ConcreteEventOrchestrator struct {
 	started       bool
 }
 
-// NewEventOrchestrator creates a new event orchestrator
+// NewEventOrchestrator creates a new event orchestrator.
 func NewEventOrchestrator(logger *zap.Logger, eventBus events.EventBus, config *Config) EventOrchestrator {
 	orchestrator := &ConcreteEventOrchestrator{
 		logger:        logger,
@@ -77,13 +97,13 @@ func NewEventOrchestrator(logger *zap.Logger, eventBus events.EventBus, config *
 	return orchestrator
 }
 
-// StartPipeline begins pipeline execution
+// StartPipeline begins pipeline execution.
 func (e *ConcreteEventOrchestrator) StartPipeline(ctx context.Context, input *PipelineInput) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
 	if e.started {
-		return fmt.Errorf("pipeline already started")
+		return ErrPipelineAlreadyStarted
 	}
 
 	e.logger.Info("starting pipeline orchestration",
@@ -106,26 +126,30 @@ func (e *ConcreteEventOrchestrator) StartPipeline(ctx context.Context, input *Pi
 		"pipeline_id": input.Metadata["generation_id"].(string),
 	})
 
-	return e.eventBus.Publish(parseEvent)
+	if err := e.eventBus.Publish(parseEvent); err != nil {
+		return fmt.Errorf("failed to publish parse event: %w", err)
+	}
+
+	return nil
 }
 
-// HandleEvent processes pipeline events
+// HandleEvent processes pipeline events.
 func (e *ConcreteEventOrchestrator) HandleEvent(ctx context.Context, event events.Event) error {
 	if e.cancelled {
-		return fmt.Errorf("pipeline cancelled")
+		return ErrPipelineCancelled
 	}
 
 	select {
 	case e.eventQueue <- event:
 		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("context cancelled: %w", ctx.Err())
 	case <-e.shutdown:
-		return fmt.Errorf("orchestrator shutdown")
+		return ErrOrchestratorShutdown
 	}
 }
 
-// GetStatus returns current pipeline status
+// GetStatus returns current pipeline status.
 func (e *ConcreteEventOrchestrator) GetStatus() *PipelineStatus {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
@@ -145,7 +169,7 @@ func (e *ConcreteEventOrchestrator) GetStatus() *PipelineStatus {
 	return &status
 }
 
-// Cancel stops pipeline execution
+// Cancel stops pipeline execution.
 func (e *ConcreteEventOrchestrator) Cancel() error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -168,22 +192,26 @@ func (e *ConcreteEventOrchestrator) Cancel() error {
 		"stage":       string(e.status.Stage),
 	})
 
-	return e.eventBus.Publish(cancelEvent)
+	if err := e.eventBus.Publish(cancelEvent); err != nil {
+		return fmt.Errorf("failed to publish cancel event: %w", err)
+	}
+
+	return nil
 }
 
-// SetComponentManager sets the component manager reference
+// SetComponentManager sets the component manager reference.
 func (e *ConcreteEventOrchestrator) SetComponentManager(mgr ComponentManager) {
 	e.componentMgr = mgr
 }
 
-// SetErrorHandler sets the error handler reference
+// SetErrorHandler sets the error handler reference.
 func (e *ConcreteEventOrchestrator) SetErrorHandler(handler ErrorHandler) {
 	e.errorHandler = handler
 }
 
 // Private methods
 
-// funcEventHandler wraps a function to implement EventHandler interface
+// funcEventHandler wraps a function to implement EventHandler interface.
 type funcEventHandler struct {
 	handlerFunc func(ctx context.Context, event events.Event) error
 	eventType   string
@@ -256,7 +284,11 @@ func (e *ConcreteEventOrchestrator) handleEventInternal(ctx context.Context, eve
 		zap.String("event_type", event.Type()),
 		zap.Any("event_data", event.Data()))
 
-	return handler.Handle(ctx, event)
+	if err := handler.Handle(ctx, event); err != nil {
+		return fmt.Errorf("event handler failed: %w", err)
+	}
+
+	return nil
 }
 
 // Event handlers
@@ -265,9 +297,10 @@ func (e *ConcreteEventOrchestrator) handleParseComplete(ctx context.Context, eve
 	e.updateStage(StagePlanning)
 
 	data := event.Data()
+
 	parseResults, ok := data["results"]
 	if !ok {
-		return fmt.Errorf("parse results not found in event data")
+		return ErrParseResultsNotFound
 	}
 
 	e.results[StageParsing] = parseResults
@@ -279,7 +312,11 @@ func (e *ConcreteEventOrchestrator) handleParseComplete(ctx context.Context, eve
 		"pipeline_id":   e.status.PipelineID,
 	})
 
-	return e.eventBus.Publish(planEvent)
+	if err := e.eventBus.Publish(planEvent); err != nil {
+		return fmt.Errorf("failed to publish plan event: %w", err)
+	}
+
+	return nil
 }
 
 func (e *ConcreteEventOrchestrator) handleParseFailed(ctx context.Context, event events.Event) error {
@@ -288,20 +325,21 @@ func (e *ConcreteEventOrchestrator) handleParseFailed(ctx context.Context, event
 	data := event.Data()
 	if errData, ok := data["error"]; ok {
 		if e.errorHandler != nil {
-			e.errorHandler.CollectError("parser", fmt.Errorf("%v", errData))
+			e.errorHandler.CollectError("parser", fmt.Errorf("%w: %v", ErrParsingStageFailed, errData))
 		}
 	}
 
-	return fmt.Errorf("parsing stage failed")
+	return ErrParsingStageFailed
 }
 
 func (e *ConcreteEventOrchestrator) handlePlanComplete(ctx context.Context, event events.Event) error {
 	e.updateStage(StageExecuting)
 
 	data := event.Data()
+
 	planResults, ok := data["results"]
 	if !ok {
-		return fmt.Errorf("plan results not found in event data")
+		return ErrPlanResultsNotFound
 	}
 
 	e.results[StagePlanning] = planResults
@@ -313,7 +351,11 @@ func (e *ConcreteEventOrchestrator) handlePlanComplete(ctx context.Context, even
 		"pipeline_id":  e.status.PipelineID,
 	})
 
-	return e.eventBus.Publish(executeEvent)
+	if err := e.eventBus.Publish(executeEvent); err != nil {
+		return fmt.Errorf("failed to publish execute event: %w", err)
+	}
+
+	return nil
 }
 
 func (e *ConcreteEventOrchestrator) handlePlanFailed(ctx context.Context, event events.Event) error {
@@ -322,20 +364,21 @@ func (e *ConcreteEventOrchestrator) handlePlanFailed(ctx context.Context, event 
 	data := event.Data()
 	if errData, ok := data["error"]; ok {
 		if e.errorHandler != nil {
-			e.errorHandler.CollectError("planner", fmt.Errorf("%v", errData))
+			e.errorHandler.CollectError("planner", fmt.Errorf("%w: %v", ErrPlanningStageFailed, errData))
 		}
 	}
 
-	return fmt.Errorf("planning stage failed")
+	return ErrPlanningStageFailed
 }
 
 func (e *ConcreteEventOrchestrator) handleExecuteComplete(ctx context.Context, event events.Event) error {
 	e.updateStage(StageEmitting)
 
 	data := event.Data()
+
 	executeResults, ok := data["results"]
 	if !ok {
-		return fmt.Errorf("execute results not found in event data")
+		return ErrExecuteResultsNotFound
 	}
 
 	e.results[StageExecuting] = executeResults
@@ -347,7 +390,11 @@ func (e *ConcreteEventOrchestrator) handleExecuteComplete(ctx context.Context, e
 		"pipeline_id":     e.status.PipelineID,
 	})
 
-	return e.eventBus.Publish(emitEvent)
+	if err := e.eventBus.Publish(emitEvent); err != nil {
+		return fmt.Errorf("failed to publish emit event: %w", err)
+	}
+
+	return nil
 }
 
 func (e *ConcreteEventOrchestrator) handleExecuteFailed(ctx context.Context, event events.Event) error {
@@ -356,20 +403,21 @@ func (e *ConcreteEventOrchestrator) handleExecuteFailed(ctx context.Context, eve
 	data := event.Data()
 	if errData, ok := data["error"]; ok {
 		if e.errorHandler != nil {
-			e.errorHandler.CollectError("executor", fmt.Errorf("%v", errData))
+			e.errorHandler.CollectError("executor", fmt.Errorf("%w: %v", ErrExecutionStageFailed, errData))
 		}
 	}
 
-	return fmt.Errorf("execution stage failed")
+	return ErrExecutionStageFailed
 }
 
 func (e *ConcreteEventOrchestrator) handleEmitComplete(ctx context.Context, event events.Event) error {
 	e.updateStage(StageCompleted)
 
 	data := event.Data()
+
 	emitResults, ok := data["results"]
 	if !ok {
-		return fmt.Errorf("emit results not found in event data")
+		return ErrEmitResultsNotFound
 	}
 
 	e.results[StageEmitting] = emitResults
@@ -381,7 +429,11 @@ func (e *ConcreteEventOrchestrator) handleEmitComplete(ctx context.Context, even
 		"duration":    time.Since(e.status.StartTime),
 	})
 
-	return e.eventBus.Publish(completeEvent)
+	if err := e.eventBus.Publish(completeEvent); err != nil {
+		return fmt.Errorf("failed to publish complete event: %w", err)
+	}
+
+	return nil
 }
 
 func (e *ConcreteEventOrchestrator) handleEmitFailed(ctx context.Context, event events.Event) error {
@@ -390,23 +442,24 @@ func (e *ConcreteEventOrchestrator) handleEmitFailed(ctx context.Context, event 
 	data := event.Data()
 	if errData, ok := data["error"]; ok {
 		if e.errorHandler != nil {
-			e.errorHandler.CollectError("emitter", fmt.Errorf("%v", errData))
+			e.errorHandler.CollectError("emitter", fmt.Errorf("%w: %v", ErrEmissionStageFailed, errData))
 		}
 	}
 
-	return fmt.Errorf("emission stage failed")
+	return ErrEmissionStageFailed
 }
 
 func (e *ConcreteEventOrchestrator) handleComponentStatusChanged(ctx context.Context, event events.Event) error {
 	data := event.Data()
+
 	component, ok := data["component"].(string)
 	if !ok {
-		return fmt.Errorf("component name not found in status change event")
+		return ErrComponentNameNotFound
 	}
 
 	status, ok := data["status"].(ComponentStatus)
 	if !ok {
-		return fmt.Errorf("status not found in status change event")
+		return ErrStatusNotFound
 	}
 
 	e.mutex.Lock()
@@ -452,7 +505,7 @@ func (e *ConcreteEventOrchestrator) updateStage(stage PipelineStage) {
 	}
 }
 
-// GetPipelineResults returns the accumulated results from all stages
+// GetPipelineResults returns the accumulated results from all stages.
 func (e *ConcreteEventOrchestrator) GetPipelineResults() map[PipelineStage]interface{} {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
@@ -465,19 +518,19 @@ func (e *ConcreteEventOrchestrator) GetPipelineResults() map[PipelineStage]inter
 	return results
 }
 
-// GetFinalResult extracts the final generation result from pipeline results
+// GetFinalResult extracts the final generation result from pipeline results.
 func (e *ConcreteEventOrchestrator) GetFinalResult() (*domain.ExecutionResults, error) {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
 
 	emitResult, exists := e.results[StageEmitting]
 	if !exists {
-		return nil, fmt.Errorf("emission results not available")
+		return nil, ErrEmissionResultsNotAvailable
 	}
 
 	executionResults, ok := emitResult.(*domain.ExecutionResults)
 	if !ok {
-		return nil, fmt.Errorf("invalid emission result type")
+		return nil, ErrInvalidEmissionResultType
 	}
 
 	return executionResults, nil

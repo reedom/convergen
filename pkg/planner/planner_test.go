@@ -17,6 +17,7 @@ import (
 
 func TestExecutionPlanner_NewExecutionPlanner(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -58,11 +59,13 @@ func TestExecutionPlanner_CreateExecutionPlan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
+
 			eventBus := events.NewInMemoryEventBus(logger)
 			defer eventBus.Close()
 
 			// Subscribe to events for testing
 			var receivedEvents []events.Event
+
 			handler := events.NewFuncEventHandler("plan.started", func(ctx context.Context, event events.Event) error {
 				receivedEvents = append(receivedEvents, event)
 				return nil
@@ -116,6 +119,7 @@ func TestExecutionPlanner_CreateExecutionPlan(t *testing.T) {
 
 func TestExecutionPlanner_DependencyHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -144,6 +148,7 @@ func TestExecutionPlanner_DependencyHandling(t *testing.T) {
 
 func TestExecutionPlanner_ConcurrentProcessing(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -180,6 +185,7 @@ func TestExecutionPlanner_ConcurrentProcessing(t *testing.T) {
 	// Verify resource allocation
 	totalWorkers := 0
 	totalMemory := 0
+
 	for _, methodPlan := range plan.Methods {
 		totalWorkers += methodPlan.RequiredWorkers
 		totalMemory += methodPlan.MemoryRequirementMB
@@ -191,6 +197,7 @@ func TestExecutionPlanner_ConcurrentProcessing(t *testing.T) {
 
 func TestExecutionPlanner_OptimizationLevels(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -207,6 +214,7 @@ func TestExecutionPlanner_OptimizationLevels(t *testing.T) {
 		planner := NewExecutionPlanner(logger, eventBus, config)
 		plan, err := planner.CreateExecutionPlan(ctx, methods)
 		require.NoError(t, err)
+
 		plans[i] = plan
 	}
 
@@ -220,6 +228,7 @@ func TestExecutionPlanner_OptimizationLevels(t *testing.T) {
 
 func TestExecutionPlanner_ErrorHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -262,6 +271,7 @@ func TestExecutionPlanner_ErrorHandling(t *testing.T) {
 
 func TestExecutionPlanner_ResourceLimits(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -302,6 +312,7 @@ func TestExecutionPlanner_ResourceLimits(t *testing.T) {
 
 func BenchmarkExecutionPlanner_CreatePlan(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -313,6 +324,7 @@ func BenchmarkExecutionPlanner_CreatePlan(b *testing.B) {
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := planner.CreateExecutionPlan(ctx, methods)
 		require.NoError(b, err)
@@ -321,6 +333,7 @@ func BenchmarkExecutionPlanner_CreatePlan(b *testing.B) {
 
 func BenchmarkExecutionPlanner_LargeScale(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -333,6 +346,7 @@ func BenchmarkExecutionPlanner_LargeScale(b *testing.B) {
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := planner.CreateExecutionPlan(ctx, methods)
 		require.NoError(b, err)
@@ -354,7 +368,7 @@ func createTestMethods(methodCount, fieldsPerMethod int) []*domain.Method {
 		// Add field mappings
 		for j := 0; j < fieldsPerMethod; j++ {
 			mapping := createTestFieldMapping(i, j)
-			method.AddMapping(mapping)
+			_ = method.AddMapping(mapping)
 		}
 
 		methods[i] = method
@@ -369,21 +383,21 @@ func createTestMethodsWithDependencies() []*domain.Method {
 	// Method 1: No dependencies
 	method1, _ := domain.NewMethod("Method1", createTestType("Source1"), createTestType("Dest1"))
 	mapping1 := createTestFieldMapping(1, 1)
-	method1.AddMapping(mapping1)
+	_ = method1.AddMapping(mapping1)
 	methods[0] = method1
 
 	// Method 2: Depends on Method1
 	method2, _ := domain.NewMethod("Method2", createTestType("Source2"), createTestType("Dest2"))
 	mapping2 := createTestFieldMapping(2, 1)
 	mapping2.Dependencies = []string{mapping1.ID}
-	method2.AddMapping(mapping2)
+	_ = method2.AddMapping(mapping2)
 	methods[1] = method2
 
 	// Method 3: Depends on Method2
 	method3, _ := domain.NewMethod("Method3", createTestType("Source3"), createTestType("Dest3"))
 	mapping3 := createTestFieldMapping(3, 1)
 	mapping3.Dependencies = []string{mapping2.ID}
-	method3.AddMapping(mapping3)
+	_ = method3.AddMapping(mapping3)
 	methods[2] = method3
 
 	return methods
@@ -406,8 +420,8 @@ func createTestMethodsWithCircularDependencies() []*domain.Method {
 	mapping1.Dependencies = []string{mapping2.ID}
 	mapping2.Dependencies = []string{mapping1.ID}
 
-	method1.AddMapping(mapping1)
-	method2.AddMapping(mapping2)
+	_ = method1.AddMapping(mapping1)
+	_ = method2.AddMapping(mapping2)
 
 	return methods
 }
@@ -434,6 +448,7 @@ func createTestFieldMapping(methodIndex, fieldIndex int) *domain.FieldMapping {
 	mappingID := fmt.Sprintf("mapping_%d_%d", methodIndex, fieldIndex)
 
 	mapping, _ := domain.NewFieldMapping(mappingID, sourceSpec, destSpec, strategy)
+
 	return mapping
 }
 

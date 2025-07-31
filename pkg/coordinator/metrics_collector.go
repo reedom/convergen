@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// MetricsCollector collects and aggregates metrics from all pipeline components
+// MetricsCollector collects and aggregates metrics from all pipeline components.
 type MetricsCollector interface {
 	// Record pipeline event with duration and metadata
 	RecordEvent(event string, duration time.Duration, metadata map[string]interface{})
@@ -35,7 +35,7 @@ type MetricsCollector interface {
 	RecordThroughput(pipelinesPerSecond float64)
 }
 
-// ConcreteMetricsCollector implements MetricsCollector
+// ConcreteMetricsCollector implements MetricsCollector.
 type ConcreteMetricsCollector struct {
 	logger *zap.Logger
 	config *Config
@@ -71,7 +71,7 @@ type ConcreteMetricsCollector struct {
 	currentConcurrency int64
 }
 
-// NewMetricsCollector creates a new metrics collector
+// NewMetricsCollector creates a new metrics collector.
 func NewMetricsCollector(logger *zap.Logger, config *Config) MetricsCollector {
 	collector := &ConcreteMetricsCollector{
 		logger:              logger,
@@ -99,7 +99,7 @@ func NewMetricsCollector(logger *zap.Logger, config *Config) MetricsCollector {
 	return collector
 }
 
-// RecordEvent records a pipeline event with timing and metadata
+// RecordEvent records a pipeline event with timing and metadata.
 func (m *ConcreteMetricsCollector) RecordEvent(event string, duration time.Duration, metadata map[string]interface{}) {
 	if !m.config.EnableMetrics {
 		return
@@ -143,7 +143,7 @@ func (m *ConcreteMetricsCollector) RecordEvent(event string, duration time.Durat
 		zap.Any("metadata", metadata))
 }
 
-// RecordComponent records metrics from a specific component
+// RecordComponent records metrics from a specific component.
 func (m *ConcreteMetricsCollector) RecordComponent(component string, metrics interface{}) {
 	if !m.config.EnableMetrics {
 		return
@@ -160,7 +160,7 @@ func (m *ConcreteMetricsCollector) RecordComponent(component string, metrics int
 		zap.Any("metrics", metrics))
 }
 
-// GetMetrics returns the aggregated coordinator metrics
+// GetMetrics returns the aggregated coordinator metrics.
 func (m *ConcreteMetricsCollector) GetMetrics() *CoordinatorMetrics {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
@@ -170,7 +170,9 @@ func (m *ConcreteMetricsCollector) GetMetrics() *CoordinatorMetrics {
 	successes := atomic.LoadInt64(&m.successCount)
 
 	var avgDuration time.Duration
+
 	var successRate float64
+
 	var throughput float64
 
 	if executions > 0 {
@@ -203,7 +205,7 @@ func (m *ConcreteMetricsCollector) GetMetrics() *CoordinatorMetrics {
 	return metrics
 }
 
-// Reset clears all metrics
+// Reset clears all metrics.
 func (m *ConcreteMetricsCollector) Reset() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -237,7 +239,7 @@ func (m *ConcreteMetricsCollector) Reset() {
 	m.logger.Debug("metrics collector reset")
 }
 
-// RecordError records an error for statistics
+// RecordError records an error for statistics.
 func (m *ConcreteMetricsCollector) RecordError(component string, errorType string) {
 	if !m.config.EnableMetrics {
 		return
@@ -251,7 +253,7 @@ func (m *ConcreteMetricsCollector) RecordError(component string, errorType strin
 	m.lastUpdateTime = time.Now()
 }
 
-// RecordRetry records a retry attempt
+// RecordRetry records a retry attempt.
 func (m *ConcreteMetricsCollector) RecordRetry(component string, success bool, delay time.Duration) {
 	if !m.config.EnableMetrics {
 		return
@@ -271,14 +273,14 @@ func (m *ConcreteMetricsCollector) RecordRetry(component string, success bool, d
 
 	// Update average retry delay
 	if m.retryStats.TotalRetries > 0 {
-		totalDelay := time.Duration(m.retryStats.AverageRetryDelay.Nanoseconds()*int64(m.retryStats.TotalRetries-1)) + delay
-		m.retryStats.AverageRetryDelay = time.Duration(totalDelay.Nanoseconds() / int64(m.retryStats.TotalRetries))
+		totalDelay := time.Duration(m.retryStats.AverageRetryDelay.Nanoseconds()*(m.retryStats.TotalRetries-1)) + delay
+		m.retryStats.AverageRetryDelay = time.Duration(totalDelay.Nanoseconds() / m.retryStats.TotalRetries)
 	}
 
 	m.lastUpdateTime = time.Now()
 }
 
-// UpdateResourceUsage updates resource usage metrics
+// UpdateResourceUsage updates resource usage metrics.
 func (m *ConcreteMetricsCollector) UpdateResourceUsage(usage *ResourceUsage) {
 	if !m.config.EnableMetrics {
 		return
@@ -291,7 +293,7 @@ func (m *ConcreteMetricsCollector) UpdateResourceUsage(usage *ResourceUsage) {
 	m.lastUpdateTime = time.Now()
 }
 
-// RecordThroughput records a throughput measurement
+// RecordThroughput records a throughput measurement.
 func (m *ConcreteMetricsCollector) RecordThroughput(pipelinesPerSecond float64) {
 	if !m.config.EnableMetrics {
 		return
@@ -318,6 +320,7 @@ func (m *ConcreteMetricsCollector) copyComponentMetrics() map[string]interface{}
 	for component, metrics := range m.componentMetrics {
 		result[component] = metrics
 	}
+
 	return result
 }
 
@@ -327,6 +330,7 @@ func (m *ConcreteMetricsCollector) copyResourceUsage() *ResourceUsage {
 	}
 
 	usage := *m.resourceUsage
+
 	return &usage
 }
 
@@ -335,6 +339,7 @@ func (m *ConcreteMetricsCollector) copyEventCounts() map[string]int64 {
 	for event, count := range m.eventCounts {
 		result[event] = count
 	}
+
 	return result
 }
 
@@ -343,6 +348,7 @@ func (m *ConcreteMetricsCollector) copyEventProcessingTime() map[string]time.Dur
 	for event, timeNs := range m.eventProcessingTime {
 		result[event] = time.Duration(timeNs)
 	}
+
 	return result
 }
 
@@ -351,6 +357,7 @@ func (m *ConcreteMetricsCollector) copyErrorCounts() map[string]int64 {
 	for errorType, count := range m.errorCounts {
 		result[errorType] = count
 	}
+
 	return result
 }
 
@@ -412,6 +419,7 @@ func (m *ConcreteMetricsCollector) calculateLatencyMetrics() *LatencyMetrics {
 	for _, duration := range measurements {
 		total += duration.Nanoseconds()
 	}
+
 	latency.Mean = time.Duration(total / int64(n))
 
 	return latency
@@ -419,24 +427,24 @@ func (m *ConcreteMetricsCollector) calculateLatencyMetrics() *LatencyMetrics {
 
 // Concurrency tracking methods
 
-// IncrementConcurrency increments the current concurrency level
+// IncrementConcurrency increments the current concurrency level.
 func (m *ConcreteMetricsCollector) IncrementConcurrency() {
 	atomic.AddInt64(&m.currentConcurrency, 1)
 }
 
-// DecrementConcurrency decrements the current concurrency level
+// DecrementConcurrency decrements the current concurrency level.
 func (m *ConcreteMetricsCollector) DecrementConcurrency() {
 	atomic.AddInt64(&m.currentConcurrency, -1)
 }
 
-// SetConcurrency sets the current concurrency level
+// SetConcurrency sets the current concurrency level.
 func (m *ConcreteMetricsCollector) SetConcurrency(level int64) {
 	atomic.StoreInt64(&m.currentConcurrency, level)
 }
 
 // Utility methods for metrics analysis
 
-// GetAverageEventProcessingTime returns average processing time for an event
+// GetAverageEventProcessingTime returns average processing time for an event.
 func (m *ConcreteMetricsCollector) GetAverageEventProcessingTime(event string) time.Duration {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
@@ -451,7 +459,7 @@ func (m *ConcreteMetricsCollector) GetAverageEventProcessingTime(event string) t
 	return time.Duration(totalTime / count)
 }
 
-// GetTopErrors returns the most frequent error types
+// GetTopErrors returns the most frequent error types.
 func (m *ConcreteMetricsCollector) GetTopErrors(limit int) []string {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
@@ -485,7 +493,7 @@ func (m *ConcreteMetricsCollector) GetTopErrors(limit int) []string {
 	return result
 }
 
-// GetHealthScore calculates a health score based on success rate and error rate
+// GetHealthScore calculates a health score based on success rate and error rate.
 func (m *ConcreteMetricsCollector) GetHealthScore() float64 {
 	metrics := m.GetMetrics()
 
@@ -511,6 +519,7 @@ func (m *ConcreteMetricsCollector) GetHealthScore() float64 {
 	if healthScore < 0 {
 		healthScore = 0
 	}
+
 	if healthScore > 1 {
 		healthScore = 1
 	}

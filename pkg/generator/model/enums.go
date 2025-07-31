@@ -28,6 +28,7 @@ func NewDstVarStyleFromValue(v string) (DstVarStyle, bool) {
 			return style, true
 		}
 	}
+
 	return "", false
 }
 
@@ -58,5 +59,6 @@ func NewMatchRuleFromValue(v string) (MatchRule, bool) {
 			return rule, true
 		}
 	}
+
 	return "", false
 }

@@ -157,6 +157,7 @@ func (n ScalarNode) AssignExpr() string {
 	if n.parent != nil {
 		return n.parent.AssignExpr()
 	}
+
 	return n.name
 }
 
@@ -166,6 +167,7 @@ func (n ScalarNode) MatcherExpr() string {
 	if n.parent != nil {
 		return n.parent.MatcherExpr()
 	}
+
 	return ""
 }
 
@@ -175,6 +177,7 @@ func (n ScalarNode) NullCheckExpr() string {
 	if n.parent != nil {
 		return n.parent.NullCheckExpr()
 	}
+
 	return n.name
 }
 
@@ -228,6 +231,7 @@ func (n ConverterNode) AssignExpr() string {
 	if !util.IsPtr(n.arg.ExprType()) && util.IsPtr(n.converter.ArgType()) {
 		refStr = "&"
 	}
+
 	return fmt.Sprintf("%v(%v%v)", n.converter.Converter(), refStr, n.arg.AssignExpr())
 }
 
@@ -253,6 +257,7 @@ type TypecastEntry struct {
 // NewTypecast creates a new TypecastEntry.
 func NewTypecast(scope *types.Scope, imports util.ImportNames, t types.Type, inner Node) (Node, bool) {
 	var expr string
+
 	switch typ := util.DerefPtr(t).(type) {
 	case *types.Named:
 		// If the type is defined within the current package.

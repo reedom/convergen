@@ -13,7 +13,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// TestEmitterIntegration tests the complete emitter pipeline
+// TestEmitterIntegration tests the complete emitter pipeline.
 func TestEmitterIntegration_CompleteWorkflow(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
@@ -56,17 +56,18 @@ func TestEmitterIntegration_CompleteWorkflow(t *testing.T) {
 
 	// Track events
 	var eventsReceived []string
+
 	eventHandler := events.NewFuncEventHandler("emitter.started", func(ctx context.Context, event events.Event) error {
 		eventsReceived = append(eventsReceived, event.Type())
 		return nil
 	})
-	eventBus.Subscribe("emitter.started", eventHandler)
+	_ = eventBus.Subscribe("emitter.started", eventHandler)
 
 	completedHandler := events.NewFuncEventHandler("emitter.completed", func(ctx context.Context, event events.Event) error {
 		eventsReceived = append(eventsReceived, event.Type())
 		return nil
 	})
-	eventBus.Subscribe("emitter.completed", completedHandler)
+	_ = eventBus.Subscribe("emitter.completed", completedHandler)
 
 	ctx := context.Background()
 	startTime := time.Now()
@@ -147,6 +148,7 @@ func TestEmitterIntegration_EventPipeline(t *testing.T) {
 
 	// Track all emitter events with thread safety
 	var allEvents []string
+
 	var eventsMu sync.Mutex
 
 	eventTypes := []string{
@@ -163,9 +165,10 @@ func TestEmitterIntegration_EventPipeline(t *testing.T) {
 			allEvents = append(allEvents, event.Type())
 			eventsMu.Unlock()
 			t.Logf("Received event: %s with metadata: %v", event.Type(), event.Metadata())
+
 			return nil
 		})
-		eventBus.Subscribe(eventType, handler)
+		_ = eventBus.Subscribe(eventType, handler)
 	}
 
 	// Simulate executor completion event
@@ -231,6 +234,7 @@ func TestEmitterIntegration_EventPipeline(t *testing.T) {
 		if event == EventEmitterStarted {
 			hasStarted = true
 		}
+
 		if event == EventEmitterCompleted {
 			hasCompleted = true
 		}

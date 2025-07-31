@@ -42,6 +42,7 @@ func (g *Generator) FuncToString(f *model.Function) string {
 		sb.WriteString(f.Dst.Name)
 		sb.WriteString(" *")
 		sb.WriteString(f.Dst.PtrLessFullType())
+
 		if f.Receiver == "" {
 			// "func Name(dst *DstModel, "
 			sb.WriteString(", ")
@@ -57,10 +58,12 @@ func (g *Generator) FuncToString(f *model.Function) string {
 
 	for _, args := range f.AdditionalArgs {
 		fullType := args.FullType()
+
 		if strings.Contains(args.Type, "/") {
 			re := regexp.MustCompile(`^([^a-zA-Z0-9]*)([a-zA-Z0-9].*/)(.+)$`)
 			fullType = re.ReplaceAllString(fullType, "$1$3")
 		}
+
 		sb.WriteString(", ")
 		sb.WriteString(args.Name)
 		sb.WriteString(" ")
@@ -76,6 +79,7 @@ func (g *Generator) FuncToString(f *model.Function) string {
 		sb.WriteString(f.Dst.Name)
 		sb.WriteString(" ")
 		sb.WriteString(f.Dst.FullType())
+
 		if f.RetError {
 			// "func Name(src *SrcModel) (dst *DstModel, err error"
 			sb.WriteString(", err error")
@@ -83,13 +87,16 @@ func (g *Generator) FuncToString(f *model.Function) string {
 
 		// "func Name(src *SrcModel) (dst *DstModel) {"
 		sb.WriteString(") {\n")
+
 		if f.Dst.Pointer {
 			// "dst = &DstModel{}"
 			sb.WriteString(f.Dst.Name)
 			sb.WriteString(" = ")
+
 			if f.Dst.Pointer {
 				sb.WriteString("&")
 			}
+
 			sb.WriteString(f.Dst.PtrLessFullType())
 			sb.WriteString("{}\n")
 		}
@@ -106,15 +113,20 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	if f.PreProcess != nil {
 		sb.WriteString(g.ManipulatorToString(f.PreProcess, f.Src, f.Dst, f.AdditionalArgs))
 	}
+
 	for i := range f.Assignments {
 		sb.WriteString(AssignmentToString(f, f.Assignments[i]))
 	}
+
 	if f.PostProcess != nil {
 		sb.WriteString(g.ManipulatorToString(f.PostProcess, f.Src, f.Dst, f.AdditionalArgs))
 	}
+
 	if f.RetError || f.DstVarStyle == model.DstVarReturn {
 		sb.WriteString("\nreturn\n")
 	}
+
 	sb.WriteString("}\n\n")
+
 	return sb.String()
 }

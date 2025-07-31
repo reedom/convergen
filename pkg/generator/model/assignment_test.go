@@ -11,6 +11,7 @@ import (
 
 func TestSkipField(t *testing.T) {
 	t.Parallel()
+
 	sf := model.SkipField{
 		LHS: "foo",
 	}
@@ -29,6 +30,7 @@ func TestSkipField(t *testing.T) {
 
 func TestNoMatchField(t *testing.T) {
 	t.Parallel()
+
 	nmf := model.NoMatchField{
 		LHS: "foo",
 	}
@@ -47,6 +49,7 @@ func TestNoMatchField(t *testing.T) {
 
 func TestSimpleField(t *testing.T) {
 	t.Parallel()
+
 	sf := model.SimpleField{
 		LHS:   "foo",
 		RHS:   "bar",
@@ -67,6 +70,7 @@ func TestSimpleField(t *testing.T) {
 
 func TestNestStruct(t *testing.T) {
 	t.Parallel()
+
 	ns := model.NestStruct{
 		InitExpr:      "initExpr",
 		NullCheckExpr: "nullCheckExpr",
@@ -97,6 +101,7 @@ foo = bar
 
 func TestSliceAssignment(t *testing.T) {
 	t.Parallel()
+
 	sa := model.SliceAssignment{
 		LHS: "foo",
 		RHS: "bar",
@@ -121,6 +126,7 @@ copy(foo, bar)
 
 func TestSliceTypecastAssignment(t *testing.T) {
 	t.Parallel()
+
 	sta := model.SliceTypecastAssignment{
 		LHS:  "foo",
 		RHS:  "bar",

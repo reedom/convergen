@@ -3,6 +3,7 @@ package parser
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
@@ -56,7 +57,7 @@ func NewParserWithConfig(srcPath, dstPath string, config *ParserConfig) (*Parser
 	return newParserLegacy(srcPath, dstPath, validConfig)
 }
 
-// newParserWithConcurrentLoading creates parser using concurrent package loading
+// newParserWithConcurrentLoading creates parser using concurrent package loading.
 func newParserWithConcurrentLoading(srcPath, dstPath string, config *ParserConfig) (*Parser, error) {
 	// Create concurrent package loader
 	loader := NewPackageLoader(config.MaxConcurrentWorkers, config.TypeResolutionTimeout)
@@ -86,18 +87,21 @@ func newParserWithConcurrentLoading(srcPath, dstPath string, config *ParserConfi
 	}, nil
 }
 
-// newParserLegacy creates parser using legacy synchronous loading
+// newParserLegacy creates parser using legacy synchronous loading.
 func newParserLegacy(srcPath, dstPath string, config *ParserConfig) (*Parser, error) {
 	fileSet := token.NewFileSet()
+
 	var fileSrc *ast.File
 
 	srcStat, err := os.Stat(srcPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to stat source file %s: %w", srcPath, err)
 	}
 
 	dstStat, _ := os.Stat(dstPath)
+
 	var parseErr error
+
 	cfg := &packages.Config{
 		Mode:       parserLoadMode,
 		BuildFlags: []string{"-tags", buildTag},
@@ -105,7 +109,7 @@ func newParserLegacy(srcPath, dstPath string, config *ParserConfig) (*Parser, er
 		ParseFile: func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
 			stat, err := os.Stat(filename)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to stat file %s: %w", filename, err)
 			}
 
 			// If previously generation target file exists, skip reading it.
@@ -119,17 +123,19 @@ func newParserLegacy(srcPath, dstPath string, config *ParserConfig) (*Parser, er
 
 			file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
 			if err != nil {
-				parseErr = err
-				return nil, err
+				parseErr = fmt.Errorf("failed to parse file %s: %w", filename, err)
+				return nil, parseErr
 			}
 			fileSrc = file
 			return file, nil
 		},
 	}
+
 	pkgs, err := packages.Load(cfg, "file="+srcPath)
 	if err != nil {
 		return nil, logger.Errorf("%v: failed to load type information: \n%w", srcPath, err)
 	}
+
 	if len(pkgs) == 0 {
 		return nil, logger.Errorf("%v: failed to load package information", srcPath)
 	}
@@ -137,6 +143,7 @@ func newParserLegacy(srcPath, dstPath string, config *ParserConfig) (*Parser, er
 	if fileSrc == nil && parseErr != nil {
 		return nil, logger.Errorf("%v: %v", srcPath, parseErr)
 	}
+
 	return &Parser{
 		srcPath: fileSet.Position(fileSrc.Pos()).Filename,
 		fset:    fileSet,
@@ -158,11 +165,13 @@ func (p *Parser) Parse() ([]*model.MethodsInfo, error) {
 	var allMethods []*model.MethodEntry
 
 	var list []*model.MethodsInfo
+
 	for _, entry := range entries {
 		methods, err := p.parseMethods(entry)
 		if err != nil {
 			return nil, err
 		}
+
 		info := &model.MethodsInfo{
 			Marker:  entry.marker,
 			Methods: methods,
@@ -184,6 +193,7 @@ func (p *Parser) Parse() ([]*model.MethodsInfo, error) {
 	}
 
 	p.intfEntries = entries
+
 	return list, nil
 }
 
@@ -203,6 +213,7 @@ func (p *Parser) GenerateBaseCode() (code string, err error) {
 	// And also find the range pos of the interface in the code.
 	for _, entry := range p.intfEntries {
 		nodes, _ := util.ToAstNode(p.file, entry.intf)
+
 		var minPos, maxPos token.Pos
 
 		for _, node := range nodes {
@@ -212,6 +223,7 @@ func (p *Parser) GenerateBaseCode() (code string, err error) {
 					if node == nil {
 						return true
 					}
+
 					if f, ok := node.(*ast.FieldList); ok {
 						if minPos == 0 {
 							minPos = f.Pos()
@@ -222,6 +234,7 @@ func (p *Parser) GenerateBaseCode() (code string, err error) {
 							maxPos = f.Closing
 						}
 					}
+
 					return true
 				})
 			}
@@ -233,6 +246,7 @@ func (p *Parser) GenerateBaseCode() (code string, err error) {
 	}
 
 	var buf bytes.Buffer
+
 	err = printer.Fprint(&buf, p.fset, p.file)
 	if err != nil {
 		return

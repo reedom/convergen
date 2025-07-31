@@ -19,6 +19,7 @@ func (v Var) FullType() string {
 	if v.Pointer {
 		return "*" + v.Type
 	}
+
 	return v.Type
 }
 

@@ -50,6 +50,7 @@ func TestTypeResolver_ResolveBasicTypes(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			domainType, err := resolver.ResolveType(ctx, tt.goType)
@@ -233,6 +234,7 @@ func TestTypeResolver_ResolveChanType(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			domainType, err := resolver.ResolveType(ctx, tt.chanType)
@@ -289,6 +291,7 @@ func TestTypeResolver_ResolveSignatureType(t *testing.T) {
 func TestTypeResolverPool(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	cache := NewTypeCache(100)
+
 	pool := NewTypeResolverPool(3, cache, logger)
 	defer pool.Close()
 
@@ -330,6 +333,7 @@ func BenchmarkTypeResolver_ResolveBasicType(b *testing.B) {
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := resolver.ResolveType(ctx, stringType)
 		require.NoError(b, err)
@@ -351,6 +355,7 @@ func BenchmarkTypeResolver_ResolveComplexType(b *testing.B) {
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := resolver.ResolveType(ctx, mapType)
 		require.NoError(b, err)

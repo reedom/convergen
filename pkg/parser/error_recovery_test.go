@@ -41,6 +41,7 @@ func TestRecoveryManager_ExecuteWithRecovery(t *testing.T) {
 			if callCount < 3 {
 				return &ContextualError{Category: CategoryConcurrency, Severity: SeverityError}
 			}
+
 			return nil
 		}
 
@@ -109,8 +110,10 @@ func TestRecoveryManager_ExecuteWithRecovery(t *testing.T) {
 		}
 
 		t.Logf("Received error: %v (type: %T)", err, err)
+
 		if contextual, ok := err.(*ContextualError); ok {
 			t.Logf("ContextualError code: %s", contextual.Code)
+
 			if contextual.Code != "PANIC_RECOVERED" && contextual.Code != "RECOVERY_EXHAUSTED" {
 				t.Errorf("expected panic recovery or exhausted error, got %s", contextual.Code)
 			}
@@ -221,8 +224,8 @@ func TestCircuitBreaker(t *testing.T) {
 		cb := NewCircuitBreaker(config)
 
 		// Force open state
-		cb.Execute(func() error { return errors.New("fail") })
-		cb.Execute(func() error { return errors.New("fail") })
+		_ = cb.Execute(func() error { return errors.New("fail") })
+		_ = cb.Execute(func() error { return errors.New("fail") })
 
 		if cb.GetState() != StateOpen {
 			t.Errorf("GetState() = %v, want %v", cb.GetState(), StateOpen)

@@ -81,7 +81,7 @@ func Errorf(format string, a ...any) error {
 	//nolint:err113 // This function is specifically for creating formatted errors
 	formattedErr := fmt.Errorf(format, a...)
 	message := formattedErr.Error()
-	
+
 	// Log the formatted message
 	logger.Println(message)
 	elogger.Println(message)

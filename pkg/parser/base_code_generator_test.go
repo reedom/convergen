@@ -26,6 +26,7 @@ func TestNewBaseCodeGenerator(t *testing.T) {
 
 func TestBaseCodeGenerator_CopyASTFile(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -67,6 +68,7 @@ type Dest struct {
 
 func TestBaseCodeGenerator_RemoveConvergenComments(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -162,6 +164,7 @@ type TestInterface interface {
 
 func TestBaseCodeGenerator_FilterComments(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -236,6 +239,7 @@ func TestBaseCodeGenerator_FilterComments(t *testing.T) {
 
 func TestBaseCodeGenerator_CopyDecls(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -280,6 +284,7 @@ func TestFunc() {
 
 func TestBaseCodeGenerator_CopySpecs(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -314,6 +319,7 @@ type (
 
 	// Find a GenDecl with multiple specs
 	var genDecl *ast.GenDecl
+
 	for _, decl := range file.Decls {
 		if gd, ok := decl.(*ast.GenDecl); ok && len(gd.Specs) > 1 {
 			genDecl = gd
@@ -340,6 +346,7 @@ type (
 
 func TestBaseCodeGenerator_InsertMarkerComments(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -358,6 +365,7 @@ type TestInterface interface {
 
 	// Find the interface declaration
 	var interfaceDecl *ast.TypeSpec
+
 	for _, decl := range file.Decls {
 		if genDecl, ok := decl.(*ast.GenDecl); ok {
 			for _, spec := range genDecl.Specs {
@@ -384,6 +392,7 @@ type TestInterface interface {
 
 func TestBaseCodeGenerator_Integration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -424,13 +433,14 @@ type Dest struct {
 
 	// Verify the copy is independent
 	assert.NotSame(t, file, fileCopy)
-
 	// The test mainly verifies that the functions complete without panicking
 	// Full integration testing would require the complete interface analysis setup
+	assert.NotNil(t, astParser)
 }
 
 func BenchmarkCopyASTFile(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -467,6 +477,7 @@ func TestFunction() {
 	require.NoError(b, err)
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		astParser.copyASTFile(file)
 	}
@@ -474,6 +485,7 @@ func TestFunction() {
 
 func BenchmarkRemoveConvergenComments(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -504,6 +516,7 @@ type Source struct {
 	require.NoError(b, err)
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		fileCopy := astParser.copyASTFile(file)
 		astParser.removeConvergenComments(fileCopy)

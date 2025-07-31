@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -11,7 +12,14 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// BatchExecutor handles the concurrent execution of field mapping batches
+// Static errors for err113 compliance.
+var (
+	ErrBatchExecutionNil           = errors.New("batch execution cannot be nil")
+	ErrDependencyBatchFailed       = errors.New("dependency batch failed")
+	ErrContextCancelledWaitingDeps = errors.New("context cancelled while waiting for dependency")
+)
+
+// BatchExecutor handles the concurrent execution of field mapping batches.
 type BatchExecutor interface {
 	// ExecuteBatch executes a batch of field mappings concurrently
 	ExecuteBatch(ctx context.Context, batch *BatchExecution) (*BatchResult, error)
@@ -26,7 +34,7 @@ type BatchExecutor interface {
 	Shutdown(ctx context.Context) error
 }
 
-// ConcreteBatchExecutor implements BatchExecutor
+// ConcreteBatchExecutor implements BatchExecutor.
 type ConcreteBatchExecutor struct {
 	config        *ExecutorConfig
 	logger        *zap.Logger
@@ -45,7 +53,7 @@ type ConcreteBatchExecutor struct {
 	wg       sync.WaitGroup
 }
 
-// NewBatchExecutor creates a new batch executor
+// NewBatchExecutor creates a new batch executor.
 func NewBatchExecutor(config *ExecutorConfig, logger *zap.Logger, eventBus events.EventBus, resourcePool *ResourcePool, metrics *ExecutionMetrics) BatchExecutor {
 	return &ConcreteBatchExecutor{
 		config:        config,
@@ -60,10 +68,10 @@ func NewBatchExecutor(config *ExecutorConfig, logger *zap.Logger, eventBus event
 	}
 }
 
-// ExecuteBatch executes a batch of field mappings with sophisticated concurrency control
+// ExecuteBatch executes a batch of field mappings with sophisticated concurrency control.
 func (be *ConcreteBatchExecutor) ExecuteBatch(ctx context.Context, batch *BatchExecution) (*BatchResult, error) {
 	if batch == nil {
-		return nil, fmt.Errorf("batch execution cannot be nil")
+		return nil, ErrBatchExecutionNil
 	}
 
 	be.logger.Info("starting batch execution",
@@ -124,6 +132,7 @@ func (be *ConcreteBatchExecutor) ExecuteBatch(ctx context.Context, batch *BatchE
 			if fieldResult.Duration > batchMetrics.MaxFieldDuration {
 				batchMetrics.MaxFieldDuration = fieldResult.Duration
 			}
+
 			if fieldResult.Duration < batchMetrics.MinFieldDuration {
 				batchMetrics.MinFieldDuration = fieldResult.Duration
 			}
@@ -160,6 +169,7 @@ func (be *ConcreteBatchExecutor) ExecuteBatch(ctx context.Context, batch *BatchE
 	if !result.Success {
 		eventType = EventBatchFailed
 	}
+
 	if err := be.emitBatchEvent(ctx, eventType, batch, result); err != nil {
 		be.logger.Warn("failed to emit batch completed event", zap.Error(err))
 	}
@@ -175,7 +185,7 @@ func (be *ConcreteBatchExecutor) ExecuteBatch(ctx context.Context, batch *BatchE
 	return result, nil
 }
 
-// ExecuteBatchWithDependencies executes a batch while respecting its dependencies
+// ExecuteBatchWithDependencies executes a batch while respecting its dependencies.
 func (be *ConcreteBatchExecutor) ExecuteBatchWithDependencies(ctx context.Context, batch *BatchExecution, dependencies map[string]*BatchResult) (*BatchResult, error) {
 	// Wait for dependencies to complete
 	if err := be.waitForDependencies(ctx, batch.DependsOn, dependencies); err != nil {
@@ -186,10 +196,12 @@ func (be *ConcreteBatchExecutor) ExecuteBatchWithDependencies(ctx context.Contex
 	return be.ExecuteBatch(ctx, batch)
 }
 
-// executeFieldsConcurrently executes field mappings with controlled concurrency
+// executeFieldsConcurrently executes field mappings with controlled concurrency.
 func (be *ConcreteBatchExecutor) executeFieldsConcurrently(ctx context.Context, batch *BatchExecution, concurrencyLevel int) (map[string]*FieldResult, []ExecutionError) {
 	fieldResults := make(map[string]*FieldResult)
+
 	var errors []ExecutionError
+
 	var resultMutex sync.Mutex
 
 	// Create a worker pool for this batch
@@ -201,6 +213,7 @@ func (be *ConcreteBatchExecutor) executeFieldsConcurrently(ctx context.Context, 
 	var workerWg sync.WaitGroup
 	for i := 0; i < concurrencyLevel; i++ {
 		workerWg.Add(1)
+
 		go be.fieldWorker(ctx, &workerWg, jobChannel, resultChannel, errorChannel)
 	}
 
@@ -221,6 +234,7 @@ func (be *ConcreteBatchExecutor) executeFieldsConcurrently(ctx context.Context, 
 		case jobChannel <- fieldExecution:
 		case <-ctx.Done():
 			close(jobChannel)
+
 			return fieldResults, append(errors, ExecutionError{
 				BatchID:   batch.ID,
 				Error:     "context cancelled while queuing fields",
@@ -230,6 +244,7 @@ func (be *ConcreteBatchExecutor) executeFieldsConcurrently(ctx context.Context, 
 			})
 		}
 	}
+
 	close(jobChannel)
 
 	// Collect results
@@ -256,7 +271,7 @@ func (be *ConcreteBatchExecutor) executeFieldsConcurrently(ctx context.Context, 
 	return fieldResults, errors
 }
 
-// fieldWorker processes field executions in a worker goroutine
+// fieldWorker processes field executions in a worker goroutine.
 func (be *ConcreteBatchExecutor) fieldWorker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan *FieldExecution, results chan<- *FieldResult, errors chan<- ExecutionError) {
 	defer wg.Done()
 
@@ -288,7 +303,7 @@ func (be *ConcreteBatchExecutor) fieldWorker(ctx context.Context, wg *sync.WaitG
 	}
 }
 
-// calculateOptimalConcurrency determines the best concurrency level for a batch
+// calculateOptimalConcurrency determines the best concurrency level for a batch.
 func (be *ConcreteBatchExecutor) calculateOptimalConcurrency(batch *BatchExecution) int {
 	fieldCount := len(batch.Mappings)
 	maxWorkers := be.resourcePool.GetAvailableWorkers()
@@ -318,7 +333,7 @@ func (be *ConcreteBatchExecutor) calculateOptimalConcurrency(batch *BatchExecuti
 	return concurrency
 }
 
-// waitForDependencies waits for dependent batches to complete
+// waitForDependencies waits for dependent batches to complete.
 func (be *ConcreteBatchExecutor) waitForDependencies(ctx context.Context, dependsOn []string, dependencies map[string]*BatchResult) error {
 	if len(dependsOn) == 0 {
 		return nil
@@ -331,8 +346,9 @@ func (be *ConcreteBatchExecutor) waitForDependencies(ctx context.Context, depend
 		// Check if dependency result is already available
 		if result, exists := dependencies[depBatchID]; exists {
 			if !result.Success {
-				return fmt.Errorf("dependency batch %s failed", depBatchID)
+				return fmt.Errorf("%w: %s", ErrDependencyBatchFailed, depBatchID)
 			}
+
 			continue
 		}
 
@@ -340,16 +356,16 @@ func (be *ConcreteBatchExecutor) waitForDependencies(ctx context.Context, depend
 		// In a full implementation, this would use proper dependency coordination
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("context cancelled while waiting for dependency %s", depBatchID)
+			return fmt.Errorf("%w: %s", ErrContextCancelledWaitingDeps, depBatchID)
+		// Retry checking for dependency
 		case <-time.After(100 * time.Millisecond):
-			// Retry checking for dependency
 		}
 	}
 
 	return nil
 }
 
-// calculateMemoryUsage estimates memory usage for a batch
+// calculateMemoryUsage estimates memory usage for a batch.
 func (be *ConcreteBatchExecutor) calculateMemoryUsage(batch *BatchExecution) int {
 	// Simplified calculation - in practice this would be more sophisticated
 	baseMemory := 10                       // Base 10MB per batch
@@ -360,10 +376,11 @@ func (be *ConcreteBatchExecutor) calculateMemoryUsage(batch *BatchExecution) int
 	if be.config.MaxMemoryMB > 0 && calculated > be.config.MaxMemoryMB {
 		return be.config.MaxMemoryMB
 	}
+
 	return calculated
 }
 
-// calculateResourceEfficiency calculates how efficiently resources were used
+// calculateResourceEfficiency calculates how efficiently resources were used.
 func (be *ConcreteBatchExecutor) calculateResourceEfficiency(batch *BatchExecution, result *BatchResult) float64 {
 	// Simplified efficiency calculation
 	idealTime := float64(len(batch.Mappings)) / float64(result.WorkersUsed)
@@ -374,13 +391,14 @@ func (be *ConcreteBatchExecutor) calculateResourceEfficiency(batch *BatchExecuti
 		if efficiency > 1.0 {
 			efficiency = 1.0 // Cap at 100%
 		}
+
 		return efficiency
 	}
 
 	return 0.0
 }
 
-// GetMetrics returns current batch execution metrics
+// GetMetrics returns current batch execution metrics.
 func (be *ConcreteBatchExecutor) GetMetrics() *BatchMetrics {
 	be.mutex.RLock()
 	defer be.mutex.RUnlock()
@@ -406,7 +424,7 @@ func (be *ConcreteBatchExecutor) GetMetrics() *BatchMetrics {
 	return metrics
 }
 
-// Shutdown gracefully shuts down the batch executor
+// Shutdown gracefully shuts down the batch executor.
 func (be *ConcreteBatchExecutor) Shutdown(ctx context.Context) error {
 	be.logger.Info("shutting down batch executor")
 
@@ -425,7 +443,7 @@ func (be *ConcreteBatchExecutor) Shutdown(ctx context.Context) error {
 		return nil
 	case <-ctx.Done():
 		be.logger.Warn("batch executor shutdown timed out")
-		return ctx.Err()
+		return fmt.Errorf("batch executor shutdown context cancelled: %w", ctx.Err())
 	}
 }
 
@@ -449,7 +467,7 @@ func (be *ConcreteBatchExecutor) storeBatchResult(result *BatchResult) {
 	be.batchResults[result.BatchID] = result
 }
 
-func (be *ConcreteBatchExecutor) emitBatchEvent(ctx context.Context, eventType string, batch *BatchExecution, result *BatchResult) error {
+func (be *ConcreteBatchExecutor) emitBatchEvent(_ context.Context, eventType string, batch *BatchExecution, result *BatchResult) error {
 	data := map[string]interface{}{
 		"batch_id":    batch.ID,
 		"method_name": batch.MethodName,
@@ -465,14 +483,20 @@ func (be *ConcreteBatchExecutor) emitBatchEvent(ctx context.Context, eventType s
 	}
 
 	event := events.NewEvent(eventType, data)
-	return be.eventBus.Publish(event)
+
+	if err := be.eventBus.Publish(event); err != nil {
+		return fmt.Errorf("failed to publish batch event: %w", err)
+	}
+
+	return nil
 }
 
-// Utility functions
+// Utility functions.
 func min(a, b int) int {
 	if a < b {
 		return a
 	}
+
 	return b
 }
 
@@ -480,5 +504,6 @@ func max(a, b int) int {
 	if a > b {
 		return a
 	}
+
 	return b
 }

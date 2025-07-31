@@ -268,6 +268,7 @@ func TestNewGenerationMetrics(t *testing.T) {
 
 	if metrics == nil {
 		t.Error("NewGenerationMetrics should return metrics")
+		return
 	}
 
 	if metrics.MethodsGenerated != 0 {
@@ -288,6 +289,7 @@ func TestNewComplexityMetrics(t *testing.T) {
 
 	if complexity == nil {
 		t.Error("NewComplexityMetrics should return metrics")
+		return
 	}
 
 	if complexity.RecommendedStrategy != StrategyCompositeLiteral {
@@ -364,6 +366,7 @@ func TestComplexityMetrics_ShouldUseComposite(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			metrics := &ComplexityMetrics{RecommendedStrategy: tt.strategy}
+
 			result := metrics.ShouldUseComposite()
 			if result != tt.expected {
 				t.Errorf("ShouldUseComposite() = %v, want %v", result, tt.expected)
@@ -377,6 +380,7 @@ func TestNewEmitterMetrics(t *testing.T) {
 
 	if metrics == nil {
 		t.Error("NewEmitterMetrics should return metrics")
+		return
 	}
 
 	if metrics.StrategyUsage == nil {
@@ -417,6 +421,7 @@ func TestEmitterMetrics_RecordGeneration(t *testing.T) {
 
 	// Test with nil method
 	metrics.RecordGeneration(nil, "testpkg", []*MethodCode{})
+
 	if metrics.TotalMethods != initialMethods+2 {
 		t.Error("RecordGeneration should handle nil method")
 	}
@@ -431,6 +436,7 @@ func TestEmitterMetrics_GetSnapshot(t *testing.T) {
 
 	if snapshot == nil {
 		t.Error("GetSnapshot should return snapshot")
+		return
 	}
 
 	if snapshot.TotalMethods != 10 {
@@ -450,6 +456,7 @@ func TestEmitterMetrics_GetSnapshot(t *testing.T) {
 func TestTemplateData(t *testing.T) {
 	sourceType := domain.NewBasicType("User", reflect.Struct)
 	destType := domain.NewBasicType("UserDTO", reflect.Struct)
+
 	method, err := domain.NewMethod("ConvertUser", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create method: %v", err)
@@ -534,6 +541,7 @@ func TestOrderedBuffer(t *testing.T) {
 
 	// Test adding more items after sorting
 	buffer.Add(0, "zero", "content")
+
 	if buffer.sorted {
 		t.Error("OrderedBuffer should be marked as unsorted after adding new items")
 	}
@@ -549,6 +557,7 @@ func TestOrderedBuffer(t *testing.T) {
 func TestOrderedBuffer_EdgeCases(t *testing.T) {
 	// Test empty buffer
 	buffer := &OrderedBuffer{}
+
 	result := buffer.Generate()
 	if result != "" {
 		t.Errorf("Empty OrderedBuffer.Generate() = %q, want empty string", result)
@@ -556,6 +565,7 @@ func TestOrderedBuffer_EdgeCases(t *testing.T) {
 
 	// Test single item
 	buffer.Add(1, "single", "content")
+
 	result = buffer.Generate()
 	if result != "single" {
 		t.Errorf("Single item OrderedBuffer.Generate() = %q, want %q", result, "single")
@@ -567,6 +577,7 @@ func TestOrderedBuffer_EdgeCases(t *testing.T) {
 	buffer2.Add(1, "second-1", "content")
 	result2 := buffer2.Generate()
 	expected := "first-1second-1"
+
 	if result2 != expected {
 		t.Errorf("Duplicate order OrderedBuffer.Generate() = %q, want %q", result2, expected)
 	}
@@ -672,6 +683,7 @@ func TestGenerationRequestResponse(t *testing.T) {
 	// Test GenerationRequest
 	sourceType := domain.NewBasicType("User", reflect.Struct)
 	destType := domain.NewBasicType("UserDTO", reflect.Struct)
+
 	method, err := domain.NewMethod("ConvertUser", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create method: %v", err)

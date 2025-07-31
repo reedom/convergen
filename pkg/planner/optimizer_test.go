@@ -77,6 +77,7 @@ func TestPlanOptimizer_OptimizePlan(t *testing.T) {
 				// Should have applied some optimizations
 				totalWorkers := 0
 				totalMemory := 0
+
 				for _, plan := range methodPlans {
 					totalWorkers += plan.RequiredWorkers
 					totalMemory += plan.MemoryRequirementMB
@@ -234,6 +235,7 @@ func TestPlanOptimizer_DisabledOptimizations(t *testing.T) {
 	// Store original values for comparison
 	originalWorkers := make(map[string]int)
 	originalMemory := make(map[string]int)
+
 	for name, plan := range methodPlans {
 		originalWorkers[name] = plan.RequiredWorkers
 		originalMemory[name] = plan.MemoryRequirementMB
@@ -320,6 +322,7 @@ func BenchmarkPlanOptimizer_OptimizePlan(b *testing.B) {
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		err := optimizer.OptimizePlan(ctx, methodPlans, batches)
 		require.NoError(b, err)

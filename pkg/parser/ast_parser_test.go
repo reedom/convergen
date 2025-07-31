@@ -17,6 +17,7 @@ import (
 
 func TestASTParser_NewASTParser(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -131,11 +132,13 @@ type RegularInterface interface {
 
 			// Create parser
 			logger := zaptest.NewLogger(t)
+
 			eventBus := events.NewInMemoryEventBus(logger)
 			defer eventBus.Close()
 
 			// Subscribe to events for testing
 			var receivedEvents []events.Event
+
 			handler := events.NewFuncEventHandler("parse.completed", func(ctx context.Context, event events.Event) error {
 				receivedEvents = append(receivedEvents, event)
 				return nil
@@ -209,6 +212,7 @@ type Dest struct {
 
 	// Create parser with high concurrency
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -279,6 +283,7 @@ type ComplexType struct {
 
 	// Create parser
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -380,6 +385,7 @@ type Source struct {
 
 			// Create parser
 			logger := zaptest.NewLogger(t)
+
 			eventBus := events.NewInMemoryEventBus(logger)
 			defer eventBus.Close()
 
@@ -422,6 +428,7 @@ type GenericType[T any] struct {
 
 	// Create parser
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -487,6 +494,7 @@ type Dest struct {
 
 	// Create parser
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -502,6 +510,7 @@ type Dest struct {
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, _, err := parser.ParseSourceFile(ctx, sourceFile, destFile)
 		require.NoError(b, err)

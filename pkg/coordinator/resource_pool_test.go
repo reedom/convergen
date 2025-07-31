@@ -26,8 +26,13 @@ func TestNewResourcePool(t *testing.T) {
 func TestResourcePoolGetWorkerPool(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	workerPool, err := pool.GetWorkerPool(ctx, 3)
@@ -52,8 +57,13 @@ func TestResourcePoolGetWorkerPool(t *testing.T) {
 func TestResourcePoolGetWorkerPoolSameSize(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -108,8 +118,13 @@ func TestResourcePoolGetWorkerPoolAfterRelease(t *testing.T) {
 func TestResourcePoolGetBufferPool(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	bufferPool := pool.GetBufferPool()
 
@@ -145,8 +160,13 @@ func TestResourcePoolGetBufferPool(t *testing.T) {
 func TestResourcePoolGetChannelPool(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	channelPool := pool.GetChannelPool()
 
@@ -177,8 +197,13 @@ func TestResourcePoolGetChannelPool(t *testing.T) {
 func TestResourcePoolGetResourceUsage(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	usage := pool.GetResourceUsage()
 
@@ -199,8 +224,13 @@ func TestResourcePoolGetResourceUsage(t *testing.T) {
 func TestResourcePoolForceGC(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	// Get initial GC stats
 	usage1 := pool.GetResourceUsage()
@@ -249,8 +279,13 @@ func TestResourcePoolRelease(t *testing.T) {
 func TestBufferPoolGetPutBuffer(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config).(*ConcreteResourcePool)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	bufferPool := pool.bufferPool
 
@@ -289,8 +324,13 @@ func TestBufferPoolGetPutBuffer(t *testing.T) {
 func TestBufferPoolWrongSizeBuffer(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config).(*ConcreteResourcePool)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	bufferPool := pool.bufferPool
 
@@ -315,8 +355,13 @@ func TestBufferPoolExhaustion(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
 	config.BufferPoolSize = 2 // Small pool for testing
+
 	pool := NewResourcePool(logger, config).(*ConcreteResourcePool)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	bufferPool := pool.bufferPool
 
@@ -341,8 +386,13 @@ func TestBufferPoolExhaustion(t *testing.T) {
 func TestChannelPoolGetPutChannel(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config).(*ConcreteResourcePool)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	channelPool := pool.channelPool
 
@@ -365,8 +415,13 @@ func TestChannelPoolGetPutChannel(t *testing.T) {
 func TestChannelPoolDrainChannel(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config).(*ConcreteResourcePool)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	channelPool := pool.channelPool
 
@@ -377,8 +432,8 @@ func TestChannelPoolDrainChannel(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		select {
 		case ch <- nil: // Simple nil events for testing
+		// Channel full, skip
 		default:
-			// Channel full, skip
 		}
 	}
 
@@ -392,8 +447,8 @@ func TestChannelPoolDrainChannel(t *testing.T) {
 	select {
 	case <-ch2:
 		t.Error("Expected channel to be drained")
+	// Channel is empty as expected
 	default:
-		// Channel is empty as expected
 	}
 }
 
@@ -402,10 +457,16 @@ func TestChannelPoolDrainChannel(t *testing.T) {
 func TestWorkerPoolSubmitTask(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
+
 	workerPool, err := pool.GetWorkerPool(ctx, 2)
 	if err != nil {
 		t.Fatalf("GetWorkerPool failed: %v", err)
@@ -413,6 +474,7 @@ func TestWorkerPoolSubmitTask(t *testing.T) {
 
 	// Submit a task
 	var executed bool
+
 	var mu sync.Mutex
 
 	task := func() {
@@ -441,10 +503,16 @@ func TestWorkerPoolSubmitTask(t *testing.T) {
 func TestWorkerPoolGetStats(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
+
 	workerPool, err := pool.GetWorkerPool(ctx, 3)
 	if err != nil {
 		t.Fatalf("GetWorkerPool failed: %v", err)
@@ -472,10 +540,16 @@ func TestWorkerPoolGetStats(t *testing.T) {
 func TestWorkerPoolTaskPanic(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
+
 	workerPool, err := pool.GetWorkerPool(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetWorkerPool failed: %v", err)
@@ -500,6 +574,7 @@ func TestWorkerPoolTaskPanic(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error from panic")
 		}
+
 		expectedMsg := "worker panic: test panic"
 		if err.Error() != expectedMsg {
 			t.Errorf("Expected error %q, got %q", expectedMsg, err.Error())
@@ -510,6 +585,7 @@ func TestWorkerPoolTaskPanic(t *testing.T) {
 
 	// Worker pool should still be functional
 	var executed bool
+
 	var mu sync.Mutex
 
 	normalTask := func() {
@@ -539,15 +615,20 @@ func TestWorkerPoolTaskPanic(t *testing.T) {
 func TestResourcePoolConcurrentWorkerPoolAccess(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	done := make(chan bool, 10)
 
 	// Concurrent access to worker pools
 	for i := 0; i < 10; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer func() { done <- true }()
 
 			for j := 0; j < 10; j++ {
@@ -568,8 +649,13 @@ func TestResourcePoolConcurrentWorkerPoolAccess(t *testing.T) {
 func TestResourcePoolConcurrentBufferAccess(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			t.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	bufferPool := pool.GetBufferPool()
 	done := make(chan bool, 10)
@@ -598,8 +684,13 @@ func TestResourcePoolConcurrentBufferAccess(t *testing.T) {
 func BenchmarkResourcePoolGetWorkerPool(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			b.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -616,8 +707,13 @@ func BenchmarkResourcePoolGetWorkerPool(b *testing.B) {
 func BenchmarkBufferPoolGetPut(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config).(*ConcreteResourcePool)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			b.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	bufferPool := pool.bufferPool
 
@@ -632,8 +728,13 @@ func BenchmarkBufferPoolGetPut(b *testing.B) {
 func BenchmarkChannelPoolGetPut(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config).(*ConcreteResourcePool)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			b.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	channelPool := pool.channelPool
 
@@ -648,10 +749,16 @@ func BenchmarkChannelPoolGetPut(b *testing.B) {
 func BenchmarkWorkerPoolSubmitTask(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 	config := createTestConfig()
+
 	pool := NewResourcePool(logger, config)
-	defer pool.Release(context.Background())
+	defer func() {
+		if err := pool.Release(context.Background()); err != nil {
+			b.Errorf("Release failed: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
+
 	workerPool, err := pool.GetWorkerPool(ctx, 4)
 	if err != nil {
 		b.Fatalf("GetWorkerPool failed: %v", err)

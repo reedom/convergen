@@ -346,6 +346,7 @@ func BenchmarkIsBuiltinType(b *testing.B) {
 	testTypes := []string{"string", "int", "bool", "User", "time.Time", "*string"}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		for _, typeName := range testTypes {
 			isBuiltinType(typeName)
@@ -364,6 +365,7 @@ func BenchmarkSanitizeIdentifier(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		for _, name := range testNames {
 			sanitizeIdentifier(name)

@@ -17,6 +17,7 @@ import (
 
 func TestNewExecutor(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -64,6 +65,7 @@ func TestExecutor_ExecutePlan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
+
 			eventBus := events.NewInMemoryEventBus(logger)
 			defer eventBus.Close()
 
@@ -75,7 +77,10 @@ func TestExecutor_ExecutePlan(t *testing.T) {
 			defer func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				executor.Shutdown(ctx)
+
+				if err := executor.Shutdown(ctx); err != nil {
+					t.Errorf("executor.Shutdown failed: %v", err)
+				}
 			}()
 
 			ctx := context.Background()
@@ -101,6 +106,7 @@ func TestExecutor_ExecutePlan(t *testing.T) {
 
 func TestExecutor_ExecuteBatch(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -108,7 +114,10 @@ func TestExecutor_ExecuteBatch(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		executor.Shutdown(ctx)
+
+		if err := executor.Shutdown(ctx); err != nil {
+			t.Errorf("executor.Shutdown failed: %v", err)
+		}
 	}()
 
 	batch := createTestBatchExecution("test_batch", 3)
@@ -125,6 +134,7 @@ func TestExecutor_ExecuteBatch(t *testing.T) {
 
 func TestExecutor_ExecuteField(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -132,7 +142,10 @@ func TestExecutor_ExecuteField(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		executor.Shutdown(ctx)
+
+		if err := executor.Shutdown(ctx); err != nil {
+			t.Errorf("executor.Shutdown failed: %v", err)
+		}
 	}()
 
 	field := createTestFieldExecution("test_field", "direct")
@@ -149,6 +162,7 @@ func TestExecutor_ExecuteField(t *testing.T) {
 
 func TestExecutor_GetMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -159,7 +173,10 @@ func TestExecutor_GetMetrics(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		executor.Shutdown(ctx)
+
+		if err := executor.Shutdown(ctx); err != nil {
+			t.Errorf("executor.Shutdown failed: %v", err)
+		}
 	}()
 
 	metrics := executor.GetMetrics()
@@ -170,6 +187,7 @@ func TestExecutor_GetMetrics(t *testing.T) {
 
 func TestExecutor_GetStatus(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -177,7 +195,10 @@ func TestExecutor_GetStatus(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		executor.Shutdown(ctx)
+
+		if err := executor.Shutdown(ctx); err != nil {
+			t.Errorf("executor.Shutdown failed: %v", err)
+		}
 	}()
 
 	status := executor.GetStatus()
@@ -190,6 +211,7 @@ func TestExecutor_GetStatus(t *testing.T) {
 
 func TestExecutor_ConcurrentExecution(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -201,7 +223,10 @@ func TestExecutor_ConcurrentExecution(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		executor.Shutdown(ctx)
+
+		if err := executor.Shutdown(ctx); err != nil {
+			t.Errorf("executor.Shutdown failed: %v", err)
+		}
 	}()
 
 	// Execute multiple plans concurrently
@@ -210,9 +235,11 @@ func TestExecutor_ConcurrentExecution(t *testing.T) {
 	errors := make(chan error, planCount)
 
 	ctx := context.Background()
+
 	for i := 0; i < planCount; i++ {
 		go func(id int) {
 			plan := createTestExecutionPlan(fmt.Sprintf("concurrent_%d", id), 3, 5)
+
 			result, err := executor.ExecutePlan(ctx, plan)
 			if err != nil {
 				errors <- err
@@ -231,9 +258,11 @@ func TestExecutor_ConcurrentExecution(t *testing.T) {
 		case result := <-results:
 			assert.NotNil(t, result)
 			assert.True(t, result.Success)
+
 			successCount++
 		case err := <-errors:
 			assert.NoError(t, err)
+
 			errorCount++
 		case <-time.After(30 * time.Second):
 			t.Fatal("Test timed out waiting for results")
@@ -251,6 +280,7 @@ func TestExecutor_ConcurrentExecution(t *testing.T) {
 
 func TestExecutor_ResourceLimits(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -263,7 +293,10 @@ func TestExecutor_ResourceLimits(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		executor.Shutdown(ctx)
+
+		if err := executor.Shutdown(ctx); err != nil {
+			t.Errorf("executor.Shutdown failed: %v", err)
+		}
 	}()
 
 	// Create a plan that would stress resources
@@ -283,6 +316,7 @@ func TestExecutor_ResourceLimits(t *testing.T) {
 
 func TestExecutor_Shutdown(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -293,7 +327,7 @@ func TestExecutor_Shutdown(t *testing.T) {
 	ctx := context.Background()
 
 	go func() {
-		executor.ExecutePlan(ctx, plan)
+		_, _ = executor.ExecutePlan(ctx, plan)
 	}()
 
 	// Allow some execution time
@@ -309,6 +343,7 @@ func TestExecutor_Shutdown(t *testing.T) {
 
 func BenchmarkExecutor_ExecutePlan(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -319,13 +354,17 @@ func BenchmarkExecutor_ExecutePlan(b *testing.B) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		executor.Shutdown(ctx)
+
+		if err := executor.Shutdown(ctx); err != nil {
+			b.Errorf("executor.Shutdown failed: %v", err)
+		}
 	}()
 
 	plan := createTestExecutionPlan("benchmark", 5, 10)
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := executor.ExecutePlan(ctx, plan)
 		require.NoError(b, err)
@@ -374,6 +413,7 @@ func createTestMethodBatches(fieldCount int) []*domain.ConcurrentBatch {
 	batchCount := (fieldCount + batchSize - 1) / batchSize
 
 	batches := make([]*domain.ConcurrentBatch, batchCount)
+
 	for i := 0; i < batchCount; i++ {
 		startIdx := i * batchSize
 		endIdx := min(startIdx+batchSize, fieldCount)

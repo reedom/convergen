@@ -12,42 +12,55 @@ import (
 	"github.com/reedom/convergen/v8/pkg/planner"
 )
 
-// PipelineStage represents the current stage of pipeline execution
+// PipelineStage represents the current stage of pipeline execution.
 type PipelineStage string
 
 const (
+	// StageInitializing represents the pipeline initialization stage.
 	StageInitializing PipelineStage = "initializing"
-	StageParsing      PipelineStage = "parsing"
-	StagePlanning     PipelineStage = "planning"
-	StageExecuting    PipelineStage = "executing"
-	StageEmitting     PipelineStage = "emitting"
-	StageCompleted    PipelineStage = "completed"
-	StageFailed       PipelineStage = "failed"
+	// StageParsing represents the code parsing stage.
+	StageParsing PipelineStage = "parsing"
+	// StagePlanning represents the execution planning stage.
+	StagePlanning PipelineStage = "planning"
+	// StageExecuting represents the code execution stage.
+	StageExecuting PipelineStage = "executing"
+	// StageEmitting represents the code emission stage.
+	StageEmitting PipelineStage = "emitting"
+	// StageCompleted represents the completed pipeline stage.
+	StageCompleted PipelineStage = "completed"
+	// StageFailed represents the failed pipeline stage.
+	StageFailed PipelineStage = "failed"
 )
 
-// String returns the string representation of the pipeline stage
+// String returns the string representation of the pipeline stage.
 func (s PipelineStage) String() string {
 	return string(s)
 }
 
-// ComponentStatus represents the status of a pipeline component
+// ComponentStatus represents the status of a pipeline component.
 type ComponentStatus string
 
 const (
+	// StatusInitializing represents a component in initialization state.
 	StatusInitializing ComponentStatus = "initializing"
-	StatusReady        ComponentStatus = "ready"
-	StatusRunning      ComponentStatus = "running"
-	StatusCompleted    ComponentStatus = "completed"
-	StatusFailed       ComponentStatus = "failed"
-	StatusShutdown     ComponentStatus = "shutdown"
+	// StatusReady represents a component ready for operation.
+	StatusReady ComponentStatus = "ready"
+	// StatusRunning represents a component currently running.
+	StatusRunning ComponentStatus = "running"
+	// StatusCompleted represents a component that has completed its work.
+	StatusCompleted ComponentStatus = "completed"
+	// StatusFailed represents a component that has failed.
+	StatusFailed ComponentStatus = "failed"
+	// StatusShutdown represents a component that has been shut down.
+	StatusShutdown ComponentStatus = "shutdown"
 )
 
-// String returns the string representation of the component status
+// String returns the string representation of the component status.
 func (s ComponentStatus) String() string {
 	return string(s)
 }
 
-// Config defines configuration for the coordinator
+// Config defines configuration for the coordinator.
 type Config struct {
 	// Component configurations
 	ParserConfig   *parser.ParserConfig     `json:"parser_config,omitempty"`
@@ -80,7 +93,7 @@ type Config struct {
 	EnableEventTracing bool   `json:"enable_event_tracing"`
 }
 
-// DefaultConfig returns a sensible default configuration
+// DefaultConfig returns a sensible default configuration.
 func DefaultConfig() *Config {
 	return &Config{
 		ParserConfig: &parser.ParserConfig{
@@ -123,7 +136,7 @@ func DefaultConfig() *Config {
 	}
 }
 
-// PipelineInput represents input to the pipeline
+// PipelineInput represents input to the pipeline.
 type PipelineInput struct {
 	Sources    []string               `json:"sources"`
 	SourceCode string                 `json:"source_code,omitempty"`
@@ -132,7 +145,7 @@ type PipelineInput struct {
 	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 }
 
-// GenerationResult represents the output of the pipeline
+// GenerationResult represents the output of the pipeline.
 type GenerationResult struct {
 	// Generated code and metadata
 	Code     string                 `json:"code"`
@@ -151,7 +164,7 @@ type GenerationResult struct {
 	Components map[string]ComponentStatus `json:"components"`
 }
 
-// GenerationMetadata contains metadata about the generation process
+// GenerationMetadata contains metadata about the generation process.
 type GenerationMetadata struct {
 	Timestamp          time.Time         `json:"timestamp"`
 	CoordinatorVersion string            `json:"coordinator_version"`
@@ -161,7 +174,7 @@ type GenerationMetadata struct {
 	ProcessingStages   []StageMetadata   `json:"processing_stages"`
 }
 
-// StageMetadata contains metadata about a specific pipeline stage
+// StageMetadata contains metadata about a specific pipeline stage.
 type StageMetadata struct {
 	Stage      PipelineStage          `json:"stage"`
 	StartTime  time.Time              `json:"start_time"`
@@ -172,7 +185,7 @@ type StageMetadata struct {
 	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 }
 
-// PipelineStatus represents the current status of pipeline execution
+// PipelineStatus represents the current status of pipeline execution.
 type PipelineStatus struct {
 	Stage           PipelineStage              `json:"stage"`
 	Progress        float64                    `json:"progress"`
@@ -184,7 +197,7 @@ type PipelineStatus struct {
 	PipelineID      string                     `json:"pipeline_id"`
 }
 
-// ComponentError represents an error from a specific component
+// ComponentError represents an error from a specific component.
 type ComponentError struct {
 	Component string                 `json:"component"`
 	Stage     PipelineStage          `json:"stage"`
@@ -195,7 +208,7 @@ type ComponentError struct {
 	Attempt   int                    `json:"attempt"`
 }
 
-// ErrorReport aggregates errors from the pipeline
+// ErrorReport aggregates errors from the pipeline.
 type ErrorReport struct {
 	Errors        []ComponentError `json:"errors"`
 	Critical      []error          `json:"critical"`
@@ -207,7 +220,7 @@ type ErrorReport struct {
 	LastError     *ComponentError  `json:"last_error,omitempty"`
 }
 
-// CoordinatorMetrics tracks coordinator performance and statistics
+// CoordinatorMetrics tracks coordinator performance and statistics.
 type CoordinatorMetrics struct {
 	// Execution statistics
 	PipelineExecutions int64         `json:"pipeline_executions"`
@@ -235,7 +248,7 @@ type CoordinatorMetrics struct {
 	ConcurrencyLevel float64         `json:"concurrency_level"`
 }
 
-// ResourceUsage tracks resource consumption
+// ResourceUsage tracks resource consumption.
 type ResourceUsage struct {
 	PeakMemoryUsage    int64         `json:"peak_memory_usage"`
 	CurrentMemoryUsage int64         `json:"current_memory_usage"`
@@ -244,7 +257,7 @@ type ResourceUsage struct {
 	GCStats            *GCStatistics `json:"gc_stats"`
 }
 
-// GCStatistics tracks garbage collection statistics
+// GCStatistics tracks garbage collection statistics.
 type GCStatistics struct {
 	NumGC        uint32    `json:"num_gc"`
 	PauseTotalNs uint64    `json:"pause_total_ns"`
@@ -252,7 +265,7 @@ type GCStatistics struct {
 	LastGC       time.Time `json:"last_gc"`
 }
 
-// RetryStatistics tracks retry behavior
+// RetryStatistics tracks retry behavior.
 type RetryStatistics struct {
 	TotalRetries      int64            `json:"total_retries"`
 	SuccessfulRetries int64            `json:"successful_retries"`
@@ -261,7 +274,7 @@ type RetryStatistics struct {
 	AverageRetryDelay time.Duration    `json:"average_retry_delay"`
 }
 
-// LatencyMetrics tracks latency distribution
+// LatencyMetrics tracks latency distribution.
 type LatencyMetrics struct {
 	P50  time.Duration `json:"p50"`
 	P90  time.Duration `json:"p90"`
@@ -272,7 +285,7 @@ type LatencyMetrics struct {
 	Mean time.Duration `json:"mean"`
 }
 
-// PipelineComponent interface for components that can be integrated into the pipeline
+// PipelineComponent interface for components that can be integrated into the pipeline.
 type PipelineComponent interface {
 	// Name returns the component name
 	Name() string
@@ -290,20 +303,20 @@ type PipelineComponent interface {
 	GetStatus() ComponentStatus
 }
 
-// ComponentFactory creates pipeline components
+// ComponentFactory creates pipeline components.
 type ComponentFactory func(config interface{}) (PipelineComponent, error)
 
-// PipelineMiddleware processes requests between pipeline stages
+// PipelineMiddleware processes requests between pipeline stages.
 type PipelineMiddleware interface {
 	Process(ctx context.Context, input interface{}, next func(interface{}) interface{}) interface{}
 }
 
-// EventInterceptor can intercept and modify events in the pipeline
+// EventInterceptor can intercept and modify events in the pipeline.
 type EventInterceptor interface {
 	Intercept(ctx context.Context, event events.Event) (events.Event, error)
 }
 
-// RecoveryStrategy determines how to handle component failures
+// RecoveryStrategy determines how to handle component failures.
 type RecoveryStrategy interface {
 	// IsRecoverable determines if error can be recovered from
 	IsRecoverable(err error) bool
@@ -315,7 +328,7 @@ type RecoveryStrategy interface {
 	GetRetryDelay(attempt int) time.Duration
 }
 
-// WorkerPool manages a pool of worker goroutines
+// WorkerPool manages a pool of worker goroutines.
 type WorkerPool struct {
 	Size      int           `json:"size"`
 	Workers   chan struct{} `json:"-"`
@@ -326,7 +339,7 @@ type WorkerPool struct {
 	Processed int64         `json:"processed"`
 }
 
-// BufferPool manages reusable byte buffers
+// BufferPool manages reusable byte buffers.
 type BufferPool struct {
 	pool    chan []byte
 	size    int
@@ -335,7 +348,7 @@ type BufferPool struct {
 	reused  int64
 }
 
-// ChannelPool manages reusable channels
+// ChannelPool manages reusable channels.
 type ChannelPool struct {
 	eventChans chan chan events.Event
 	size       int

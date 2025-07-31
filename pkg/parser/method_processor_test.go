@@ -18,6 +18,7 @@ import (
 
 func TestNewMethodProcessor(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -36,6 +37,7 @@ func TestNewMethodProcessor(t *testing.T) {
 
 func TestMethodProcessor_Integration_WithASTParser(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -82,9 +84,10 @@ type Dest struct { Name string }`
 	assert.NotNil(t, processor.logger)
 }
 
-// Note: isErrorType is actually a method of ASTParser, not MethodProcessor
+// Note: isErrorType is actually a method of ASTParser, not MethodProcessor.
 func TestMethodProcessor_ErrorTypeIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -98,9 +101,10 @@ func TestMethodProcessor_ErrorTypeIntegration(t *testing.T) {
 	assert.NotNil(t, processor.parser, "Processor should have access to parser for error type checking")
 }
 
-// Note: copyStringMap is actually a method of ASTParser, not MethodProcessor
+// Note: copyStringMap is actually a method of ASTParser, not MethodProcessor.
 func TestMethodProcessor_StringMapIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -114,9 +118,10 @@ func TestMethodProcessor_StringMapIntegration(t *testing.T) {
 	assert.NotNil(t, processor.parser, "Processor should have access to parser for string map operations")
 }
 
-// Note: getMethodDocComment is actually a method of ASTParser, not MethodProcessor
+// Note: getMethodDocComment is actually a method of ASTParser, not MethodProcessor.
 func TestMethodProcessor_DocCommentIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -132,6 +137,7 @@ func TestMethodProcessor_DocCommentIntegration(t *testing.T) {
 
 func TestMethodProcessor_ParameterAnalysisIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -149,6 +155,7 @@ func TestMethodProcessor_ParameterAnalysisIntegration(t *testing.T) {
 
 func TestMethodProcessor_Integration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -167,6 +174,7 @@ func TestMethodProcessor_Integration(t *testing.T) {
 
 func BenchmarkMethodProcessor_Creation(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -176,6 +184,7 @@ func BenchmarkMethodProcessor_Creation(b *testing.B) {
 	typeResolver := NewTypeResolver(astParser.cache, logger)
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		NewMethodProcessor(astParser, typeResolver, logger)
 	}

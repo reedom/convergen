@@ -22,6 +22,7 @@ func loadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Packag
 	conf := types.Config{Importer: importer.Default()}
 	pkg, err := conf.Check("example.go", fset, []*ast.File{file}, nil)
 	require.Nil(t, err)
+
 	return file, fset, pkg
 }
 
@@ -73,20 +74,8 @@ func main() {}`
 		if method.Name() == "" {
 			t.Errorf("Method name is empty")
 		}
-		//if method.Recv() == nil {
-		//	t.Errorf("Receiver type is nil")
-		//}
-		//if len(method.Args()) == 0 {
-		//	t.Errorf("Argument types are empty")
-		//}
-		//if len(method.Results()) == 0 {
-		//	t.Errorf("Result types are empty")
-		//}
-		//if method.SrcVar() == nil {
-		//	t.Errorf("SrcVar is nil")
-		//}
-		//if method.DstVar() == nil {
-		//	t.Errorf("DstVar is nil")
-		//}
+
+		// Additional validations can be added here when needed
+		_ = method // Prevent unused variable warning
 	}
 }

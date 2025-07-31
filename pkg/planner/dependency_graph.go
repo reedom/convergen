@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -10,7 +11,20 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// DependencyGraph represents dependencies between field mappings
+// Static errors for err113 compliance.
+var (
+	ErrFieldMappingNil           = errors.New("field mapping cannot be nil")
+	ErrFieldMappingIDEmpty       = errors.New("field mapping ID cannot be empty")
+	ErrFieldMappingAlreadyExists = errors.New("field mapping already exists")
+	ErrDependencyIDsEmpty        = errors.New("dependency IDs cannot be empty")
+	ErrFieldSelfDependency       = errors.New("field cannot depend on itself")
+	ErrSourceFieldNotFound       = errors.New("source field not found in graph")
+	ErrTargetFieldNotFound       = errors.New("target field not found in graph")
+	ErrFieldsNotFoundInGraph     = errors.New("one or both fields not found in graph")
+	ErrDependencyCycleDetected   = errors.New("dependency cycle detected")
+)
+
+// DependencyGraph represents dependencies between field mappings.
 type DependencyGraph interface {
 	AddField(mapping *domain.FieldMapping) error
 	AddDependency(from, to string) error
@@ -27,7 +41,7 @@ type DependencyGraph interface {
 	GetDependents(id string) []string
 }
 
-// GraphNode represents a node in the dependency graph
+// GraphNode represents a node in the dependency graph.
 type GraphNode struct {
 	ID           string               `json:"id"`
 	Mapping      *domain.FieldMapping `json:"mapping"`
@@ -38,7 +52,7 @@ type GraphNode struct {
 	Order        int                  `json:"order"`        // Topological order
 }
 
-// ConcreteDependencyGraph implements DependencyGraph
+// ConcreteDependencyGraph implements DependencyGraph.
 type ConcreteDependencyGraph struct {
 	nodes       map[string]*GraphNode
 	methodNodes map[string][]string // method name -> field IDs
@@ -46,7 +60,7 @@ type ConcreteDependencyGraph struct {
 	mutex       sync.RWMutex
 }
 
-// NewDependencyGraph creates a new dependency graph
+// NewDependencyGraph creates a new dependency graph.
 func NewDependencyGraph(logger *zap.Logger) DependencyGraph {
 	return &ConcreteDependencyGraph{
 		nodes:       make(map[string]*GraphNode),
@@ -55,22 +69,22 @@ func NewDependencyGraph(logger *zap.Logger) DependencyGraph {
 	}
 }
 
-// AddField adds a field mapping to the dependency graph
+// AddField adds a field mapping to the dependency graph.
 func (g *ConcreteDependencyGraph) AddField(mapping *domain.FieldMapping) error {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
 	if mapping == nil {
-		return fmt.Errorf("field mapping cannot be nil")
+		return ErrFieldMappingNil
 	}
 
 	if mapping.ID == "" {
-		return fmt.Errorf("field mapping ID cannot be empty")
+		return ErrFieldMappingIDEmpty
 	}
 
 	// Check if field already exists
 	if _, exists := g.nodes[mapping.ID]; exists {
-		return fmt.Errorf("field mapping with ID %s already exists", mapping.ID)
+		return fmt.Errorf("%w: %s", ErrFieldMappingAlreadyExists, mapping.ID)
 	}
 
 	// Create new node
@@ -96,17 +110,17 @@ func (g *ConcreteDependencyGraph) AddField(mapping *domain.FieldMapping) error {
 	return nil
 }
 
-// AddDependency adds a dependency relationship between two fields
+// AddDependency adds a dependency relationship between two fields.
 func (g *ConcreteDependencyGraph) AddDependency(from, to string) error {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
 	if from == "" || to == "" {
-		return fmt.Errorf("dependency IDs cannot be empty")
+		return ErrDependencyIDsEmpty
 	}
 
 	if from == to {
-		return fmt.Errorf("field cannot depend on itself: %s", from)
+		return fmt.Errorf("%w: %s", ErrFieldSelfDependency, from)
 	}
 
 	// Check that both nodes exist
@@ -114,11 +128,11 @@ func (g *ConcreteDependencyGraph) AddDependency(from, to string) error {
 	toNode, toExists := g.nodes[to]
 
 	if !fromExists {
-		return fmt.Errorf("source field %s not found in graph", from)
+		return fmt.Errorf("%w: %s", ErrSourceFieldNotFound, from)
 	}
 
 	if !toExists {
-		return fmt.Errorf("target field %s not found in graph", to)
+		return fmt.Errorf("%w: %s", ErrTargetFieldNotFound, to)
 	}
 
 	// Check if dependency already exists
@@ -139,7 +153,7 @@ func (g *ConcreteDependencyGraph) AddDependency(from, to string) error {
 	return nil
 }
 
-// RemoveDependency removes a dependency relationship
+// RemoveDependency removes a dependency relationship.
 func (g *ConcreteDependencyGraph) RemoveDependency(from, to string) error {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
@@ -148,7 +162,7 @@ func (g *ConcreteDependencyGraph) RemoveDependency(from, to string) error {
 	toNode, toExists := g.nodes[to]
 
 	if !fromExists || !toExists {
-		return fmt.Errorf("one or both fields not found in graph")
+		return ErrFieldsNotFoundInGraph
 	}
 
 	// Remove from dependencies
@@ -174,7 +188,7 @@ func (g *ConcreteDependencyGraph) RemoveDependency(from, to string) error {
 	return nil
 }
 
-// TopologicalSort returns field mappings in dependency order (batches)
+// TopologicalSort returns field mappings in dependency order (batches).
 func (g *ConcreteDependencyGraph) TopologicalSort() ([][]*domain.FieldMapping, error) {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
@@ -188,6 +202,7 @@ func (g *ConcreteDependencyGraph) TopologicalSort() ([][]*domain.FieldMapping, e
 	}
 
 	var batches [][]*domain.FieldMapping
+
 	queue := make([]string, 0)
 
 	// Find nodes with no dependencies (in-degree 0)
@@ -233,7 +248,7 @@ func (g *ConcreteDependencyGraph) TopologicalSort() ([][]*domain.FieldMapping, e
 
 	// Check for cycles (unprocessed nodes)
 	if processed != len(g.nodes) {
-		return nil, fmt.Errorf("dependency cycle detected: processed %d of %d nodes", processed, len(g.nodes))
+		return nil, fmt.Errorf("%w: processed %d of %d nodes", ErrDependencyCycleDetected, processed, len(g.nodes))
 	}
 
 	g.logger.Info("topological sort completed",
@@ -243,7 +258,7 @@ func (g *ConcreteDependencyGraph) TopologicalSort() ([][]*domain.FieldMapping, e
 	return batches, nil
 }
 
-// DetectCycles detects circular dependencies using DFS
+// DetectCycles detects circular dependencies using DFS.
 func (g *ConcreteDependencyGraph) DetectCycles() ([][]string, error) {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
@@ -255,6 +270,7 @@ func (g *ConcreteDependencyGraph) DetectCycles() ([][]string, error) {
 	}
 
 	var cycles [][]string
+
 	var currentPath []string
 
 	// DFS from each unvisited node
@@ -274,23 +290,26 @@ func (g *ConcreteDependencyGraph) DetectCycles() ([][]string, error) {
 	return cycles, nil
 }
 
-// dfsDetectCycle performs DFS cycle detection
+// dfsDetectCycle performs DFS cycle detection.
 func (g *ConcreteDependencyGraph) dfsDetectCycle(nodeID string, path *[]string) []string {
 	node := g.nodes[nodeID]
 
 	if node.InStack {
 		// Found a cycle - extract it from the path
 		cycleStart := -1
+
 		for i, id := range *path {
 			if id == nodeID {
 				cycleStart = i
 				break
 			}
 		}
+
 		if cycleStart >= 0 {
 			cycle := make([]string, len(*path)-cycleStart+1)
 			copy(cycle, (*path)[cycleStart:])
 			cycle[len(cycle)-1] = nodeID // Close the cycle
+
 			return cycle
 		}
 	}
@@ -301,6 +320,7 @@ func (g *ConcreteDependencyGraph) dfsDetectCycle(nodeID string, path *[]string) 
 
 	node.Visited = true
 	node.InStack = true
+
 	*path = append(*path, nodeID)
 
 	// Visit dependencies
@@ -316,7 +336,7 @@ func (g *ConcreteDependencyGraph) dfsDetectCycle(nodeID string, path *[]string) 
 	return nil
 }
 
-// GetExecutionOrder returns execution batches in dependency order
+// GetExecutionOrder returns execution batches in dependency order.
 func (g *ConcreteDependencyGraph) GetExecutionOrder() ([]*ExecutionBatch, error) {
 	batches, err := g.TopologicalSort()
 	if err != nil {
@@ -342,7 +362,7 @@ func (g *ConcreteDependencyGraph) GetExecutionOrder() ([]*ExecutionBatch, error)
 	return executionBatches, nil
 }
 
-// calculateBatchDependencies determines which previous batches this batch depends on
+// calculateBatchDependencies determines which previous batches this batch depends on.
 func (g *ConcreteDependencyGraph) calculateBatchDependencies(batchIndex int) []string {
 	if batchIndex == 0 {
 		return nil
@@ -352,14 +372,15 @@ func (g *ConcreteDependencyGraph) calculateBatchDependencies(batchIndex int) []s
 	return []string{fmt.Sprintf("batch_%d", batchIndex-1)}
 }
 
-// Size returns the number of fields in the graph
+// Size returns the number of fields in the graph.
 func (g *ConcreteDependencyGraph) Size() int {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
+
 	return len(g.nodes)
 }
 
-// DependencyCount returns the total number of dependencies
+// DependencyCount returns the total number of dependencies.
 func (g *ConcreteDependencyGraph) DependencyCount() int {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
@@ -368,17 +389,19 @@ func (g *ConcreteDependencyGraph) DependencyCount() int {
 	for _, node := range g.nodes {
 		count += len(node.Dependencies)
 	}
+
 	return count
 }
 
-// MethodCount returns the number of methods represented in the graph
+// MethodCount returns the number of methods represented in the graph.
 func (g *ConcreteDependencyGraph) MethodCount() int {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
+
 	return len(g.methodNodes)
 }
 
-// Clear removes all nodes and dependencies from the graph
+// Clear removes all nodes and dependencies from the graph.
 func (g *ConcreteDependencyGraph) Clear() {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
@@ -389,7 +412,7 @@ func (g *ConcreteDependencyGraph) Clear() {
 	g.logger.Debug("dependency graph cleared")
 }
 
-// GetField retrieves a field mapping by ID
+// GetField retrieves a field mapping by ID.
 func (g *ConcreteDependencyGraph) GetField(id string) (*domain.FieldMapping, bool) {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
@@ -397,10 +420,11 @@ func (g *ConcreteDependencyGraph) GetField(id string) (*domain.FieldMapping, boo
 	if node, exists := g.nodes[id]; exists {
 		return node.Mapping, true
 	}
+
 	return nil, false
 }
 
-// GetDependencies returns the IDs of fields that the given field depends on
+// GetDependencies returns the IDs of fields that the given field depends on.
 func (g *ConcreteDependencyGraph) GetDependencies(id string) []string {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
@@ -408,12 +432,14 @@ func (g *ConcreteDependencyGraph) GetDependencies(id string) []string {
 	if node, exists := g.nodes[id]; exists {
 		deps := make([]string, len(node.Dependencies))
 		copy(deps, node.Dependencies)
+
 		return deps
 	}
+
 	return nil
 }
 
-// GetDependents returns the IDs of fields that depend on the given field
+// GetDependents returns the IDs of fields that depend on the given field.
 func (g *ConcreteDependencyGraph) GetDependents(id string) []string {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
@@ -421,7 +447,9 @@ func (g *ConcreteDependencyGraph) GetDependents(id string) []string {
 	if node, exists := g.nodes[id]; exists {
 		deps := make([]string, len(node.Dependents))
 		copy(deps, node.Dependents)
+
 		return deps
 	}
+
 	return nil
 }

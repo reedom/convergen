@@ -20,9 +20,11 @@ type SkipField struct {
 // String returns the string representation of the skip field assignment.
 func (s SkipField) String() string {
 	var sb strings.Builder
+
 	sb.WriteString("// skip: ")
 	sb.WriteString(s.LHS)
 	sb.WriteString("\n")
+
 	return sb.String()
 }
 
@@ -39,9 +41,11 @@ type NoMatchField struct {
 // String returns the string representation of the no match field assignment.
 func (s NoMatchField) String() string {
 	var sb strings.Builder
+
 	sb.WriteString("// no match: ")
 	sb.WriteString(s.LHS)
 	sb.WriteString("\n")
+
 	return sb.String()
 }
 
@@ -60,13 +64,17 @@ type SimpleField struct {
 // String returns the string representation of the simple field assignment.
 func (s SimpleField) String() string {
 	var sb strings.Builder
+
 	sb.WriteString(s.LHS)
+
 	if s.Error {
 		sb.WriteString(", err")
 	}
+
 	sb.WriteString(" = ")
 	sb.WriteString(s.RHS)
 	sb.WriteString("\n")
+
 	return sb.String()
 }
 
@@ -90,16 +98,20 @@ func (s NestStruct) String() string {
 		sb.WriteString(s.NullCheckExpr)
 		sb.WriteString(" != nil {\n")
 	}
+
 	if s.InitExpr != "" {
 		sb.WriteString(s.InitExpr)
 		sb.WriteString("\n")
 	}
+
 	for _, content := range s.Contents {
 		sb.WriteString(content.String())
 	}
+
 	if s.NullCheckExpr != "" {
 		sb.WriteString("}\n")
 	}
+
 	return sb.String()
 }
 
@@ -118,6 +130,7 @@ type SliceAssignment struct {
 // String returns the string representation of the slice assignment.
 func (c SliceAssignment) String() string {
 	var sb strings.Builder
+
 	sb.WriteString("if ")
 	sb.WriteString(c.RHS)
 	sb.WriteString(" != nil {\n")
@@ -131,6 +144,7 @@ func (c SliceAssignment) String() string {
 	sb.WriteString(", ")
 	sb.WriteString(c.RHS)
 	sb.WriteString(")\n}\n")
+
 	return sb.String()
 }
 
@@ -149,6 +163,7 @@ type SliceLoopAssignment struct {
 // String returns the string representation of the slice assignment with a loop.
 func (c SliceLoopAssignment) String() string {
 	var sb strings.Builder
+
 	sb.WriteString("if ")
 	sb.WriteString(c.RHS)
 	sb.WriteString(" != nil {\n")
@@ -162,6 +177,7 @@ func (c SliceLoopAssignment) String() string {
 	sb.WriteString("{\n")
 	sb.WriteString(c.LHS)
 	sb.WriteString("[i] = e\n}\n}\n")
+
 	return sb.String()
 }
 
@@ -181,6 +197,7 @@ type SliceTypecastAssignment struct {
 // String returns the string representation of the slice assignment with a typecast.
 func (c SliceTypecastAssignment) String() string {
 	var sb strings.Builder
+
 	sb.WriteString("if ")
 	sb.WriteString(c.RHS)
 	sb.WriteString(" != nil {\n")
@@ -196,6 +213,7 @@ func (c SliceTypecastAssignment) String() string {
 	sb.WriteString("[i] = ")
 	sb.WriteString(c.Cast)
 	sb.WriteString("(e)\n}\n}\n")
+
 	return sb.String()
 }
 

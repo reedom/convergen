@@ -414,9 +414,11 @@ func TestMetricsCollectorGetTopErrors(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		collector.RecordError("parser", "syntax_error")
 	}
+
 	for i := 0; i < 3; i++ {
 		collector.RecordError("executor", "conversion_error")
 	}
+
 	for i := 0; i < 1; i++ {
 		collector.RecordError("planner", "planning_error")
 	}
@@ -463,6 +465,7 @@ func TestMetricsCollectorGetHealthScore(t *testing.T) {
 
 	score = concreteCollector.GetHealthScore()
 	expectedScore := 2.0 / 3.0 // 2 successes out of 3 total
+
 	if score != expectedScore {
 		t.Errorf("Expected health score %f, got %f", expectedScore, score)
 	}

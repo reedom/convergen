@@ -93,6 +93,7 @@ func TestUseCases(t *testing.T) {
 		tt := tt
 		t.Run(tt.source, func(t *testing.T) {
 			t.Parallel()
+
 			expected, err := os.ReadFile(tt.expected)
 			require.Nil(t, err)
 
@@ -105,10 +106,13 @@ func TestUseCases(t *testing.T) {
 			require.Nil(t, err)
 
 			var funcBlocks []model.FunctionsBlock
+
 			builder := p.CreateBuilder()
+
 			for _, info := range methods {
 				functions, err := builder.CreateFunctions(info.Methods)
 				require.Nil(t, err)
+
 				block := model.FunctionsBlock{
 					Marker:    info.Marker,
 					Functions: functions,
@@ -118,6 +122,7 @@ func TestUseCases(t *testing.T) {
 
 			baseCode, err := p.GenerateBaseCode()
 			require.Nil(t, err)
+
 			code := model.Code{
 				BaseCode:       baseCode,
 				FunctionBlocks: funcBlocks,

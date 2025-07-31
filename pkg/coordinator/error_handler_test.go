@@ -43,7 +43,7 @@ func TestErrorHandlerCollectError(t *testing.T) {
 		t.Errorf("Expected component 'test-component', got %q", report.Errors[0].Component)
 	}
 
-	if report.Errors[0].Error != testErr {
+	if !errors.Is(report.Errors[0].Error, testErr) {
 		t.Errorf("Expected error %v, got %v", testErr, report.Errors[0].Error)
 	}
 
@@ -74,7 +74,7 @@ func TestErrorHandlerCollectCriticalError(t *testing.T) {
 		t.Errorf("Expected 1 critical error in list, got %d", len(report.Critical))
 	}
 
-	if report.Critical[0] != testErr {
+	if !errors.Is(report.Critical[0], testErr) {
 		t.Errorf("Expected critical error %v, got %v", testErr, report.Critical[0])
 	}
 
@@ -106,7 +106,7 @@ func TestErrorHandlerCollectWarning(t *testing.T) {
 		t.Errorf("Expected 1 warning in list, got %d", len(report.Warnings))
 	}
 
-	if report.Warnings[0] != testErr {
+	if !errors.Is(report.Warnings[0], testErr) {
 		t.Errorf("Expected warning %v, got %v", testErr, report.Warnings[0])
 	}
 
@@ -331,6 +331,7 @@ func TestErrorReportHasCriticalErrors(t *testing.T) {
 	}
 
 	handler.CollectCriticalError("component", errors.New("critical"))
+
 	report = handler.GetErrors()
 	if !report.HasCriticalErrors() {
 		t.Error("Expected critical errors after adding one")
@@ -348,6 +349,7 @@ func TestErrorReportHasWarnings(t *testing.T) {
 	}
 
 	handler.CollectWarning("component", errors.New("warning"))
+
 	report = handler.GetErrors()
 	if !report.HasWarnings() {
 		t.Error("Expected warnings after adding one")
@@ -422,6 +424,7 @@ func TestErrorReportSummary(t *testing.T) {
 
 	// Test empty report
 	report := handler.GetErrors()
+
 	summary := report.Summary()
 	if summary != "No errors" {
 		t.Errorf("Expected 'No errors', got %q", summary)
@@ -452,7 +455,7 @@ func TestErrorHandlerConcurrentAccess(t *testing.T) {
 
 	// Concurrent error collection
 	for i := 0; i < 10; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer func() { done <- true }()
 
 			for j := 0; j < 100; j++ {

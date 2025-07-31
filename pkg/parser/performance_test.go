@@ -71,6 +71,7 @@ func TestPackageLoader_CacheManagement(t *testing.T) {
 	if hits != 0 {
 		t.Errorf("expected 0 cache hits after clear, got %d", hits)
 	}
+
 	if misses != 0 {
 		t.Errorf("expected 0 cache misses, got %d", misses)
 	}
@@ -93,9 +94,11 @@ func TestConcurrentMethodProcessor_ProcessingMetrics(t *testing.T) {
 	if metrics.TotalMethods != 0 {
 		t.Errorf("expected 0 total methods initially, got %d", metrics.TotalMethods)
 	}
+
 	if metrics.SuccessfulMethods != 0 {
 		t.Errorf("expected 0 successful methods initially, got %d", metrics.SuccessfulMethods)
 	}
+
 	if metrics.FailedMethods != 0 {
 		t.Errorf("expected 0 failed methods initially, got %d", metrics.FailedMethods)
 	}
@@ -155,12 +158,13 @@ func TestParserConfig_DisabledConcurrency(t *testing.T) {
 	}
 }
 
-// Benchmark tests for performance comparison
+// Benchmark tests for performance comparison.
 func BenchmarkPackageLoader_Sequential(b *testing.B) {
 	loader := NewPackageLoader(1, 10*time.Second) // Single worker
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		// Benchmark with invalid path (tests the loading path without actual file I/O)
 		_, _ = loader.LoadPackageConcurrent(ctx, "benchmark.go", "")
@@ -172,6 +176,7 @@ func BenchmarkPackageLoader_Concurrent(b *testing.B) {
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		// Benchmark with invalid path (tests the loading path without actual file I/O)
 		_, _ = loader.LoadPackageConcurrent(ctx, "benchmark.go", "")
@@ -188,12 +193,13 @@ func BenchmarkConcurrentMethodProcessor_Creation(b *testing.B) {
 	logger := zap.NewNop()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_ = NewConcurrentMethodProcessor(parser, 4, 5*time.Second, logger)
 	}
 }
 
-// Test error classification functions
+// Test error classification functions.
 func TestErrorClassification(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -224,6 +230,7 @@ func TestErrorClassification(t *testing.T) {
 			if got := isTypeResolutionError(tt.err); got != tt.isTypeRes {
 				t.Errorf("isTypeResolutionError() = %v, want %v", got, tt.isTypeRes)
 			}
+
 			if got := isAnnotationError(tt.err); got != tt.isAnnot {
 				t.Errorf("isAnnotationError() = %v, want %v", got, tt.isAnnot)
 			}

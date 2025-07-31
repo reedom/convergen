@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,7 +12,14 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// FieldExecutor handles the execution of individual field mappings
+// Static errors for err113 compliance.
+var (
+	ErrFieldExecutionNil        = errors.New("field execution cannot be nil")
+	ErrStrategyNotFound         = errors.New("strategy not found")
+	ErrDirectAssignmentTypeReqs = errors.New("direct assignment requires valid source and destination types")
+)
+
+// FieldExecutor handles the execution of individual field mappings.
 type FieldExecutor interface {
 	// ExecuteField executes a single field mapping
 	ExecuteField(ctx context.Context, field *FieldExecution) (*FieldResult, error)
@@ -26,7 +34,7 @@ type FieldExecutor interface {
 	Shutdown(ctx context.Context) error
 }
 
-// ConcreteFieldExecutor implements FieldExecutor
+// ConcreteFieldExecutor implements FieldExecutor.
 type ConcreteFieldExecutor struct {
 	config   *ExecutorConfig
 	logger   *zap.Logger
@@ -43,7 +51,7 @@ type ConcreteFieldExecutor struct {
 	shutdown chan struct{}
 }
 
-// FieldMappingStrategy defines how different types of field mappings are executed
+// FieldMappingStrategy defines how different types of field mappings are executed.
 type FieldMappingStrategy interface {
 	// Execute performs the actual field mapping transformation
 	Execute(ctx context.Context, mapping *domain.FieldMapping, context *ExecutionContext) (interface{}, error)
@@ -58,14 +66,14 @@ type FieldMappingStrategy interface {
 	Validate(mapping *domain.FieldMapping) error
 }
 
-// ResourceRequirement defines the resources needed for field execution
+// ResourceRequirement defines the resources needed for field execution.
 type ResourceRequirement struct {
 	MemoryMB     int  `json:"memory_mb"`
 	CPUIntensive bool `json:"cpu_intensive"`
 	IOOperations int  `json:"io_operations"`
 }
 
-// ExecutionContext provides context and utilities for field execution
+// ExecutionContext provides context and utilities for field execution.
 type ExecutionContext struct {
 	FieldID       string                 `json:"field_id"`
 	BatchID       string                 `json:"batch_id"`
@@ -80,7 +88,7 @@ type ExecutionContext struct {
 	Cache         map[string]interface{} `json:"-"`
 }
 
-// NewFieldExecutor creates a new field executor
+// NewFieldExecutor creates a new field executor.
 func NewFieldExecutor(config *ExecutorConfig, logger *zap.Logger, eventBus events.EventBus, metrics *ExecutionMetrics) FieldExecutor {
 	executor := &ConcreteFieldExecutor{
 		config:     config,
@@ -98,10 +106,10 @@ func NewFieldExecutor(config *ExecutorConfig, logger *zap.Logger, eventBus event
 	return executor
 }
 
-// ExecuteField executes a single field mapping with comprehensive error handling
+// ExecuteField executes a single field mapping with comprehensive error handling.
 func (fe *ConcreteFieldExecutor) ExecuteField(ctx context.Context, field *FieldExecution) (*FieldResult, error) {
 	if field == nil {
-		return nil, fmt.Errorf("field execution cannot be nil")
+		return nil, ErrFieldExecutionNil
 	}
 
 	fe.logger.Debug("executing field",
@@ -157,6 +165,7 @@ func (fe *ConcreteFieldExecutor) ExecuteField(ctx context.Context, field *FieldE
 		result.Success = false
 		result.EndTime = time.Now()
 		result.Duration = result.EndTime.Sub(result.StartTime)
+
 		return result, err
 	}
 
@@ -172,7 +181,8 @@ func (fe *ConcreteFieldExecutor) ExecuteField(ctx context.Context, field *FieldE
 		result.Success = false
 		result.EndTime = time.Now()
 		result.Duration = result.EndTime.Sub(result.StartTime)
-		return result, err
+
+		return result, fmt.Errorf("field mapping strategy validation failed: %w", err)
 	}
 
 	// Record strategy time start
@@ -211,6 +221,7 @@ func (fe *ConcreteFieldExecutor) ExecuteField(ctx context.Context, field *FieldE
 	if !result.Success {
 		eventType = EventFieldFailed
 	}
+
 	if err := fe.emitFieldEvent(ctx, eventType, field, result); err != nil {
 		fe.logger.Warn("failed to emit field completed event", zap.Error(err))
 	}
@@ -224,9 +235,10 @@ func (fe *ConcreteFieldExecutor) ExecuteField(ctx context.Context, field *FieldE
 	return result, nil
 }
 
-// ExecuteFieldWithRetry executes a field with retry logic for transient failures
+// ExecuteFieldWithRetry executes a field with retry logic for transient failures.
 func (fe *ConcreteFieldExecutor) ExecuteFieldWithRetry(ctx context.Context, field *FieldExecution) (*FieldResult, error) {
 	var lastResult *FieldResult
+
 	var lastError error
 
 	for attempt := 0; attempt <= fe.config.RetryAttempts; attempt++ {
@@ -248,7 +260,7 @@ func (fe *ConcreteFieldExecutor) ExecuteFieldWithRetry(ctx context.Context, fiel
 			select {
 			case <-time.After(backoff):
 			case <-ctx.Done():
-				return lastResult, ctx.Err()
+				return lastResult, fmt.Errorf("field execution context cancelled: %w", ctx.Err())
 			}
 		}
 
@@ -260,6 +272,7 @@ func (fe *ConcreteFieldExecutor) ExecuteFieldWithRetry(ctx context.Context, fiel
 			if attempt > 0 {
 				result.RetryCount = attempt
 			}
+
 			return result, nil
 		}
 
@@ -279,7 +292,7 @@ func (fe *ConcreteFieldExecutor) ExecuteFieldWithRetry(ctx context.Context, fiel
 	return lastResult, lastError
 }
 
-// GetMetrics returns current field execution metrics
+// GetMetrics returns current field execution metrics.
 func (fe *ConcreteFieldExecutor) GetMetrics() *FieldMetrics {
 	// Return aggregated metrics from the global metrics store
 	return &FieldMetrics{
@@ -287,10 +300,11 @@ func (fe *ConcreteFieldExecutor) GetMetrics() *FieldMetrics {
 	}
 }
 
-// Shutdown gracefully shuts down the field executor
+// Shutdown gracefully shuts down the field executor.
 func (fe *ConcreteFieldExecutor) Shutdown(ctx context.Context) error {
 	fe.logger.Info("shutting down field executor")
 	close(fe.shutdown)
+
 	return nil
 }
 
@@ -319,11 +333,14 @@ func (fe *ConcreteFieldExecutor) getStrategy(strategyName string) (FieldMappingS
 		for name := range fe.strategies {
 			availableStrategies = append(availableStrategies, name)
 		}
+
 		fe.logger.Error("strategy not found",
 			zap.String("requested_strategy", strategyName),
 			zap.Strings("available_strategies", availableStrategies))
-		return nil, fmt.Errorf("strategy '%s' not found", strategyName)
+
+		return nil, fmt.Errorf("%w: '%s'", ErrStrategyNotFound, strategyName)
 	}
+
 	return strategy, nil
 }
 
@@ -387,7 +404,12 @@ func (fe *ConcreteFieldExecutor) emitFieldEvent(ctx context.Context, eventType s
 	}
 
 	event := events.NewEvent(eventType, data)
-	return fe.eventBus.Emit(ctx, event)
+
+	if err := fe.eventBus.Emit(ctx, event); err != nil {
+		return fmt.Errorf("failed to emit field event: %w", err)
+	}
+
+	return nil
 }
 
 func (fe *ConcreteFieldExecutor) emitRetryEvent(ctx context.Context, field *FieldExecution, attempt int) error {
@@ -399,7 +421,12 @@ func (fe *ConcreteFieldExecutor) emitRetryEvent(ctx context.Context, field *Fiel
 	}
 
 	event := events.NewEvent(EventRetryAttempt, data)
-	return fe.eventBus.Emit(ctx, event)
+
+	if err := fe.eventBus.Emit(ctx, event); err != nil {
+		return fmt.Errorf("failed to emit field event: %w", err)
+	}
+
+	return nil
 }
 
 func (fe *ConcreteFieldExecutor) emitRetryExhaustedEvent(ctx context.Context, field *FieldExecution, attempts int) error {
@@ -410,12 +437,17 @@ func (fe *ConcreteFieldExecutor) emitRetryExhaustedEvent(ctx context.Context, fi
 	}
 
 	event := events.NewEvent(EventRetryExhausted, data)
-	return fe.eventBus.Emit(ctx, event)
+
+	if err := fe.eventBus.Emit(ctx, event); err != nil {
+		return fmt.Errorf("failed to emit field event: %w", err)
+	}
+
+	return nil
 }
 
 // Strategy implementations
 
-// DirectAssignmentStrategy handles direct field assignments
+// DirectAssignmentStrategy handles direct field assignments.
 type DirectAssignmentStrategy struct{}
 
 func NewDirectAssignmentStrategy() FieldMappingStrategy {
@@ -442,12 +474,13 @@ func (s *DirectAssignmentStrategy) GetRequiredResources(mapping *domain.FieldMap
 func (s *DirectAssignmentStrategy) Validate(mapping *domain.FieldMapping) error {
 	// For now, be permissive for testing - in production this would check type compatibility
 	if mapping.Source.Type == nil || mapping.Dest.Type == nil {
-		return fmt.Errorf("direct assignment requires valid source and destination types")
+		return ErrDirectAssignmentTypeReqs
 	}
+
 	return nil
 }
 
-// ConverterStrategy handles conversions between different types
+// ConverterStrategy handles conversions between different types.
 type ConverterStrategy struct{}
 
 func NewConverterStrategy() FieldMappingStrategy {
@@ -477,7 +510,7 @@ func (s *ConverterStrategy) Validate(mapping *domain.FieldMapping) error {
 	return nil
 }
 
-// LiteralStrategy handles literal value assignments
+// LiteralStrategy handles literal value assignments.
 type LiteralStrategy struct{}
 
 func NewLiteralStrategy() FieldMappingStrategy {
@@ -505,7 +538,7 @@ func (s *LiteralStrategy) Validate(mapping *domain.FieldMapping) error {
 	return nil
 }
 
-// ExpressionStrategy handles expression evaluations
+// ExpressionStrategy handles expression evaluations.
 type ExpressionStrategy struct{}
 
 func NewExpressionStrategy() FieldMappingStrategy {
@@ -534,7 +567,7 @@ func (s *ExpressionStrategy) Validate(mapping *domain.FieldMapping) error {
 	return nil
 }
 
-// CustomStrategy handles custom transformation logic
+// CustomStrategy handles custom transformation logic.
 type CustomStrategy struct{}
 
 func NewCustomStrategy() FieldMappingStrategy {
@@ -562,7 +595,7 @@ func (s *CustomStrategy) Validate(mapping *domain.FieldMapping) error {
 	return nil
 }
 
-// Utility function
+// Utility function.
 func contains(s, substr string) bool {
 	return len(substr) <= len(s) && (substr == s || s[len(s)-len(substr):] == substr || s[:len(substr)] == substr)
 }

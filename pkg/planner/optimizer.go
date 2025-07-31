@@ -10,7 +10,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// PlanOptimizer applies optimization strategies to execution plans
+// PlanOptimizer applies optimization strategies to execution plans.
 type PlanOptimizer interface {
 	OptimizePlan(ctx context.Context, methodPlans map[string]*domain.MethodPlan, batches []*ExecutionBatch) error
 	ApplyBatchOptimizations(batches []*ExecutionBatch) error
@@ -18,13 +18,13 @@ type PlanOptimizer interface {
 	OptimizeResourceUsage(methodPlans map[string]*domain.MethodPlan) error
 }
 
-// ConcretePlanOptimizer implements PlanOptimizer
+// ConcretePlanOptimizer implements PlanOptimizer.
 type ConcretePlanOptimizer struct {
 	config *PlannerConfig
 	logger *zap.Logger
 }
 
-// NewPlanOptimizer creates a new plan optimizer
+// NewPlanOptimizer creates a new plan optimizer.
 func NewPlanOptimizer(config *PlannerConfig, logger *zap.Logger) PlanOptimizer {
 	return &ConcretePlanOptimizer{
 		config: config,
@@ -32,7 +32,7 @@ func NewPlanOptimizer(config *PlannerConfig, logger *zap.Logger) PlanOptimizer {
 	}
 }
 
-// OptimizePlan applies all optimization strategies to the execution plan
+// OptimizePlan applies all optimization strategies to the execution plan.
 func (po *ConcretePlanOptimizer) OptimizePlan(ctx context.Context, methodPlans map[string]*domain.MethodPlan, batches []*ExecutionBatch) error {
 	if !po.config.EnableOptimizations {
 		return nil
@@ -59,8 +59,8 @@ func (po *ConcretePlanOptimizer) OptimizePlan(ctx context.Context, methodPlans m
 	}
 }
 
-// applyBasicOptimizations applies conservative optimization strategies
-func (po *ConcretePlanOptimizer) applyBasicOptimizations(ctx context.Context, methodPlans map[string]*domain.MethodPlan, batches []*ExecutionBatch) error {
+// applyBasicOptimizations applies conservative optimization strategies.
+func (po *ConcretePlanOptimizer) applyBasicOptimizations(_ context.Context, methodPlans map[string]*domain.MethodPlan, batches []*ExecutionBatch) error {
 	// Optimize batch sizes
 	if err := po.optimizeBatchSizes(batches); err != nil {
 		return fmt.Errorf("batch size optimization failed: %w", err)
@@ -77,10 +77,11 @@ func (po *ConcretePlanOptimizer) applyBasicOptimizations(ctx context.Context, me
 	}
 
 	po.logger.Info("basic optimizations applied successfully")
+
 	return nil
 }
 
-// applyAggressiveOptimizations applies more aggressive optimization strategies
+// applyAggressiveOptimizations applies more aggressive optimization strategies.
 func (po *ConcretePlanOptimizer) applyAggressiveOptimizations(ctx context.Context, methodPlans map[string]*domain.MethodPlan, batches []*ExecutionBatch) error {
 	// Apply basic optimizations first
 	if err := po.applyBasicOptimizations(ctx, methodPlans, batches); err != nil {
@@ -103,10 +104,11 @@ func (po *ConcretePlanOptimizer) applyAggressiveOptimizations(ctx context.Contex
 	}
 
 	po.logger.Info("aggressive optimizations applied successfully")
+
 	return nil
 }
 
-// ApplyBatchOptimizations optimizes execution batches
+// ApplyBatchOptimizations optimizes execution batches.
 func (po *ConcretePlanOptimizer) ApplyBatchOptimizations(batches []*ExecutionBatch) error {
 	// Sort batches by estimated duration for better load balancing
 	po.sortBatchesByDuration(batches)
@@ -127,7 +129,7 @@ func (po *ConcretePlanOptimizer) ApplyBatchOptimizations(batches []*ExecutionBat
 	return nil
 }
 
-// OptimizeConcurrency optimizes concurrency settings across methods
+// OptimizeConcurrency optimizes concurrency settings across methods.
 func (po *ConcretePlanOptimizer) OptimizeConcurrency(methodPlans map[string]*domain.MethodPlan) error {
 	totalWorkers := 0
 
@@ -148,7 +150,7 @@ func (po *ConcretePlanOptimizer) OptimizeConcurrency(methodPlans map[string]*dom
 	return nil
 }
 
-// OptimizeResourceUsage optimizes memory and CPU resource usage
+// OptimizeResourceUsage optimizes memory and CPU resource usage.
 func (po *ConcretePlanOptimizer) OptimizeResourceUsage(methodPlans map[string]*domain.MethodPlan) error {
 	totalMemory := 0
 
@@ -187,6 +189,7 @@ func (po *ConcretePlanOptimizer) optimizeBatchSizes(batches []*ExecutionBatch) e
 			batch.ConcurrencyLevel = min(mappingCount, po.config.MaxConcurrentWorkers)
 		}
 	}
+
 	return nil
 }
 
@@ -206,6 +209,7 @@ func (po *ConcretePlanOptimizer) balanceWorkerAllocation(methodPlans map[string]
 
 	// Allocate workers based on priority
 	remainingWorkers := po.config.MaxConcurrentWorkers
+
 	for _, methodName := range sortedMethods {
 		plan := methodPlans[methodName]
 		if remainingWorkers <= 0 {
@@ -273,7 +277,7 @@ func (po *ConcretePlanOptimizer) mergeBatches(batches []*ExecutionBatch) error {
 	return nil
 }
 
-func (po *ConcretePlanOptimizer) optimizePipeline(methodPlans map[string]*domain.MethodPlan, batches []*ExecutionBatch) error {
+func (po *ConcretePlanOptimizer) optimizePipeline(methodPlans map[string]*domain.MethodPlan, _ []*ExecutionBatch) error {
 	// Implement pipeline optimization strategies
 	// This is a placeholder for more sophisticated pipeline optimization
 	for _, plan := range methodPlans {
@@ -281,6 +285,7 @@ func (po *ConcretePlanOptimizer) optimizePipeline(methodPlans map[string]*domain
 			plan.Strategy = domain.MethodStrategyPipelined
 		}
 	}
+
 	return nil
 }
 
@@ -290,8 +295,11 @@ func (po *ConcretePlanOptimizer) optimizeResourcePooling(methodPlans map[string]
 		if plan.MemoryRequirementMB > 100 || plan.RequiredWorkers > 4 {
 			// Enable advanced resource pooling strategies
 			// This would be implemented based on specific pooling mechanisms
+			// TODO: Implement resource pooling optimization
+			_ = plan // Mark as used until implementation
 		}
 	}
+
 	return nil
 }
 
@@ -335,6 +343,7 @@ func (po *ConcretePlanOptimizer) redistributeWorkers(methodPlans map[string]*dom
 		if newWorkers < 1 {
 			newWorkers = 1
 		}
+
 		plan.RequiredWorkers = newWorkers
 	}
 }
@@ -348,6 +357,7 @@ func (po *ConcretePlanOptimizer) optimizeMemoryAllocation(methodPlans map[string
 		if newMemory < 10 {
 			newMemory = 10 // Minimum 10MB per method
 		}
+
 		plan.MemoryRequirementMB = newMemory
 	}
 }
@@ -371,6 +381,7 @@ func (po *ConcretePlanOptimizer) batchBelongsToMethod(batch *ExecutionBatch, pla
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -400,11 +411,12 @@ func (po *ConcretePlanOptimizer) mergeTwoBatches(batch1, batch2 *ExecutionBatch)
 	batch1.ConcurrencyLevel = max(batch1.ConcurrencyLevel, batch2.ConcurrencyLevel)
 }
 
-// Utility functions
+// Utility functions.
 func min(a, b int) int {
 	if a < b {
 		return a
 	}
+
 	return b
 }
 
@@ -412,5 +424,6 @@ func max(a, b int) int {
 	if a > b {
 		return a
 	}
+
 	return b
 }

@@ -1,7 +1,9 @@
+// Package coordinator provides pipeline orchestration and coordination functionality.
 package coordinator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -12,7 +14,17 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// Coordinator orchestrates the entire Convergen pipeline
+// Static errors for err113 compliance.
+var (
+	ErrNoSourceFilesProvided   = errors.New("no source files provided")
+	ErrNoSourceCodeProvided    = errors.New("no source code provided")
+	ErrCoordinatorShuttingDown = errors.New("coordinator shutting down")
+	ErrPipelineFailed          = errors.New("pipeline failed")
+	ErrPipelineTimeout         = errors.New("pipeline timeout")
+	ErrShutdownErrors          = errors.New("shutdown errors")
+)
+
+// Coordinator orchestrates the entire Convergen pipeline.
 type Coordinator interface {
 	// Generate code from source files
 	Generate(ctx context.Context, sources []string, config *Config) (*GenerationResult, error)
@@ -30,7 +42,7 @@ type Coordinator interface {
 	Shutdown(ctx context.Context) error
 }
 
-// ConcreteCoordinator implements the Coordinator interface
+// ConcreteCoordinator implements the Coordinator interface.
 type ConcreteCoordinator struct {
 	config            *Config
 	logger            *zap.Logger
@@ -49,7 +61,7 @@ type ConcreteCoordinator struct {
 	running  bool
 }
 
-// New creates a new coordinator instance
+// New creates a new coordinator instance.
 func New(logger *zap.Logger, config *Config) Coordinator {
 	if config == nil {
 		config = DefaultConfig()
@@ -77,10 +89,10 @@ func New(logger *zap.Logger, config *Config) Coordinator {
 	return coord
 }
 
-// Generate processes source files through the complete pipeline
+// Generate processes source files through the complete pipeline.
 func (c *ConcreteCoordinator) Generate(ctx context.Context, sources []string, config *Config) (*GenerationResult, error) {
 	if len(sources) == 0 {
-		return nil, fmt.Errorf("no source files provided")
+		return nil, ErrNoSourceFilesProvided
 	}
 
 	c.logger.Info("starting code generation",
@@ -106,6 +118,7 @@ func (c *ConcreteCoordinator) Generate(ctx context.Context, sources []string, co
 		c.logger.Error("pipeline execution failed",
 			zap.Error(err),
 			zap.Duration("duration", time.Since(startTime)))
+
 		return result, err
 	}
 
@@ -123,10 +136,10 @@ func (c *ConcreteCoordinator) Generate(ctx context.Context, sources []string, co
 	return result, nil
 }
 
-// GenerateFromSource processes in-memory source code
+// GenerateFromSource processes in-memory source code.
 func (c *ConcreteCoordinator) GenerateFromSource(ctx context.Context, source string, config *Config) (*GenerationResult, error) {
 	if source == "" {
-		return nil, fmt.Errorf("no source code provided")
+		return nil, ErrNoSourceCodeProvided
 	}
 
 	c.logger.Debug("starting generation from source code",
@@ -152,6 +165,7 @@ func (c *ConcreteCoordinator) GenerateFromSource(ctx context.Context, source str
 		c.logger.Error("pipeline execution failed for source code",
 			zap.Error(err),
 			zap.Duration("duration", time.Since(startTime)))
+
 		return result, err
 	}
 
@@ -161,12 +175,12 @@ func (c *ConcreteCoordinator) GenerateFromSource(ctx context.Context, source str
 	return result, nil
 }
 
-// GetMetrics returns current coordinator metrics
+// GetMetrics returns current coordinator metrics.
 func (c *ConcreteCoordinator) GetMetrics() *CoordinatorMetrics {
 	return c.metricsCollector.GetMetrics()
 }
 
-// GetStatus returns current pipeline status
+// GetStatus returns current pipeline status.
 func (c *ConcreteCoordinator) GetStatus() *PipelineStatus {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -174,16 +188,18 @@ func (c *ConcreteCoordinator) GetStatus() *PipelineStatus {
 	// Create a copy to avoid race conditions
 	status := *c.status
 	status.ElapsedTime = time.Since(c.status.StartTime)
+
 	return &status
 }
 
-// Shutdown gracefully shuts down the coordinator
+// Shutdown gracefully shuts down the coordinator.
 func (c *ConcreteCoordinator) Shutdown(ctx context.Context) error {
 	c.mutex.Lock()
 	if !c.running {
 		c.mutex.Unlock()
 		return nil
 	}
+
 	c.running = false
 	c.mutex.Unlock()
 
@@ -217,6 +233,7 @@ func (c *ConcreteCoordinator) Shutdown(ctx context.Context) error {
 
 	// Update status
 	c.mutex.Lock()
+
 	c.status.Stage = StageCompleted
 	for component := range c.status.ComponentStatus {
 		c.status.ComponentStatus[component] = StatusShutdown
@@ -226,10 +243,11 @@ func (c *ConcreteCoordinator) Shutdown(ctx context.Context) error {
 	if len(shutdownErrors) > 0 {
 		c.logger.Warn("coordinator shutdown completed with errors",
 			zap.Int("error_count", len(shutdownErrors)))
-		return fmt.Errorf("shutdown errors: %v", shutdownErrors)
+		return fmt.Errorf("%w: %v", ErrShutdownErrors, shutdownErrors)
 	}
 
 	c.logger.Info("coordinator shutdown completed successfully")
+
 	return nil
 }
 
@@ -283,6 +301,7 @@ func (c *ConcreteCoordinator) executePipeline(ctx context.Context, input *Pipeli
 	}
 
 	c.updateStatus(StageCompleted, 1.0)
+
 	return result, nil
 }
 
@@ -295,10 +314,10 @@ func (c *ConcreteCoordinator) waitForCompletion(ctx context.Context, input *Pipe
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, fmt.Errorf("context cancelled: %w", ctx.Err())
 
 		case <-c.shutdown:
-			return nil, fmt.Errorf("coordinator shutting down")
+			return nil, ErrCoordinatorShuttingDown
 
 		case <-ticker.C:
 			status := c.eventOrchestrator.GetStatus()
@@ -315,12 +334,12 @@ func (c *ConcreteCoordinator) waitForCompletion(ctx context.Context, input *Pipe
 			// Check for failure
 			if status.Stage == StageFailed {
 				errors := c.errorHandler.GetErrors()
-				return nil, fmt.Errorf("pipeline failed: %s", c.formatErrors(errors))
+				return nil, fmt.Errorf("%w: %s", ErrPipelineFailed, c.formatErrors(errors))
 			}
 
 			// Check for timeout
 			if time.Since(startTime) > c.config.ComponentTimeout {
-				return nil, fmt.Errorf("pipeline timeout after %v", c.config.ComponentTimeout)
+				return nil, fmt.Errorf("%w after %v", ErrPipelineTimeout, c.config.ComponentTimeout)
 			}
 		}
 	}
@@ -347,6 +366,7 @@ func (c *ConcreteCoordinator) assembleResult(startTime time.Time, input *Pipelin
 
 	// Get final result from event orchestrator
 	orchestrator := c.eventOrchestrator.(*ConcreteEventOrchestrator)
+
 	executionResults, err := orchestrator.GetFinalResult()
 	if err != nil {
 		c.logger.Warn("failed to get final result from orchestrator", zap.Error(err))
@@ -368,6 +388,7 @@ func (c *ConcreteCoordinator) assembleResult(startTime time.Time, input *Pipelin
 	// Add error report if there were non-critical errors
 	if errors := c.errorHandler.GetErrors(); errors.TotalCount > 0 {
 		result.Errors = errors
+
 		if len(errors.Warnings) > 0 {
 			for _, warning := range errors.Warnings {
 				result.Warnings = append(result.Warnings, warning.Error())

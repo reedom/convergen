@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// ErrorHandler aggregates and manages errors across the pipeline
+// ErrorHandler aggregates and manages errors across the pipeline.
 type ErrorHandler interface {
 	// Collect error from any component
 	CollectError(component string, err error)
@@ -35,7 +35,7 @@ type ErrorHandler interface {
 	GetErrorStats() map[string]int64
 }
 
-// ConcreteErrorHandler implements ErrorHandler
+// ConcreteErrorHandler implements ErrorHandler.
 type ConcreteErrorHandler struct {
 	logger *zap.Logger
 	config *Config
@@ -61,7 +61,7 @@ type ConcreteErrorHandler struct {
 	maxRetryAttempts int
 }
 
-// NewErrorHandler creates a new error handler
+// NewErrorHandler creates a new error handler.
 func NewErrorHandler(logger *zap.Logger, config *Config) ErrorHandler {
 	handler := &ConcreteErrorHandler{
 		logger:           logger,
@@ -86,7 +86,7 @@ func NewErrorHandler(logger *zap.Logger, config *Config) ErrorHandler {
 	return handler
 }
 
-// CollectError collects a regular error from a component
+// CollectError collects a regular error from a component.
 func (e *ConcreteErrorHandler) CollectError(component string, err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -117,7 +117,7 @@ func (e *ConcreteErrorHandler) CollectError(component string, err error) {
 	}
 }
 
-// CollectCriticalError collects a critical error that should stop the pipeline
+// CollectCriticalError collects a critical error that should stop the pipeline.
 func (e *ConcreteErrorHandler) CollectCriticalError(component string, err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -143,7 +143,7 @@ func (e *ConcreteErrorHandler) CollectCriticalError(component string, err error)
 		zap.Error(err))
 }
 
-// CollectWarning collects a warning that doesn't stop the pipeline
+// CollectWarning collects a warning that doesn't stop the pipeline.
 func (e *ConcreteErrorHandler) CollectWarning(component string, err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -169,7 +169,7 @@ func (e *ConcreteErrorHandler) CollectWarning(component string, err error) {
 		zap.Error(err))
 }
 
-// GetErrors returns the aggregated error report
+// GetErrors returns the aggregated error report.
 func (e *ConcreteErrorHandler) GetErrors() *ErrorReport {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
@@ -200,7 +200,7 @@ func (e *ConcreteErrorHandler) GetErrors() *ErrorReport {
 	return report
 }
 
-// ShouldStop determines if the pipeline should stop due to errors
+// ShouldStop determines if the pipeline should stop due to errors.
 func (e *ConcreteErrorHandler) ShouldStop() bool {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
@@ -220,6 +220,7 @@ func (e *ConcreteErrorHandler) ShouldStop() bool {
 		e.logger.Warn("error threshold exceeded",
 			zap.Int("total_errors", e.totalCount),
 			zap.Int("threshold", e.errorThreshold))
+
 		return true
 	}
 
@@ -230,6 +231,7 @@ func (e *ConcreteErrorHandler) ShouldStop() bool {
 				zap.String("component", component),
 				zap.Int("attempts", attempts),
 				zap.Int("max_attempts", e.maxRetryAttempts))
+
 			return true
 		}
 	}
@@ -237,7 +239,7 @@ func (e *ConcreteErrorHandler) ShouldStop() bool {
 	return false
 }
 
-// Reset clears all error state for a new pipeline
+// Reset clears all error state for a new pipeline.
 func (e *ConcreteErrorHandler) Reset() {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -262,7 +264,7 @@ func (e *ConcreteErrorHandler) Reset() {
 	e.logger.Debug("error handler reset")
 }
 
-// SetErrorThreshold updates the error threshold
+// SetErrorThreshold updates the error threshold.
 func (e *ConcreteErrorHandler) SetErrorThreshold(threshold int) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -272,7 +274,7 @@ func (e *ConcreteErrorHandler) SetErrorThreshold(threshold int) {
 	e.logger.Debug("error threshold updated", zap.Int("threshold", threshold))
 }
 
-// GetErrorStats returns error statistics
+// GetErrorStats returns error statistics.
 func (e *ConcreteErrorHandler) GetErrorStats() map[string]int64 {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
@@ -350,6 +352,7 @@ func (e *ConcreteErrorHandler) getAttemptCount(component string) int {
 	if attempts, exists := e.recoveryAttempts[component]; exists {
 		return attempts + 1
 	}
+
 	return 1
 }
 
@@ -365,17 +368,17 @@ func containsIgnoreCase(str, substr string) bool {
 
 // ErrorReport methods
 
-// HasCriticalErrors returns true if there are critical errors
+// HasCriticalErrors returns true if there are critical errors.
 func (r *ErrorReport) HasCriticalErrors() bool {
 	return r.CriticalCount > 0
 }
 
-// HasWarnings returns true if there are warnings
+// HasWarnings returns true if there are warnings.
 func (r *ErrorReport) HasWarnings() bool {
 	return r.WarningCount > 0
 }
 
-// GetErrorsByComponent returns errors grouped by component
+// GetErrorsByComponent returns errors grouped by component.
 func (r *ErrorReport) GetErrorsByComponent() map[string][]ComponentError {
 	errorsByComponent := make(map[string][]ComponentError)
 
@@ -387,7 +390,7 @@ func (r *ErrorReport) GetErrorsByComponent() map[string][]ComponentError {
 	return errorsByComponent
 }
 
-// GetErrorsByStage returns errors grouped by pipeline stage
+// GetErrorsByStage returns errors grouped by pipeline stage.
 func (r *ErrorReport) GetErrorsByStage() map[PipelineStage][]ComponentError {
 	errorsByStage := make(map[PipelineStage][]ComponentError)
 
@@ -399,7 +402,7 @@ func (r *ErrorReport) GetErrorsByStage() map[PipelineStage][]ComponentError {
 	return errorsByStage
 }
 
-// GetRetryableErrors returns only the retryable errors
+// GetRetryableErrors returns only the retryable errors.
 func (r *ErrorReport) GetRetryableErrors() []ComponentError {
 	var retryable []ComponentError
 
@@ -412,7 +415,7 @@ func (r *ErrorReport) GetRetryableErrors() []ComponentError {
 	return retryable
 }
 
-// Summary returns a human-readable error summary
+// Summary returns a human-readable error summary.
 func (r *ErrorReport) Summary() string {
 	if r.TotalCount == 0 {
 		return "No errors"

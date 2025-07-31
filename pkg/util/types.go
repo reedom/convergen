@@ -1,6 +1,8 @@
+// Package util provides utility functions for AST and type manipulation.
 package util
 
 import (
+	"fmt"
 	"go/ast"
 	"go/types"
 	"path"
@@ -30,6 +32,7 @@ func IsInvalidType(t types.Type) bool {
 	if typ, ok := DerefPtr(t).Underlying().(*types.Basic); ok {
 		return typ.Kind() == types.Invalid
 	}
+
 	return false
 }
 
@@ -74,6 +77,7 @@ func DerefPtr(typ types.Type) types.Type {
 	if ptr, ok := typ.(*types.Pointer); ok {
 		return ptr.Elem()
 	}
+
 	return typ
 }
 
@@ -83,6 +87,7 @@ func Deref(typ types.Type) (types.Type, bool) {
 	if ptr, ok := typ.(*types.Pointer); ok {
 		return ptr.Elem(), true
 	}
+
 	return typ, false
 }
 
@@ -103,6 +108,7 @@ func SliceElement(t types.Type) types.Type {
 	if slice, ok := t.(*types.Slice); ok {
 		return slice.Elem()
 	}
+
 	return nil
 }
 
@@ -157,6 +163,7 @@ func GetDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cl
 			}
 		}
 	}
+
 	return nil, func() {}
 }
 
@@ -170,15 +177,27 @@ func ToTextList(doc *ast.CommentGroup) []string {
 	for i := range doc.List {
 		list[i] = doc.List[i].Text
 	}
+
 	return list
 }
 
 // PathMatch returns true if the name matches the pattern.
 func PathMatch(pattern, name string, exactCase bool) (bool, error) {
 	if exactCase {
-		return path.Match(pattern, name)
+		matched, err := path.Match(pattern, name)
+		if err != nil {
+			return false, fmt.Errorf("failed to match pattern %q against name %q: %w", pattern, name, err)
+		}
+
+		return matched, nil
 	}
-	return path.Match(strings.ToLower(pattern), strings.ToLower(name))
+
+	matched, err := path.Match(strings.ToLower(pattern), strings.ToLower(name))
+	if err != nil {
+		return false, fmt.Errorf("failed to match pattern %q against name %q (case insensitive): %w", pattern, name, err)
+	}
+
+	return matched, nil
 }
 
 // FindMethod returns the method with the given name in the given type.
@@ -194,17 +213,21 @@ func FindMethod(t types.Type, name string, exactCase bool) (method *types.Func) 
 		} else {
 			found = strings.ToLower(m.Name()) == name
 		}
+
 		if found {
 			method = m
 		}
+
 		return found
 	})
+
 	return
 }
 
 // IterateMethods iterates over the methods of the given type and calls the callback for each one.
 func IterateMethods(t types.Type, cb func(*types.Func) (done bool)) {
 	typ := DerefPtr(t)
+
 	named, ok := typ.(*types.Named)
 	if !ok {
 		return
@@ -231,11 +254,14 @@ func FindField(t types.Type, name string, exactCase bool) (field *types.Var) {
 		} else {
 			found = strings.ToLower(f.Name()) == name
 		}
+
 		if found {
 			field = f
 		}
+
 		return found
 	})
+
 	return
 }
 
@@ -262,6 +288,7 @@ func IterateFields(t types.Type, cb func(*types.Var) (done bool)) {
 // GetMethodReturnTypes returns the return types of the given method.
 func GetMethodReturnTypes(m *types.Func) (*types.Tuple, bool) {
 	sig := m.Type().(*types.Signature)
+
 	num := sig.Results().Len()
 	if num == 0 || 2 < num {
 		return nil, false
@@ -273,10 +300,12 @@ func GetMethodReturnTypes(m *types.Func) (*types.Tuple, bool) {
 // ParseGetterReturnTypes returns the return types of the given method.
 func ParseGetterReturnTypes(m *types.Func) (ret types.Type, retError, ok bool) {
 	sig := m.Type().(*types.Signature)
+
 	num := sig.Results().Len()
 	if num == 0 || 2 < num {
 		return
 	}
+
 	if num == 2 {
 		if !IsErrorType(sig.Results().At(1).Type()) {
 			return
@@ -298,7 +327,9 @@ func CompliesGetter(m *types.Func) bool {
 	if sig.Params().Len() != 0 {
 		return false
 	}
+
 	num := sig.Results().Len()
+
 	return num == 1 && !IsErrorType(sig.Results().At(0).Type())
 }
 

@@ -25,6 +25,7 @@ func MatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp) bool 
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -35,6 +36,7 @@ func ExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp
 	}
 
 	var modified, removed []*ast.Comment
+
 	for i, c := range commentGroup.List {
 		if pattern.MatchString(c.Text) {
 			if modified == nil {
@@ -48,9 +50,11 @@ func ExtractMatchComments(commentGroup *ast.CommentGroup, pattern *regexp.Regexp
 			modified = append(modified, c)
 		}
 	}
+
 	if modified != nil {
 		commentGroup.List = modified
 	}
+
 	return removed
 }
 
@@ -61,11 +65,13 @@ func RemoveDecl(file *ast.File, name string) {
 	}
 
 	decls := make([]ast.Decl, 0)
+
 	for _, decl := range file.Decls {
 		if !ast.FilterDecl(decl, comparer) {
 			decls = append(decls, decl)
 		}
 	}
+
 	file.Decls = decls
 }
 
@@ -85,20 +91,26 @@ func InsertComment(file *ast.File, text string, pos token.Pos) {
 			file.Comments = append(file.Comments, e)
 			copy(file.Comments[i+1:], file.Comments[i:])
 			file.Comments[i] = e
+
 			return
 		}
+
 		if cg.Pos() <= pos && pos < cg.End() {
 			for j := range cg.List {
 				if pos < cg.Pos() {
 					cg.List = append(cg.List, comment)
 					copy(cg.List[j+1:], cg.List[i:])
 					cg.List[j] = comment
+
 					return
 				}
 			}
+
 			cg.List = append(cg.List, comment)
+
 			return
 		}
 	}
+
 	file.Comments = append(file.Comments, &ast.CommentGroup{List: []*ast.Comment{comment}})
 }

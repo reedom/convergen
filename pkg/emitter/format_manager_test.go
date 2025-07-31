@@ -1,6 +1,7 @@
 package emitter
 
 import (
+	"context"
 	"testing"
 
 	"go.uber.org/zap/zaptest"
@@ -38,7 +39,7 @@ func TestFormatManager_FormatCode(t *testing.T) {
 	}
 
 	// Test format code
-	result, err := formatMgr.FormatCode(nil, generatedCode)
+	result, err := formatMgr.FormatCode(context.TODO(), generatedCode)
 	if err != nil {
 		t.Fatalf("FormatCode failed: %v", err)
 	}
@@ -76,6 +77,7 @@ fmt.Println("hello")
 
 	// Test with invalid Go code
 	invalidSource := "invalid go code {"
+
 	_, err = formatMgr.ApplyGoFormat(invalidSource)
 	if err == nil {
 		t.Error("ApplyGoFormat should fail with invalid Go code")
@@ -104,6 +106,7 @@ func main() {
 
 	// Test with invalid code
 	invalidCode := "package main\nfunc invalid {"
+
 	err = formatMgr.ValidateFormat(invalidCode)
 	if err == nil {
 		t.Error("ValidateFormat should fail with invalid code")
@@ -235,6 +238,7 @@ func TestCodeLinter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Lint failed: %v", err)
 	}
+
 	if result == nil {
 		t.Error("Lint should return result")
 	}
@@ -243,6 +247,7 @@ func TestCodeLinter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LintWithRules failed: %v", err)
 	}
+
 	if result2 == nil {
 		t.Error("LintWithRules should return result")
 	}
@@ -254,7 +259,7 @@ func TestFormatManager_EdgeCases(t *testing.T) {
 	formatMgr := NewFormatManager(config, logger)
 
 	// Test with nil generated code
-	_, err := formatMgr.FormatCode(nil, nil)
+	_, err := formatMgr.FormatCode(context.TODO(), nil)
 	if err == nil {
 		t.Error("FormatCode should fail with nil generated code")
 	}
@@ -365,6 +370,7 @@ func TestFormatManager_PrivateMethods(t *testing.T) {
 					importDecl.ThirdPartyLibs = append(importDecl.ThirdPartyLibs, imp)
 				}
 			}
+
 			result := formatMgr.generateImportBlock(importDecl)
 			t.Logf("Import block for %s: %s", tc.name, result)
 		})

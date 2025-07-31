@@ -36,7 +36,7 @@ func (p *Parser) parseMethods(intf *intfEntry) ([]*model.MethodEntry, error) {
 	return p.parseMethodsSequential(intf)
 }
 
-// parseMethodsConcurrent processes methods concurrently for better performance
+// parseMethodsConcurrent processes methods concurrently for better performance.
 func (p *Parser) parseMethodsConcurrent(intf *intfEntry) ([]*model.MethodEntry, error) {
 	iface := intf.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
@@ -63,7 +63,7 @@ func (p *Parser) parseMethodsConcurrent(intf *intfEntry) ([]*model.MethodEntry, 
 	return processor.ProcessMethodsConcurrent(ctx, intf)
 }
 
-// parseMethodsSequential processes methods sequentially (legacy behavior)
+// parseMethodsSequential processes methods sequentially (legacy behavior).
 func (p *Parser) parseMethodsSequential(intf *intfEntry) ([]*model.MethodEntry, error) {
 	iface := intf.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
@@ -75,6 +75,7 @@ func (p *Parser) parseMethodsSequential(intf *intfEntry) ([]*model.MethodEntry, 
 			_, _ = fmt.Fprintln(os.Stderr, err.Error())
 			continue
 		}
+
 		methods = append(methods, method)
 	}
 
@@ -95,12 +96,14 @@ func (p *Parser) parseMethod(method types.Object, opts option.Options) (*model.M
 	if signature.Params().Len() == 0 {
 		return nil, logger.Errorf(`%v: method must have one or more arguments as copy source`, p.fset.Position(method.Pos()))
 	}
+
 	if signature.Results().Len() == 0 {
 		return nil, logger.Errorf(`%v: method must have one or more return values as copy destination`, p.fset.Position(method.Pos()))
 	}
 
 	docComment, cleanUp := util.GetDocCommentOn(p.file, method)
 	notations := util.ExtractMatchComments(docComment, reNotation)
+
 	err := p.parseNotationInComments(notations, option.ValidOpsMethod, &opts)
 	if err != nil {
 		return nil, err

@@ -244,6 +244,7 @@ func TestCodeGenerator_HelperFunctions(t *testing.T) {
 		if fn, ok := camelCaseFn.(func(string) string); ok {
 			result := fn("test_field")
 			expected := "testField"
+
 			if result != expected {
 				t.Errorf("Expected camelCase of 'test_field' to be '%s', got '%s'", expected, result)
 			}
@@ -297,6 +298,7 @@ func TestCodeGenerator_ErrorHandling(t *testing.T) {
 	if err != nil {
 		t.Errorf("Should not error with empty error list: %v", err)
 	}
+
 	if errorCode != nil && errorCode.HandlingCode != "" {
 		t.Error("Empty error list should result in empty error code")
 	}

@@ -141,6 +141,7 @@ func TestEventOrchestratorCancel(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	err := orchestrator.StartPipeline(ctx, input)
 	if err != nil {
 		t.Fatalf("StartPipeline failed: %v", err)
@@ -506,6 +507,7 @@ func TestEventOrchestratorPipelineFlow(t *testing.T) {
 
 		// Verify results stored
 		var expectedResultStage PipelineStage
+
 		switch stage.eventType {
 		case "parser.completed":
 			expectedResultStage = StageParsing

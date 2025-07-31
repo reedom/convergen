@@ -11,25 +11,25 @@ import (
 	"github.com/reedom/convergen/v8/pkg/executor"
 )
 
-// CompositeLiteralStrategy generates code using composite literal initialization
+// CompositeLiteralStrategy generates code using composite literal initialization.
 type CompositeLiteralStrategy struct {
 	config *EmitterConfig
 	logger *zap.Logger
 }
 
-// AssignmentBlockStrategy generates code using assignment blocks
+// AssignmentBlockStrategy generates code using assignment blocks.
 type AssignmentBlockStrategy struct {
 	config *EmitterConfig
 	logger *zap.Logger
 }
 
-// MixedApproachStrategy combines both composite literals and assignments
+// MixedApproachStrategy combines both composite literals and assignments.
 type MixedApproachStrategy struct {
 	config *EmitterConfig
 	logger *zap.Logger
 }
 
-// NewCompositeLiteralStrategy creates a new composite literal strategy
+// NewCompositeLiteralStrategy creates a new composite literal strategy.
 func NewCompositeLiteralStrategy(config *EmitterConfig, logger *zap.Logger) GenerationStrategy {
 	return &CompositeLiteralStrategy{
 		config: config,
@@ -37,7 +37,7 @@ func NewCompositeLiteralStrategy(config *EmitterConfig, logger *zap.Logger) Gene
 	}
 }
 
-// NewAssignmentBlockStrategy creates a new assignment block strategy
+// NewAssignmentBlockStrategy creates a new assignment block strategy.
 func NewAssignmentBlockStrategy(config *EmitterConfig, logger *zap.Logger) GenerationStrategy {
 	return &AssignmentBlockStrategy{
 		config: config,
@@ -45,7 +45,7 @@ func NewAssignmentBlockStrategy(config *EmitterConfig, logger *zap.Logger) Gener
 	}
 }
 
-// NewMixedApproachStrategy creates a new mixed approach strategy
+// NewMixedApproachStrategy creates a new mixed approach strategy.
 func NewMixedApproachStrategy(config *EmitterConfig, logger *zap.Logger) GenerationStrategy {
 	return &MixedApproachStrategy{
 		config: config,
@@ -92,12 +92,14 @@ func (cls *CompositeLiteralStrategy) GenerateCode(ctx context.Context, method *d
 
 	// Generate field assignments
 	fieldCount := 0
+
 	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Success && fr.Error == nil {
 				assignment := cls.generateFieldAssignment(fieldName, fr)
 				code.WriteString(fmt.Sprintf("%s%s%s,\n",
 					cls.config.IndentStyle, cls.config.IndentStyle, assignment))
+
 				fieldCount++
 			}
 		}
@@ -165,6 +167,7 @@ func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *do
 
 	// Generate field assignments with error handling
 	fieldCount := 0
+
 	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			assignment, errorHandling := abs.generateFieldAssignment(fieldName, fr)
@@ -176,6 +179,7 @@ func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *do
 			}
 
 			code.WriteString("\n")
+
 			fieldCount++
 		}
 	}
@@ -196,6 +200,7 @@ func (abs *AssignmentBlockStrategy) GetComplexity(method *domain.MethodResult) *
 
 	// Calculate complexity based on error handling and field types
 	errorFields := 0
+
 	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {
@@ -218,6 +223,7 @@ func (abs *AssignmentBlockStrategy) GetRequiredImports(method *domain.MethodResu
 
 	// Check if error handling is needed
 	hasErrors := false
+
 	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {
@@ -409,6 +415,7 @@ func (mas *MixedApproachStrategy) GetRequiredImports(method *domain.MethodResult
 
 	// Check if error handling is needed
 	hasErrors := false
+
 	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Error != nil || !fr.Success {

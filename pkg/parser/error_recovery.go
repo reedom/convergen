@@ -9,7 +9,7 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrCircuitBreakerOpen                 = errors.New("circuit breaker is open")
+	ErrCircuitBreakerOpen                  = errors.New("circuit breaker is open")
 	ErrCircuitBreakerHalfOpenLimitExceeded = errors.New("circuit breaker half-open request limit exceeded")
 )
 
@@ -224,7 +224,7 @@ func (rm *RecoveryManager) canSkip(err error) bool {
 }
 
 // calculateRetryDelay calculates the delay before retry with exponential backoff.
-func (rm *RecoveryManager) calculateRetryDelay(attempt int, baseDelay time.Duration) time.Duration {
+func (rm *RecoveryManager) calculateRetryDelay(attempt int, _ time.Duration) time.Duration {
 	return rm.errorHandler.GetRetryDelay(attempt)
 }
 

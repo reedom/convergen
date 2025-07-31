@@ -106,6 +106,7 @@ func TestErrorReportBasic(t *testing.T) {
 
 	summary := report.Summary()
 	expectedStart := "Total: 5 errors (2 critical) (1 warnings)"
+
 	if len(summary) < len(expectedStart) || summary[:len(expectedStart)] != expectedStart {
 		t.Errorf("Expected summary to start with %q, got %q", expectedStart, summary)
 	}

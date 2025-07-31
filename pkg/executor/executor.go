@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -12,7 +13,12 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// ExecutorConfig defines configuration parameters for the execution engine
+// Static errors for err113 compliance.
+var (
+	ErrExecutionPlanNil = errors.New("execution plan cannot be nil")
+)
+
+// ExecutorConfig defines configuration parameters for the execution engine.
 type ExecutorConfig struct {
 	// Worker pool settings
 	MaxWorkers        int           `json:"max_workers"`
@@ -47,7 +53,7 @@ type ExecutorConfig struct {
 	DebugMode       bool          `json:"debug_mode"`
 }
 
-// DefaultExecutorConfig returns sensible default configuration
+// DefaultExecutorConfig returns sensible default configuration.
 func DefaultExecutorConfig() *ExecutorConfig {
 	return &ExecutorConfig{
 		MaxWorkers:          8,
@@ -75,7 +81,7 @@ func DefaultExecutorConfig() *ExecutorConfig {
 	}
 }
 
-// ExecutionResult represents the result of executing an execution plan
+// ExecutionResult represents the result of executing an execution plan.
 type ExecutionResult struct {
 	PlanID         string                 `json:"plan_id"`
 	Success        bool                   `json:"success"`
@@ -88,7 +94,7 @@ type ExecutionResult struct {
 	PartialResults bool                   `json:"partial_results"`
 }
 
-// ExecutionError represents an error that occurred during execution
+// ExecutionError represents an error that occurred during execution.
 type ExecutionError struct {
 	FieldID   string                 `json:"field_id"`
 	BatchID   string                 `json:"batch_id"`
@@ -99,8 +105,7 @@ type ExecutionError struct {
 	Context   map[string]interface{} `json:"context,omitempty"`
 }
 
-// Executor coordinates the execution of field mapping batches with comprehensive
-// resource management and event-driven progress reporting
+// resource management and event-driven progress reporting.
 type Executor interface {
 	// ExecutePlan executes a complete execution plan
 	ExecutePlan(ctx context.Context, plan *domain.ExecutionPlan) (*ExecutionResult, error)
@@ -121,7 +126,7 @@ type Executor interface {
 	Shutdown(ctx context.Context) error
 }
 
-// ConcreteExecutor implements the Executor interface
+// ConcreteExecutor implements the Executor interface.
 type ConcreteExecutor struct {
 	config   *ExecutorConfig
 	logger   *zap.Logger
@@ -140,7 +145,7 @@ type ConcreteExecutor struct {
 	mutex    sync.RWMutex
 }
 
-// NewExecutor creates a new execution engine
+// NewExecutor creates a new execution engine.
 func NewExecutor(logger *zap.Logger, eventBus events.EventBus, config *ExecutorConfig) Executor {
 	if config == nil {
 		config = DefaultExecutorConfig()
@@ -184,10 +189,10 @@ func NewExecutor(logger *zap.Logger, eventBus events.EventBus, config *ExecutorC
 	return executor
 }
 
-// ExecutePlan executes a complete execution plan with comprehensive coordination
+// ExecutePlan executes a complete execution plan with comprehensive coordination.
 func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.ExecutionPlan) (*ExecutionResult, error) {
 	if plan == nil {
-		return nil, fmt.Errorf("execution plan cannot be nil")
+		return nil, ErrExecutionPlanNil
 	}
 
 	e.logger.Info("starting plan execution",
@@ -225,12 +230,16 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 
 	// Execute all methods concurrently
 	var methodWg sync.WaitGroup
+
 	methodResults := make(map[string]*MethodResult)
+
 	var resultMutex sync.Mutex
+
 	errorChannel := make(chan ExecutionError, len(plan.Methods)*10)
 
 	for methodName, methodPlan := range plan.Methods {
 		methodWg.Add(1)
+
 		go func(name string, mPlan *domain.MethodPlan) {
 			defer methodWg.Done()
 
@@ -305,22 +314,32 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 	return result, nil
 }
 
-// ExecuteBatch executes a single batch through the batch executor
+// ExecuteBatch executes a single batch through the batch executor.
 func (e *ConcreteExecutor) ExecuteBatch(ctx context.Context, batch *BatchExecution) (*BatchResult, error) {
-	return e.batchExecutor.ExecuteBatch(ctx, batch)
+	result, err := e.batchExecutor.ExecuteBatch(ctx, batch)
+	if err != nil {
+		return result, fmt.Errorf("batch execution failed: %w", err)
+	}
+
+	return result, nil
 }
 
-// ExecuteField executes a single field through the field executor
+// ExecuteField executes a single field through the field executor.
 func (e *ConcreteExecutor) ExecuteField(ctx context.Context, field *FieldExecution) (*FieldResult, error) {
-	return e.fieldExecutor.ExecuteField(ctx, field)
+	result, err := e.fieldExecutor.ExecuteField(ctx, field)
+	if err != nil {
+		return result, fmt.Errorf("field execution failed: %w", err)
+	}
+
+	return result, nil
 }
 
-// GetMetrics returns current execution metrics
+// GetMetrics returns current execution metrics.
 func (e *ConcreteExecutor) GetMetrics() *ExecutionMetrics {
 	return e.metrics.GetSnapshot()
 }
 
-// GetStatus returns current executor status
+// GetStatus returns current executor status.
 func (e *ConcreteExecutor) GetStatus() *ExecutorStatus {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
@@ -334,15 +353,17 @@ func (e *ConcreteExecutor) GetStatus() *ExecutorStatus {
 	for k, v := range e.status.ActiveBatches {
 		status.ActiveBatches[k] = v
 	}
+
 	for k, v := range e.status.CompletedBatches {
 		status.CompletedBatches[k] = v
 	}
+
 	copy(status.QueuedBatches, e.status.QueuedBatches)
 
 	return &status
 }
 
-// Shutdown gracefully shuts down the executor
+// Shutdown gracefully shuts down the executor.
 func (e *ConcreteExecutor) Shutdown(ctx context.Context) error {
 	e.logger.Info("shutting down executor")
 
@@ -380,7 +401,7 @@ func (e *ConcreteExecutor) Shutdown(ctx context.Context) error {
 		return nil
 	case <-ctx.Done():
 		e.logger.Warn("executor shutdown timed out")
-		return ctx.Err()
+		return fmt.Errorf("executor shutdown context cancelled: %w", ctx.Err())
 	}
 }
 
@@ -420,6 +441,7 @@ func (e *ConcreteExecutor) executeMethod(ctx context.Context, methodName string,
 				Timestamp: time.Now(),
 				Retryable: true,
 			})
+
 			continue
 		}
 
@@ -444,7 +466,11 @@ func (e *ConcreteExecutor) updateStatus(updateFn func(*ExecutorStatus)) {
 
 func (e *ConcreteExecutor) emitEvent(ctx context.Context, eventType string, data map[string]interface{}) error {
 	event := events.NewEvent(eventType, data)
-	return e.eventBus.Emit(ctx, event)
+	if err := e.eventBus.Emit(ctx, event); err != nil {
+		return fmt.Errorf("failed to emit executor event: %w", err)
+	}
+
+	return nil
 }
 
 func (e *ConcreteExecutor) startMetricsCollection() {
@@ -453,8 +479,10 @@ func (e *ConcreteExecutor) startMetricsCollection() {
 	}
 
 	e.wg.Add(1)
+
 	go func() {
 		defer e.wg.Done()
+
 		ticker := time.NewTicker(e.config.MetricsInterval)
 		defer ticker.Stop()
 

@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// ErrorPattern represents an error classification pattern
+// ErrorPattern represents an error classification pattern.
 type ErrorPattern struct {
 	Keywords   []string
 	Category   ErrorCategory
@@ -12,7 +12,7 @@ type ErrorPattern struct {
 	Suggestion string
 }
 
-// errorPatterns defines all error classification patterns in order of priority
+// errorPatterns defines all error classification patterns in order of priority.
 var errorPatterns = []ErrorPattern{
 	// Critical errors
 	{
@@ -87,7 +87,7 @@ var errorPatterns = []ErrorPattern{
 	},
 }
 
-// ClassifyError classifies an error using predefined patterns
+// ClassifyError classifies an error using predefined patterns.
 func ClassifyError(err error) (ErrorCategory, ErrorSeverity, string) {
 	if err == nil {
 		return CategoryGeneral, SeverityInfo, ""
@@ -108,13 +108,14 @@ func ClassifyError(err error) (ErrorCategory, ErrorSeverity, string) {
 	return CategoryGeneral, SeverityError, "Please check the error message for more details."
 }
 
-// ClassifyErrorWithContext classifies an error with additional context
+// ClassifyErrorWithContext classifies an error with additional context.
 func ClassifyErrorWithContext(err error, context string) (ErrorCategory, ErrorSeverity, string) {
 	category, severity, suggestion := ClassifyError(err)
 
 	// Enhance suggestions based on context
 	if context != "" {
 		contextLower := strings.ToLower(context)
+
 		switch {
 		case strings.Contains(contextLower, "method"):
 			suggestion = "Method-related issue: " + suggestion
@@ -128,7 +129,7 @@ func ClassifyErrorWithContext(err error, context string) (ErrorCategory, ErrorSe
 	return category, severity, suggestion
 }
 
-// GetCategoryDescription returns a human-readable description of an error category
+// GetCategoryDescription returns a human-readable description of an error category.
 func GetCategoryDescription(category ErrorCategory) string {
 	switch category {
 	case CategorySyntax:
@@ -152,7 +153,7 @@ func GetCategoryDescription(category ErrorCategory) string {
 	}
 }
 
-// GetSeverityDescription returns a human-readable description of error severity
+// GetSeverityDescription returns a human-readable description of error severity.
 func GetSeverityDescription(severity ErrorSeverity) string {
 	switch severity {
 	case SeverityCritical:
@@ -168,7 +169,7 @@ func GetSeverityDescription(severity ErrorSeverity) string {
 	}
 }
 
-// IsRetryableError determines if an error might be resolved by retrying
+// IsRetryableError determines if an error might be resolved by retrying.
 func IsRetryableError(category ErrorCategory) bool {
 	switch category {
 	case CategoryConcurrency, CategoryPerformance:
@@ -178,7 +179,7 @@ func IsRetryableError(category ErrorCategory) bool {
 	}
 }
 
-// IsSkippableError determines if an error can be safely skipped
+// IsSkippableError determines if an error can be safely skipped.
 func IsSkippableError(severity ErrorSeverity) bool {
 	return severity == SeverityWarning || severity == SeverityInfo
 }

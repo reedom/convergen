@@ -1,21 +1,32 @@
 package parser
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 )
 
-// parseIntArg parses an integer argument from a string
+// parseIntArg parses an integer argument from a string.
 func parseIntArg(arg string) (int, error) {
-	return strconv.Atoi(arg)
+	val, err := strconv.Atoi(arg)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse integer argument %q: %w", arg, err)
+	}
+
+	return val, nil
 }
 
-// parseDurationArg parses a duration argument from a string
+// parseDurationArg parses a duration argument from a string.
 func parseDurationArg(arg string) (time.Duration, error) {
-	return time.ParseDuration(arg)
+	duration, err := time.ParseDuration(arg)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse duration argument %q: %w", arg, err)
+	}
+
+	return duration, nil
 }
 
-// isBuiltinType checks if a type name represents a Go builtin type
+// isBuiltinType checks if a type name represents a Go builtin type.
 func isBuiltinType(typeName string) bool {
 	builtins := map[string]bool{
 		"bool":       true,
@@ -39,17 +50,18 @@ func isBuiltinType(typeName string) bool {
 		"uint64":     true,
 		"uintptr":    true,
 	}
+
 	return builtins[typeName]
 }
 
-// normalizeTypeName normalizes a type name for consistent comparison
+// normalizeTypeName normalizes a type name for consistent comparison.
 func normalizeTypeName(typeName string) string {
 	// Remove package prefixes and pointer indicators
 	// This is a simplified implementation
 	return typeName
 }
 
-// sanitizeIdentifier ensures a string is a valid Go identifier
+// sanitizeIdentifier ensures a string is a valid Go identifier.
 func sanitizeIdentifier(name string) string {
 	if name == "" {
 		return "field"
@@ -57,6 +69,7 @@ func sanitizeIdentifier(name string) string {
 
 	// Simple sanitization - replace invalid characters with underscores
 	result := make([]rune, 0, len(name))
+
 	for i, r := range name {
 		if i == 0 {
 			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_' {

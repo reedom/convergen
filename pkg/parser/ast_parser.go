@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -18,7 +19,15 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// ASTParser provides event-driven AST parsing with concurrent processing
+// Static errors for err113 compliance.
+var (
+	ErrNoPackagesFound       = errors.New("no packages found")
+	ErrPackageErrors         = errors.New("package errors")
+	ErrSourceFileNotFound    = errors.New("source file not found in package")
+	ErrNoConvergenInterfaces = errors.New("no convergen interfaces found")
+)
+
+// ASTParser provides event-driven AST parsing with concurrent processing.
 type ASTParser struct {
 	logger   *zap.Logger
 	eventBus events.EventBus
@@ -28,10 +37,9 @@ type ASTParser struct {
 
 	// Concurrent processing
 	typeResolverPool *TypeResolverPool
-	mutex            sync.RWMutex
 }
 
-// ParserConfig configures the parser behavior
+// ParserConfig configures the parser behavior.
 type ParserConfig struct {
 	BuildTag                string
 	MaxConcurrentWorkers    int
@@ -42,7 +50,7 @@ type ParserConfig struct {
 	EnableMethodConcurrency bool // Enable concurrent method processing
 }
 
-// NewASTParser creates a new event-driven AST parser
+// NewASTParser creates a new event-driven AST parser.
 func NewASTParser(logger *zap.Logger, eventBus events.EventBus, config *ParserConfig) *ASTParser {
 	validConfig := EnsureValidConfig(config)
 
@@ -59,7 +67,7 @@ func NewASTParser(logger *zap.Logger, eventBus events.EventBus, config *ParserCo
 	}
 }
 
-// ParseSourceFile parses a source file and emits events throughout the process
+// ParseSourceFile parses a source file and emits events throughout the process.
 func (p *ASTParser) ParseSourceFile(ctx context.Context, sourcePath, destPath string) ([]*domain.Method, string, error) {
 	// Emit parse started event
 	parseStartedEvent := events.NewParseStartedEvent(ctx, sourcePath)
@@ -89,16 +97,17 @@ func (p *ASTParser) ParseSourceFile(ctx context.Context, sourcePath, destPath st
 	}
 
 	if len(pkgs) == 0 {
-		return nil, "", fmt.Errorf("no packages found for %s", sourcePath)
+		return nil, "", fmt.Errorf("%w for %s", ErrNoPackagesFound, sourcePath)
 	}
 
 	pkg := pkgs[0]
 	if len(pkg.Errors) > 0 {
-		return nil, "", fmt.Errorf("package errors: %v", pkg.Errors)
+		return nil, "", fmt.Errorf("%w: %v", ErrPackageErrors, pkg.Errors)
 	}
 
 	// Find the target source file
 	var sourceFile *ast.File
+
 	for _, file := range pkg.Syntax {
 		if p.fileSet.Position(file.Pos()).Filename == sourcePath {
 			sourceFile = file
@@ -107,7 +116,7 @@ func (p *ASTParser) ParseSourceFile(ctx context.Context, sourcePath, destPath st
 	}
 
 	if sourceFile == nil {
-		return nil, "", fmt.Errorf("source file not found in package")
+		return nil, "", ErrSourceFileNotFound
 	}
 
 	// Discover interfaces concurrently
@@ -141,6 +150,7 @@ func (p *ASTParser) ParseSourceFile(ctx context.Context, sourcePath, destPath st
 	// Emit parsed event
 	parsedEvent := events.NewParsedEvent(ctx, methods, baseCode)
 	parsedEvent.Metrics = metrics
+
 	if err := p.eventBus.Publish(parsedEvent); err != nil {
 		p.logger.Warn("failed to publish parsed event", zap.Error(err))
 	}
@@ -148,7 +158,7 @@ func (p *ASTParser) ParseSourceFile(ctx context.Context, sourcePath, destPath st
 	return methods, baseCode, nil
 }
 
-// createParseFileFunc creates a custom parse file function for packages.Load
+// createParseFileFunc creates a custom parse file function for packages.Load.
 func (p *ASTParser) createParseFileFunc(sourcePath, destPath string) func(*token.FileSet, string, []byte) (*ast.File, error) {
 	return func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
 		// Skip destination file if it exists
@@ -165,9 +175,10 @@ func (p *ASTParser) createParseFileFunc(sourcePath, destPath string) func(*token
 	}
 }
 
-// discoverInterfacesConcurrently discovers convergen interfaces using concurrent processing
+// discoverInterfacesConcurrently discovers convergen interfaces using concurrent processing.
 func (p *ASTParser) discoverInterfacesConcurrently(ctx context.Context, pkg *packages.Package, file *ast.File) ([]*InterfaceInfo, error) {
 	var interfaces []*InterfaceInfo
+
 	var mutex sync.Mutex
 
 	// Create worker group for interface discovery
@@ -185,8 +196,9 @@ func (p *ASTParser) discoverInterfacesConcurrently(ctx context.Context, pkg *pac
 	}
 
 	processed := 0
+
 	for _, name := range names {
-		name := name // Capture for goroutine
+		// Capture for goroutine
 		g.Go(func() error {
 			obj := scope.Lookup(name)
 			if obj == nil {
@@ -230,7 +242,8 @@ func (p *ASTParser) discoverInterfacesConcurrently(ctx context.Context, pkg *pac
 		if progressDone != nil {
 			close(progressDone)
 		}
-		return nil, err
+
+		return nil, fmt.Errorf("concurrent interface discovery failed: %w", err)
 	}
 
 	// Signal progress completion
@@ -239,7 +252,7 @@ func (p *ASTParser) discoverInterfacesConcurrently(ctx context.Context, pkg *pac
 	}
 
 	if len(interfaces) == 0 {
-		return nil, fmt.Errorf("no convergen interfaces found")
+		return nil, ErrNoConvergenInterfaces
 	}
 
 	p.logger.Info("interface discovery completed",
@@ -249,9 +262,10 @@ func (p *ASTParser) discoverInterfacesConcurrently(ctx context.Context, pkg *pac
 	return interfaces, nil
 }
 
-// processMethodsConcurrently processes methods from discovered interfaces
+// processMethodsConcurrently processes methods from discovered interfaces.
 func (p *ASTParser) processMethodsConcurrently(ctx context.Context, pkg *packages.Package, file *ast.File, interfaces []*InterfaceInfo) ([]*domain.Method, error) {
 	var allMethods []*domain.Method
+
 	var mutex sync.Mutex
 
 	// Create worker group for method processing
@@ -271,9 +285,9 @@ func (p *ASTParser) processMethodsConcurrently(ctx context.Context, pkg *package
 	}
 
 	for _, iface := range interfaces {
-		iface := iface // Capture for goroutine
+		// Capture for goroutine
 		for _, methodObj := range iface.Methods {
-			methodObj := methodObj // Capture for goroutine
+			// Capture for goroutine
 			g.Go(func() error {
 				method, err := p.processMethod(gctx, pkg, file, methodObj, iface.Options)
 				if err != nil {
@@ -294,7 +308,8 @@ func (p *ASTParser) processMethodsConcurrently(ctx context.Context, pkg *package
 		if progressDone != nil {
 			close(progressDone)
 		}
-		return nil, err
+
+		return nil, fmt.Errorf("concurrent method processing failed: %w", err)
 	}
 
 	// Signal progress completion
@@ -310,10 +325,11 @@ func (p *ASTParser) processMethodsConcurrently(ctx context.Context, pkg *package
 	return allMethods, nil
 }
 
-// trackProgress emits progress events during processing with adaptive frequency
+// trackProgress emits progress events during processing with adaptive frequency.
 func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPhase, total int, message string, done <-chan struct{}) {
 	// Adaptive reporting frequency based on operation complexity
 	interval := p.calculateProgressInterval(total)
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -332,6 +348,7 @@ func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPh
 					p.logger.Debug("failed to publish final progress event", zap.Error(err))
 				}
 			}
+
 			return
 		case <-ticker.C:
 			// Adaptive progress reporting with throttling
@@ -341,6 +358,7 @@ func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPh
 					// Demote to debug level to reduce noise
 					p.logger.Debug("failed to publish progress event", zap.Error(err))
 				}
+
 				lastProgressTime = time.Now()
 				reportCount++
 
@@ -353,7 +371,7 @@ func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPh
 	}
 }
 
-// calculateProgressInterval determines the optimal progress reporting interval
+// calculateProgressInterval determines the optimal progress reporting interval.
 func (p *ASTParser) calculateProgressInterval(total int) time.Duration {
 	switch {
 	case total <= 5:
@@ -374,7 +392,7 @@ func (p *ASTParser) calculateProgressInterval(total int) time.Duration {
 	}
 }
 
-// shouldReportProgress determines if progress should be reported based on various factors
+// shouldReportProgress determines if progress should be reported based on various factors.
 func (p *ASTParser) shouldReportProgress(lastReport time.Time, reportCount int, total int) bool {
 	// For very small operations, don't report at all
 	if total <= 5 {
@@ -396,7 +414,7 @@ func (p *ASTParser) shouldReportProgress(lastReport time.Time, reportCount int, 
 	return true
 }
 
-// countAnnotations counts total annotations across all interfaces
+// countAnnotations counts total annotations across all interfaces.
 func (p *ASTParser) countAnnotations(interfaces []*InterfaceInfo) int {
 	count := 0
 	for _, iface := range interfaces {
@@ -406,20 +424,22 @@ func (p *ASTParser) countAnnotations(interfaces []*InterfaceInfo) int {
 			count += p.countMethodAnnotations(method)
 		}
 	}
+
 	return count
 }
 
-// countMethodAnnotations counts annotations for a specific method
+// countMethodAnnotations counts annotations for a specific method.
 func (p *ASTParser) countMethodAnnotations(method types.Object) int {
 	// This would analyze the method's documentation for annotations
 	// Implementation details depend on the annotation format
 	return 0 // Placeholder
 }
 
-// Close releases resources used by the parser
+// Close releases resources used by the parser.
 func (p *ASTParser) Close() error {
 	if p.typeResolverPool != nil {
 		return p.typeResolverPool.Close()
 	}
+
 	return nil
 }

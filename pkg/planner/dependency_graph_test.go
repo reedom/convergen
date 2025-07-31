@@ -187,6 +187,7 @@ func TestDependencyGraph_TopologicalSort(t *testing.T) {
 				for _, batch := range batches {
 					allMappings = append(allMappings, batch...)
 				}
+
 				assert.True(t, tt.validateBatches(allMappings, batches))
 			}
 
@@ -195,6 +196,7 @@ func TestDependencyGraph_TopologicalSort(t *testing.T) {
 			for _, batch := range batches {
 				totalMappings += len(batch)
 			}
+
 			assert.Equal(t, graph.Size(), totalMappings)
 		})
 	}
@@ -296,6 +298,7 @@ func TestDependencyGraph_CycleDetection(t *testing.T) {
 				// Verify cycles contain valid mapping IDs
 				for _, cycle := range cycles {
 					assert.GreaterOrEqual(t, len(cycle), 2) // A cycle must have at least 2 nodes
+
 					for _, id := range cycle {
 						_, exists := graph.GetField(id)
 						assert.True(t, exists, "Cycle contains invalid mapping ID: %s", id)
@@ -447,6 +450,7 @@ func TestDependencyGraph_GetExecutionOrder(t *testing.T) {
 		assert.NotNil(t, batch.ResourceRequirement)
 		assert.GreaterOrEqual(t, batch.ConcurrencyLevel, 1)
 	}
+
 	assert.Equal(t, graph.Size(), totalMappings)
 }
 
@@ -460,6 +464,7 @@ func BenchmarkDependencyGraph_AddField(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		err := graph.AddField(mappings[i])
 		require.NoError(b, err)
@@ -487,6 +492,7 @@ func BenchmarkDependencyGraph_TopologicalSort(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := graph.TopologicalSort()
 		require.NoError(b, err)

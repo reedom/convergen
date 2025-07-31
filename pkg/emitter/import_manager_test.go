@@ -29,6 +29,7 @@ func TestImportManager_AnalyzeImports(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	analysis, err := importMgr.AnalyzeImports(ctx, generatedCode)
 	if err != nil {
 		t.Fatalf("AnalyzeImports failed: %v", err)
@@ -86,6 +87,7 @@ func TestImportManager_GenerateImports(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	imports, err := importMgr.GenerateImports(ctx, analysis)
 	if err != nil {
 		t.Fatalf("GenerateImports failed: %v", err)
@@ -221,6 +223,7 @@ func TestImportManager_PrivateMethods(t *testing.T) {
 	// Test AddImport (0% coverage)
 	imp := &Import{Path: "fmt", Standard: true, Used: true}
 	imports := []*Import{}
+
 	result := importMgr.AddImport(imports, imp)
 	if len(result) == 0 {
 		t.Error("AddImport should add import to collection")
@@ -316,6 +319,7 @@ func TestImportManager_PrivateMethods(t *testing.T) {
 		if result == "" {
 			t.Errorf("generateAlias(%q, %q) should return non-empty alias", tt.path, tt.packageName)
 		}
+
 		t.Logf("generateAlias(%q, %q) = %q", tt.path, tt.packageName, result)
 	}
 
@@ -489,6 +493,7 @@ func TestImportManager_EdgeCases(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	_, err = importMgr.GenerateImports(ctx, analysis)
 	if err != nil {
 		t.Fatalf("GenerateImports with long path failed: %v", err)

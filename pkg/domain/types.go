@@ -1,11 +1,19 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 )
 
-// TypeKind represents the fundamental kind of a type
+// Static errors for err113 compliance.
+var (
+	ErrStructNameEmpty    = errors.New("struct name cannot be empty")
+	ErrDuplicateFieldName = errors.New("duplicate field name")
+	ErrFieldHasNilType    = errors.New("field has nil type")
+)
+
+// TypeKind represents the fundamental kind of a type.
 type TypeKind int
 
 const (
@@ -19,7 +27,7 @@ const (
 	KindNamed
 	KindFunction
 
-	// Aliases for compatibility
+	// TypeKindInterface is an alias for KindInterface for compatibility.
 	TypeKindInterface = KindInterface
 )
 
@@ -48,7 +56,7 @@ func (k TypeKind) String() string {
 	}
 }
 
-// Type represents a Go type with full information including generics
+// Type represents a Go type with full information including generics.
 type Type interface {
 	// Basic type information
 	Name() string
@@ -70,7 +78,7 @@ type Type interface {
 	ImportPath() string
 }
 
-// TypeParam represents a generic type parameter
+// TypeParam represents a generic type parameter.
 type TypeParam struct {
 	Name       string `json:"name"`
 	Constraint Type   `json:"constraint"`
@@ -109,6 +117,7 @@ func (t *BasicType) AssignableTo(other Type) bool {
 	if otherBasic, ok := other.(*BasicType); ok {
 		return t.name == otherBasic.name && t.kind == otherBasic.kind
 	}
+
 	return false
 }
 
@@ -127,7 +136,7 @@ func (t *BasicType) Comparable() bool {
 	}
 }
 
-// StructType represents struct types with ordered fields
+// StructType represents struct types with ordered fields.
 type StructType struct {
 	name       string
 	fields     []Field
@@ -155,18 +164,19 @@ func (t *StructType) Underlying() Type        { return t }
 func (t *StructType) Package() string         { return t.pkg }
 func (t *StructType) ImportPath() string      { return t.importPath }
 
-// Fields returns a defensive copy of the fields
+// Fields returns a defensive copy of the fields.
 func (t *StructType) Fields() []Field {
 	return append([]Field(nil), t.fields...)
 }
 
-// FieldByName finds a field by name
+// FieldByName finds a field by name.
 func (t *StructType) FieldByName(name string) (Field, bool) {
 	for _, field := range t.fields {
 		if field.Name == name {
 			return field, true
 		}
 	}
+
 	return Field{}, false
 }
 
@@ -178,6 +188,7 @@ func (t *StructType) AssignableTo(other Type) bool {
 	if otherStruct, ok := other.(*StructType); ok {
 		return t.name == otherStruct.name && t.pkg == otherStruct.pkg
 	}
+
 	return false
 }
 
@@ -193,10 +204,11 @@ func (t *StructType) Comparable() bool {
 			return false
 		}
 	}
+
 	return true
 }
 
-// SliceType represents slice types
+// SliceType represents slice types.
 type SliceType struct {
 	elem       Type
 	pkg        string
@@ -225,9 +237,11 @@ func (t *SliceType) AssignableTo(other Type) bool {
 	if other == nil {
 		return false
 	}
+
 	if otherSlice, ok := other.(*SliceType); ok {
 		return t.elem.AssignableTo(otherSlice.elem)
 	}
+
 	return false
 }
 
@@ -239,7 +253,7 @@ func (t *SliceType) Comparable() bool {
 	return false // Slices are not comparable
 }
 
-// PointerType represents pointer types
+// PointerType represents pointer types.
 type PointerType struct {
 	elem       Type
 	pkg        string
@@ -268,9 +282,11 @@ func (t *PointerType) AssignableTo(other Type) bool {
 	if other == nil {
 		return false
 	}
+
 	if otherPtr, ok := other.(*PointerType); ok {
 		return t.elem.AssignableTo(otherPtr.elem)
 	}
+
 	return false
 }
 
@@ -283,7 +299,7 @@ func (t *PointerType) Comparable() bool {
 	return true // Pointers are always comparable
 }
 
-// GenericType represents generic type parameters
+// GenericType represents generic type parameters.
 type GenericType struct {
 	name       string
 	constraint Type
@@ -331,7 +347,7 @@ func (t *GenericType) Comparable() bool {
 	return t.constraint.Comparable()
 }
 
-// TypeBuilder helps build complex types with validation
+// TypeBuilder helps build complex types with validation.
 type TypeBuilder struct {
 	cache map[string]Type
 }
@@ -342,7 +358,7 @@ func NewTypeBuilder() *TypeBuilder {
 	}
 }
 
-// Additional constructors needed by the parser
+// NewNamedType creates a new named type with the given parameters.
 func NewNamedType(name string, underlying Type, typeParams []TypeParam) Type {
 	return &BasicType{
 		name: name,
@@ -366,7 +382,7 @@ func NewMapType(key, value Type) Type {
 	}
 }
 
-// mapType is a simple wrapper that returns KindMap
+// mapType is a simple wrapper that returns KindMap.
 type mapType struct {
 	name  string
 	key   Type
@@ -410,7 +426,7 @@ func NewFunctionType(params, returns []Type, variadic bool) Type {
 	}
 }
 
-// functionType is a simple wrapper that returns KindFunction
+// functionType is a simple wrapper that returns KindFunction.
 type functionType struct {
 	name     string
 	params   []Type
@@ -439,22 +455,23 @@ func NewTypeParameterType(name string, constraint Type) Type {
 	}
 }
 
-// BuildStruct creates a validated struct type
+// BuildStruct creates a validated struct type.
 func (b *TypeBuilder) BuildStruct(name, pkg string, fields []Field) (*StructType, error) {
 	if name == "" {
-		return nil, fmt.Errorf("struct name cannot be empty")
+		return nil, ErrStructNameEmpty
 	}
 
 	// Validate field names are unique
 	fieldNames := make(map[string]bool)
 	for _, field := range fields {
 		if fieldNames[field.Name] {
-			return nil, fmt.Errorf("duplicate field name: %s", field.Name)
+			return nil, fmt.Errorf("%w: %s", ErrDuplicateFieldName, field.Name)
 		}
+
 		fieldNames[field.Name] = true
 
 		if field.Type == nil {
-			return nil, fmt.Errorf("field %s has nil type", field.Name)
+			return nil, fmt.Errorf("%w: %s", ErrFieldHasNilType, field.Name)
 		}
 	}
 
@@ -467,14 +484,15 @@ func (b *TypeBuilder) BuildStruct(name, pkg string, fields []Field) (*StructType
 	return structType, nil
 }
 
-// GetCachedType retrieves a cached type
+// GetCachedType retrieves a cached type.
 func (b *TypeBuilder) GetCachedType(pkg, name string) (Type, bool) {
 	key := fmt.Sprintf("%s.%s", pkg, name)
 	typ, ok := b.cache[key]
+
 	return typ, ok
 }
 
-// Common basic types for convenience
+// Common basic types for convenience.
 var (
 	StringType  = NewBasicType("string", reflect.String)
 	IntType     = NewBasicType("int", reflect.Int)

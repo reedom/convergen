@@ -3,6 +3,7 @@ package parser
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/printer"
@@ -14,13 +15,23 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// BaseCodeGenerator generates base code by stripping convergen annotations
+// Static errors for err113 compliance.
+var (
+	ErrInterfaceNotFoundInAST             = errors.New("interface not found in AST")
+	ErrConverterMustHaveOneParameter      = errors.New("converter must have exactly one parameter")
+	ErrConverterMustHaveOneOrTwoReturns   = errors.New("converter must have 1 or 2 return values")
+	ErrSourceTypeNotAssignableToConverter = errors.New("source type not assignable to converter input")
+	ErrConverterOutputNotAssignableToDest = errors.New("converter output not assignable to destination type")
+	ErrSecondReturnMustBeError            = errors.New("second return value must be error type")
+)
+
+// BaseCodeGenerator generates base code by stripping convergen annotations.
 type BaseCodeGenerator struct {
 	fileSet *token.FileSet
 	logger  *zap.Logger
 }
 
-// NewBaseCodeGenerator creates a new base code generator
+// NewBaseCodeGenerator creates a new base code generator.
 func NewBaseCodeGenerator(fileSet *token.FileSet, logger *zap.Logger) *BaseCodeGenerator {
 	return &BaseCodeGenerator{
 		fileSet: fileSet,
@@ -28,7 +39,7 @@ func NewBaseCodeGenerator(fileSet *token.FileSet, logger *zap.Logger) *BaseCodeG
 	}
 }
 
-// generateBaseCode generates clean Go code without convergen annotations
+// generateBaseCode generates clean Go code without convergen annotations.
 func (p *ASTParser) generateBaseCode(file *ast.File, interfaces []*InterfaceInfo) (string, error) {
 	// Create a copy of the AST to avoid modifying the original
 	fileCopy := p.copyASTFile(file)
@@ -59,7 +70,7 @@ func (p *ASTParser) generateBaseCode(file *ast.File, interfaces []*InterfaceInfo
 	return baseCode, nil
 }
 
-// copyASTFile creates a deep copy of an AST file
+// copyASTFile creates a deep copy of an AST file.
 func (p *ASTParser) copyASTFile(file *ast.File) *ast.File {
 	// This is a simplified copy - in a full implementation,
 	// you'd need a complete AST deep copy function
@@ -75,16 +86,17 @@ func (p *ASTParser) copyASTFile(file *ast.File) *ast.File {
 	}
 }
 
-// copyDecls creates a copy of declarations
+// copyDecls creates a copy of declarations.
 func (p *ASTParser) copyDecls(decls []ast.Decl) []ast.Decl {
 	copied := make([]ast.Decl, len(decls))
 	for i, decl := range decls {
 		copied[i] = p.copyDecl(decl)
 	}
+
 	return copied
 }
 
-// copyDecl creates a copy of a single declaration
+// copyDecl creates a copy of a single declaration.
 func (p *ASTParser) copyDecl(decl ast.Decl) ast.Decl {
 	switch d := decl.(type) {
 	case *ast.GenDecl:
@@ -109,16 +121,17 @@ func (p *ASTParser) copyDecl(decl ast.Decl) ast.Decl {
 	}
 }
 
-// copySpecs creates a copy of specifications
+// copySpecs creates a copy of specifications.
 func (p *ASTParser) copySpecs(specs []ast.Spec) []ast.Spec {
 	copied := make([]ast.Spec, len(specs))
 	for i, spec := range specs {
 		copied[i] = p.copySpec(spec)
 	}
+
 	return copied
 }
 
-// copySpec creates a copy of a single specification
+// copySpec creates a copy of a single specification.
 func (p *ASTParser) copySpec(spec ast.Spec) ast.Spec {
 	switch s := spec.(type) {
 	case *ast.TypeSpec:
@@ -150,16 +163,17 @@ func (p *ASTParser) copySpec(spec ast.Spec) ast.Spec {
 	}
 }
 
-// copyComments creates a copy of comment groups
+// copyComments creates a copy of comment groups.
 func (p *ASTParser) copyComments(comments []*ast.CommentGroup) []*ast.CommentGroup {
 	copied := make([]*ast.CommentGroup, len(comments))
 	for i, comment := range comments {
 		copied[i] = p.copyCommentGroup(comment)
 	}
+
 	return copied
 }
 
-// copyCommentGroup creates a copy of a comment group
+// copyCommentGroup creates a copy of a comment group.
 func (p *ASTParser) copyCommentGroup(group *ast.CommentGroup) *ast.CommentGroup {
 	if group == nil {
 		return nil
@@ -178,7 +192,7 @@ func (p *ASTParser) copyCommentGroup(group *ast.CommentGroup) *ast.CommentGroup 
 	}
 }
 
-// removeConvergenComments removes convergen-related comments from the AST
+// removeConvergenComments removes convergen-related comments from the AST.
 func (p *ASTParser) removeConvergenComments(file *ast.File) {
 	// Patterns to match and remove
 	patterns := []*regexp.Regexp{
@@ -204,7 +218,7 @@ func (p *ASTParser) removeConvergenComments(file *ast.File) {
 	}
 }
 
-// filterComments removes comments that match any of the given patterns
+// filterComments removes comments that match any of the given patterns.
 func (p *ASTParser) filterComments(comments []*ast.CommentGroup, patterns []*regexp.Regexp) []*ast.CommentGroup {
 	var filtered []*ast.CommentGroup
 
@@ -217,7 +231,7 @@ func (p *ASTParser) filterComments(comments []*ast.CommentGroup, patterns []*reg
 	return filtered
 }
 
-// filterCommentGroup filters individual comments within a comment group
+// filterCommentGroup filters individual comments within a comment group.
 func (p *ASTParser) filterCommentGroup(group *ast.CommentGroup, patterns []*regexp.Regexp) *ast.CommentGroup {
 	if group == nil {
 		return nil
@@ -227,6 +241,7 @@ func (p *ASTParser) filterCommentGroup(group *ast.CommentGroup, patterns []*rege
 
 	for _, comment := range group.List {
 		shouldRemove := false
+
 		for _, pattern := range patterns {
 			if pattern.MatchString(comment.Text) {
 				shouldRemove = true
@@ -248,7 +263,7 @@ func (p *ASTParser) filterCommentGroup(group *ast.CommentGroup, patterns []*rege
 	}
 }
 
-// processInterfaceForBaseCode processes an interface for base code generation
+// processInterfaceForBaseCode processes an interface for base code generation.
 func (p *ASTParser) processInterfaceForBaseCode(file *ast.File, interfaceInfo *InterfaceInfo) error {
 	// Find the interface declaration in the AST
 	for _, decl := range file.Decls {
@@ -260,12 +275,14 @@ func (p *ASTParser) processInterfaceForBaseCode(file *ast.File, interfaceInfo *I
 						if genDecl.Doc != nil {
 							genDecl.Doc = nil
 						}
+
 						if typeSpec.Doc != nil {
 							typeSpec.Doc = nil
 						}
 
 						// Insert marker comments
 						p.insertMarkerComments(file, typeSpec, interfaceInfo.Marker)
+
 						return nil
 					}
 				}
@@ -273,10 +290,10 @@ func (p *ASTParser) processInterfaceForBaseCode(file *ast.File, interfaceInfo *I
 		}
 	}
 
-	return fmt.Errorf("interface %s not found in AST", interfaceInfo.Object.Name())
+	return fmt.Errorf("%w: %s", ErrInterfaceNotFoundInAST, interfaceInfo.Object.Name())
 }
 
-// insertMarkerComments inserts marker comments around the interface
+// insertMarkerComments inserts marker comments around the interface.
 func (p *ASTParser) insertMarkerComments(file *ast.File, typeSpec *ast.TypeSpec, marker string) {
 	// This is a simplified implementation
 	// In practice, you'd need to carefully insert comments at the right positions
@@ -294,7 +311,7 @@ func (p *ASTParser) insertMarkerComments(file *ast.File, typeSpec *ast.TypeSpec,
 	file.Comments = append(file.Comments, markerGroup)
 }
 
-// replaceInterfaceWithMarker performs final string replacement to clean up interface blocks
+// replaceInterfaceWithMarker performs final string replacement to clean up interface blocks.
 func (p *ASTParser) replaceInterfaceWithMarker(code, marker string) string {
 	// Create regex to match the interface declaration with markers
 	escapedMarker := regexp.QuoteMeta(marker)
@@ -309,8 +326,8 @@ func (p *ASTParser) replaceInterfaceWithMarker(code, marker string) string {
 	return re.ReplaceAllString(code, replacement)
 }
 
-// resolveCrossReferences resolves cross-references between methods
-func (p *ASTParser) resolveCrossReferences(ctx context.Context, methods []*domain.Method) error {
+// resolveCrossReferences resolves cross-references between methods.
+func (p *ASTParser) resolveCrossReferences(_ context.Context, methods []*domain.Method) error {
 	// Create a map of method names to methods for quick lookup
 	methodMap := make(map[string]*domain.Method)
 	for _, method := range methods {
@@ -327,7 +344,7 @@ func (p *ASTParser) resolveCrossReferences(ctx context.Context, methods []*domai
 	return nil
 }
 
-// resolveMethodConverters resolves converter function references within a method
+// resolveMethodConverters resolves converter function references within a method.
 func (p *ASTParser) resolveMethodConverters(method *domain.Method, methodMap map[string]*domain.Method) error {
 	// Check each field mapping for converter references
 	for _, mapping := range method.FieldMappings() {
@@ -350,18 +367,18 @@ func (p *ASTParser) resolveMethodConverters(method *domain.Method, methodMap map
 	return nil
 }
 
-// validateConverterCompatibility checks if a method can be used as a converter
+// validateConverterCompatibility checks if a method can be used as a converter.
 func (p *ASTParser) validateConverterCompatibility(mapping *domain.FieldMapping, converter *domain.Method) error {
 	// Check that the converter has the right signature
 	params := converter.SourceParams()
 	returns := converter.DestinationReturns()
 
 	if len(params) != 1 {
-		return fmt.Errorf("converter must have exactly one parameter")
+		return ErrConverterMustHaveOneParameter
 	}
 
 	if len(returns) < 1 || len(returns) > 2 {
-		return fmt.Errorf("converter must have 1 or 2 return values")
+		return ErrConverterMustHaveOneOrTwoReturns
 	}
 
 	// Check type compatibility
@@ -371,19 +388,19 @@ func (p *ASTParser) validateConverterCompatibility(mapping *domain.FieldMapping,
 	converterDestType := returns[0].Type
 
 	if !sourceType.AssignableTo(converterSourceType) {
-		return fmt.Errorf("source type %s not assignable to converter input %s",
+		return fmt.Errorf("%w: %s to %s", ErrSourceTypeNotAssignableToConverter,
 			sourceType.Name(), converterSourceType.Name())
 	}
 
 	if !converterDestType.AssignableTo(destType) {
-		return fmt.Errorf("converter output %s not assignable to destination type %s",
+		return fmt.Errorf("%w: %s to %s", ErrConverterOutputNotAssignableToDest,
 			converterDestType.Name(), destType.Name())
 	}
 
 	// If two returns, second must be error
 	if len(returns) == 2 {
 		if returns[1].Type.Name() != "error" {
-			return fmt.Errorf("second return value must be error type")
+			return ErrSecondReturnMustBeError
 		}
 	}
 

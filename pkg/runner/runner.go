@@ -1,6 +1,8 @@
+// Package runner provides the main execution logic for the convergen CLI tool.
 package runner
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/reedom/convergen/v8/pkg/config"
@@ -21,29 +23,32 @@ func Run(conf config.Config) error {
 	if conf.Log != "" {
 		f, err := os.OpenFile(conf.Log, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to open log file %s: %w", conf.Log, err)
 		}
+
 		logger.SetupLogger(logger.Enable(), logger.Output(f))
 	}
 
 	p, err := parser.NewParser(conf.Input, conf.Output)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create parser for %s: %w", conf.Input, err)
 	}
 
 	methods, err := p.Parse()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse source file %s: %w", conf.Input, err)
 	}
 
 	builder := p.CreateBuilder()
 
 	var funcBlocks []model.FunctionsBlock
+
 	for _, info := range methods {
 		functions, err := builder.CreateFunctions(info.Methods)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create functions for interface %s: %w", info.Marker, err)
 		}
+
 		block := model.FunctionsBlock{
 			Marker:    info.Marker,
 			Functions: functions,
@@ -53,7 +58,7 @@ func Run(conf config.Config) error {
 
 	baseCode, err := p.GenerateBaseCode()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate base code: %w", err)
 	}
 
 	code := model.Code{
@@ -62,9 +67,10 @@ func Run(conf config.Config) error {
 	}
 
 	g := generator.NewGenerator(code)
+
 	_, err = g.Generate(conf.Output, conf.Prints, conf.DryRun)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate output to %s: %w", conf.Output, err)
 	}
 
 	return nil

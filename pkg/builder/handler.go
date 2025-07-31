@@ -44,6 +44,7 @@ func (h *SkipHandler) Handle(lhs, rhs bmodel.Node, additionalArgs []bmodel.Node)
 	if h.nextHandler != nil {
 		return h.nextHandler.Handle(lhs, rhs, additionalArgs)
 	}
+
 	return nil, nil
 }
 
@@ -69,5 +70,6 @@ func (h *LiteralSetterHandler) Handle(lhs, rhs bmodel.Node, additionalArgs []bmo
 	if h.nextHandler != nil {
 		return h.nextHandler.Handle(lhs, rhs, additionalArgs)
 	}
+
 	return nil, nil
 }

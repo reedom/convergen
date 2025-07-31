@@ -25,7 +25,9 @@ func IterateStructMethods(structNode Node, cb func(Node) (done bool)) {
 		if !util.CompliesGetter(fn) {
 			return
 		}
+
 		node := NewStructMethodNode(structNode, fn)
+
 		return cb(node)
 	})
 }
@@ -45,5 +47,6 @@ func IsRecursive(node Node, typ types.Type) bool {
 			return true
 		}
 	}
+
 	return false
 }

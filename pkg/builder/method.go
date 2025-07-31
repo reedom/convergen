@@ -43,13 +43,16 @@ func NewFunctionBuilder(
 // method entries.
 func (p *FunctionBuilder) CreateFunctions(methods []*bmodel.MethodEntry) ([]*gmodel.Function, error) {
 	functions := make([]*gmodel.Function, len(methods))
+
 	var err error
+
 	for i, method := range methods {
 		functions[i], err = p.CreateFunction(method)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return functions, nil
 }
 
@@ -68,42 +71,52 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	if util.IsInvalidType(src.Type()) {
 		return nil, logger.Errorf("%v: src type is not defined. make sure to be imported", p.fset.Position(src.Pos()))
 	}
+
 	if util.IsInvalidType(dst.Type()) {
 		return nil, logger.Errorf("%v: dst type is not defined. make sure to be imported", p.fset.Position(dst.Pos()))
 	}
+
 	for _, arg := range additionalArgs {
 		if util.IsInvalidType(arg.Type()) {
 			return nil, logger.Errorf("%v: arg type is not defined. make sure to be imported", p.fset.Position(arg.Pos()))
 		}
 	}
+
 	if !util.IsStructType(util.DerefPtr(src.Type())) {
 		return nil, logger.Errorf("%v: src type should be a struct but %v", p.fset.Position(dst.Pos()), src.Type().Underlying().String())
 	}
+
 	if !util.IsStructType(util.DerefPtr(dst.Type())) {
 		return nil, logger.Errorf("%v: dst type should be a struct but %v", p.fset.Position(dst.Pos()), dst.Type().Underlying().String())
 	}
 
 	srcDefName := "src"
 	dstDefName := "dst"
+
 	if m.Opts.Reverse {
 		srcDefName, dstDefName = dstDefName, srcDefName
 	}
 
 	srcVar := p.createVar(src, srcDefName)
 	dstVar := p.createVar(dst, dstDefName)
+
 	additionalArgsVars := make([]gmodel.Var, len(additionalArgs))
 	for i, arg := range additionalArgs {
 		additionalArgsVars[i] = p.createVar(arg, fmt.Sprintf("arg%d", i))
 	}
+
 	if m.Opts.Receiver != "" {
 		if srcVar.External {
 			return nil, logger.Errorf("%v: an external package type cannot be a receiver", p.fset.Position(m.Method.Pos()))
 		}
+
 		srcVar.Name = m.Opts.Receiver
 	}
 
 	var assignments []gmodel.Assignment
+
 	var err error
+
 	if m.Opts.Reverse {
 		builder := newAssignmentBuilder(p, m, srcVar, dstVar, additionalArgsVars)
 		assignments, err = builder.build(src, dst, additionalArgs)
@@ -111,6 +124,7 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 		builder := newAssignmentBuilder(p, m, dstVar, srcVar, additionalArgsVars)
 		assignments, err = builder.build(dst, src, additionalArgs)
 	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +133,7 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 	if err != nil {
 		return nil, err
 	}
+
 	postProcess, err := p.buildManipulator(m.Opts.PostProcess, src, dst, additionalArgs, m.RetError())
 	if err != nil {
 		return nil, err
@@ -150,6 +165,7 @@ func (p *FunctionBuilder) createVar(v *types.Var, defName string) gmodel.Var {
 	}
 
 	typ, isPtr := util.Deref(v.Type())
+
 	return gmodel.Var{
 		Name:     name,
 		Type:     p.imports.TypeName(typ),

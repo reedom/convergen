@@ -9,7 +9,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/executor"
 )
 
-// OptimizationLevel defines the level of code optimization
+// OptimizationLevel defines the level of code optimization.
 type OptimizationLevel int
 
 const (
@@ -34,7 +34,7 @@ func (ol OptimizationLevel) String() string {
 	}
 }
 
-// ConstructionStrategy defines how code should be constructed
+// ConstructionStrategy defines how code should be constructed.
 type ConstructionStrategy int
 
 const (
@@ -59,7 +59,7 @@ func (cs ConstructionStrategy) String() string {
 	}
 }
 
-// GeneratedCode represents the complete generated Go code
+// GeneratedCode represents the complete generated Go code.
 type GeneratedCode struct {
 	PackageName string              `json:"package_name"`
 	Imports     *ImportDeclaration  `json:"imports"`
@@ -70,7 +70,7 @@ type GeneratedCode struct {
 	Metrics     *GenerationMetrics  `json:"metrics"`
 }
 
-// MethodCode represents generated code for a single method
+// MethodCode represents generated code for a single method.
 type MethodCode struct {
 	Name          string               `json:"name"`
 	Signature     string               `json:"signature"`
@@ -83,7 +83,7 @@ type MethodCode struct {
 	Fields        []*FieldCode         `json:"fields"`
 }
 
-// FieldCode represents generated code for a single field
+// FieldCode represents generated code for a single field.
 type FieldCode struct {
 	Name         string    `json:"name"`
 	Assignment   string    `json:"assignment"`
@@ -95,7 +95,7 @@ type FieldCode struct {
 	Strategy     string    `json:"strategy"`
 }
 
-// ErrorCode represents generated error handling code
+// ErrorCode represents generated error handling code.
 type ErrorCode struct {
 	CheckCode    string    `json:"check_code"`
 	HandlingCode string    `json:"handling_code"`
@@ -104,7 +104,7 @@ type ErrorCode struct {
 	Imports      []*Import `json:"imports"`
 }
 
-// ImportDeclaration represents the complete import section
+// ImportDeclaration represents the complete import section.
 type ImportDeclaration struct {
 	Imports        []*Import `json:"imports"`
 	StandardLibs   []*Import `json:"standard_libs"`
@@ -113,7 +113,7 @@ type ImportDeclaration struct {
 	Source         string    `json:"source"` // Formatted import block
 }
 
-// Import represents a single import statement
+// Import represents a single import statement.
 type Import struct {
 	Path     string `json:"path"`
 	Alias    string `json:"alias"`
@@ -123,7 +123,7 @@ type Import struct {
 	Required bool   `json:"required"`
 }
 
-// GenerationMetadata contains metadata about the generation process
+// GenerationMetadata contains metadata about the generation process.
 type GenerationMetadata struct {
 	GenerationTime     time.Time         `json:"generation_time"`
 	CompletionTime     time.Time         `json:"completion_time"`
@@ -134,7 +134,7 @@ type GenerationMetadata struct {
 	Environment        map[string]string `json:"environment"`
 }
 
-// GenerationMetrics contains detailed metrics about the generation process
+// GenerationMetrics contains detailed metrics about the generation process.
 type GenerationMetrics struct {
 	MethodsGenerated     int           `json:"methods_generated"`
 	FieldsGenerated      int           `json:"fields_generated"`
@@ -152,7 +152,7 @@ type GenerationMetrics struct {
 	WarningsGenerated    int           `json:"warnings_generated"`
 }
 
-// ComplexityMetrics analyzes the complexity of generated code
+// ComplexityMetrics analyzes the complexity of generated code.
 type ComplexityMetrics struct {
 	FieldCount           int                  `json:"field_count"`
 	ErrorFields          int                  `json:"error_fields"`
@@ -165,7 +165,7 @@ type ComplexityMetrics struct {
 	GenerationTime       time.Duration        `json:"generation_time"`
 }
 
-// ImportAnalysis contains the results of import analysis
+// ImportAnalysis contains the results of import analysis.
 type ImportAnalysis struct {
 	RequiredImports        []*Import            `json:"required_imports"`
 	ConflictingNames       map[string][]*Import `json:"conflicting_names"`
@@ -176,7 +176,7 @@ type ImportAnalysis struct {
 	OptimizationsSuggested []string             `json:"optimizations_suggested"`
 }
 
-// EmitterMetrics tracks overall emitter performance
+// EmitterMetrics tracks overall emitter performance.
 type EmitterMetrics struct {
 	mu                    sync.RWMutex
 	TotalGenerations      int64         `json:"total_generations"`
@@ -211,7 +211,7 @@ type EmitterMetrics struct {
 	LastGeneration time.Time `json:"last_generation"`
 }
 
-// PerformanceSnapshot captures performance at a specific point in time
+// PerformanceSnapshot captures performance at a specific point in time.
 type PerformanceSnapshot struct {
 	Timestamp            time.Time `json:"timestamp"`
 	GenerationsPerSecond float64   `json:"generations_per_second"`
@@ -222,7 +222,7 @@ type PerformanceSnapshot struct {
 	ErrorRate            float64   `json:"error_rate"`
 }
 
-// GenerationRequest represents a request for code generation
+// GenerationRequest represents a request for code generation.
 type GenerationRequest struct {
 	ExecutionResults *domain.ExecutionResults `json:"execution_results"`
 	Config           *EmitterConfig           `json:"config"`
@@ -231,7 +231,7 @@ type GenerationRequest struct {
 	Timestamp        time.Time                `json:"timestamp"`
 }
 
-// GenerationResponse represents the response from code generation
+// GenerationResponse represents the response from code generation.
 type GenerationResponse struct {
 	GeneratedCode  *GeneratedCode      `json:"generated_code"`
 	Success        bool                `json:"success"`
@@ -241,7 +241,7 @@ type GenerationResponse struct {
 	ProcessingTime time.Duration       `json:"processing_time"`
 }
 
-// GenerationError represents an error during code generation
+// GenerationError represents an error during code generation.
 type GenerationError struct {
 	Phase       string                 `json:"phase"`
 	Method      string                 `json:"method"`
@@ -254,7 +254,7 @@ type GenerationError struct {
 	Recoverable bool                   `json:"recoverable"`
 }
 
-// GenerationWarning represents a warning during code generation
+// GenerationWarning represents a warning during code generation.
 type GenerationWarning struct {
 	Phase      string                 `json:"phase"`
 	Method     string                 `json:"method"`
@@ -266,7 +266,7 @@ type GenerationWarning struct {
 	Suggestion string                 `json:"suggestion"`
 }
 
-// TemplateData represents data passed to code templates
+// TemplateData represents data passed to code templates.
 type TemplateData struct {
 	Method          *domain.MethodResult    `json:"method"`
 	Fields          []*executor.FieldResult `json:"fields"`
@@ -277,7 +277,7 @@ type TemplateData struct {
 	HelperFunctions map[string]interface{}  `json:"helper_functions"`
 }
 
-// OrderedBuffer maintains insertion order for deterministic output
+// OrderedBuffer maintains insertion order for deterministic output.
 type OrderedBuffer struct {
 	items    []*BufferItem
 	itemMap  map[int]*BufferItem
@@ -285,7 +285,7 @@ type OrderedBuffer struct {
 	sorted   bool
 }
 
-// BufferItem represents an item in the ordered buffer
+// BufferItem represents an item in the ordered buffer.
 type BufferItem struct {
 	Order   int
 	Content string
@@ -293,7 +293,7 @@ type BufferItem struct {
 	Context map[string]interface{}
 }
 
-// ValidationResult represents the result of code validation
+// ValidationResult represents the result of code validation.
 type ValidationResult struct {
 	Valid       bool                   `json:"valid"`
 	Errors      []ValidationError      `json:"errors"`
@@ -302,7 +302,7 @@ type ValidationResult struct {
 	Metrics     *ValidationMetrics     `json:"metrics"`
 }
 
-// ValidationError represents a validation error
+// ValidationError represents a validation error.
 type ValidationError struct {
 	Line     int    `json:"line"`
 	Column   int    `json:"column"`
@@ -312,7 +312,7 @@ type ValidationError struct {
 	Context  string `json:"context"`
 }
 
-// ValidationWarning represents a validation warning
+// ValidationWarning represents a validation warning.
 type ValidationWarning struct {
 	Line       int    `json:"line"`
 	Column     int    `json:"column"`
@@ -322,7 +322,7 @@ type ValidationWarning struct {
 	Suggestion string `json:"suggestion"`
 }
 
-// ValidationSuggestion represents a validation suggestion
+// ValidationSuggestion represents a validation suggestion.
 type ValidationSuggestion struct {
 	Line        int    `json:"line"`
 	Column      int    `json:"column"`
@@ -331,7 +331,7 @@ type ValidationSuggestion struct {
 	Benefit     string `json:"benefit"`
 }
 
-// ValidationMetrics contains validation performance metrics
+// ValidationMetrics contains validation performance metrics.
 type ValidationMetrics struct {
 	ValidationTime   time.Duration `json:"validation_time"`
 	LinesValidated   int           `json:"lines_validated"`
@@ -340,21 +340,21 @@ type ValidationMetrics struct {
 	SuggestionsFound int           `json:"suggestions_found"`
 }
 
-// TemplateSystem manages code generation templates
+// TemplateSystem manages code generation templates.
 type TemplateSystem interface {
 	Execute(template string, data interface{}) (string, error)
 	HasTemplate(name string) bool
 	RegisterTemplate(name, content string) error
 }
 
-// CodeValidator validates generated code
+// CodeValidator validates generated code.
 type CodeValidator interface {
 	Validate(code string) error
 	ValidateMethod(method *MethodCode) error
 	ValidateMethodCode(methodCode *MethodCode) error
 }
 
-// SimpleTemplateSystem provides basic template functionality
+// SimpleTemplateSystem provides basic template functionality.
 type SimpleTemplateSystem struct{}
 
 func NewTemplateSystem() TemplateSystem {
@@ -379,7 +379,7 @@ func NewCustomTemplate(name, content string) interface{} {
 	return content
 }
 
-// NewEmitterMetrics creates default emitter metrics
+// NewEmitterMetrics creates default emitter metrics.
 func NewEmitterMetrics() *EmitterMetrics {
 	return &EmitterMetrics{
 		TotalGenerations:      0,
@@ -398,7 +398,7 @@ func NewEmitterMetrics() *EmitterMetrics {
 	}
 }
 
-// RecordGeneration records generation metrics in a thread-safe manner
+// RecordGeneration records generation metrics in a thread-safe manner.
 func (m *EmitterMetrics) RecordGeneration(methodCode *MethodCode, packageName string, methods []*MethodCode) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -418,7 +418,7 @@ func (m *EmitterMetrics) RecordGeneration(methodCode *MethodCode, packageName st
 	}
 }
 
-// GetSnapshot returns a thread-safe snapshot of current metrics
+// GetSnapshot returns a thread-safe snapshot of current metrics.
 func (m *EmitterMetrics) GetSnapshot() *EmitterMetrics {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -470,7 +470,7 @@ func (m *EmitterMetrics) GetSnapshot() *EmitterMetrics {
 	}
 }
 
-// AddGenerationTime safely adds generation time to metrics
+// AddGenerationTime safely adds generation time to metrics.
 func (m *EmitterMetrics) AddGenerationTime(duration time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -481,7 +481,7 @@ func (m *EmitterMetrics) AddGenerationTime(duration time.Duration) {
 	}
 }
 
-// RecordStrategyUsage safely records strategy usage
+// RecordStrategyUsage safely records strategy usage.
 func (m *EmitterMetrics) RecordStrategyUsage(strategy string, duration time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -489,6 +489,7 @@ func (m *EmitterMetrics) RecordStrategyUsage(strategy string, duration time.Dura
 	if m.StrategyUsage == nil {
 		m.StrategyUsage = make(map[string]int64)
 	}
+
 	if m.StrategyPerformance == nil {
 		m.StrategyPerformance = make(map[string]time.Duration)
 	}
@@ -497,7 +498,7 @@ func (m *EmitterMetrics) RecordStrategyUsage(strategy string, duration time.Dura
 	m.StrategyPerformance[strategy] += duration
 }
 
-// RecordError safely records error occurrences
+// RecordError safely records error occurrences.
 func (m *EmitterMetrics) RecordError(errorType string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -507,10 +508,11 @@ func (m *EmitterMetrics) RecordError(errorType string) {
 	if m.ErrorsByType == nil {
 		m.ErrorsByType = make(map[string]int64)
 	}
+
 	m.ErrorsByType[errorType]++
 }
 
-// UpdateMemoryUsage safely updates memory usage statistics
+// UpdateMemoryUsage safely updates memory usage statistics.
 func (m *EmitterMetrics) UpdateMemoryUsage(current int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -527,7 +529,7 @@ func (m *EmitterMetrics) UpdateMemoryUsage(current int64) {
 	}
 }
 
-// Event type constants
+// Event type constants.
 const (
 	EventEmitStarted      = "emit.started"
 	EventEmitCompleted    = "emit.completed"
@@ -535,7 +537,7 @@ const (
 	EventValidationFailed = "emit.validation.failed"
 )
 
-// Default values and constants
+// Default values and constants.
 const (
 	DefaultIndentStyle       = "\t"
 	DefaultLineWidth         = 120
@@ -546,7 +548,7 @@ const (
 	MaxComplexityScore        = 100.0
 	MaxCyclomaticComplexity   = 20
 
-	// Template names
+	// Template names.
 	TemplateCompositeLiteral  = "composite_literal"
 	TemplateAssignmentBlock   = "assignment_block"
 	TemplateErrorHandling     = "error_handling"
@@ -556,7 +558,7 @@ const (
 
 // Helper functions for type conversion and validation
 
-// NewGenerationMetrics creates a new GenerationMetrics instance
+// NewGenerationMetrics creates a new GenerationMetrics instance.
 func NewGenerationMetrics() *GenerationMetrics {
 	return &GenerationMetrics{
 		MethodsGenerated:     0,
@@ -576,14 +578,14 @@ func NewGenerationMetrics() *GenerationMetrics {
 	}
 }
 
-// NewComplexityMetrics creates a new ComplexityMetrics instance
+// NewComplexityMetrics creates a new ComplexityMetrics instance.
 func NewComplexityMetrics() *ComplexityMetrics {
 	return &ComplexityMetrics{
 		RecommendedStrategy: StrategyCompositeLiteral,
 	}
 }
 
-// IsComplex returns true if the complexity metrics indicate complex code
+// IsComplex returns true if the complexity metrics indicate complex code.
 func (cm *ComplexityMetrics) IsComplex() bool {
 	return cm.ComplexityScore > 50.0 ||
 		cm.ErrorFields > 0 ||
@@ -591,12 +593,12 @@ func (cm *ComplexityMetrics) IsComplex() bool {
 		cm.CyclomaticComplexity > 10
 }
 
-// ShouldUseComposite returns true if composite literal strategy is recommended
+// ShouldUseComposite returns true if composite literal strategy is recommended.
 func (cm *ComplexityMetrics) ShouldUseComposite() bool {
 	return cm.RecommendedStrategy == StrategyCompositeLiteral
 }
 
-// Add method adds a new item to the ordered buffer
+// Add method adds a new item to the ordered buffer.
 func (ob *OrderedBuffer) Add(order int, content, itemType string) {
 	item := &BufferItem{
 		Order:   order,
@@ -619,7 +621,7 @@ func (ob *OrderedBuffer) Add(order int, content, itemType string) {
 	ob.sorted = false
 }
 
-// Generate returns the ordered content as a string
+// Generate returns the ordered content as a string.
 func (ob *OrderedBuffer) Generate() string {
 	if !ob.sorted {
 		ob.sort()
@@ -633,7 +635,7 @@ func (ob *OrderedBuffer) Generate() string {
 	return result
 }
 
-// sort sorts the buffer items by order
+// sort sorts the buffer items by order.
 func (ob *OrderedBuffer) sort() {
 	// Simple insertion sort for small collections
 	for i := 1; i < len(ob.items); i++ {

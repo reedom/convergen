@@ -338,7 +338,6 @@ func ToModel(src *domain.Pet) (dst *model.Pet, err error) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			code := model.Code{
 				BaseCode: pre + "xxxxx",
@@ -350,6 +349,7 @@ func ToModel(src *domain.Pet) (dst *model.Pet, err error) {
 				},
 			}
 			g := generator.NewGenerator(code)
+
 			actual, err := g.Generate("temp.gen.go", false, true)
 			if assert.Nil(t, err) {
 				assert.Equal(t, tt.expected, string(actual))

@@ -17,10 +17,10 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrNoPackagesToLoad                = errors.New("no packages to load")
-	ErrNoPackagesFoundForPath          = errors.New("no packages found")
-	ErrFailedToLoadPackageInformation  = errors.New("failed to load package information")
-	ErrFailedToParseSourceFile         = errors.New("failed to parse source file")
+	ErrNoPackagesToLoad               = errors.New("no packages to load")
+	ErrNoPackagesFoundForPath         = errors.New("no packages found")
+	ErrFailedToLoadPackageInformation = errors.New("failed to load package information")
+	ErrFailedToParseSourceFile        = errors.New("failed to parse source file")
 )
 
 // PackageLoadResult contains the result of loading a package.

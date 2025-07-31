@@ -1,12 +1,43 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 )
 
-// Field represents a struct field with complete metadata
+// Static errors for err113 compliance.
+var (
+	ErrFieldNameEmpty             = errors.New("field name cannot be empty")
+	ErrFieldTypeNil               = errors.New("field type cannot be nil")
+	ErrFieldPathEmpty             = errors.New("field path cannot be empty")
+	ErrMappingIDEmpty             = errors.New("mapping ID cannot be empty")
+	ErrSourceFieldSpecNil         = errors.New("source field spec cannot be nil")
+	ErrDestinationFieldSpecNil    = errors.New("destination field spec cannot be nil")
+	ErrConversionStrategyNil      = errors.New("conversion strategy cannot be nil")
+	ErrDependencyIDEmpty          = errors.New("dependency ID cannot be empty")
+	ErrFieldMappingSelfReference  = errors.New("field mapping cannot depend on itself")
+	ErrSourceNotMethodCall        = errors.New("source is not a method call")
+	ErrConverterFunctionNotConfig = errors.New("converter function not configured")
+	ErrLiteralValueNotConfig      = errors.New("literal value not configured")
+)
+
+// Constants for goconst compliance.
+const (
+	// DirectStrategyType represents the direct assignment strategy type.
+	DirectStrategyType = "direct"
+	// TypeCastStrategyType represents the type cast strategy type.
+	TypeCastStrategyType = "typecast"
+	// MethodStrategyType represents the method call strategy type.
+	MethodStrategyType = "method"
+	// ConverterStrategyType represents the converter function strategy type.
+	ConverterStrategyType = "converter"
+	// LiteralStrategyType represents the literal value strategy type.
+	LiteralStrategyType = "literal"
+)
+
+// Field represents a struct field with complete metadata.
 type Field struct {
 	Name      string            `json:"name"`
 	Type      Type              `json:"type"`
@@ -19,13 +50,14 @@ type Field struct {
 	Doc       string            `json:"doc"`
 }
 
-// NewField creates a new field with validation
+// NewField creates a new field with validation.
 func NewField(name string, typ Type, position int, exported bool) (*Field, error) {
 	if name == "" {
-		return nil, fmt.Errorf("field name cannot be empty")
+		return nil, ErrFieldNameEmpty
 	}
+
 	if typ == nil {
-		return nil, fmt.Errorf("field type cannot be nil")
+		return nil, ErrFieldTypeNil
 	}
 
 	return &Field{
@@ -38,8 +70,8 @@ func NewField(name string, typ Type, position int, exported bool) (*Field, error
 	}, nil
 }
 
-// FieldSpec identifies a specific field access path
-// Examples: ["User", "Name"], ["User", "GetAddress", "Street"]
+// FieldSpec represents a field path specification.
+// Examples: ["User", "Name"], ["User", "GetAddress", "Street"].
 type FieldSpec struct {
 	Path     []string `json:"path"`
 	Type     Type     `json:"type"`
@@ -47,13 +79,14 @@ type FieldSpec struct {
 	Receiver Type     `json:"receiver"`  // for method calls
 }
 
-// NewFieldSpec creates a validated field specification
+// NewFieldSpec creates a validated field specification.
 func NewFieldSpec(path []string, typ Type) (*FieldSpec, error) {
 	if len(path) == 0 {
-		return nil, fmt.Errorf("field path cannot be empty")
+		return nil, ErrFieldPathEmpty
 	}
+
 	if typ == nil {
-		return nil, fmt.Errorf("field type cannot be nil")
+		return nil, ErrFieldTypeNil
 	}
 
 	return &FieldSpec{
@@ -64,7 +97,7 @@ func NewFieldSpec(path []string, typ Type) (*FieldSpec, error) {
 	}, nil
 }
 
-// NewMethodSpec creates a method-based field specification
+// NewMethodSpec creates a method-based field specification.
 func NewMethodSpec(path []string, typ Type, receiver Type) (*FieldSpec, error) {
 	spec, err := NewFieldSpec(path, typ)
 	if err != nil {
@@ -73,35 +106,39 @@ func NewMethodSpec(path []string, typ Type, receiver Type) (*FieldSpec, error) {
 
 	spec.IsMethod = true
 	spec.Receiver = receiver
+
 	return spec, nil
 }
 
-// String returns a human-readable representation
+// String returns a human-readable representation.
 func (fs *FieldSpec) String() string {
 	path := strings.Join(fs.Path, ".")
 	if fs.IsMethod {
 		return path + "()"
 	}
+
 	return path
 }
 
-// FieldName returns the final field/method name
+// FieldName returns the final field/method name.
 func (fs *FieldSpec) FieldName() string {
 	if len(fs.Path) == 0 {
 		return ""
 	}
+
 	return fs.Path[len(fs.Path)-1]
 }
 
-// ParentPath returns the path to the parent struct
+// ParentPath returns the path to the parent struct.
 func (fs *FieldSpec) ParentPath() []string {
 	if len(fs.Path) <= 1 {
 		return nil
 	}
+
 	return append([]string(nil), fs.Path[:len(fs.Path)-1]...)
 }
 
-// ConversionStrategy defines how to convert between field types
+// ConversionStrategy defines how to convert between field types.
 type ConversionStrategy interface {
 	Name() string
 	CanHandle(source, dest Type) bool
@@ -110,7 +147,7 @@ type ConversionStrategy interface {
 	Priority() int // Higher priority strategies are preferred
 }
 
-// FieldMapping represents a conversion between two fields
+// FieldMapping represents a conversion between two fields.
 type FieldMapping struct {
 	ID           string             `json:"id"`
 	Source       *FieldSpec         `json:"source"`
@@ -121,19 +158,22 @@ type FieldMapping struct {
 	Dependencies []string           `json:"dependencies"` // Field IDs this mapping depends on
 }
 
-// NewFieldMapping creates a validated field mapping
+// NewFieldMapping creates a validated field mapping.
 func NewFieldMapping(id string, source, dest *FieldSpec, strategy ConversionStrategy) (*FieldMapping, error) {
 	if id == "" {
-		return nil, fmt.Errorf("mapping ID cannot be empty")
+		return nil, ErrMappingIDEmpty
 	}
+
 	if source == nil {
-		return nil, fmt.Errorf("source field spec cannot be nil")
+		return nil, ErrSourceFieldSpecNil
 	}
+
 	if dest == nil {
-		return nil, fmt.Errorf("destination field spec cannot be nil")
+		return nil, ErrDestinationFieldSpecNil
 	}
+
 	if strategy == nil {
-		return nil, fmt.Errorf("conversion strategy cannot be nil")
+		return nil, ErrConversionStrategyNil
 	}
 
 	return &FieldMapping{
@@ -147,13 +187,14 @@ func NewFieldMapping(id string, source, dest *FieldSpec, strategy ConversionStra
 	}, nil
 }
 
-// AddDependency adds a dependency to another field mapping
+// AddDependency adds a dependency to another field mapping.
 func (fm *FieldMapping) AddDependency(dependencyID string) error {
 	if dependencyID == "" {
-		return fmt.Errorf("dependency ID cannot be empty")
+		return ErrDependencyIDEmpty
 	}
+
 	if dependencyID == fm.ID {
-		return fmt.Errorf("field mapping cannot depend on itself")
+		return ErrFieldMappingSelfReference
 	}
 
 	// Check if dependency already exists
@@ -164,10 +205,11 @@ func (fm *FieldMapping) AddDependency(dependencyID string) error {
 	}
 
 	fm.Dependencies = append(fm.Dependencies, dependencyID)
+
 	return nil
 }
 
-// MappingConfig holds configuration for a specific mapping
+// MappingConfig holds configuration for a specific mapping.
 type MappingConfig struct {
 	Skip         bool                   `json:"skip"`
 	Converter    *ConverterFunc         `json:"converter"`
@@ -176,7 +218,7 @@ type MappingConfig struct {
 	Custom       map[string]interface{} `json:"custom"` // For strategy-specific config
 }
 
-// ConverterFunc represents a custom converter function
+// ConverterFunc represents a custom converter function.
 type ConverterFunc struct {
 	Name       string   `json:"name"`
 	Package    string   `json:"package"`
@@ -185,19 +227,23 @@ type ConverterFunc struct {
 	ReturnsErr bool     `json:"returns_err"`
 }
 
-// LiteralValue represents a literal value assignment
+// LiteralValue represents a literal value assignment.
 type LiteralValue struct {
 	Value string `json:"value"`
 	Type  Type   `json:"type"`
 }
 
-// ErrorHandlingStrategy defines how to handle errors in conversions
+// ErrorHandlingStrategy defines how to handle errors in conversions.
 type ErrorHandlingStrategy int
 
 const (
+	// ErrorIgnore represents ignoring errors during field mapping.
 	ErrorIgnore ErrorHandlingStrategy = iota
+	// ErrorPropagate represents propagating errors to the caller.
 	ErrorPropagate
+	// ErrorPanic represents panicking on errors.
 	ErrorPanic
+	// ErrorDefault represents using default error handling.
 	ErrorDefault
 )
 
@@ -212,11 +258,11 @@ func (e ErrorHandlingStrategy) String() string {
 	case ErrorDefault:
 		return "default"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
-// GeneratedCode represents generated code for a field conversion
+// GeneratedCode represents generated code for a field conversion.
 type GeneratedCode struct {
 	Assignment string           `json:"assignment"`
 	Variables  []VarDeclaration `json:"variables"`
@@ -226,20 +272,20 @@ type GeneratedCode struct {
 	Error      *ErrorHandling   `json:"error"`
 }
 
-// VarDeclaration represents a variable declaration
+// VarDeclaration represents a variable declaration.
 type VarDeclaration struct {
 	Name string `json:"name"`
 	Type Type   `json:"type"`
 	Init string `json:"init"`
 }
 
-// Import represents an import statement
+// Import represents an import statement.
 type Import struct {
 	Path  string `json:"path"`
 	Alias string `json:"alias"`
 }
 
-// ErrorHandling represents error handling code
+// ErrorHandling represents error handling code.
 type ErrorHandling struct {
 	Variable string `json:"variable"`
 	Check    string `json:"check"`
@@ -249,17 +295,24 @@ type ErrorHandling struct {
 
 // Built-in conversion strategies
 
-// DirectAssignmentStrategy handles direct field assignments
+// DirectAssignmentStrategy handles direct field assignments.
 type DirectAssignmentStrategy struct{}
 
-func (s *DirectAssignmentStrategy) Name() string           { return "direct" }
-func (s *DirectAssignmentStrategy) Priority() int          { return 100 }
+// Name returns the strategy name.
+func (s *DirectAssignmentStrategy) Name() string { return DirectStrategyType }
+
+// Priority returns the strategy priority.
+func (s *DirectAssignmentStrategy) Priority() int { return 100 }
+
+// Dependencies returns strategy dependencies.
 func (s *DirectAssignmentStrategy) Dependencies() []string { return nil }
 
+// CanHandle checks if the strategy can handle the conversion.
 func (s *DirectAssignmentStrategy) CanHandle(source, dest Type) bool {
 	return source.AssignableTo(dest)
 }
 
+// GenerateCode generates the conversion code.
 func (s *DirectAssignmentStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode, error) {
 	sourceAccess := strings.Join(mapping.Source.Path, ".")
 	destAccess := strings.Join(mapping.Dest.Path, ".")
@@ -271,13 +324,19 @@ func (s *DirectAssignmentStrategy) GenerateCode(mapping *FieldMapping) (*Generat
 	}, nil
 }
 
-// TypeCastStrategy handles type casting conversions
+// TypeCastStrategy handles type casting conversions.
 type TypeCastStrategy struct{}
 
-func (s *TypeCastStrategy) Name() string           { return "typecast" }
-func (s *TypeCastStrategy) Priority() int          { return 80 }
+// Name returns the strategy name.
+func (s *TypeCastStrategy) Name() string { return TypeCastStrategyType }
+
+// Priority returns the strategy priority.
+func (s *TypeCastStrategy) Priority() int { return 80 }
+
+// Dependencies returns strategy dependencies.
 func (s *TypeCastStrategy) Dependencies() []string { return nil }
 
+// CanHandle checks if the strategy can handle the conversion.
 func (s *TypeCastStrategy) CanHandle(source, dest Type) bool {
 	// Can cast between compatible basic types
 	if source.Kind() == KindBasic && dest.Kind() == KindBasic {
@@ -292,6 +351,7 @@ func (s *TypeCastStrategy) CanHandle(source, dest Type) bool {
 	return false
 }
 
+// GenerateCode generates the conversion code for type casting.
 func (s *TypeCastStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode, error) {
 	sourceAccess := strings.Join(mapping.Source.Path, ".")
 	destAccess := strings.Join(mapping.Dest.Path, ".")
@@ -304,25 +364,33 @@ func (s *TypeCastStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode, 
 	}, nil
 }
 
-// MethodCallStrategy handles method-based conversions (getters, stringers)
+// MethodCallStrategy handles method-based conversions (getters, stringers).
 type MethodCallStrategy struct{}
 
-func (s *MethodCallStrategy) Name() string           { return "method" }
-func (s *MethodCallStrategy) Priority() int          { return 90 }
+// Name returns the strategy name.
+func (s *MethodCallStrategy) Name() string { return MethodStrategyType }
+
+// Priority returns the strategy priority.
+func (s *MethodCallStrategy) Priority() int { return 90 }
+
+// Dependencies returns strategy dependencies.
 func (s *MethodCallStrategy) Dependencies() []string { return nil }
 
+// CanHandle checks if the strategy can handle the conversion between source and dest types.
 func (s *MethodCallStrategy) CanHandle(source, dest Type) bool {
 	// This would be determined by the parser based on available methods
 	return false // Implementation depends on method availability analysis
 }
 
+// GenerateCode generates code for method call field mapping strategy.
 func (s *MethodCallStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode, error) {
 	if !mapping.Source.IsMethod {
-		return nil, fmt.Errorf("source is not a method call")
+		return nil, ErrSourceNotMethodCall
 	}
 
 	// Build method call path
 	path := make([]string, 0, len(mapping.Source.Path))
+
 	for i, part := range mapping.Source.Path {
 		if i == len(mapping.Source.Path)-1 {
 			// Last part is the method call
@@ -342,21 +410,28 @@ func (s *MethodCallStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode
 	}, nil
 }
 
-// ConverterFuncStrategy handles custom converter functions
+// ConverterFuncStrategy handles custom converter functions.
 type ConverterFuncStrategy struct{}
 
-func (s *ConverterFuncStrategy) Name() string           { return "converter" }
-func (s *ConverterFuncStrategy) Priority() int          { return 70 }
+// Name returns the strategy name.
+func (s *ConverterFuncStrategy) Name() string { return ConverterStrategyType }
+
+// Priority returns the strategy priority.
+func (s *ConverterFuncStrategy) Priority() int { return 70 }
+
+// Dependencies returns the strategy dependencies.
 func (s *ConverterFuncStrategy) Dependencies() []string { return nil }
 
+// CanHandle determines if this strategy can handle the given types.
 func (s *ConverterFuncStrategy) CanHandle(source, dest Type) bool {
 	// Can handle any types if a converter function is configured
 	return true
 }
 
+// GenerateCode generates code for converter function field mapping strategy.
 func (s *ConverterFuncStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode, error) {
 	if mapping.Config.Converter == nil {
-		return nil, fmt.Errorf("converter function not configured")
+		return nil, ErrConverterFunctionNotConfig
 	}
 
 	conv := mapping.Config.Converter
@@ -368,6 +443,7 @@ func (s *ConverterFuncStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedC
 	for _, arg := range conv.Args {
 		funcCall += ", " + arg
 	}
+
 	funcCall += ")"
 
 	code := &GeneratedCode{}
@@ -399,21 +475,28 @@ func (s *ConverterFuncStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedC
 	return code, nil
 }
 
-// LiteralStrategy handles literal value assignments
+// LiteralStrategy handles literal value assignments.
 type LiteralStrategy struct{}
 
-func (s *LiteralStrategy) Name() string           { return "literal" }
-func (s *LiteralStrategy) Priority() int          { return 60 }
+// Name returns the strategy name.
+func (s *LiteralStrategy) Name() string { return LiteralStrategyType }
+
+// Priority returns the strategy priority.
+func (s *LiteralStrategy) Priority() int { return 60 }
+
+// Dependencies returns the strategy dependencies.
 func (s *LiteralStrategy) Dependencies() []string { return nil }
 
+// CanHandle determines if this strategy can handle the given types.
 func (s *LiteralStrategy) CanHandle(source, dest Type) bool {
 	// Can assign literals to any compatible type
 	return true
 }
 
+// GenerateCode generates code for literal field mapping strategy.
 func (s *LiteralStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode, error) {
 	if mapping.Config.Literal == nil {
-		return nil, fmt.Errorf("literal value not configured")
+		return nil, ErrLiteralValueNotConfig
 	}
 
 	destAccess := strings.Join(mapping.Dest.Path, ".")
@@ -424,7 +507,7 @@ func (s *LiteralStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode, e
 	}, nil
 }
 
-// DefaultConversionStrategies returns the built-in conversion strategies
+// DefaultConversionStrategies returns the built-in conversion strategies.
 func DefaultConversionStrategies() []ConversionStrategy {
 	return []ConversionStrategy{
 		&DirectAssignmentStrategy{},

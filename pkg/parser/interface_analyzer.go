@@ -86,7 +86,7 @@ func (p *ASTParser) isConvergenInterface(file *ast.File, obj types.Object) bool 
 }
 
 // analyzeInterface performs comprehensive analysis of a convergen interface.
-func (p *ASTParser) analyzeInterface(ctx context.Context, pkg *packages.Package, file *ast.File, obj types.Object, iface *types.Interface) (*InterfaceInfo, error) {
+func (p *ASTParser) analyzeInterface(_ context.Context, _ *packages.Package, file *ast.File, obj types.Object, iface *types.Interface) (*InterfaceInfo, error) {
 	// Generate unique marker for this interface
 	marker, err := gonanoid.Nanoid()
 	if err != nil {

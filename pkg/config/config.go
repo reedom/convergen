@@ -1,3 +1,4 @@
+// Package config provides configuration management for the convergen CLI tool.
 package config
 
 import (
@@ -11,13 +12,16 @@ import (
 // Usage prints the usage of the tool.
 func Usage() {
 	var sb strings.Builder
+
 	sb.WriteString("\nUsage: convergen [flags] <input path>\n\n")
 	sb.WriteString("By default, the generated code is written to <input path>.gen.go\n\n")
 	sb.WriteString("Flags:\n")
 	_, _ = fmt.Fprint(os.Stderr, sb.String())
+
 	flag.PrintDefaults()
 }
 
+// Config holds the configuration options for the convergen tool.
 type Config struct {
 	// Input is the path of the input file.
 	Input string
@@ -36,13 +40,16 @@ type Config struct {
 // String returns the string representation of the config.
 func (c *Config) String() string {
 	var sb strings.Builder
+
 	sb.WriteString("config.Config{\n\tInput: \"")
+
 	sb.WriteString(c.Input)
 	sb.WriteString("\"\n\tOutput: \"")
 	sb.WriteString(c.Output)
 	sb.WriteString("\"\n\tLog: \"")
 	sb.WriteString(c.Log)
 	sb.WriteString("\"\n}")
+
 	return sb.String()
 }
 
@@ -60,12 +67,13 @@ func (c *Config) ParseArgs() error {
 	if inputPath == "" {
 		inputPath = os.Getenv("GOFILE")
 	}
+
 	if inputPath == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
-	c.Input = inputPath
 
+	c.Input = inputPath
 	if *output != "" {
 		c.Output = *output
 	} else {
@@ -77,6 +85,7 @@ func (c *Config) ParseArgs() error {
 		ext := path.Ext(c.Output)
 		c.Log = c.Output[0:len(c.Output)-len(ext)] + ".log"
 	}
+
 	c.DryRun = *dryRun
 	c.Prints = *prints
 

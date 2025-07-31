@@ -251,6 +251,7 @@ func TestDirectAssignmentStrategy(t *testing.T) {
 		// Mock assignable types
 		assert.True(t, strategy.CanHandle(StringType, StringType))
 		// Note: Real assignability would be tested with proper type system
+		assert.NotNil(t, strategy)
 	})
 
 	t.Run("code generation", func(t *testing.T) {

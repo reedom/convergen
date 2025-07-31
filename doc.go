@@ -83,4 +83,5 @@ Flags:
 ```
 */
 
+// Package main implements the convergen command-line tool for generating type conversion functions.
 package main

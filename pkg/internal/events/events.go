@@ -13,12 +13,12 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrEventBusClosed             = errors.New("event bus is closed")
-	ErrHandlerCannotHandleEvent   = errors.New("handler cannot handle event type")
-	ErrNoHandlersForEventType     = errors.New("no handlers for event type")
-	ErrHandlerNotFound            = errors.New("handler not found for event type")
-	ErrEventProcessingTimeout     = errors.New("event processing timed out")
-	ErrHandlerPanic               = errors.New("handler panic")
+	ErrEventBusClosed           = errors.New("event bus is closed")
+	ErrHandlerCannotHandleEvent = errors.New("handler cannot handle event type")
+	ErrNoHandlersForEventType   = errors.New("no handlers for event type")
+	ErrHandlerNotFound          = errors.New("handler not found for event type")
+	ErrEventProcessingTimeout   = errors.New("event processing timed out")
+	ErrHandlerPanic             = errors.New("handler panic")
 )
 
 // Event represents a pipeline event with context.
@@ -438,6 +438,7 @@ func (bus *MiddlewareEventBus) Publish(event Event) error {
 		if err := bus.inner.Publish(event); err != nil {
 			return fmt.Errorf("failed to publish event: %w", err)
 		}
+
 		return nil
 	}
 
@@ -463,6 +464,7 @@ func (bus *MiddlewareEventBus) Subscribe(eventType string, handler EventHandler)
 	if err := bus.inner.Subscribe(eventType, handler); err != nil {
 		return fmt.Errorf("failed to subscribe to event %s: %w", eventType, err)
 	}
+
 	return nil
 }
 
@@ -470,6 +472,7 @@ func (bus *MiddlewareEventBus) Unsubscribe(eventType string, handler EventHandle
 	if err := bus.inner.Unsubscribe(eventType, handler); err != nil {
 		return fmt.Errorf("failed to unsubscribe from event %s: %w", eventType, err)
 	}
+
 	return nil
 }
 
@@ -477,6 +480,7 @@ func (bus *MiddlewareEventBus) Close() error {
 	if err := bus.inner.Close(); err != nil {
 		return fmt.Errorf("failed to close event bus: %w", err)
 	}
+
 	return nil
 }
 

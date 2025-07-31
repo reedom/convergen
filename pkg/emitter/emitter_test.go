@@ -13,7 +13,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// Helper function to create test method with proper field mappings
+// Helper function to create test method with proper field mappings.
 func createTestMethodWithFields(methodName string, fieldNames ...string) (*domain.Method, error) {
 	sourceType := domain.NewBasicType("SourceType", reflect.Struct)
 	destType := domain.NewBasicType("DestType", reflect.Struct)
@@ -36,6 +36,7 @@ func createTestMethodWithFields(methodName string, fieldNames ...string) (*domai
 		}
 
 		strategy := &domain.DirectAssignmentStrategy{}
+
 		mapping, err := domain.NewFieldMapping(
 			fieldName, // ID
 			sourceSpec,
@@ -46,13 +47,13 @@ func createTestMethodWithFields(methodName string, fieldNames ...string) (*domai
 			return nil, err
 		}
 
-		method.AddMapping(mapping)
+		_ = method.AddMapping(mapping)
 	}
 
 	return method, nil
 }
 
-// Helper function to create test executor field results
+// Helper function to create test executor field results.
 func createTestFieldResult(fieldID, result, strategy string, success bool) *executor.FieldResult {
 	return &executor.FieldResult{
 		FieldID:      fieldID,
@@ -181,7 +182,7 @@ func TestEmitter_OptimizeOutput(t *testing.T) {
 			{
 				Name:      "TestMethod",
 				Signature: "func TestMethod(src *Source) (*Dest, error)",
-				Body: "	var dest Dest\n	dest.Field = src.Field\n	return &dest, nil\n",
+				Body:      "	var dest Dest\n	dest.Field = src.Field\n	return &dest, nil\n",
 			},
 		},
 		Metadata: &GenerationMetadata{},

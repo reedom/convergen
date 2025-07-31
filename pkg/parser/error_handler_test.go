@@ -8,6 +8,8 @@ import (
 	"testing"
 )
 
+// Context key types are now defined in error_handler.go
+
 func TestErrorHandler_CreateError(t *testing.T) {
 	fset := token.NewFileSet()
 	handler := NewErrorHandler(fset, "test.go")
@@ -94,7 +96,7 @@ func TestErrorHandler_Wrap(t *testing.T) {
 		Severity: SeverityError,
 	})
 
-	if wrappedErr.Cause != originalErr {
+	if !errors.Is(wrappedErr.Cause, originalErr) {
 		t.Errorf("Wrap().Cause = %v, want %v", wrappedErr.Cause, originalErr)
 	}
 
@@ -103,7 +105,7 @@ func TestErrorHandler_Wrap(t *testing.T) {
 	}
 
 	// Test unwrapping
-	if unwrapped := wrappedErr.Unwrap(); unwrapped != originalErr {
+	if unwrapped := wrappedErr.Unwrap(); !errors.Is(unwrapped, originalErr) {
 		t.Errorf("Unwrap() = %v, want %v", unwrapped, originalErr)
 	}
 }
@@ -113,8 +115,8 @@ func TestErrorHandler_WrapWithContext(t *testing.T) {
 	handler := NewErrorHandler(fset, "test.go")
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, "method", "TestMethod")
-	ctx = context.WithValue(ctx, "interface", "TestInterface")
+	ctx = context.WithValue(ctx, methodKey, "TestMethod")
+	ctx = context.WithValue(ctx, interfaceKey, "TestInterface")
 
 	originalErr := errors.New("context error")
 
@@ -482,7 +484,7 @@ func TestContextualError_Is(t *testing.T) {
 	}
 }
 
-// Test string representations
+// Test string representations.
 func TestStringRepresentations(t *testing.T) {
 	tests := []struct {
 		name     string

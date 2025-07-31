@@ -8,7 +8,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// Simple test to verify package compiles and basic functionality works
+// Simple test to verify package compiles and basic functionality works.
 func TestPackageCompilation(t *testing.T) {
 	// Test that we can create basic domain types
 	stringType := domain.StringType

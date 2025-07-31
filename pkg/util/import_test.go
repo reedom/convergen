@@ -28,6 +28,7 @@ func main() {
 }
 `
 	file, _, _ := loadSrc(t, src)
+
 	names := util.NewImportNames(file.Imports)
 	for path, expected := range map[string]string{
 		"fmt":           "fmt",

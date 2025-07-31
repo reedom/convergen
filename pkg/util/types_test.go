@@ -38,6 +38,7 @@ func main() {
 
 func TestIsErrorType(t *testing.T) {
 	t.Parallel()
+
 	src := `
 package main
 
@@ -56,6 +57,7 @@ var err2 ErrFoo
 
 func TestIsInvalidType(t *testing.T) {
 	t.Parallel()
+
 	src := `
 package custom
 
@@ -69,6 +71,7 @@ var MyInt int
 
 func TestIsSliceType(t *testing.T) {
 	t.Parallel()
+
 	src := `
 package custom
 
@@ -85,6 +88,7 @@ var MyVar int
 
 func TestIsBasicType(t *testing.T) {
 	t.Parallel()
+
 	src := `
 package custom
 
@@ -101,6 +105,7 @@ var myInt MyMyInt
 
 func TestIsStructType(t *testing.T) {
 	t.Parallel()
+
 	src := `
 package custom
 
@@ -118,6 +123,7 @@ var RawStruct struct {}
 
 func TestIsNamedType(t *testing.T) {
 	t.Parallel()
+
 	src := `
 package custom
 
@@ -135,6 +141,7 @@ var RawStruct struct {}
 
 func TestIsFunc(t *testing.T) {
 	t.Parallel()
+
 	src := `
 package custom
 
@@ -278,35 +285,43 @@ func main() {}
 
 	// *ast.GenDecl
 	obj := pkg.Scope().Lookup("MyReader")
+
 	cg, cleanUp := util.GetDocCommentOn(file, obj)
 	if assert.NotEmpty(t, cg) {
 		assert.Equal(t, "MyReader comment\n", cg.Text())
 	}
+
 	cleanUp()
 
 	// *ast.Field
 	iface := obj.Type().Underlying().(*types.Interface)
 	obj = iface.Method(0)
+
 	cg, cleanUp = util.GetDocCommentOn(file, obj)
 	if assert.NotEmpty(t, cg) {
 		assert.Equal(t, "method comment\n", cg.Text())
 	}
+
 	cleanUp()
 
 	// *ast.FuncDecl
 	obj = pkg.Scope().Lookup("main")
+
 	cg, cleanUp = util.GetDocCommentOn(file, obj)
 	if assert.NotEmpty(t, cg) {
 		assert.Equal(t, "func comment\n", cg.Text())
 	}
+
 	cleanUp()
 
 	// *ast.FuncDecl
 	obj = pkg.Scope().Lookup("MyInt")
+
 	cg, cleanUp = util.GetDocCommentOn(file, obj)
 	if assert.NotEmpty(t, cg) {
 		assert.Equal(t, "MyInt comment\n", cg.Text())
 	}
+
 	cleanUp()
 }
 
@@ -356,6 +371,7 @@ func TestToTextList(t *testing.T) {
 
 func TestPathMatch(t *testing.T) {
 	t.Parallel()
+
 	cases := []struct {
 		pattern   string
 		path      string
@@ -375,6 +391,7 @@ func TestPathMatch(t *testing.T) {
 	for i, tt := range cases {
 		actual, err := util.PathMatch(tt.pattern, tt.path, tt.exactCase)
 		require.Nil(t, err, `case %v has invalid pattern "%v"`, i, tt.pattern)
+
 		if tt.match {
 			assert.True(t, actual, `pattern "%v" against "%v" should match`)
 		} else {
@@ -462,6 +479,7 @@ func Baz() (int, error) {
 	assert.False(t, ok)
 
 	fn = pkg.Scope().Lookup("Bar")
+
 	ret, ok := util.GetMethodReturnTypes(fn.(*types.Func))
 	if assert.True(t, ok) {
 		assert.Equal(t, 1, ret.Len())
@@ -469,6 +487,7 @@ func Baz() (int, error) {
 	}
 
 	fn = pkg.Scope().Lookup("Baz")
+
 	ret, ok = util.GetMethodReturnTypes(fn.(*types.Func))
 	if assert.True(t, ok) {
 		assert.Equal(t, 2, ret.Len())

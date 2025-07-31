@@ -58,11 +58,13 @@ func newAssignmentBuilder(
 func (b *assignmentBuilder) build(lhs, rhs *types.Var, additionalArgs []*types.Var) ([]gmodel.Assignment, error) {
 	rootCopier := bmodel.NewCopier("", lhs.Type(), rhs.Type())
 	rootCopier.IsRoot = true
+
 	if b.opts.Receiver != "" {
 		rootCopier.Name = fmt.Sprintf("%v.%v", b.lhsVar.Name, b.funcName)
 	} else {
 		rootCopier.Name = b.funcName
 	}
+
 	b.copiers = append(b.copiers, rootCopier)
 
 	rootLHS := bmodel.NewRootNode(b.lhsVar.Name, lhs.Type())
@@ -72,6 +74,7 @@ func (b *assignmentBuilder) build(lhs, rhs *types.Var, additionalArgs []*types.V
 	for i, arg := range additionalArgs {
 		rootAdditionalArgs[i] = bmodel.NewRootNode(b.additionalArgVars[i].Name, arg.Type())
 	}
+
 	return b.dispatch(rootLHS, rootRHS, rootAdditionalArgs)
 }
 
@@ -79,30 +82,37 @@ func (b *assignmentBuilder) build(lhs, rhs *types.Var, additionalArgs []*types.V
 func (b *assignmentBuilder) dispatch(lhs, rhs bmodel.Node, additionalArgs []bmodel.Node) ([]gmodel.Assignment, error) {
 	lhsType := util.DerefPtr(lhs.ExprType())
 	rhsType := util.DerefPtr(rhs.ExprType())
+
 	if util.IsStructType(lhsType) && util.IsStructType(rhsType) {
 		return b.structToStruct(lhs, rhs, additionalArgs)
 	}
 
 	logger.Warnf("%v: no assignment %T to %T", b.fset.Position(b.methodPos), rhs.ExprType(), lhs.ExprType())
+
 	return []gmodel.Assignment{gmodel.NoMatchField{LHS: lhs.AssignExpr()}}, nil
 }
 
 // structToStruct generates code for a struct-to-struct assignment.
 func (b *assignmentBuilder) structToStruct(lhsStruct, rhsStruct bmodel.Node, additionalArgs []bmodel.Node) ([]gmodel.Assignment, error) {
 	var err error
+
 	var assignments []gmodel.Assignment
+
 	bmodel.IterateStructFields(lhsStruct, func(lhsField bmodel.Node) (done bool) {
 		if !b.isStructFieldAccessible(lhsStruct, lhsField.ObjName()) {
 			return
 		}
 
 		var a gmodel.Assignment
+
 		a, err = b.matchStructFieldAndStruct(lhsField, rhsStruct, additionalArgs)
 		if err == nil && a != nil {
 			assignments = append(assignments, a)
 		}
+
 		return
 	})
+
 	return assignments, err
 }
 
@@ -126,6 +136,7 @@ func (b *assignmentBuilder) matchStructFieldAndStruct(
 			return b.createWithConverter(lhs, rhs, converter)
 		}
 	}
+
 	for _, mapper := range b.opts.NameMapper {
 		if mapper.Dst().Match(lhs.MatcherExpr(), true) {
 			// If there are more than one mapper exist for the lhs, the first one wins.
@@ -139,6 +150,7 @@ func (b *assignmentBuilder) matchStructFieldAndStruct(
 			return b.createWithTemplatedMapper(lhs, rhs, additionalArgs, mapper)
 		}
 	}
+
 	for _, setter := range b.opts.Literals {
 		if setter.Dst().Match(lhs.MatcherExpr(), true) {
 			// If there are more than one mapper exist for the lhs, the first one wins.
@@ -162,6 +174,7 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 	logger.Printf("%v: lookup assignment for %v = %v.*", methodPosStr, lhsExpr, rhsStruct.AssignExpr())
 
 	var a gmodel.Assignment
+
 	var err error
 	// To prevent logging "no assignment for d.NestedData"…
 	nested := false
@@ -184,29 +197,35 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 			rhsExpr := c.AssignExpr()
 			logger.Printf("%v: assignment found: %v = %v", methodPosStr, lhsExpr, rhsExpr)
 			a = gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: c.ReturnsError()}
+
 			return true
 		}
 
 		if util.IsStructType(lhs.ExprType()) &&
 			util.IsStructType(rhs.ExprType()) {
 			nested = true
+
 			nestStruct := gmodel.NestStruct{}
 			if util.IsPtr(lhs.ExprType()) {
 				nestStruct.InitExpr = fmt.Sprintf("%v = %v{}", lhs.AssignExpr(), b.imports.TypeName(lhs.ExprType()))
 			}
+
 			if rhs.ObjNullable() {
 				nestStruct.NullCheckExpr = rhs.NullCheckExpr()
 			}
+
 			nestStruct.Contents, err = b.structToStruct(lhs, rhs, nil)
 			if err == nil && 0 < len(nestStruct.Contents) {
 				a = nestStruct
 			}
 		}
+
 		return true
 	}
 
 	if opts.Getter {
 		bmodel.IterateStructMethods(rhsStruct, handler)
+
 		if a != nil || err != nil {
 			return a, err
 		}
@@ -214,12 +233,14 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 
 	if opts.Rule == gmodel.MatchRuleName {
 		bmodel.IterateStructFields(rhsStruct, handler)
+
 		if a != nil || err != nil || nested {
 			return a, err
 		}
 	}
 
 	logger.Warnf("%v: no assignment for %v [%v]", methodPosStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
+
 	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
@@ -241,13 +262,16 @@ func (b *assignmentBuilder) createWithConverter(lhs, rhs bmodel.Node, converter 
 			if !util.IsPtr(converter.ArgType()) {
 				return nil
 			}
+
 			argNode, ok = b.castNode(util.DerefPtr(converter.ArgType()), rhsNode)
 			if !ok {
 				return nil
 			}
 		}
+
 		convNode := bmodel.NewConverterNode(argNode, converter)
 		casted, _ := b.castNode(lhs.ExprType(), convNode)
+
 		return casted
 	}()
 
@@ -257,10 +281,12 @@ func (b *assignmentBuilder) createWithConverter(lhs, rhs bmodel.Node, converter 
 	if converterNode != nil {
 		rhsExpr := converterNode.AssignExpr()
 		logger.Printf("%v: assignment found: %v = %v, err", posStr, lhsExpr, rhsExpr)
+
 		return gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: converter.RetError()}, nil
 	}
 
 	logger.Warnf("%v: no assignment for %v [%v]", posStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
+
 	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
@@ -282,6 +308,7 @@ func (b *assignmentBuilder) createWithMapper(lhs, rhs bmodel.Node, mapper *optio
 		}
 
 		casted, _ := b.castNode(lhs.ExprType(), rhsNode)
+
 		return casted
 	}()
 
@@ -290,11 +317,14 @@ func (b *assignmentBuilder) createWithMapper(lhs, rhs bmodel.Node, mapper *optio
 
 	if mappedNode != nil {
 		rhsExpr := mappedNode.AssignExpr()
+
 		logger.Printf("%v: assignment found: %v = %v", posStr, lhs, rhs)
+
 		return gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: mappedNode.ReturnsError()}, nil
 	}
 
 	logger.Warnf("%v: no assignment for %v [%v]", posStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
+
 	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
@@ -312,12 +342,14 @@ func (b *assignmentBuilder) createWithTemplatedMapper(
 	mappedNode := func() bmodel.Node {
 		args := []bmodel.Node{rhs}
 		args = append(args, additionalArgs...)
+
 		rhsNode, ok := b.resolveTemplatedExpr(mapper.Src(), args)
 		if !ok {
 			return nil
 		}
 
 		casted, _ := b.castNode(lhs.ExprType(), rhsNode)
+
 		return casted
 	}()
 
@@ -327,10 +359,12 @@ func (b *assignmentBuilder) createWithTemplatedMapper(
 	if mappedNode != nil {
 		rhsExpr := mappedNode.AssignExpr()
 		logger.Printf("%v: assignment found: %v = %s", posStr, lhs, rhsExpr)
+
 		return gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: mappedNode.ReturnsError()}, nil
 	}
 
 	logger.Warnf("%v: no assignment for %v [%v]", posStr, lhsExpr, b.imports.TypeName(lhs.ExprType()))
+
 	return gmodel.NoMatchField{LHS: lhsExpr}, nil
 }
 
@@ -358,8 +392,10 @@ func (b *assignmentBuilder) castNode(lhsType types.Type, rhs bmodel.Node) (c bmo
 			logger.Warnf("%v: typecast for %v is not implemented(yet) for %v",
 				b.fset.Position(b.methodPos), b.imports.TypeName(lhsType), rhs.AssignExpr())
 		}
+
 		return
 	}
+
 	return nil, false
 }
 
@@ -369,11 +405,12 @@ func (b *assignmentBuilder) isStructFieldAccessible(structNode bmodel.Node, leaf
 	if !util.IsStructType(structType) {
 		return false
 	}
+
 	if named, ok := structType.(*types.Named); ok {
 		return !b.isExternalPkg(named.Obj().Pkg()) || ast.IsExported(leafName)
 	}
-	return true
 
+	return true
 }
 
 // isExternalPkg returns true if the given package is not the current package.
@@ -381,6 +418,7 @@ func (b *assignmentBuilder) isExternalPkg(pkg *types.Package) bool {
 	if pkg == nil {
 		return false
 	}
+
 	return b.pkg.PkgPath != pkg.Path()
 }
 
@@ -391,6 +429,7 @@ func (b *assignmentBuilder) isExternalPkg(pkg *types.Package) bool {
 func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmodel.Node) (node bmodel.Node, ok bool) {
 	node = root
 	typ := root.ExprType()
+
 	for i := 0; i < matcher.PathLen(); i++ {
 		isLast := matcher.PathLen() == i+1
 		pkg := util.PkgOf(typ)
@@ -401,11 +440,13 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmode
 		}
 
 		external := b.isExternalPkg(pkg)
+
 		if matcher.ForGetter(i) {
 			method, valid := obj.(*types.Func)
 			if !valid {
 				return
 			}
+
 			if external && !ast.IsExported(method.Name()) {
 				return
 			}
@@ -424,12 +465,14 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmode
 				// It should be a simple getter, otherwise it cannot be a part of method chain.
 				return
 			}
+
 			typ = ret
 		} else {
 			field, valid := obj.(*types.Var)
 			if !valid {
 				return
 			}
+
 			if external && !ast.IsExported(field.Name()) {
 				return
 			}
@@ -442,6 +485,7 @@ func (b *assignmentBuilder) resolveExpr(matcher *option.IdentMatcher, root bmode
 			typ = field.Type()
 		}
 	}
+
 	return
 }
 
@@ -461,12 +505,15 @@ func (b *assignmentBuilder) resolveTemplatedExpr(
 	if err != nil {
 		return
 	}
+
 	index--
 	if index < 0 || len(additionalArgs) <= int(index) {
 		return
 	}
+
 	node = additionalArgs[index]
 	typ := node.ExprType()
+
 	if matcher.PathLen() == 1 {
 		return node, true
 	}
@@ -475,16 +522,20 @@ func (b *assignmentBuilder) resolveTemplatedExpr(
 		isLast := matcher.PathLen() == i+1
 
 		pkg := util.PkgOf(typ)
+
 		obj, _, _ := types.LookupFieldOrMethod(typ, true, pkg, matcher.NameAt(i))
 		if obj == nil {
 			return
 		}
+
 		external := b.isExternalPkg(pkg)
+
 		if matcher.ForGetter(i) {
 			method, valid := obj.(*types.Func)
 			if !valid {
 				return
 			}
+
 			if external && !ast.IsExported(method.Name()) {
 				return
 			}
@@ -503,12 +554,14 @@ func (b *assignmentBuilder) resolveTemplatedExpr(
 				// It should be a simple getter, otherwise it cannot be a part of method chain.
 				return
 			}
+
 			typ = ret
 		} else {
 			field, valid := obj.(*types.Var)
 			if !valid {
 				return
 			}
+
 			if external && !ast.IsExported(field.Name()) {
 				return
 			}
@@ -521,6 +574,7 @@ func (b *assignmentBuilder) resolveTemplatedExpr(
 			typ = field.Type()
 		}
 	}
+
 	return
 }
 
@@ -532,6 +586,7 @@ func (b *assignmentBuilder) resolveTemplatedExpr(
 func (b *assignmentBuilder) sliceToSlice(lhs, rhs bmodel.Node) (a gmodel.Assignment, err error) {
 	lhsElem := util.SliceElement(lhs.ExprType())
 	rhsElem := util.SliceElement(rhs.ExprType())
+
 	if lhsElem == nil || rhsElem == nil {
 		return
 	}
@@ -550,6 +605,7 @@ func (b *assignmentBuilder) sliceToSlice(lhs, rhs bmodel.Node) (a gmodel.Assignm
 				Typ: "[]" + b.imports.TypeName(lhsElem),
 			}
 		}
+
 		return
 	}
 
@@ -560,7 +616,9 @@ func (b *assignmentBuilder) sliceToSlice(lhs, rhs bmodel.Node) (a gmodel.Assignm
 			Typ:  "[]" + b.imports.TypeName(lhsElem),
 			Cast: b.imports.TypeName(lhsElem),
 		}
+
 		return
 	}
+
 	return
 }

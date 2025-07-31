@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// VariableStyle defines variable naming styles
+// VariableStyle defines variable naming styles.
 type VariableStyle int
 
 const (
@@ -24,7 +24,7 @@ func (v VariableStyle) String() string {
 	}
 }
 
-// MatchRule defines how fields are matched between types
+// MatchRule defines how fields are matched between types.
 type MatchRule int
 
 const (
@@ -46,7 +46,7 @@ func (m MatchRule) String() string {
 	}
 }
 
-// ConversionType defines the type of conversion to perform
+// ConversionType defines the type of conversion to perform.
 type ConversionType int
 
 const (
@@ -74,7 +74,7 @@ func (c ConversionType) String() string {
 	}
 }
 
-// ErrorHandlingMethod defines how errors are handled in generated code
+// ErrorHandlingMethod defines how errors are handled in generated code.
 type ErrorHandlingMethod int
 
 const (
@@ -99,7 +99,7 @@ func (e ErrorHandlingMethod) String() string {
 	}
 }
 
-// InterfaceOptions contains options that apply to an entire interface
+// InterfaceOptions contains options that apply to an entire interface.
 type InterfaceOptions struct {
 	Style               VariableStyle     `json:"style"`
 	MatchRule           MatchRule         `json:"match_rule"`
@@ -117,7 +117,7 @@ type InterfaceOptions struct {
 	PostprocessFunction string            `json:"postprocess_function"`
 }
 
-// MethodOptions contains options that apply to a specific method
+// MethodOptions contains options that apply to a specific method.
 type MethodOptions struct {
 	Style               VariableStyle     `json:"style"`
 	MatchRule           MatchRule         `json:"match_rule"`
@@ -137,7 +137,7 @@ type MethodOptions struct {
 	TimeoutDuration     time.Duration     `json:"timeout_duration"`
 }
 
-// ChannelDirection represents the direction of a channel
+// ChannelDirection represents the direction of a channel.
 type ChannelDirection int
 
 const (

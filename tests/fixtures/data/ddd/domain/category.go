@@ -13,6 +13,7 @@ func NewCategory(id uint, name string) (*Category, error) {
 	if name == "" {
 		return nil, fmt.Errorf("category name is empty")
 	}
+
 	return &Category{id: id, name: name}, nil
 }
 

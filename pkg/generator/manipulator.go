@@ -19,10 +19,12 @@ func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var
 	if m.RetError {
 		sb.WriteString("err = ")
 	}
+
 	if m.Pkg != "" {
 		sb.WriteString(m.Pkg)
 		sb.WriteString(".")
 	}
+
 	sb.WriteString(m.Name)
 	sb.WriteString("(")
 
@@ -33,6 +35,7 @@ func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var
 			sb.WriteString("&")
 		}
 	}
+
 	sb.WriteString(dst.Name)
 	sb.WriteString(", ")
 
@@ -43,6 +46,7 @@ func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var
 			sb.WriteString("&")
 		}
 	}
+
 	sb.WriteString(src.Name)
 
 	if m.HasAdditionalArgs {
@@ -51,6 +55,7 @@ func (g *Generator) ManipulatorToString(m *model.Manipulator, src, dst model.Var
 			sb.WriteString(arg.Name)
 		}
 	}
+
 	sb.WriteString(")\n")
 
 	if m.RetError {

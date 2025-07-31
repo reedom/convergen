@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -14,12 +15,19 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// EventBus interface for event publishing (simplified interface)
+// Static errors for err113 compliance.
+var (
+	ErrMethodResultNil      = errors.New("method result cannot be nil")
+	ErrNoGenerationStrategy = errors.New("no generation strategy available")
+	ErrFieldResultNil       = errors.New("field result cannot be nil")
+)
+
+// EventBus interface for event publishing (simplified interface).
 type EventBus interface {
 	Publish(ctx context.Context, event events.Event) error
 }
 
-// CodeGenerator handles the core code generation logic
+// CodeGenerator handles the core code generation logic.
 type CodeGenerator interface {
 	// GenerateMethodCode generates complete method implementation
 	GenerateMethodCode(ctx context.Context, method *domain.MethodResult) (*MethodCode, error)
@@ -37,19 +45,18 @@ type CodeGenerator interface {
 	Shutdown(ctx context.Context) error
 }
 
-// ConcreteCodeGenerator implements CodeGenerator
+// ConcreteCodeGenerator implements CodeGenerator.
 type ConcreteCodeGenerator struct {
 	config      *EmitterConfig
 	logger      *zap.Logger
 	strategies  map[string]GenerationStrategy
-	templates   TemplateSystem
 	validator   CodeValidator
 	metrics     *CodeGenMetrics
 	outputStrat OutputStrategy
 	eventBus    EventBus // For event publishing
 }
 
-// CodeGenMetrics tracks code generation performance
+// CodeGenMetrics tracks code generation performance.
 type CodeGenMetrics struct {
 	mu                     sync.RWMutex
 	MethodsGenerated       int64            `json:"methods_generated"`
@@ -63,7 +70,7 @@ type CodeGenMetrics struct {
 	ErrorsEncountered      int64            `json:"errors_encountered"`
 }
 
-// GenerationStrategy defines how different types of code should be generated
+// GenerationStrategy defines how different types of code should be generated.
 type GenerationStrategy interface {
 	// Name returns the strategy name
 	Name() string
@@ -81,7 +88,7 @@ type GenerationStrategy interface {
 	GetRequiredImports(method *domain.MethodResult) []*Import
 }
 
-// NewCodeGenerator creates a new code generator
+// NewCodeGenerator creates a new code generator.
 func NewCodeGenerator(config *EmitterConfig, logger *zap.Logger, metrics *EmitterMetrics) CodeGenerator {
 	generator := &ConcreteCodeGenerator{
 		config:      config,
@@ -97,10 +104,10 @@ func NewCodeGenerator(config *EmitterConfig, logger *zap.Logger, metrics *Emitte
 	return generator
 }
 
-// GenerateMethodCode generates complete method implementation
+// GenerateMethodCode generates complete method implementation.
 func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method *domain.MethodResult) (*MethodCode, error) {
 	if method == nil {
-		return nil, fmt.Errorf("method result cannot be nil")
+		return nil, ErrMethodResultNil
 	}
 
 	startTime := time.Now()
@@ -133,6 +140,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 
 	// Generate method body based on strategy
 	var body string
+
 	var generationStrategy GenerationStrategy
 
 	switch strategy {
@@ -147,7 +155,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	}
 
 	if generationStrategy == nil {
-		return nil, fmt.Errorf("no generation strategy available for %s", strategy.String())
+		return nil, fmt.Errorf("%w for %s", ErrNoGenerationStrategy, strategy.String())
 	}
 
 	body, err = generationStrategy.GenerateCode(ctx, method, templateData)
@@ -157,6 +165,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 
 	// Generate error handling if needed
 	var errorHandling string
+
 	if cg.hasErrorHandling(method) {
 		errorCode, err := cg.GenerateErrorHandling(ctx, cg.extractErrors(method))
 		if err != nil {
@@ -174,6 +183,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 
 	// Generate field codes for detailed analysis
 	fields := make([]*FieldCode, 0, len(method.Metadata))
+
 	for fieldName, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			fieldCode, err := cg.GenerateFieldCode(ctx, fr)
@@ -181,8 +191,10 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 				cg.logger.Warn("field code generation failed",
 					zap.String("field", fieldName),
 					zap.Error(err))
+
 				continue
 			}
+
 			fields = append(fields, fieldCode)
 		}
 	}
@@ -201,6 +213,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 
 	// Update metrics
 	duration := time.Since(startTime)
+
 	cg.metrics.IncrementMethods()
 	cg.metrics.AddGenerationTime(duration)
 	cg.metrics.IncrementStrategy(strategy.String())
@@ -224,10 +237,10 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	return methodCode, nil
 }
 
-// GenerateFieldCode generates code for individual field assignments
+// GenerateFieldCode generates code for individual field assignments.
 func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *executor.FieldResult) (*FieldCode, error) {
 	if field == nil {
-		return nil, fmt.Errorf("field result cannot be nil")
+		return nil, ErrFieldResultNil
 	}
 
 	cg.logger.Debug("generating field code",
@@ -235,7 +248,9 @@ func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *e
 
 	// Determine field assignment strategy based on field characteristics
 	var assignment, declaration, errorCheck string
+
 	var imports []*Import
+
 	var dependencies []string
 
 	// Simple field assignment (this would be more sophisticated in practice)
@@ -270,10 +285,11 @@ func (cg *ConcreteCodeGenerator) GenerateFieldCode(ctx context.Context, field *e
 	}
 
 	cg.metrics.IncrementFields()
+
 	return fieldCode, nil
 }
 
-// GenerateErrorHandling generates error handling code
+// GenerateErrorHandling generates error handling code.
 func (cg *ConcreteCodeGenerator) GenerateErrorHandling(ctx context.Context, errors []domain.ExecutionError) (*ErrorCode, error) {
 	if len(errors) == 0 {
 		return &ErrorCode{}, nil
@@ -283,6 +299,7 @@ func (cg *ConcreteCodeGenerator) GenerateErrorHandling(ctx context.Context, erro
 		zap.Int("errors", len(errors)))
 
 	var checkCode, handlingCode, returnCode, wrapperCode strings.Builder
+
 	var imports []*Import
 
 	// Generate error checking patterns
@@ -316,15 +333,16 @@ func (cg *ConcreteCodeGenerator) GenerateErrorHandling(ctx context.Context, erro
 	}
 
 	cg.metrics.IncrementErrorHandlers()
+
 	return errorCode, nil
 }
 
-// GetMetrics returns code generation metrics
+// GetMetrics returns code generation metrics.
 func (cg *ConcreteCodeGenerator) GetMetrics() *CodeGenMetrics {
 	return cg.metrics
 }
 
-// Shutdown gracefully shuts down the generator
+// Shutdown gracefully shuts down the generator.
 func (cg *ConcreteCodeGenerator) Shutdown(ctx context.Context) error {
 	cg.logger.Info("shutting down code generator")
 	return nil
@@ -351,11 +369,13 @@ func (cg *ConcreteCodeGenerator) hasErrorHandling(method *domain.MethodResult) b
 			}
 		}
 	}
+
 	return false
 }
 
 func (cg *ConcreteCodeGenerator) extractErrors(method *domain.MethodResult) []domain.ExecutionError {
 	var errors []domain.ExecutionError
+
 	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			if fr.Error != nil {
@@ -371,16 +391,19 @@ func (cg *ConcreteCodeGenerator) extractErrors(method *domain.MethodResult) []do
 			}
 		}
 	}
+
 	return errors
 }
 
 func (cg *ConcreteCodeGenerator) extractFieldResults(method *domain.MethodResult) []*executor.FieldResult {
 	var results []*executor.FieldResult
+
 	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			results = append(results, fr)
 		}
 	}
+
 	return results
 }
 
@@ -395,6 +418,7 @@ func (cg *ConcreteCodeGenerator) generateSimpleAssignment(field *executor.FieldR
 func (cg *ConcreteCodeGenerator) generateComplexAssignment(field *executor.FieldResult) (string, string) {
 	assignment := fmt.Sprintf("converted, err := converter.Convert(src.%s)", field.FieldID)
 	errorCheck := "if err != nil { return nil, fmt.Errorf(\"converting %s: %%w\", err) }"
+
 	return assignment, fmt.Sprintf(errorCheck, field.FieldID)
 }
 
@@ -433,21 +457,9 @@ func (cg *ConcreteCodeGenerator) getHelperFunctions() map[string]interface{} {
 	}
 }
 
-// emitEvent publishes an event through the event bus
-func (cg *ConcreteCodeGenerator) emitEvent(ctx context.Context, eventType string, data map[string]interface{}) error {
-	if cg.eventBus == nil {
-		return nil // No event bus configured
-	}
+// emitEvent function removed - was unused
 
-	event := events.NewBaseEvent(eventType, ctx)
-	for key, value := range data {
-		event.WithMetadata(key, value)
-	}
-
-	return cg.eventBus.Publish(ctx, event)
-}
-
-// SetEventBus sets the event bus for this code generator
+// SetEventBus sets the event bus for this code generator.
 func (cg *ConcreteCodeGenerator) SetEventBus(eventBus EventBus) {
 	cg.eventBus = eventBus
 }
@@ -458,6 +470,7 @@ func (cg *ConcreteCodeGenerator) toCamelCase(s string) string {
 	for i := 1; i < len(words); i++ {
 		words[i] = strings.Title(words[i])
 	}
+
 	return strings.Join(words, "")
 }
 
@@ -468,16 +481,18 @@ func (cg *ConcreteCodeGenerator) toSnakeCase(s string) string {
 
 func (cg *ConcreteCodeGenerator) indent(s string, level int) string {
 	indent := strings.Repeat(cg.config.IndentStyle, level)
+
 	lines := strings.Split(s, "\n")
 	for i, line := range lines {
 		if strings.TrimSpace(line) != "" {
 			lines[i] = indent + line
 		}
 	}
+
 	return strings.Join(lines, "\n")
 }
 
-// NewCodeGenMetrics creates a new CodeGenMetrics instance
+// NewCodeGenMetrics creates a new CodeGenMetrics instance.
 func NewCodeGenMetrics() *CodeGenMetrics {
 	return &CodeGenMetrics{
 		StrategyUsage: make(map[string]int64),
@@ -485,52 +500,58 @@ func NewCodeGenMetrics() *CodeGenMetrics {
 	}
 }
 
-// IncrementMethods safely increments the methods generated counter
+// IncrementMethods safely increments the methods generated counter.
 func (m *CodeGenMetrics) IncrementMethods() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.MethodsGenerated++
 }
 
-// AddGenerationTime safely adds generation time and updates average
+// AddGenerationTime safely adds generation time and updates average.
 func (m *CodeGenMetrics) AddGenerationTime(duration time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.TotalGenerationTime += duration
 	if m.MethodsGenerated > 0 {
 		m.AverageMethodTime = m.TotalGenerationTime / time.Duration(m.MethodsGenerated)
 	}
 }
 
-// IncrementStrategy safely increments strategy usage counter
+// IncrementStrategy safely increments strategy usage counter.
 func (m *CodeGenMetrics) IncrementStrategy(strategy string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.StrategyUsage[strategy]++
 }
 
-// IncrementFields safely increments the fields generated counter
+// IncrementFields safely increments the fields generated counter.
 func (m *CodeGenMetrics) IncrementFields() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.FieldsGenerated++
 }
 
-// IncrementErrors safely increments the errors encountered counter
+// IncrementErrors safely increments the errors encountered counter.
 func (m *CodeGenMetrics) IncrementErrors() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.ErrorsEncountered++
 }
 
-// IncrementErrorHandlers safely increments the error handlers generated counter
+// IncrementErrorHandlers safely increments the error handlers generated counter.
 func (m *CodeGenMetrics) IncrementErrorHandlers() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.ErrorHandlersGenerated++
 }
 
-// GetSnapshot returns a thread-safe copy of current metrics
+// GetSnapshot returns a thread-safe copy of current metrics.
 func (m *CodeGenMetrics) GetSnapshot() *CodeGenMetrics {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

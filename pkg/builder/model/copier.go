@@ -33,6 +33,8 @@ func (h *Copier) MarkHandle(lhs, rhs types.Type) bool {
 	if !canHandle {
 		return false
 	}
-	h.HandleCount += 1
+
+	h.HandleCount++
+
 	return true
 }

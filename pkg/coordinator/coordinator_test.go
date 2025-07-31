@@ -177,54 +177,48 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatal("DefaultConfig() returned nil")
 	}
 
-	// Test default values
-	if config.MaxConcurrency != 4 {
-		t.Errorf("Expected MaxConcurrency 4, got %d", config.MaxConcurrency)
+	// Test default values using table-driven approach
+	testDefaultConfigValues(t, config)
+	testDefaultConfigComponents(t, config)
+}
+
+// testDefaultConfigValues validates default configuration values.
+func testDefaultConfigValues(t *testing.T, config *Config) {
+	tests := []struct {
+		name     string
+		actual   interface{}
+		expected interface{}
+	}{
+		{"MaxConcurrency", config.MaxConcurrency, 4},
+		{"EventBufferSize", config.EventBufferSize, 1000},
+		{"ComponentTimeout", config.ComponentTimeout, 30 * time.Second},
+		{"ErrorThreshold", config.ErrorThreshold, 10},
+		{"EnableMetrics", config.EnableMetrics, true},
+		{"WorkerPoolSize", config.WorkerPoolSize, 8},
+		{"RetryTransientErrors", config.RetryTransientErrors, true},
+		{"MaxRetries", config.MaxRetries, 3},
 	}
 
-	if config.EventBufferSize != 1000 {
-		t.Errorf("Expected EventBufferSize 1000, got %d", config.EventBufferSize)
+	for _, tt := range tests {
+		if tt.actual != tt.expected {
+			t.Errorf("%s: expected %v, got %v", tt.name, tt.expected, tt.actual)
+		}
+	}
+}
+
+// testDefaultConfigComponents validates component configurations are initialized.
+func testDefaultConfigComponents(t *testing.T, config *Config) {
+	components := map[string]interface{}{
+		"ParserConfig":   config.ParserConfig,
+		"PlannerConfig":  config.PlannerConfig,
+		"ExecutorConfig": config.ExecutorConfig,
+		"EmitterConfig":  config.EmitterConfig,
 	}
 
-	if config.ComponentTimeout != 30*time.Second {
-		t.Errorf("Expected ComponentTimeout 30s, got %v", config.ComponentTimeout)
-	}
-
-	if config.ErrorThreshold != 10 {
-		t.Errorf("Expected ErrorThreshold 10, got %d", config.ErrorThreshold)
-	}
-
-	if !config.EnableMetrics {
-		t.Error("Expected EnableMetrics to be true")
-	}
-
-	if config.WorkerPoolSize != 8 {
-		t.Errorf("Expected WorkerPoolSize 8, got %d", config.WorkerPoolSize)
-	}
-
-	if config.RetryTransientErrors != true {
-		t.Error("Expected RetryTransientErrors to be true")
-	}
-
-	if config.MaxRetries != 3 {
-		t.Errorf("Expected MaxRetries 3, got %d", config.MaxRetries)
-	}
-
-	// Test component configs are not nil
-	if config.ParserConfig == nil {
-		t.Error("Expected ParserConfig to be initialized")
-	}
-
-	if config.PlannerConfig == nil {
-		t.Error("Expected PlannerConfig to be initialized")
-	}
-
-	if config.ExecutorConfig == nil {
-		t.Error("Expected ExecutorConfig to be initialized")
-	}
-
-	if config.EmitterConfig == nil {
-		t.Error("Expected EmitterConfig to be initialized")
+	for name, component := range components {
+		if component == nil {
+			t.Errorf("Expected %s to be initialized", name)
+		}
 	}
 }
 
@@ -332,8 +326,13 @@ func BenchmarkCoordinatorCreation(b *testing.B) {
 func BenchmarkGetMetrics(b *testing.B) {
 	logger := zap.NewNop()
 	config := DefaultConfig()
+
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			b.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	b.ResetTimer()
 
@@ -345,8 +344,13 @@ func BenchmarkGetMetrics(b *testing.B) {
 func BenchmarkGetStatus(b *testing.B) {
 	logger := zap.NewNop()
 	config := DefaultConfig()
+
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			b.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	b.ResetTimer()
 
@@ -355,17 +359,7 @@ func BenchmarkGetStatus(b *testing.B) {
 	}
 }
 
-// Test data structures
-
-type testPipelineInput struct {
-	sources    []string
-	sourceCode string
-	config     *Config
-}
-
-func (t *testPipelineInput) Sources() []string  { return t.sources }
-func (t *testPipelineInput) SourceCode() string { return t.sourceCode }
-func (t *testPipelineInput) Config() *Config    { return t.config }
+// Test data structures removed - unused
 
 // Mock implementations for testing
 
@@ -376,8 +370,13 @@ func (t *testPipelineInput) Config() *Config    { return t.config }
 func TestCoordinatorIntegration(t *testing.T) {
 	logger := createTestLogger(t)
 	config := createTestConfig()
+
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	// Test that all subsystems are initialized
 	concreteCoord := coord.(*ConcreteCoordinator)
@@ -432,6 +431,7 @@ func TestCoordinatorLifecycle(t *testing.T) {
 
 	// Shutdown
 	ctx := context.Background()
+
 	err := coord.Shutdown(ctx)
 	if err != nil {
 		t.Errorf("Shutdown failed: %v", err)

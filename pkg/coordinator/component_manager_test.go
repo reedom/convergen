@@ -10,7 +10,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// Mock component for testing
+// Mock component for testing.
 type mockComponent struct {
 	name    string
 	status  ComponentStatus
@@ -25,7 +25,9 @@ func (m *mockComponent) Initialize(ctx context.Context, eventBus events.EventBus
 	if m.initErr != nil {
 		return m.initErr
 	}
+
 	m.status = StatusReady
+
 	return nil
 }
 
@@ -33,7 +35,9 @@ func (m *mockComponent) Shutdown(ctx context.Context) error {
 	if m.shutErr != nil {
 		return m.shutErr
 	}
+
 	m.status = StatusShutdown
+
 	return nil
 }
 
@@ -144,6 +148,7 @@ func TestComponentManagerRegisterAfterInitialize(t *testing.T) {
 	mgr := NewComponentManager(logger, config)
 
 	ctx := context.Background()
+
 	err := mgr.Initialize(ctx, config)
 	if err != nil {
 		t.Fatalf("Initialize failed: %v", err)
@@ -187,6 +192,7 @@ func TestComponentManagerUpdateComponentStatus(t *testing.T) {
 
 	// Register a component
 	mockComp := &mockComponent{name: "test-component", status: StatusReady}
+
 	err := mgr.RegisterComponent("test-component", mockComp)
 	if err != nil {
 		t.Fatalf("RegisterComponent failed: %v", err)
@@ -208,6 +214,7 @@ func TestComponentManagerShutdown(t *testing.T) {
 	mgr := NewComponentManager(logger, config)
 
 	ctx := context.Background()
+
 	err := mgr.Initialize(ctx, config)
 	if err != nil {
 		t.Fatalf("Initialize failed: %v", err)
@@ -295,6 +302,7 @@ func TestParserAdapter(t *testing.T) {
 
 	// Create parser adapter through factory
 	factory := mgr.factories["parser"]
+
 	component, err := factory(config.ParserConfig)
 	if err != nil {
 		t.Fatalf("Parser factory failed: %v", err)
@@ -313,6 +321,7 @@ func TestParserAdapter(t *testing.T) {
 	// Test initialization
 	ctx := context.Background()
 	eventBus := events.NewInMemoryEventBus(logger)
+
 	err = adapter.Initialize(ctx, eventBus)
 	if err != nil {
 		t.Errorf("Initialize failed: %v", err)
@@ -346,6 +355,7 @@ func TestPlannerAdapter(t *testing.T) {
 
 	// Create planner adapter through factory
 	factory := mgr.factories["planner"]
+
 	component, err := factory(config.PlannerConfig)
 	if err != nil {
 		t.Fatalf("Planner factory failed: %v", err)
@@ -368,6 +378,7 @@ func TestExecutorAdapter(t *testing.T) {
 
 	// Create executor adapter through factory
 	factory := mgr.factories["executor"]
+
 	component, err := factory(config.ExecutorConfig)
 	if err != nil {
 		t.Fatalf("Executor factory failed: %v", err)
@@ -390,6 +401,7 @@ func TestEmitterAdapter(t *testing.T) {
 
 	// Create emitter adapter through factory
 	factory := mgr.factories["emitter"]
+
 	component, err := factory(config.EmitterConfig)
 	if err != nil {
 		t.Fatalf("Emitter factory failed: %v", err)
@@ -413,6 +425,7 @@ func TestComponentManagerConcurrentAccess(t *testing.T) {
 	mgr := NewComponentManager(logger, config)
 
 	ctx := context.Background()
+
 	err := mgr.Initialize(ctx, config)
 	if err != nil {
 		t.Fatalf("Initialize failed: %v", err)
@@ -434,6 +447,7 @@ func TestComponentManagerConcurrentAccess(t *testing.T) {
 				if err != nil {
 					t.Errorf("GetComponent failed: %v", err)
 				}
+
 				if component == nil {
 					t.Error("GetComponent returned nil")
 				}
@@ -460,6 +474,7 @@ func TestComponentManagerConcurrentStatusUpdates(t *testing.T) {
 
 	// Register test component
 	mockComp := &mockComponent{name: "test", status: StatusReady}
+
 	err := mgr.RegisterComponent("test", mockComp)
 	if err != nil {
 		t.Fatalf("RegisterComponent failed: %v", err)
@@ -502,11 +517,17 @@ func BenchmarkComponentManagerGetComponent(b *testing.B) {
 	mgr := NewComponentManager(logger, config)
 
 	ctx := context.Background()
+
 	err := mgr.Initialize(ctx, config)
 	if err != nil {
 		b.Fatalf("Initialize failed: %v", err)
 	}
-	defer mgr.Shutdown(ctx)
+
+	defer func() {
+		if err := mgr.Shutdown(ctx); err != nil {
+			b.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	b.ResetTimer()
 
@@ -524,11 +545,17 @@ func BenchmarkComponentManagerGetComponents(b *testing.B) {
 	mgr := NewComponentManager(logger, config)
 
 	ctx := context.Background()
+
 	err := mgr.Initialize(ctx, config)
 	if err != nil {
 		b.Fatalf("Initialize failed: %v", err)
 	}
-	defer mgr.Shutdown(ctx)
+
+	defer func() {
+		if err := mgr.Shutdown(ctx); err != nil {
+			b.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	b.ResetTimer()
 
@@ -543,11 +570,17 @@ func BenchmarkComponentManagerUpdateStatus(b *testing.B) {
 	mgr := NewComponentManager(logger, config)
 
 	ctx := context.Background()
+
 	err := mgr.Initialize(ctx, config)
 	if err != nil {
 		b.Fatalf("Initialize failed: %v", err)
 	}
-	defer mgr.Shutdown(ctx)
+
+	defer func() {
+		if err := mgr.Shutdown(ctx); err != nil {
+			b.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	b.ResetTimer()
 

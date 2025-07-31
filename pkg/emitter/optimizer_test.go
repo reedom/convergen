@@ -21,6 +21,7 @@ func TestCodeOptimizer_OptimizeCode(t *testing.T) {
 	// Create test method
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
 	destType := domain.NewBasicType("Dest", reflect.Struct)
+
 	_, err := domain.NewMethod("TestMethod", sourceType, destType)
 	if err != nil {
 		t.Fatalf("Failed to create method: %v", err)
@@ -41,6 +42,7 @@ func TestCodeOptimizer_OptimizeCode(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	optimized, err := optimizer.OptimizeCode(ctx, generatedCode)
 	if err != nil {
 		t.Fatalf("OptimizeCode failed: %v", err)
@@ -63,10 +65,12 @@ func TestCodeOptimizer_OptimizeCode(t *testing.T) {
 	// Test with optimization disabled
 	config.OptimizationLevel = OptimizationNone
 	optimizerNone := NewCodeOptimizer(config, logger, metrics)
+
 	optimized2, err := optimizerNone.OptimizeCode(ctx, generatedCode)
 	if err != nil {
 		t.Fatalf("OptimizeCode with OptimizationNone failed: %v", err)
 	}
+
 	if optimized2 != generatedCode {
 		t.Error("OptimizeCode with OptimizationNone should return original code")
 	}
@@ -101,6 +105,7 @@ func TestCodeOptimizer_OptimizationLevels(t *testing.T) {
 			optimizer := NewCodeOptimizer(config, logger, metrics)
 
 			ctx := context.Background()
+
 			optimized, err := optimizer.OptimizeCode(ctx, generatedCode)
 			if err != nil {
 				t.Fatalf("OptimizeCode failed for level %s: %v", level, err)
@@ -148,6 +153,7 @@ func TestCodeOptimizer_OptimizeMethodCode(t *testing.T) {
 		Name: "TestMethod2",
 		Body: "some code",
 	}
+
 	err = optimizerNone.OptimizeMethodCode(method2)
 	if err != nil {
 		t.Fatalf("OptimizeMethodCode with OptimizationNone failed: %v", err)
@@ -178,6 +184,7 @@ func TestCodeOptimizer_EliminateDeadCode(t *testing.T) {
 	// Test with dead code elimination disabled
 	config.EnableDeadCodeElim = false
 	optimizerDisabled := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
+
 	err = optimizerDisabled.EliminateDeadCode(generatedCode)
 	if err != nil {
 		t.Fatalf("EliminateDeadCode with disabled flag failed: %v", err)
@@ -208,6 +215,7 @@ func TestCodeOptimizer_OptimizeVariableNames(t *testing.T) {
 	// Test with variable optimization disabled
 	config.EnableVarOptimization = false
 	optimizerDisabled := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
+
 	err = optimizerDisabled.OptimizeVariableNames(generatedCode)
 	if err != nil {
 		t.Fatalf("OptimizeVariableNames with disabled flag failed: %v", err)
@@ -262,12 +270,12 @@ func TestCodeOptimizer_GetMetrics(t *testing.T) {
 	metrics := NewEmitterMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
 
-	metrics_result := optimizer.GetMetrics()
-	if metrics_result == nil {
+	metricsResult := optimizer.GetMetrics()
+	if metricsResult == nil {
 		t.Error("GetMetrics should return metrics")
 	}
 
-	if metrics_result.OptimizationsApplied == nil {
+	if metricsResult != nil && metricsResult.OptimizationsApplied == nil {
 		t.Error("OptimizationsApplied should be initialized")
 	}
 }
@@ -279,6 +287,7 @@ func TestCodeOptimizer_Shutdown(t *testing.T) {
 	optimizer := NewCodeOptimizer(config, logger, metrics)
 
 	ctx := context.Background()
+
 	err := optimizer.Shutdown(ctx)
 	if err != nil {
 		t.Fatalf("Shutdown failed: %v", err)
@@ -291,6 +300,7 @@ func TestDeadCodeEliminator(t *testing.T) {
 
 	// Test EliminateInCode
 	code := "line1\n\n\nline2\n\nline3"
+
 	optimized, eliminated, err := eliminator.EliminateInCode(code)
 	if err != nil {
 		t.Fatalf("EliminateInCode failed: %v", err)
@@ -333,6 +343,7 @@ func TestVariableOptimizer(t *testing.T) {
 
 	// Test OptimizeNames
 	code := "converted_result := src.Field\ntemporary_value := result_data"
+
 	optimized, optimizations, err := optimizer.OptimizeNames(code)
 	if err != nil {
 		t.Fatalf("OptimizeNames failed: %v", err)
@@ -375,6 +386,7 @@ func TestExpressionSimplifier(t *testing.T) {
 
 	// Test SimplifyInCode
 	code := "result := (variable)\nother := (anotherVar)"
+
 	simplified, simplifications, err := simplifier.SimplifyInCode(code)
 	if err != nil {
 		t.Fatalf("SimplifyInCode failed: %v", err)
@@ -417,6 +429,7 @@ func TestRedundancyRemover(t *testing.T) {
 
 	// Test RemoveInCode
 	code := "line1\n\n\n\nline2"
+
 	optimized, removed, err := remover.RemoveInCode(code)
 	if err != nil {
 		t.Fatalf("RemoveInCode failed: %v", err)
@@ -459,6 +472,7 @@ func TestASTAnalyzer(t *testing.T) {
 
 	// Test ParseCode
 	code := "package main\nfunc main() {}"
+
 	file, fset, err := analyzer.ParseCode(code)
 	if err != nil {
 		t.Fatalf("ParseCode failed: %v", err)
@@ -482,7 +496,7 @@ func TestASTAnalyzer(t *testing.T) {
 		t.Error("AnalyzeUsage should return usage analysis")
 	}
 
-	if usage.Variables == nil {
+	if usage != nil && usage.Variables == nil {
 		t.Error("AnalyzeUsage should initialize Variables map")
 	}
 
@@ -510,6 +524,7 @@ func TestControlFlowAnalyzer(t *testing.T) {
 	// Create a simple AST for testing
 	astAnalyzer := NewASTAnalyzer(logger)
 	code := "package main\nfunc main() { if true { return } }"
+
 	file, _, err := astAnalyzer.ParseCode(code)
 	if err != nil {
 		t.Fatalf("Failed to parse code for CFG test: %v", err)
@@ -525,7 +540,7 @@ func TestControlFlowAnalyzer(t *testing.T) {
 		t.Error("AnalyzeControlFlow should return control flow graph")
 	}
 
-	if cfg.Nodes == nil {
+	if cfg != nil && cfg.Nodes == nil {
 		t.Error("AnalyzeControlFlow should initialize Nodes slice")
 	}
 
@@ -561,10 +576,12 @@ func TestOptimizerMetrics(t *testing.T) {
 
 	if metrics == nil {
 		t.Error("NewOptimizerMetrics should return metrics")
+		return
 	}
 
 	if metrics.OptimizationsApplied == nil {
 		t.Error("NewOptimizerMetrics should initialize OptimizationsApplied")
+		return
 	}
 
 	// Test metrics updates
@@ -600,6 +617,7 @@ func TestOptimizer_EdgeCases(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	optimized, err := optimizer.OptimizeCode(ctx, emptyCode)
 	if err != nil {
 		t.Fatalf("OptimizeCode with empty code failed: %v", err)
@@ -633,24 +651,28 @@ func TestOptimizer_EdgeCases(t *testing.T) {
 
 	// Test optimization components with edge cases
 	deadCodeElim := NewDeadCodeEliminator(logger)
+
 	_, _, err = deadCodeElim.EliminateInCode("")
 	if err != nil {
 		t.Fatalf("DeadCodeEliminator should handle empty code: %v", err)
 	}
 
 	varOpt := NewVariableOptimizer(logger)
+
 	_, _, err = varOpt.OptimizeNames("")
 	if err != nil {
 		t.Fatalf("VariableOptimizer should handle empty code: %v", err)
 	}
 
 	exprSimp := NewExpressionSimplifier(logger)
+
 	_, _, err = exprSimp.SimplifyInCode("")
 	if err != nil {
 		t.Fatalf("ExpressionSimplifier should handle empty code: %v", err)
 	}
 
 	redRem := NewRedundancyRemover(logger)
+
 	_, _, err = redRem.RemoveInCode("")
 	if err != nil {
 		t.Fatalf("RedundancyRemover should handle empty code: %v", err)

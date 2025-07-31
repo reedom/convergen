@@ -15,6 +15,7 @@ import (
 
 func TestNewBatchExecutor(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -62,6 +63,7 @@ func TestBatchExecutor_ExecuteBatch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
+
 			eventBus := events.NewInMemoryEventBus(logger)
 			defer eventBus.Close()
 
@@ -71,17 +73,24 @@ func TestBatchExecutor_ExecuteBatch(t *testing.T) {
 
 			metrics := NewExecutionMetrics(true)
 			resourcePool := NewResourcePool(config, logger, metrics)
+
 			defer func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				resourcePool.Shutdown(ctx)
+
+				if err := resourcePool.Shutdown(ctx); err != nil {
+					t.Errorf("resourcePool.Shutdown failed: %v", err)
+				}
 			}()
 
 			batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
 			defer func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				batchExecutor.Shutdown(ctx)
+
+				if err := batchExecutor.Shutdown(ctx); err != nil {
+					t.Errorf("batchExecutor.Shutdown failed: %v", err)
+				}
 			}()
 
 			batch := createTestBatchExecution("test_batch", tt.fieldCount)
@@ -107,16 +116,21 @@ func TestBatchExecutor_ExecuteBatch(t *testing.T) {
 
 func TestBatchExecutor_ExecuteBatchWithNilBatch(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
 	config := DefaultExecutorConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		resourcePool.Shutdown(ctx)
+
+		if err := resourcePool.Shutdown(ctx); err != nil {
+			t.Errorf("resourcePool.Shutdown failed: %v", err)
+		}
 	}()
 
 	batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
@@ -131,23 +145,31 @@ func TestBatchExecutor_ExecuteBatchWithNilBatch(t *testing.T) {
 
 func TestBatchExecutor_ExecuteBatchWithDependencies(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
 	config := DefaultExecutorConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		resourcePool.Shutdown(ctx)
+
+		if err := resourcePool.Shutdown(ctx); err != nil {
+			t.Errorf("resourcePool.Shutdown failed: %v", err)
+		}
 	}()
 
 	batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		batchExecutor.Shutdown(ctx)
+
+		if err := batchExecutor.Shutdown(ctx); err != nil {
+			t.Errorf("batchExecutor.Shutdown failed: %v", err)
+		}
 	}()
 
 	// Create dependency batch result
@@ -180,6 +202,7 @@ func TestBatchExecutor_ExecuteBatchWithDependencies(t *testing.T) {
 
 func TestBatchExecutor_ConcurrentBatchExecution(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -189,17 +212,24 @@ func TestBatchExecutor_ConcurrentBatchExecution(t *testing.T) {
 
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		resourcePool.Shutdown(ctx)
+
+		if err := resourcePool.Shutdown(ctx); err != nil {
+			t.Errorf("resourcePool.Shutdown failed: %v", err)
+		}
 	}()
 
 	batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		batchExecutor.Shutdown(ctx)
+
+		if err := batchExecutor.Shutdown(ctx); err != nil {
+			t.Errorf("batchExecutor.Shutdown failed: %v", err)
+		}
 	}()
 
 	// Execute multiple batches concurrently
@@ -210,9 +240,11 @@ func TestBatchExecutor_ConcurrentBatchExecution(t *testing.T) {
 	errors := make(chan error, batchCount)
 
 	ctx := context.Background()
+
 	for i := 0; i < batchCount; i++ {
 		go func(batchID int) {
 			batch := createTestBatchExecution(fmt.Sprintf("concurrent_batch_%d", batchID), fieldCount)
+
 			result, err := batchExecutor.ExecuteBatch(ctx, batch)
 			if err != nil {
 				errors <- err
@@ -232,9 +264,11 @@ func TestBatchExecutor_ConcurrentBatchExecution(t *testing.T) {
 			assert.NotNil(t, result)
 			assert.True(t, result.Success)
 			assert.Equal(t, fieldCount, len(result.FieldResults))
+
 			successCount++
 		case err := <-errors:
 			assert.NoError(t, err)
+
 			errorCount++
 		case <-time.After(30 * time.Second):
 			t.Fatal("Test timed out waiting for results")
@@ -247,23 +281,31 @@ func TestBatchExecutor_ConcurrentBatchExecution(t *testing.T) {
 
 func TestBatchExecutor_GetMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
 	config := DefaultExecutorConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		resourcePool.Shutdown(ctx)
+
+		if err := resourcePool.Shutdown(ctx); err != nil {
+			t.Errorf("resourcePool.Shutdown failed: %v", err)
+		}
 	}()
 
 	batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		batchExecutor.Shutdown(ctx)
+
+		if err := batchExecutor.Shutdown(ctx); err != nil {
+			t.Errorf("batchExecutor.Shutdown failed: %v", err)
+		}
 	}()
 
 	// Execute a batch to generate metrics
@@ -281,6 +323,7 @@ func TestBatchExecutor_GetMetrics(t *testing.T) {
 
 func TestBatchExecutor_ContextCancellation(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -289,17 +332,24 @@ func TestBatchExecutor_ContextCancellation(t *testing.T) {
 
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		resourcePool.Shutdown(ctx)
+
+		if err := resourcePool.Shutdown(ctx); err != nil {
+			t.Errorf("resourcePool.Shutdown failed: %v", err)
+		}
 	}()
 
 	batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		batchExecutor.Shutdown(ctx)
+
+		if err := batchExecutor.Shutdown(ctx); err != nil {
+			t.Errorf("batchExecutor.Shutdown failed: %v", err)
+		}
 	}()
 
 	batch := createTestBatchExecution("cancellation_test", 50) // Large batch
@@ -320,6 +370,7 @@ func TestBatchExecutor_ContextCancellation(t *testing.T) {
 
 func TestBatchExecutor_ResourceLimits(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -330,17 +381,24 @@ func TestBatchExecutor_ResourceLimits(t *testing.T) {
 
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		resourcePool.Shutdown(ctx)
+
+		if err := resourcePool.Shutdown(ctx); err != nil {
+			t.Errorf("resourcePool.Shutdown failed: %v", err)
+		}
 	}()
 
 	batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		batchExecutor.Shutdown(ctx)
+
+		if err := batchExecutor.Shutdown(ctx); err != nil {
+			t.Errorf("batchExecutor.Shutdown failed: %v", err)
+		}
 	}()
 
 	// Create large batch that would stress resource limits
@@ -357,23 +415,31 @@ func TestBatchExecutor_ResourceLimits(t *testing.T) {
 
 func TestBatchExecutor_EmptyBatch(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
 	config := DefaultExecutorConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		resourcePool.Shutdown(ctx)
+
+		if err := resourcePool.Shutdown(ctx); err != nil {
+			t.Errorf("resourcePool.Shutdown failed: %v", err)
+		}
 	}()
 
 	batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		batchExecutor.Shutdown(ctx)
+
+		if err := batchExecutor.Shutdown(ctx); err != nil {
+			t.Errorf("batchExecutor.Shutdown failed: %v", err)
+		}
 	}()
 
 	batch := createTestBatchExecution("empty_batch", 0)
@@ -391,6 +457,7 @@ func TestBatchExecutor_EmptyBatch(t *testing.T) {
 
 func BenchmarkBatchExecutor_ExecuteBatch(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -399,23 +466,31 @@ func BenchmarkBatchExecutor_ExecuteBatch(b *testing.B) {
 
 	metrics := NewExecutionMetrics(false)
 	resourcePool := NewResourcePool(config, logger, metrics)
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		resourcePool.Shutdown(ctx)
+
+		if err := resourcePool.Shutdown(ctx); err != nil {
+			b.Errorf("resourcePool.Shutdown failed: %v", err)
+		}
 	}()
 
 	batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		batchExecutor.Shutdown(ctx)
+
+		if err := batchExecutor.Shutdown(ctx); err != nil {
+			b.Errorf("batchExecutor.Shutdown failed: %v", err)
+		}
 	}()
 
 	batch := createTestBatchExecution("benchmark_batch", 20)
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := batchExecutor.ExecuteBatch(ctx, batch)
 		require.NoError(b, err)
@@ -424,6 +499,7 @@ func BenchmarkBatchExecutor_ExecuteBatch(b *testing.B) {
 
 func BenchmarkBatchExecutor_ConcurrentBatches(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -433,17 +509,24 @@ func BenchmarkBatchExecutor_ConcurrentBatches(b *testing.B) {
 
 	metrics := NewExecutionMetrics(false)
 	resourcePool := NewResourcePool(config, logger, metrics)
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		resourcePool.Shutdown(ctx)
+
+		if err := resourcePool.Shutdown(ctx); err != nil {
+			b.Errorf("resourcePool.Shutdown failed: %v", err)
+		}
 	}()
 
 	batchExecutor := NewBatchExecutor(config, logger, eventBus, resourcePool, metrics)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		batchExecutor.Shutdown(ctx)
+
+		if err := batchExecutor.Shutdown(ctx); err != nil {
+			b.Errorf("batchExecutor.Shutdown failed: %v", err)
+		}
 	}()
 
 	batches := make([]*BatchExecution, 4)
@@ -454,6 +537,7 @@ func BenchmarkBatchExecutor_ConcurrentBatches(b *testing.B) {
 	ctx := context.Background()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		// Execute batches concurrently
 		results := make(chan *BatchResult, len(batches))

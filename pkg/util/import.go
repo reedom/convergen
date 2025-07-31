@@ -13,10 +13,12 @@ type ImportNames map[string]string
 // NewImportNames creates a new ImportNames instance.
 func NewImportNames(specs []*ast.ImportSpec) ImportNames {
 	imports := make(ImportNames)
+
 	var noNames []string
 
 	for _, spec := range specs {
 		pkgPath := strings.ReplaceAll(spec.Path.Value, `"`, "")
+
 		var name string
 		if spec.Name != nil {
 			name = spec.Name.Name
@@ -24,7 +26,9 @@ func NewImportNames(specs []*ast.ImportSpec) ImportNames {
 			i := strings.LastIndex(pkgPath, "/")
 			name = pkgPath[i+1:]
 		}
+
 		imports[pkgPath] = name
+
 		if name == "_" {
 			noNames = append(noNames, pkgPath)
 		}
@@ -35,12 +39,14 @@ func NewImportNames(specs []*ast.ImportSpec) ImportNames {
 		name := pkgPath[i+1:]
 
 		dup := false
+
 		for p, n := range imports {
 			if n == name && p != pkgPath {
 				dup = true
 				break
 			}
 		}
+
 		if !dup {
 			imports[pkgPath] = name
 		}
@@ -64,6 +70,7 @@ func (i ImportNames) LookupPath(pkgName string) (path string, ok bool) {
 			return p, true
 		}
 	}
+
 	return
 }
 
@@ -78,6 +85,7 @@ func (i ImportNames) TypeName(t types.Type) string {
 		if pkgName, ok := i[typ.Obj().Pkg().Path()]; ok {
 			return fmt.Sprintf("%v.%v", pkgName, typ.Obj().Name())
 		}
+
 		return typ.Obj().Name()
 	default:
 		return t.String()

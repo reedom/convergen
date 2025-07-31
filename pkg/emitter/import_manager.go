@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -9,7 +10,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// ImportManager manages Go import statements with automatic detection and optimization
+// Static errors for err113 compliance.
+var (
+	ErrImportAnalysisNil = errors.New("import analysis cannot be nil")
+)
+
+// ImportManager manages Go import statements with automatic detection and optimization.
 type ImportManager interface {
 	// AnalyzeImports analyzes code and determines required imports
 	AnalyzeImports(ctx context.Context, code *GeneratedCode) (*ImportAnalysis, error)
@@ -30,7 +36,7 @@ type ImportManager interface {
 	RemoveUnusedImports(imports []*Import, sourceCode string) []*Import
 }
 
-// ConcreteImportManager implements ImportManager
+// ConcreteImportManager implements ImportManager.
 type ConcreteImportManager struct {
 	config           *EmitterConfig
 	logger           *zap.Logger
@@ -39,21 +45,21 @@ type ConcreteImportManager struct {
 	conflictResolver *ConflictResolver
 }
 
-// ConflictResolver handles import name conflicts
+// ConflictResolver handles import name conflicts.
 type ConflictResolver struct {
 	reservedNames   map[string]bool
 	aliasPatterns   []AliasPattern
 	conflictHistory map[string]string
 }
 
-// AliasPattern defines patterns for generating import aliases
+// AliasPattern defines patterns for generating import aliases.
 type AliasPattern struct {
 	Pattern     string `json:"pattern"`
 	Priority    int    `json:"priority"`
 	Description string `json:"description"`
 }
 
-// NewImportManager creates a new import manager
+// NewImportManager creates a new import manager.
 func NewImportManager(config *EmitterConfig, logger *zap.Logger) ImportManager {
 	manager := &ConcreteImportManager{
 		config:       config,
@@ -70,10 +76,10 @@ func NewImportManager(config *EmitterConfig, logger *zap.Logger) ImportManager {
 	return manager
 }
 
-// AnalyzeImports analyzes code and determines required imports
+// AnalyzeImports analyzes code and determines required imports.
 func (im *ConcreteImportManager) AnalyzeImports(ctx context.Context, code *GeneratedCode) (*ImportAnalysis, error) {
 	if code == nil {
-		return nil, fmt.Errorf("generated code cannot be nil")
+		return nil, ErrGeneratedCodeNil
 	}
 
 	im.logger.Debug("analyzing imports for generated code",
@@ -145,10 +151,10 @@ func (im *ConcreteImportManager) AnalyzeImports(ctx context.Context, code *Gener
 	return analysis, nil
 }
 
-// GenerateImports creates import declarations from analysis
+// GenerateImports creates import declarations from analysis.
 func (im *ConcreteImportManager) GenerateImports(ctx context.Context, analysis *ImportAnalysis) (*ImportDeclaration, error) {
 	if analysis == nil {
-		return nil, fmt.Errorf("import analysis cannot be nil")
+		return nil, ErrImportAnalysisNil
 	}
 
 	im.logger.Debug("generating import declarations",
@@ -164,6 +170,7 @@ func (im *ConcreteImportManager) GenerateImports(ctx context.Context, analysis *
 	optimizedImports, err := im.OptimizeImports(resolvedImports)
 	if err != nil {
 		im.logger.Warn("import optimization failed", zap.Error(err))
+
 		optimizedImports = resolvedImports
 	}
 
@@ -203,7 +210,7 @@ func (im *ConcreteImportManager) GenerateImports(ctx context.Context, analysis *
 	return declaration, nil
 }
 
-// ResolveConflicts resolves import name conflicts
+// ResolveConflicts resolves import name conflicts.
 func (im *ConcreteImportManager) ResolveConflicts(imports []*Import) ([]*Import, error) {
 	if len(imports) == 0 {
 		return imports, nil
@@ -243,7 +250,7 @@ func (im *ConcreteImportManager) ResolveConflicts(imports []*Import) ([]*Import,
 	return resolved, nil
 }
 
-// OptimizeImports optimizes import organization and usage
+// OptimizeImports optimizes import organization and usage.
 func (im *ConcreteImportManager) OptimizeImports(imports []*Import) ([]*Import, error) {
 	if len(imports) == 0 {
 		return imports, nil
@@ -256,6 +263,7 @@ func (im *ConcreteImportManager) OptimizeImports(imports []*Import) ([]*Import, 
 
 	// Remove duplicates
 	seen := make(map[string]*Import)
+
 	for _, imp := range imports {
 		key := im.getImportKey(imp)
 		if existing, exists := seen[key]; exists {
@@ -291,7 +299,7 @@ func (im *ConcreteImportManager) OptimizeImports(imports []*Import) ([]*Import, 
 	return optimized, nil
 }
 
-// AddImport adds a new import to the collection
+// AddImport adds a new import to the collection.
 func (im *ConcreteImportManager) AddImport(imports []*Import, newImport *Import) []*Import {
 	if newImport == nil {
 		return imports
@@ -303,9 +311,11 @@ func (im *ConcreteImportManager) AddImport(imports []*Import, newImport *Import)
 			// Update existing import
 			existing.Used = existing.Used || newImport.Used
 			existing.Required = existing.Required || newImport.Required
+
 			if newImport.Alias != "" {
 				existing.Alias = newImport.Alias
 			}
+
 			return imports
 		}
 	}
@@ -314,7 +324,7 @@ func (im *ConcreteImportManager) AddImport(imports []*Import, newImport *Import)
 	return append(imports, newImport)
 }
 
-// RemoveUnusedImports removes imports that are not used
+// RemoveUnusedImports removes imports that are not used.
 func (im *ConcreteImportManager) RemoveUnusedImports(imports []*Import, sourceCode string) []*Import {
 	if sourceCode == "" {
 		return imports
@@ -387,6 +397,7 @@ func (im *ConcreteImportManager) getPackageName(importPath string) string {
 	if len(parts) > 0 {
 		return parts[len(parts)-1]
 	}
+
 	return importPath
 }
 
@@ -394,6 +405,7 @@ func (im *ConcreteImportManager) getImportKey(imp *Import) string {
 	if imp.Alias != "" {
 		return fmt.Sprintf("%s as %s", imp.Path, imp.Alias)
 	}
+
 	return imp.Path
 }
 
@@ -412,9 +424,8 @@ func (im *ConcreteImportManager) detectConflicts(analysis *ImportAnalysis) {
 	}
 }
 
-func (im *ConcreteImportManager) analyzeOptimizations(analysis *ImportAnalysis, code *GeneratedCode) {
+func (im *ConcreteImportManager) analyzeOptimizations(analysis *ImportAnalysis, _ *GeneratedCode) {
 	// Suggest optimizations based on import patterns
-
 	if len(analysis.RequiredImports) > 10 {
 		analysis.OptimizationsSuggested = append(analysis.OptimizationsSuggested,
 			"Consider grouping related functionality to reduce import count")
@@ -540,6 +551,7 @@ func (im *ConcreteImportManager) generateImportSource(declaration *ImportDeclara
 		if imp.Alias != "" {
 			return fmt.Sprintf("import %s \"%s\"", imp.Alias, imp.Path)
 		}
+
 		return fmt.Sprintf("import \"%s\"", imp.Path)
 	}
 
@@ -556,6 +568,7 @@ func (im *ConcreteImportManager) generateImportSource(declaration *ImportDeclara
 				lines = append(lines, fmt.Sprintf("\t\"%s\"", imp.Path))
 			}
 		}
+
 		if len(declaration.ThirdPartyLibs) > 0 || len(declaration.LocalImports) > 0 {
 			lines = append(lines, "")
 		}
@@ -570,6 +583,7 @@ func (im *ConcreteImportManager) generateImportSource(declaration *ImportDeclara
 				lines = append(lines, fmt.Sprintf("\t\"%s\"", imp.Path))
 			}
 		}
+
 		if len(declaration.LocalImports) > 0 {
 			lines = append(lines, "")
 		}
@@ -587,6 +601,7 @@ func (im *ConcreteImportManager) generateImportSource(declaration *ImportDeclara
 	}
 
 	lines = append(lines, ")")
+
 	return strings.Join(lines, "\n")
 }
 
@@ -607,6 +622,7 @@ func createStandardLibMap() map[string]bool {
 	for _, lib := range stdLibs {
 		stdLibMap[lib] = true
 	}
+
 	return stdLibMap
 }
 
@@ -625,6 +641,7 @@ func createReservedNamesMap() map[string]bool {
 	for _, word := range reserved {
 		reservedMap[word] = true
 	}
+
 	return reservedMap
 }
 

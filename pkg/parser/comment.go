@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -13,6 +14,11 @@ import (
 	"github.com/reedom/convergen/v8/pkg/logger"
 	"github.com/reedom/convergen/v8/pkg/option"
 	"github.com/reedom/convergen/v8/pkg/util"
+)
+
+// Static errors for err113 compliance.
+var (
+	ErrInvalidNotationFormat = errors.New("invalid notation format")
 )
 
 var (
@@ -33,8 +39,8 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 
 	for _, n := range notations {
 		m := reNotation.FindStringSubmatch(n.Text)
-		if m == nil || len(m) < 2 {
-			return fmt.Errorf("invalid notation format %#v", m)
+		if len(m) < 2 {
+			return fmt.Errorf("%w: %#v", ErrInvalidNotationFormat, m)
 		}
 
 		var args []string
@@ -88,6 +94,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			} else if !isValidIdentifier(args[0]) {
 				return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
 			}
+
 			opts.Receiver = args[0]
 		case "reverse":
 			opts.Reverse = true
@@ -96,17 +103,21 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
 			}
+
 			matcher, err := option.NewPatternMatcher(args[0], opts.ExactCase)
 			if err != nil {
 				return logger.Errorf("%v: invalid regexp", p.fset.Position(n.Pos()))
 			}
+
 			opts.SkipFields = append(opts.SkipFields, matcher)
 		case "map":
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
+
 			src := args[0]
 			dst := args[1]
+
 			matcher := option.NewNameMatcher(src, dst, n.Pos())
 			if strings.HasPrefix(src, "$") {
 				opts.TemplatedNameMapper = append(opts.TemplatedNameMapper, matcher)
@@ -117,17 +128,21 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
 			}
+
 			src := args[1]
+
 			dst := src
 			if 3 <= len(args) {
 				dst = args[2]
 			}
+
 			converter := option.NewFieldConverter(args[0], src, dst, n.Pos())
 			opts.Converters = append(opts.Converters, converter)
 		case "literal":
 			if len(args) < 2 {
 				return logger.Errorf("%v: needs <dst> <literal> args", p.fset.Position(n.Pos()))
 			}
+
 			m = reLiteral.FindStringSubmatch(m[2])
 			setter := option.NewLiteralSetter(args[0], m[1], n.Pos())
 			opts.Literals = append(opts.Literals, setter)
@@ -135,19 +150,23 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 			if len(args) < 1 {
 				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
 			}
+
 			pp, err := p.lookupManipulatorFunc(args[0], "preprocess", n.Pos())
 			if err != nil {
 				return err
 			}
+
 			opts.PreProcess = pp
 		case "postprocess":
 			if len(args) < 1 {
 				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
 			}
+
 			pp, err := p.lookupManipulatorFunc(args[0], "postprocess", n.Pos())
 			if err != nil {
 				return err
 			}
+
 			opts.PostProcess = pp
 		default:
 			fmt.Printf("%v: unknown notation %v\n", p.fset.Position(n.Pos()), m[1])
@@ -158,6 +177,7 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 	if opts.Reverse && opts.Style == gmodel.DstVarReturn {
 		return logger.Errorf(`%v: to use ":reverse", style must be ":style arg"`, p.fset.Position(posReverse))
 	}
+
 	return nil
 }
 
@@ -176,6 +196,7 @@ func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types
 	if !ok {
 		return nil, nil
 	}
+
 	pkg, ok := p.pkg.Imports[pkgPath]
 	if !ok {
 		return nil, nil
@@ -183,6 +204,7 @@ func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types
 
 	scope := pkg.Types.Scope()
 	obj := scope.Lookup(names[1])
+
 	return scope, obj
 }
 
@@ -195,6 +217,7 @@ func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types
 func (p *Parser) resolveConverters(generatingMethods []*bmodel.MethodEntry, conv *option.FieldConverter) error {
 	name := conv.Converter()
 	pos := conv.Pos()
+
 	argType, retType, retError, err := p.lookupConverterFunc(name, pos)
 	if err == nil {
 		conv.Set(argType, retType, retError)
@@ -205,22 +228,27 @@ func (p *Parser) resolveConverters(generatingMethods []*bmodel.MethodEntry, conv
 		if method.Name() != name {
 			continue
 		}
+
 		if method.Opts.Style != gmodel.DstVarReturn {
 			err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), name)
 			continue
 		}
+
 		if method.Recv() != nil {
 			// TODO(reedom): we may accept a method as a converter.
 			err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), name)
 			continue
 		}
+
 		conv.Set(method.SrcVar().Type(), method.DstVar().Type(), method.RetError())
+
 		return nil
 	}
 
 	if err == nil {
 		err = logger.Errorf("%v: function %v not found", p.fset.Position(pos), name)
 	}
+
 	return err
 }
 
@@ -233,15 +261,18 @@ func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, r
 		err = logger.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
 		return
 	}
+
 	sig, ok := obj.Type().(*types.Signature)
 	if !ok {
 		err = logger.Errorf("%v: %v isn't a function", p.fset.Position(pos), funcName)
 		return
 	}
+
 	if sig.Params().Len() != 1 || sig.Results().Len() < 1 || 2 < sig.Results().Len() {
 		err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), funcName)
 		return
 	}
+
 	if sig.Results().Len() == 2 && !util.IsErrorType(sig.Results().At(1).Type()) {
 		err = logger.Errorf("%v: function %v cannot use as a converter", p.fset.Position(pos), funcName)
 		return
@@ -250,6 +281,7 @@ func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, r
 	argType = sig.Params().At(0).Type()
 	retType = sig.Results().At(0).Type()
 	retError = sig.Results().Len() == 2 && util.IsErrorType(sig.Results().At(1).Type())
+
 	return
 }
 
@@ -261,6 +293,7 @@ func (p *Parser) lookupManipulatorFunc(funcName, optName string, pos token.Pos) 
 	if obj == nil {
 		return nil, logger.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
 	}
+
 	sig, ok := obj.Type().(*types.Signature)
 	if !ok {
 		return nil, logger.Errorf("%v: %v isn't a function", p.fset.Position(pos), funcName)
@@ -275,6 +308,7 @@ func (p *Parser) lookupManipulatorFunc(funcName, optName string, pos token.Pos) 
 	for i := 0; i < sig.Params().Len()-2; i++ {
 		additionalArgs[i] = sig.Params().At(i + 2).Type()
 	}
+
 	return &option.Manipulator{
 		Func:           obj,
 		DstSide:        sig.Params().At(0).Type(),

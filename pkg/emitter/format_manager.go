@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go/format"
 	"go/parser"
@@ -13,7 +14,16 @@ import (
 	"go.uber.org/zap"
 )
 
-// FormatManager handles code formatting and style enforcement
+// Static errors for err113 compliance.
+var (
+	ErrCodeNil                        = errors.New("code cannot be nil")
+	ErrSourceCodeEmpty                = errors.New("source code is empty")
+	ErrSourceCodeNotProperlyFormatted = errors.New("source code is not properly formatted")
+	ErrImportDeclarationNil           = errors.New("import declaration cannot be nil")
+	ErrMethodCodeNil                  = errors.New("method code cannot be nil")
+)
+
+// FormatManager handles code formatting and style enforcement.
 type FormatManager interface {
 	// FormatCode formats the complete generated code
 	FormatCode(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error)
@@ -31,7 +41,7 @@ type FormatManager interface {
 	FormatImports(imports *ImportDeclaration) (*ImportDeclaration, error)
 }
 
-// ConcreteFormatManager implements FormatManager
+// ConcreteFormatManager implements FormatManager.
 type ConcreteFormatManager struct {
 	config    *FormatConfig
 	logger    *zap.Logger
@@ -40,7 +50,7 @@ type ConcreteFormatManager struct {
 	linter    CodeLinter
 }
 
-// FormatConfig defines formatting preferences
+// FormatConfig defines formatting preferences.
 type FormatConfig struct {
 	IndentStyle         string        `json:"indent_style"`
 	LineWidth           int           `json:"line_width"`
@@ -56,25 +66,25 @@ type FormatConfig struct {
 	ValidationTimeout   time.Duration `json:"validation_timeout"`
 }
 
-// GoImportsProcessor handles goimports processing
+// GoImportsProcessor handles goimports processing.
 type GoImportsProcessor interface {
 	Process(source string) (string, error)
 	ProcessWithOptions(source string, options *GoImportsOptions) (string, error)
 }
 
-// GoFmtProcessor handles gofmt processing
+// GoFmtProcessor handles gofmt processing.
 type GoFmtProcessor interface {
 	Format(source string) (string, error)
 	FormatWithTabWidth(source string, tabWidth int) (string, error)
 }
 
-// CodeLinter performs code quality checks
+// CodeLinter performs code quality checks.
 type CodeLinter interface {
 	Lint(source string) (*LintResult, error)
 	LintWithRules(source string, rules []string) (*LintResult, error)
 }
 
-// GoImportsOptions configures goimports behavior
+// GoImportsOptions configures goimports behavior.
 type GoImportsOptions struct {
 	LocalPrefix string `json:"local_prefix"`
 	FormatOnly  bool   `json:"format_only"`
@@ -83,7 +93,7 @@ type GoImportsOptions struct {
 	TabWidth    int    `json:"tab_width"`
 }
 
-// LintResult contains linting results
+// LintResult contains linting results.
 type LintResult struct {
 	Issues      []LintIssue `json:"issues"`
 	Warnings    []string    `json:"warnings"`
@@ -92,7 +102,7 @@ type LintResult struct {
 	Score       float64     `json:"score"`
 }
 
-// LintIssue represents a single linting issue
+// LintIssue represents a single linting issue.
 type LintIssue struct {
 	Line     int    `json:"line"`
 	Column   int    `json:"column"`
@@ -102,7 +112,7 @@ type LintIssue struct {
 	Fix      string `json:"fix,omitempty"`
 }
 
-// NewFormatManager creates a new format manager
+// NewFormatManager creates a new format manager.
 func NewFormatManager(config *EmitterConfig, logger *zap.Logger) FormatManager {
 	formatConfig := &FormatConfig{
 		IndentStyle:         config.IndentStyle,
@@ -128,10 +138,10 @@ func NewFormatManager(config *EmitterConfig, logger *zap.Logger) FormatManager {
 	}
 }
 
-// FormatCode formats the complete generated code
+// FormatCode formats the complete generated code.
 func (fm *ConcreteFormatManager) FormatCode(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error) {
 	if code == nil {
-		return nil, fmt.Errorf("generated code cannot be nil")
+		return nil, ErrGeneratedCodeNil
 	}
 
 	fm.logger.Debug("formatting generated code",
@@ -170,6 +180,7 @@ func (fm *ConcreteFormatManager) FormatCode(ctx context.Context, code *Generated
 				zap.String("method", method.Name),
 				zap.Error(err))
 		}
+
 		formattedCode.Methods[i] = method
 	}
 
@@ -216,9 +227,10 @@ func (fm *ConcreteFormatManager) FormatCode(ctx context.Context, code *Generated
 	return formattedCode, nil
 }
 
-// ApplyGoFormat applies standard Go formatting tools
+// ApplyGoFormat applies standard Go formatting tools.
 func (fm *ConcreteFormatManager) ApplyGoFormat(source string) (string, error) {
 	var formattedSource = source
+
 	var err error
 
 	// Apply gofmt first
@@ -246,10 +258,10 @@ func (fm *ConcreteFormatManager) ApplyGoFormat(source string) (string, error) {
 	return formattedSource, nil
 }
 
-// OptimizeLayout optimizes code layout and structure
+// OptimizeLayout optimizes code layout and structure.
 func (fm *ConcreteFormatManager) OptimizeLayout(code *GeneratedCode) error {
 	if code == nil {
-		return fmt.Errorf("code cannot be nil")
+		return ErrCodeNil
 	}
 
 	// Optimize method ordering for readability
@@ -268,14 +280,15 @@ func (fm *ConcreteFormatManager) OptimizeLayout(code *GeneratedCode) error {
 	return nil
 }
 
-// ValidateFormat validates that source code meets formatting standards
+// ValidateFormat validates that source code meets formatting standards.
 func (fm *ConcreteFormatManager) ValidateFormat(source string) error {
 	if source == "" {
-		return fmt.Errorf("source code is empty")
+		return ErrSourceCodeEmpty
 	}
 
 	// Parse the source to ensure it's valid Go code
 	fset := token.NewFileSet()
+
 	_, err := parser.ParseFile(fset, "", source, parser.ParseComments)
 	if err != nil {
 		return fmt.Errorf("source code parsing failed: %w", err)
@@ -289,17 +302,17 @@ func (fm *ConcreteFormatManager) ValidateFormat(source string) error {
 		}
 
 		if formatted != source {
-			return fmt.Errorf("source code is not properly formatted")
+			return ErrSourceCodeNotProperlyFormatted
 		}
 	}
 
 	return nil
 }
 
-// FormatImports formats import declarations
+// FormatImports formats import declarations.
 func (fm *ConcreteFormatManager) FormatImports(imports *ImportDeclaration) (*ImportDeclaration, error) {
 	if imports == nil {
-		return nil, fmt.Errorf("import declaration cannot be nil")
+		return nil, ErrImportDeclarationNil
 	}
 
 	formattedImports := &ImportDeclaration{
@@ -351,7 +364,7 @@ func (fm *ConcreteFormatManager) FormatImports(imports *ImportDeclaration) (*Imp
 
 func (fm *ConcreteFormatManager) formatMethodCode(method *MethodCode) error {
 	if method == nil {
-		return fmt.Errorf("method code cannot be nil")
+		return ErrMethodCodeNil
 	}
 
 	// Format method body
@@ -371,6 +384,7 @@ func (fm *ConcreteFormatManager) formatMethodCode(method *MethodCode) error {
 		if field.Assignment != "" {
 			field.Assignment = fm.formatCodeBlock(field.Assignment, 1)
 		}
+
 		if field.ErrorCheck != "" {
 			field.ErrorCheck = fm.formatCodeBlock(field.ErrorCheck, 1)
 		}
@@ -381,6 +395,7 @@ func (fm *ConcreteFormatManager) formatMethodCode(method *MethodCode) error {
 
 func (fm *ConcreteFormatManager) formatCodeBlock(code string, indentLevel int) string {
 	lines := strings.Split(code, "\n")
+
 	var formatted []string
 
 	for _, line := range lines {
@@ -413,9 +428,11 @@ func (fm *ConcreteFormatManager) assembleSourceCode(code *GeneratedCode) (string
 	// Base code (existing code)
 	if code.BaseCode != "" {
 		source.WriteString(code.BaseCode)
+
 		if !strings.HasSuffix(code.BaseCode, "\n") {
 			source.WriteString("\n")
 		}
+
 		source.WriteString("\n")
 	}
 
@@ -464,11 +481,13 @@ func (fm *ConcreteFormatManager) optimizeImportGrouping(imports *ImportDeclarati
 
 func (fm *ConcreteFormatManager) filterUsedImports(imports []*Import) []*Import {
 	var used []*Import
+
 	for _, imp := range imports {
 		if imp.Used {
 			used = append(used, imp)
 		}
 	}
+
 	return used
 }
 
@@ -478,6 +497,7 @@ func (fm *ConcreteFormatManager) generateImportBlock(imports *ImportDeclaration)
 	}
 
 	var block strings.Builder
+
 	block.WriteString("import (\n")
 
 	// Standard library imports
@@ -489,6 +509,7 @@ func (fm *ConcreteFormatManager) generateImportBlock(imports *ImportDeclaration)
 				block.WriteString(fmt.Sprintf("\t\"%s\"\n", imp.Path))
 			}
 		}
+
 		if len(imports.ThirdPartyLibs) > 0 || len(imports.LocalImports) > 0 {
 			block.WriteString("\n")
 		}
@@ -503,6 +524,7 @@ func (fm *ConcreteFormatManager) generateImportBlock(imports *ImportDeclaration)
 				block.WriteString(fmt.Sprintf("\t\"%s\"\n", imp.Path))
 			}
 		}
+
 		if len(imports.LocalImports) > 0 {
 			block.WriteString("\n")
 		}
@@ -520,6 +542,7 @@ func (fm *ConcreteFormatManager) generateImportBlock(imports *ImportDeclaration)
 	}
 
 	block.WriteString(")")
+
 	return block.String()
 }
 
@@ -558,6 +581,7 @@ func (p *DefaultGoFmtProcessor) Format(source string) (string, error) {
 func (p *DefaultGoFmtProcessor) FormatWithTabWidth(source string, tabWidth int) (string, error) {
 	// Use Go's format package
 	fset := token.NewFileSet()
+
 	file, err := parser.ParseFile(fset, "", source, parser.ParseComments)
 	if err != nil {
 		return source, fmt.Errorf("parsing failed: %w", err)

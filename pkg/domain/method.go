@@ -1,11 +1,25 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
 
-// Parameter represents a method parameter
+// Static errors for err113 compliance.
+var (
+	ErrMethodNameEmpty        = errors.New("method name cannot be empty")
+	ErrSourceTypeNil          = errors.New("source type cannot be nil")
+	ErrDestinationTypeNil     = errors.New("destination type cannot be nil")
+	ErrMappingNil             = errors.New("mapping cannot be nil")
+	ErrMappingAlreadyExists   = errors.New("mapping already exists")
+	ErrBatchIDEmpty           = errors.New("batch ID cannot be empty")
+	ErrBatchMustContainFields = errors.New("batch must contain at least one field")
+	ErrDependencyBatchIDEmpty = errors.New("dependency batch ID cannot be empty")
+	ErrBatchSelfReference     = errors.New("batch cannot depend on itself")
+)
+
+// Parameter represents a method parameter.
 type Parameter struct {
 	Name     string    `json:"name"`
 	Type     Type      `json:"type"`
@@ -13,7 +27,7 @@ type Parameter struct {
 	Position int       `json:"position"`
 }
 
-// ReturnValue represents a method return value
+// ReturnValue represents a method return value.
 type ReturnValue struct {
 	Name     string    `json:"name"`
 	Type     Type      `json:"type"`
@@ -22,7 +36,7 @@ type ReturnValue struct {
 	IsError  bool      `json:"is_error"`
 }
 
-// TypeInfo contains detailed information about a type's structure
+// TypeInfo contains detailed information about a type's structure.
 type TypeInfo struct {
 	Name       string      `json:"name"`
 	Kind       TypeKind    `json:"kind"`
@@ -31,7 +45,7 @@ type TypeInfo struct {
 	TypeParams []TypeParam `json:"type_params"`
 }
 
-// Method represents a conversion method to be generated
+// Method represents a conversion method to be generated.
 type Method struct {
 	Name               string           `json:"name"`
 	SourceType         Type             `json:"source_type"`
@@ -44,16 +58,18 @@ type Method struct {
 	fieldMappings      []*FieldMapping  `json:"-"`
 }
 
-// NewMethod creates a validated method
+// NewMethod creates a validated method.
 func NewMethod(name string, sourceType, destType Type) (*Method, error) {
 	if name == "" {
-		return nil, fmt.Errorf("method name cannot be empty")
+		return nil, ErrMethodNameEmpty
 	}
+
 	if sourceType == nil {
-		return nil, fmt.Errorf("source type cannot be nil")
+		return nil, ErrSourceTypeNil
 	}
+
 	if destType == nil {
-		return nil, fmt.Errorf("destination type cannot be nil")
+		return nil, ErrDestinationTypeNil
 	}
 
 	return &Method{
@@ -66,60 +82,62 @@ func NewMethod(name string, sourceType, destType Type) (*Method, error) {
 	}, nil
 }
 
-// AddMapping adds a field mapping to the method
+// AddMapping adds a field mapping to the method.
 func (m *Method) AddMapping(mapping *FieldMapping) error {
 	if mapping == nil {
-		return fmt.Errorf("mapping cannot be nil")
+		return ErrMappingNil
 	}
 
 	// Check for duplicate mapping IDs
 	for _, existing := range m.Mappings {
 		if existing.ID == mapping.ID {
-			return fmt.Errorf("mapping with ID %s already exists", mapping.ID)
+			return fmt.Errorf("%w: %s", ErrMappingAlreadyExists, mapping.ID)
 		}
 	}
 
 	m.Mappings = append(m.Mappings, mapping)
 	m.fieldMappings = append(m.fieldMappings, mapping)
+
 	return nil
 }
 
-// SourceParams returns the source parameters
+// SourceParams returns the source parameters.
 func (m *Method) SourceParams() []*Parameter {
 	return m.sourceParams
 }
 
-// SetSourceParams sets the source parameters
+// SetSourceParams sets the source parameters.
 func (m *Method) SetSourceParams(params []*Parameter) {
 	m.sourceParams = params
 }
 
-// DestinationReturns returns the destination return values
+// DestinationReturns returns the destination return values.
 func (m *Method) DestinationReturns() []*ReturnValue {
 	return m.destinationReturns
 }
 
-// SetDestinationReturns sets the destination return values
+// SetDestinationReturns sets the destination return values.
 func (m *Method) SetDestinationReturns(returns []*ReturnValue) {
 	m.destinationReturns = returns
 }
 
-// FieldMappings returns the field mappings
+// FieldMappings returns the field mappings.
 func (m *Method) FieldMappings() []*FieldMapping {
 	return m.fieldMappings
 }
 
-// GetMappingByID retrieves a mapping by its ID
+// GetMappingByID retrieves a mapping by its ID.
 func (m *Method) GetMappingByID(id string) (*FieldMapping, bool) {
 	for _, mapping := range m.Mappings {
 		if mapping.ID == id {
 			return mapping, true
 		}
 	}
+
 	return nil, false
 }
 
-// MethodConfig holds method-level configuration
+// MethodConfig holds method-level configuration.
 type MethodConfig struct {
 	Style         StyleConfig        `json:"style"`          // return vs arg style
 	Receiver      *ReceiverConfig    `json:"receiver"`       // optional receiver
@@ -132,7 +150,7 @@ type MethodConfig struct {
 	PostProcess   []*ManipulatorFunc `json:"post_process"`   // post-processing functions
 }
 
-// NewMethodConfig creates a default method configuration
+// NewMethodConfig creates a default method configuration.
 func NewMethodConfig() *MethodConfig {
 	return &MethodConfig{
 		Style:         StyleReturn,
@@ -147,7 +165,7 @@ func NewMethodConfig() *MethodConfig {
 	}
 }
 
-// StyleConfig defines the generated function signature style
+// StyleConfig defines the generated function signature style.
 type StyleConfig int
 
 const (
@@ -162,17 +180,17 @@ func (s StyleConfig) String() string {
 	case StyleArg:
 		return "arg"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
-// ReceiverConfig specifies receiver method generation
+// ReceiverConfig specifies receiver method generation.
 type ReceiverConfig struct {
 	Variable string `json:"variable"`
 	Type     Type   `json:"type"`
 }
 
-// ManipulatorFunc represents pre/post processing functions
+// ManipulatorFunc represents pre/post processing functions.
 type ManipulatorFunc struct {
 	Name       string   `json:"name"`
 	Package    string   `json:"package"`
@@ -181,7 +199,7 @@ type ManipulatorFunc struct {
 	ReturnsErr bool     `json:"returns_err"`
 }
 
-// MethodSignature describes the generated method signature
+// MethodSignature describes the generated method signature.
 type MethodSignature struct {
 	Name     string       `json:"name"`
 	Receiver *Receiver    `json:"receiver"`
@@ -190,14 +208,14 @@ type MethodSignature struct {
 	HasError bool         `json:"has_error"`
 }
 
-// Receiver represents a method receiver
+// Receiver represents a method receiver.
 type Receiver struct {
 	Name    string `json:"name"`
 	Type    Type   `json:"type"`
 	Pointer bool   `json:"pointer"`
 }
 
-// ExecutionPlan defines how to execute field conversions concurrently
+// ExecutionPlan defines how to execute field conversions concurrently.
 type ExecutionPlan struct {
 	ID           string                 `json:"id"`
 	Methods      map[string]*MethodPlan `json:"methods"`
@@ -206,7 +224,7 @@ type ExecutionPlan struct {
 	Metrics      *PlanMetrics           `json:"metrics"`
 }
 
-// MethodPlan represents the execution plan for a single method
+// MethodPlan represents the execution plan for a single method.
 type MethodPlan struct {
 	Method              *Method             `json:"method"`
 	MethodName          string              `json:"method_name"`
@@ -220,7 +238,7 @@ type MethodPlan struct {
 	EstimatedDurationMS int64               `json:"estimated_duration_ms"`
 }
 
-// ConcurrentBatch groups fields that can be processed in parallel
+// ConcurrentBatch groups fields that can be processed in parallel.
 type ConcurrentBatch struct {
 	ID          string          `json:"id"`
 	Fields      []*FieldMapping `json:"fields"`
@@ -229,13 +247,14 @@ type ConcurrentBatch struct {
 	EstimatedMS int64           `json:"estimated_ms"`
 }
 
-// NewConcurrentBatch creates a validated concurrent batch
+// NewConcurrentBatch creates a validated concurrent batch.
 func NewConcurrentBatch(id string, fields []*FieldMapping) (*ConcurrentBatch, error) {
 	if id == "" {
-		return nil, fmt.Errorf("batch ID cannot be empty")
+		return nil, ErrBatchIDEmpty
 	}
+
 	if len(fields) == 0 {
-		return nil, fmt.Errorf("batch must contain at least one field")
+		return nil, ErrBatchMustContainFields
 	}
 
 	return &ConcurrentBatch{
@@ -247,13 +266,14 @@ func NewConcurrentBatch(id string, fields []*FieldMapping) (*ConcurrentBatch, er
 	}, nil
 }
 
-// AddDependency adds a batch dependency
+// AddDependency adds a batch dependency.
 func (cb *ConcurrentBatch) AddDependency(batchID string) error {
 	if batchID == "" {
-		return fmt.Errorf("dependency batch ID cannot be empty")
+		return ErrDependencyBatchIDEmpty
 	}
+
 	if batchID == cb.ID {
-		return fmt.Errorf("batch cannot depend on itself")
+		return ErrBatchSelfReference
 	}
 
 	// Check if dependency already exists
@@ -264,10 +284,11 @@ func (cb *ConcurrentBatch) AddDependency(batchID string) error {
 	}
 
 	cb.DependsOn = append(cb.DependsOn, batchID)
+
 	return nil
 }
 
-// ResourceLimits defines execution constraints
+// ResourceLimits defines execution constraints.
 type ResourceLimits struct {
 	MaxGoroutines       int   `json:"max_goroutines"`
 	MaxWorkers          int   `json:"max_workers"`
@@ -280,7 +301,7 @@ type ResourceLimits struct {
 	EnableMemoryPool    bool  `json:"enable_memory_pool"`
 }
 
-// NewResourceLimits creates default resource limits
+// NewResourceLimits creates default resource limits.
 func NewResourceLimits() *ResourceLimits {
 	return &ResourceLimits{
 		MaxGoroutines:       10,
@@ -291,7 +312,7 @@ func NewResourceLimits() *ResourceLimits {
 	}
 }
 
-// ResourceAllocation represents allocated resources for execution
+// ResourceAllocation represents allocated resources for execution.
 type ResourceAllocation struct {
 	MaxConcurrentBatches int                  `json:"max_concurrent_batches"`
 	MemoryLimitMB        int                  `json:"memory_limit_mb"`
@@ -299,7 +320,7 @@ type ResourceAllocation struct {
 	GoroutinePool        *GoroutinePoolConfig `json:"goroutine_pool"`
 }
 
-// GoroutinePoolConfig configures the worker goroutine pool
+// GoroutinePoolConfig configures the worker goroutine pool.
 type GoroutinePoolConfig struct {
 	MinWorkers  int `json:"min_workers"`
 	MaxWorkers  int `json:"max_workers"`
@@ -307,7 +328,7 @@ type GoroutinePoolConfig struct {
 	IdleTimeout int `json:"idle_timeout_ms"`
 }
 
-// ExecutionStrategy determines how to balance performance vs resources
+// ExecutionStrategy determines how to balance performance vs resources.
 type ExecutionStrategy int
 
 const (
@@ -328,11 +349,11 @@ func (s ExecutionStrategy) String() string {
 	case StrategyAdaptive:
 		return "adaptive"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
-// PlanMetrics track planning performance and characteristics
+// PlanMetrics track planning performance and characteristics.
 type PlanMetrics struct {
 	PlanningDurationMS    int64   `json:"planning_duration_ms"`
 	MethodsPlanned        int     `json:"methods_planned"`
@@ -342,7 +363,7 @@ type PlanMetrics struct {
 	EstimatedSpeedupRatio float64 `json:"estimated_speedup_ratio"`
 }
 
-// GenerationResult represents the outcome of processing
+// GenerationResult represents the outcome of processing.
 type GenerationResult struct {
 	Methods     []*Method          `json:"methods"`
 	BaseCode    string             `json:"base_code"`
@@ -352,7 +373,7 @@ type GenerationResult struct {
 	Diagnostics []Diagnostic       `json:"diagnostics"`
 }
 
-// GeneratedFunction represents a complete generated function
+// GeneratedFunction represents a complete generated function.
 type GeneratedFunction struct {
 	Name      string            `json:"name"`
 	Signature string            `json:"signature"`
@@ -362,14 +383,14 @@ type GeneratedFunction struct {
 	Metadata  *FunctionMetadata `json:"metadata"`
 }
 
-// Comment represents a code comment
+// Comment represents a code comment.
 type Comment struct {
 	Text     string `json:"text"`
 	Position int    `json:"position"`
 	Type     string `json:"type"` // "line", "block", "doc"
 }
 
-// FunctionMetadata contains metadata about the generated function
+// FunctionMetadata contains metadata about the generated function.
 type FunctionMetadata struct {
 	GeneratedAt     time.Time `json:"generated_at"`
 	Version         string    `json:"version"`
@@ -378,7 +399,7 @@ type FunctionMetadata struct {
 	PerformanceHint string    `json:"performance_hint"`
 }
 
-// FieldResult represents the result of processing a single field
+// FieldResult represents the result of processing a single field.
 type FieldResult struct {
 	FieldID     string           `json:"field_id"`
 	Code        *GeneratedCode   `json:"code"`
@@ -387,7 +408,7 @@ type FieldResult struct {
 	DurationMS  int64            `json:"duration_ms"`
 }
 
-// ProcessingMetrics track performance and resource usage
+// ProcessingMetrics track performance and resource usage.
 type ProcessingMetrics struct {
 	TotalDurationMS  int64   `json:"total_duration_ms"`
 	ConcurrentFields int     `json:"concurrent_fields"`
@@ -396,7 +417,7 @@ type ProcessingMetrics struct {
 	CacheHitRate     float64 `json:"cache_hit_rate"`
 }
 
-// Diagnostic represents processing diagnostics and warnings
+// Diagnostic represents processing diagnostics and warnings.
 type Diagnostic struct {
 	Level   DiagnosticLevel `json:"level"`
 	Message string          `json:"message"`
@@ -405,7 +426,7 @@ type Diagnostic struct {
 	Code    string          `json:"code"`
 }
 
-// DiagnosticLevel represents the severity of a diagnostic
+// DiagnosticLevel represents the severity of a diagnostic.
 type DiagnosticLevel int
 
 const (
@@ -423,30 +444,30 @@ func (d DiagnosticLevel) String() string {
 	case DiagnosticError:
 		return "error"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
 // Helper functions for complexity and time estimation
 
-// calculateBatchComplexity estimates the complexity of processing a batch
+// calculateBatchComplexity estimates the complexity of processing a batch.
 func calculateBatchComplexity(fields []*FieldMapping) int {
 	complexity := 0
 	for _, field := range fields {
 		// Base complexity for each field
-		complexity += 1
+		complexity++
 
 		// Additional complexity based on strategy
 		switch field.StrategyName {
-		case "direct":
+		case DirectStrategyType:
 			complexity += 0
 		case "typecast":
-			complexity += 1
-		case "method":
+			complexity++
+		case MethodStrategyType:
 			complexity += 2
 		case "converter":
 			complexity += 3
-		case "literal":
+		case LiteralStrategyType:
 			complexity += 0
 		default:
 			complexity += 2
@@ -459,22 +480,22 @@ func calculateBatchComplexity(fields []*FieldMapping) int {
 	return complexity
 }
 
-// estimateBatchTime estimates processing time for a batch
+// estimateBatchTime estimates processing time for a batch.
 func estimateBatchTime(fields []*FieldMapping) int64 {
 	baseTimeMS := int64(len(fields)) // 1ms per field base time
 
 	for _, field := range fields {
 		// Add time based on strategy complexity
 		switch field.StrategyName {
-		case "direct":
+		case DirectStrategyType:
 			baseTimeMS += 0
 		case "typecast":
-			baseTimeMS += 1
-		case "method":
+			baseTimeMS++
+		case MethodStrategyType:
 			baseTimeMS += 2
 		case "converter":
 			baseTimeMS += 5
-		case "literal":
+		case LiteralStrategyType:
 			baseTimeMS += 0
 		default:
 			baseTimeMS += 3
@@ -484,7 +505,7 @@ func estimateBatchTime(fields []*FieldMapping) int64 {
 	return baseTimeMS
 }
 
-// MethodStrategy defines different strategies for method execution
+// MethodStrategy defines different strategies for method execution.
 type MethodStrategy int
 
 const (
@@ -505,11 +526,11 @@ func (s MethodStrategy) String() string {
 	case MethodStrategyAdaptive:
 		return "adaptive"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
-// MethodResult represents the result of executing a single method
+// MethodResult represents the result of executing a single method.
 type MethodResult struct {
 	Method      *Method                `json:"method"`
 	Code        string                 `json:"code"`
@@ -521,7 +542,7 @@ type MethodResult struct {
 	DurationMS  int64                  `json:"duration_ms"`
 }
 
-// ExecutionResults represents the complete results of pipeline execution
+// ExecutionResults represents the complete results of pipeline execution.
 type ExecutionResults struct {
 	Methods     []*MethodResult        `json:"methods"`
 	Success     bool                   `json:"success"`
@@ -532,7 +553,7 @@ type ExecutionResults struct {
 	BaseCode    string                 `json:"base_code"`
 }
 
-// ExecutionError represents an error that occurred during execution
+// ExecutionError represents an error that occurred during execution.
 type ExecutionError struct {
 	Type       string                 `json:"type"`
 	Message    string                 `json:"message"`
@@ -545,12 +566,13 @@ type ExecutionError struct {
 	Context    map[string]interface{} `json:"context,omitempty"`
 }
 
-// Error implements the error interface
+// Error implements the error interface.
 func (e *ExecutionError) Error() string {
 	if e.Method != "" && e.Field != "" {
 		return fmt.Sprintf("%s error in %s.%s.%s: %s", e.Type, e.Component, e.Method, e.Field, e.Message)
 	} else if e.Method != "" {
 		return fmt.Sprintf("%s error in %s.%s: %s", e.Type, e.Component, e.Method, e.Message)
 	}
+
 	return fmt.Sprintf("%s error in %s: %s", e.Type, e.Component, e.Message)
 }

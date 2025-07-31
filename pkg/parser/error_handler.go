@@ -9,7 +9,15 @@ import (
 	"time"
 )
 
-// ErrorSeverity represents the severity level of an error
+// Custom context key types to avoid SA1029 staticcheck violations.
+type contextKey string
+
+const (
+	methodKey    contextKey = "method"
+	interfaceKey contextKey = "interface"
+)
+
+// ErrorSeverity represents the severity level of an error.
 type ErrorSeverity int
 
 const (
@@ -19,7 +27,7 @@ const (
 	SeverityCritical
 )
 
-// String returns the string representation of ErrorSeverity
+// String returns the string representation of ErrorSeverity.
 func (s ErrorSeverity) String() string {
 	switch s {
 	case SeverityInfo:
@@ -35,7 +43,7 @@ func (s ErrorSeverity) String() string {
 	}
 }
 
-// ErrorCategory represents different categories of parsing errors
+// ErrorCategory represents different categories of parsing errors.
 type ErrorCategory int
 
 const (
@@ -49,7 +57,7 @@ const (
 	CategoryPerformance
 )
 
-// String returns the string representation of ErrorCategory
+// String returns the string representation of ErrorCategory.
 func (c ErrorCategory) String() string {
 	switch c {
 	case CategoryGeneral:
@@ -73,7 +81,7 @@ func (c ErrorCategory) String() string {
 	}
 }
 
-// ContextualError represents a rich error with comprehensive context
+// ContextualError represents a rich error with comprehensive context.
 type ContextualError struct {
 	// Core error information
 	Message   string        `json:"message"`
@@ -101,7 +109,7 @@ type ContextualError struct {
 	Related []*ContextualError `json:"related,omitempty"`
 }
 
-// Error implements the error interface
+// Error implements the error interface.
 func (ce *ContextualError) Error() string {
 	var builder strings.Builder
 
@@ -125,6 +133,7 @@ func (ce *ContextualError) Error() string {
 	if ce.Interface != "" {
 		builder.WriteString(fmt.Sprintf(" [interface: %s]", ce.Interface))
 	}
+
 	if ce.Method != "" {
 		builder.WriteString(fmt.Sprintf(" [method: %s]", ce.Method))
 	}
@@ -132,20 +141,21 @@ func (ce *ContextualError) Error() string {
 	return builder.String()
 }
 
-// Unwrap returns the underlying cause error for error unwrapping
+// Unwrap returns the underlying cause error for error unwrapping.
 func (ce *ContextualError) Unwrap() error {
 	return ce.Cause
 }
 
-// Is implements error identity checking
+// Is implements error identity checking.
 func (ce *ContextualError) Is(target error) bool {
 	if otherContextual, ok := target.(*ContextualError); ok {
 		return ce.Code == otherContextual.Code && ce.Category == otherContextual.Category
 	}
+
 	return false
 }
 
-// ErrorHandler provides enhanced error handling capabilities
+// ErrorHandler provides enhanced error handling capabilities.
 type ErrorHandler struct {
 	fileSet          *token.FileSet
 	sourcePath       string
@@ -153,7 +163,7 @@ type ErrorHandler struct {
 	maxSuggestions   int
 }
 
-// NewErrorHandler creates a new error handler
+// NewErrorHandler creates a new error handler.
 func NewErrorHandler(fset *token.FileSet, sourcePath string) *ErrorHandler {
 	return &ErrorHandler{
 		fileSet:          fset,
@@ -163,7 +173,7 @@ func NewErrorHandler(fset *token.FileSet, sourcePath string) *ErrorHandler {
 	}
 }
 
-// CreateError creates a new contextual error with comprehensive information
+// CreateError creates a new contextual error with comprehensive information.
 func (eh *ErrorHandler) CreateError(opts ErrorOptions) *ContextualError {
 	err := &ContextualError{
 		Message:   opts.Message,
@@ -210,7 +220,7 @@ func (eh *ErrorHandler) CreateError(opts ErrorOptions) *ContextualError {
 	return err
 }
 
-// ErrorOptions contains options for creating contextual errors
+// ErrorOptions contains options for creating contextual errors.
 type ErrorOptions struct {
 	Message    string
 	Cause      error
@@ -226,16 +236,17 @@ type ErrorOptions struct {
 	Metadata   map[string]interface{}
 }
 
-// Wrap wraps an existing error with additional context
+// Wrap wraps an existing error with additional context.
 func (eh *ErrorHandler) Wrap(err error, opts ErrorOptions) *ContextualError {
 	opts.Cause = err
 	if opts.Message == "" {
 		opts.Message = err.Error()
 	}
+
 	return eh.CreateError(opts)
 }
 
-// WrapWithContext wraps an error with context information
+// WrapWithContext wraps an error with context information.
 func (eh *ErrorHandler) WrapWithContext(ctx context.Context, err error, message string) *ContextualError {
 	opts := ErrorOptions{
 		Message:  message,
@@ -246,12 +257,13 @@ func (eh *ErrorHandler) WrapWithContext(ctx context.Context, err error, message 
 
 	// Extract context information if available
 	if ctx != nil {
-		if value := ctx.Value("method"); value != nil {
+		if value := ctx.Value(methodKey); value != nil {
 			if method, ok := value.(string); ok {
 				opts.Method = method
 			}
 		}
-		if value := ctx.Value("interface"); value != nil {
+
+		if value := ctx.Value(interfaceKey); value != nil {
 			if intf, ok := value.(string); ok {
 				opts.Interface = intf
 			}
@@ -261,17 +273,18 @@ func (eh *ErrorHandler) WrapWithContext(ctx context.Context, err error, message 
 	return eh.CreateError(opts)
 }
 
-// Chain creates a chain of related errors
+// Chain creates a chain of related errors.
 func (eh *ErrorHandler) Chain(primary *ContextualError, related ...*ContextualError) *ContextualError {
 	if primary == nil {
 		return nil
 	}
 
 	primary.Related = append(primary.Related, related...)
+
 	return primary
 }
 
-// RecoverFromPanic recovers from a panic and converts it to a contextual error
+// RecoverFromPanic recovers from a panic and converts it to a contextual error.
 func (eh *ErrorHandler) RecoverFromPanic(recovered interface{}) *ContextualError {
 	return eh.CreateError(ErrorOptions{
 		Message:  fmt.Sprintf("panic recovered: %v", recovered),
@@ -284,13 +297,14 @@ func (eh *ErrorHandler) RecoverFromPanic(recovered interface{}) *ContextualError
 	})
 }
 
-// captureStackTrace captures the current stack trace
+// captureStackTrace captures the current stack trace.
 func (eh *ErrorHandler) captureStackTrace() []string {
 	const maxFrames = 10
 	pcs := make([]uintptr, maxFrames)
 	n := runtime.Callers(3, pcs) // Skip captureStackTrace, CreateError, and the caller
 
 	frames := runtime.CallersFrames(pcs[:n])
+
 	var stackTrace []string
 
 	for {
@@ -301,6 +315,7 @@ func (eh *ErrorHandler) captureStackTrace() []string {
 			if !more {
 				break
 			}
+
 			continue
 		}
 
@@ -314,19 +329,19 @@ func (eh *ErrorHandler) captureStackTrace() []string {
 	return stackTrace
 }
 
-// categorizeError attempts to categorize an error based on its content using simplified classification
+// categorizeError attempts to categorize an error based on its content using simplified classification.
 func (eh *ErrorHandler) categorizeError(err error) ErrorCategory {
 	category, _, _ := ClassifyError(err)
 	return category
 }
 
-// determineSeverity determines the severity of an error using simplified classification
+// determineSeverity determines the severity of an error using simplified classification.
 func (eh *ErrorHandler) determineSeverity(err error) ErrorSeverity {
 	_, severity, _ := ClassifyError(err)
 	return severity
 }
 
-// generateSuggestions generates helpful suggestions for resolving errors using simplified classification
+// generateSuggestions generates helpful suggestions for resolving errors using simplified classification.
 func (eh *ErrorHandler) generateSuggestions(err *ContextualError) []string {
 	if err.Cause != nil {
 		// Get the primary suggestion from error classification
@@ -345,7 +360,7 @@ func (eh *ErrorHandler) generateSuggestions(err *ContextualError) []string {
 	return []string{"Check the error message for more details."}
 }
 
-// IsTemporary checks if an error is temporary and might succeed on retry using simplified classification
+// IsTemporary checks if an error is temporary and might succeed on retry using simplified classification.
 func (eh *ErrorHandler) IsTemporary(err error) bool {
 	if contextual, ok := err.(*ContextualError); ok {
 		return IsRetryableError(contextual.Category) || IsSkippableError(contextual.Severity)
@@ -353,10 +368,11 @@ func (eh *ErrorHandler) IsTemporary(err error) bool {
 
 	// Fallback: classify the error directly
 	category, severity, _ := ClassifyError(err)
+
 	return IsRetryableError(category) || IsSkippableError(severity)
 }
 
-// ShouldRetry determines if an operation should be retried based on the error
+// ShouldRetry determines if an operation should be retried based on the error.
 func (eh *ErrorHandler) ShouldRetry(err error, attempt int, maxAttempts int) bool {
 	if err == nil || attempt >= maxAttempts {
 		return false
@@ -365,10 +381,11 @@ func (eh *ErrorHandler) ShouldRetry(err error, attempt int, maxAttempts int) boo
 	return eh.IsTemporary(err)
 }
 
-// GetRetryDelay calculates the delay before retrying an operation
+// GetRetryDelay calculates the delay before retrying an operation.
 func (eh *ErrorHandler) GetRetryDelay(attempt int) time.Duration {
 	// Exponential backoff with jitter
 	base := time.Duration(100<<uint(attempt)) * time.Millisecond
 	jitter := time.Duration(attempt*50) * time.Millisecond
+
 	return base + jitter
 }

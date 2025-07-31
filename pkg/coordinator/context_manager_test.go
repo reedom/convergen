@@ -238,6 +238,7 @@ func TestContextManagerGetContextInfo(t *testing.T) {
 
 	// Create context with metadata
 	parentCtx := context.Background()
+
 	ctx, cancel := mgr.CreatePipelineContext(parentCtx, time.Minute)
 	defer cancel()
 
@@ -324,6 +325,7 @@ func TestGetPipelineID(t *testing.T) {
 
 	// Test context without pipeline ID
 	emptyCtx := context.Background()
+
 	_, ok = GetPipelineID(emptyCtx)
 	if ok {
 		t.Error("Expected not to find pipeline ID in empty context")
@@ -344,6 +346,7 @@ func TestGetComponentName(t *testing.T) {
 
 	// Test context without component name
 	emptyCtx := context.Background()
+
 	_, ok = GetComponentName(emptyCtx)
 	if ok {
 		t.Error("Expected not to find component name in empty context")
@@ -365,6 +368,7 @@ func TestGetStartTime(t *testing.T) {
 
 	// Test context without start time
 	emptyCtx := context.Background()
+
 	_, ok = GetStartTime(emptyCtx)
 	if ok {
 		t.Error("Expected not to find start time in empty context")
@@ -427,7 +431,7 @@ func TestContextManagerConcurrentAccess(t *testing.T) {
 
 	// Concurrent context operations
 	for i := 0; i < 10; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer func() { done <- true }()
 
 			for j := 0; j < 50; j++ {
@@ -481,6 +485,7 @@ func BenchmarkContextManagerCreatePipelineContext(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		ctx, cancel := mgr.CreatePipelineContext(parentCtx, timeout)
 		_ = ctx
+
 		cancel()
 	}
 }

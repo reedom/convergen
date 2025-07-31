@@ -804,7 +804,7 @@ func (ap *AdaptiveParser) GetAdaptiveStrategy() ParseStrategy {
 }
 
 // determineStrategy analyzes input characteristics to determine optimal parsing strategy.
-func (ap *AdaptiveParser) determineStrategy(sourcePath, destPath string) ParseStrategy {
+func (ap *AdaptiveParser) determineStrategy(sourcePath, _ string) ParseStrategy {
 	// Quick heuristics for single file analysis
 	// Check file size - large files benefit from concurrent processing
 	if stat, err := os.Stat(sourcePath); err == nil {

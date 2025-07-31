@@ -8,7 +8,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// Event type constants for the generation pipeline
+// Event type constants for the generation pipeline.
 const (
 	EventTypeParseStarted   = "parse.started"
 	EventTypeParsed         = "parse.completed"
@@ -22,13 +22,13 @@ const (
 	EventTypeError          = "error.occurred"
 )
 
-// ParseStartedEvent signals the beginning of parsing
+// ParseStartedEvent signals the beginning of parsing.
 type ParseStartedEvent struct {
 	*BaseEvent
 	SourcePath string `json:"source_path"`
 }
 
-// NewParseStartedEvent creates a new parse started event
+// NewParseStartedEvent creates a new parse started event.
 func NewParseStartedEvent(ctx context.Context, sourcePath string) *ParseStartedEvent {
 	return &ParseStartedEvent{
 		BaseEvent:  NewBaseEvent(EventTypeParseStarted, ctx),
@@ -36,7 +36,7 @@ func NewParseStartedEvent(ctx context.Context, sourcePath string) *ParseStartedE
 	}
 }
 
-// ParsedEvent represents successful parsing completion
+// ParsedEvent represents successful parsing completion.
 type ParsedEvent struct {
 	*BaseEvent
 	Methods  []*domain.Method `json:"methods"`
@@ -44,7 +44,7 @@ type ParsedEvent struct {
 	Metrics  *ParseMetrics    `json:"metrics"`
 }
 
-// NewParsedEvent creates a new parsed event
+// NewParsedEvent creates a new parsed event.
 func NewParsedEvent(ctx context.Context, methods []*domain.Method, baseCode string) *ParsedEvent {
 	return &ParsedEvent{
 		BaseEvent: NewBaseEvent(EventTypeParsed, ctx),
@@ -54,7 +54,7 @@ func NewParsedEvent(ctx context.Context, methods []*domain.Method, baseCode stri
 	}
 }
 
-// ParseMetrics tracks parsing performance
+// ParseMetrics tracks parsing performance.
 type ParseMetrics struct {
 	ParseDurationMS      int64   `json:"parse_duration_ms"`
 	InterfacesFound      int     `json:"interfaces_found"`
@@ -64,13 +64,13 @@ type ParseMetrics struct {
 	CacheHitRate         float64 `json:"cache_hit_rate"`
 }
 
-// PlanStartedEvent signals the beginning of planning
+// PlanStartedEvent signals the beginning of planning.
 type PlanStartedEvent struct {
 	*BaseEvent
 	Methods []*domain.Method `json:"methods"`
 }
 
-// NewPlanStartedEvent creates a new plan started event
+// NewPlanStartedEvent creates a new plan started event.
 func NewPlanStartedEvent(ctx context.Context, methods []*domain.Method) *PlanStartedEvent {
 	return &PlanStartedEvent{
 		BaseEvent: NewBaseEvent(EventTypePlanStarted, ctx),
@@ -78,14 +78,14 @@ func NewPlanStartedEvent(ctx context.Context, methods []*domain.Method) *PlanSta
 	}
 }
 
-// PlannedEvent represents successful planning completion
+// PlannedEvent represents successful planning completion.
 type PlannedEvent struct {
 	*BaseEvent
 	Plan    *domain.ExecutionPlan `json:"plan"`
 	Metrics *PlanMetrics          `json:"metrics"`
 }
 
-// NewPlannedEvent creates a new planned event
+// NewPlannedEvent creates a new planned event.
 func NewPlannedEvent(ctx context.Context, plan *domain.ExecutionPlan) *PlannedEvent {
 	return &PlannedEvent{
 		BaseEvent: NewBaseEvent(EventTypePlanned, ctx),
@@ -94,7 +94,7 @@ func NewPlannedEvent(ctx context.Context, plan *domain.ExecutionPlan) *PlannedEv
 	}
 }
 
-// PlanMetrics tracks planning performance
+// PlanMetrics tracks planning performance.
 type PlanMetrics struct {
 	PlanningDurationMS    int64   `json:"planning_duration_ms"`
 	MethodsPlanned        int     `json:"methods_planned"`
@@ -104,13 +104,13 @@ type PlanMetrics struct {
 	EstimatedSpeedupRatio float64 `json:"estimated_speedup_ratio"`
 }
 
-// ExecuteStartedEvent signals the beginning of execution
+// ExecuteStartedEvent signals the beginning of execution.
 type ExecuteStartedEvent struct {
 	*BaseEvent
 	Plan *domain.ExecutionPlan `json:"plan"`
 }
 
-// NewExecuteStartedEvent creates a new execute started event
+// NewExecuteStartedEvent creates a new execute started event.
 func NewExecuteStartedEvent(ctx context.Context, plan *domain.ExecutionPlan) *ExecuteStartedEvent {
 	return &ExecuteStartedEvent{
 		BaseEvent: NewBaseEvent(EventTypeExecuteStarted, ctx),
@@ -118,7 +118,7 @@ func NewExecuteStartedEvent(ctx context.Context, plan *domain.ExecutionPlan) *Ex
 	}
 }
 
-// ExecutedEvent represents successful execution completion
+// ExecutedEvent represents successful execution completion.
 type ExecutedEvent struct {
 	*BaseEvent
 	Results []*domain.FieldResult     `json:"results"`
@@ -126,7 +126,7 @@ type ExecutedEvent struct {
 	Metrics *ExecutionMetrics         `json:"metrics"`
 }
 
-// NewExecutedEvent creates a new executed event
+// NewExecutedEvent creates a new executed event.
 func NewExecutedEvent(ctx context.Context, results []*domain.FieldResult, errors []*domain.GenerationError) *ExecutedEvent {
 	return &ExecutedEvent{
 		BaseEvent: NewBaseEvent(EventTypeExecuted, ctx),
@@ -136,7 +136,7 @@ func NewExecutedEvent(ctx context.Context, results []*domain.FieldResult, errors
 	}
 }
 
-// ExecutionMetrics tracks execution performance
+// ExecutionMetrics tracks execution performance.
 type ExecutionMetrics struct {
 	ExecutionDurationMS int64   `json:"execution_duration_ms"`
 	FieldsProcessed     int     `json:"fields_processed"`
@@ -146,13 +146,13 @@ type ExecutionMetrics struct {
 	ErrorRate           float64 `json:"error_rate"`
 }
 
-// EmitStartedEvent signals the beginning of code emission
+// EmitStartedEvent signals the beginning of code emission.
 type EmitStartedEvent struct {
 	*BaseEvent
 	Results []*domain.FieldResult `json:"results"`
 }
 
-// NewEmitStartedEvent creates a new emit started event
+// NewEmitStartedEvent creates a new emit started event.
 func NewEmitStartedEvent(ctx context.Context, results []*domain.FieldResult) *EmitStartedEvent {
 	return &EmitStartedEvent{
 		BaseEvent: NewBaseEvent(EventTypeEmitStarted, ctx),
@@ -160,14 +160,14 @@ func NewEmitStartedEvent(ctx context.Context, results []*domain.FieldResult) *Em
 	}
 }
 
-// EmittedEvent represents successful code emission completion
+// EmittedEvent represents successful code emission completion.
 type EmittedEvent struct {
 	*BaseEvent
 	Generated *domain.GeneratedFunction `json:"generated"`
 	Metrics   *EmissionMetrics          `json:"metrics"`
 }
 
-// NewEmittedEvent creates a new emitted event
+// NewEmittedEvent creates a new emitted event.
 func NewEmittedEvent(ctx context.Context, generated *domain.GeneratedFunction) *EmittedEvent {
 	return &EmittedEvent{
 		BaseEvent: NewBaseEvent(EventTypeEmitted, ctx),
@@ -176,7 +176,7 @@ func NewEmittedEvent(ctx context.Context, generated *domain.GeneratedFunction) *
 	}
 }
 
-// EmissionMetrics tracks code emission performance
+// EmissionMetrics tracks code emission performance.
 type EmissionMetrics struct {
 	EmissionDurationMS   int64 `json:"emission_duration_ms"`
 	LinesGenerated       int   `json:"lines_generated"`
@@ -185,7 +185,7 @@ type EmissionMetrics struct {
 	CodeSizeBytes        int   `json:"code_size_bytes"`
 }
 
-// ProgressEvent represents progress updates during processing
+// ProgressEvent represents progress updates during processing.
 type ProgressEvent struct {
 	*BaseEvent
 	Phase       domain.ProcessingPhase `json:"phase"`
@@ -197,7 +197,7 @@ type ProgressEvent struct {
 	EstimatedMS int64                  `json:"estimated_ms"`
 }
 
-// NewProgressEvent creates a new progress event
+// NewProgressEvent creates a new progress event.
 func NewProgressEvent(ctx context.Context, phase domain.ProcessingPhase, current, total int, message string) *ProgressEvent {
 	progress := float64(current) / float64(total)
 	if total == 0 {
@@ -216,14 +216,15 @@ func NewProgressEvent(ctx context.Context, phase domain.ProcessingPhase, current
 	}
 }
 
-// WithTiming adds timing information to the progress event
+// WithTiming adds timing information to the progress event.
 func (e *ProgressEvent) WithTiming(elapsedMS, estimatedMS int64) *ProgressEvent {
 	e.ElapsedMS = elapsedMS
 	e.EstimatedMS = estimatedMS
+
 	return e
 }
 
-// ErrorEvent represents error occurrences during processing
+// ErrorEvent represents error occurrences during processing.
 type ErrorEvent struct {
 	*BaseEvent
 	Error       *domain.GenerationError `json:"error"`
@@ -232,7 +233,7 @@ type ErrorEvent struct {
 	Context     map[string]interface{}  `json:"context"`
 }
 
-// NewErrorEvent creates a new error event
+// NewErrorEvent creates a new error event.
 func NewErrorEvent(ctx context.Context, err *domain.GenerationError, recoverable bool) *ErrorEvent {
 	return &ErrorEvent{
 		BaseEvent:   NewBaseEvent(EventTypeError, ctx),
@@ -243,20 +244,20 @@ func NewErrorEvent(ctx context.Context, err *domain.GenerationError, recoverable
 	}
 }
 
-// WithContext adds context information to the error event
+// WithContext adds context information to the error event.
 func (e *ErrorEvent) WithContext(key string, value interface{}) *ErrorEvent {
 	e.Context[key] = value
 	return e
 }
 
-// EventCollector collects events for analysis and debugging
+// EventCollector collects events for analysis and debugging.
 type EventCollector struct {
 	events    []Event
 	mutex     sync.RWMutex
 	maxEvents int
 }
 
-// NewEventCollector creates a new event collector
+// NewEventCollector creates a new event collector.
 func NewEventCollector(maxEvents int) *EventCollector {
 	if maxEvents <= 0 {
 		maxEvents = 1000 // Default limit
@@ -268,7 +269,7 @@ func NewEventCollector(maxEvents int) *EventCollector {
 	}
 }
 
-// Collect adds an event to the collection
+// Collect adds an event to the collection.
 func (ec *EventCollector) Collect(event Event) {
 	ec.mutex.Lock()
 	defer ec.mutex.Unlock()
@@ -281,7 +282,7 @@ func (ec *EventCollector) Collect(event Event) {
 	ec.events = append(ec.events, event)
 }
 
-// Events returns all collected events
+// Events returns all collected events.
 func (ec *EventCollector) Events() []Event {
 	ec.mutex.RLock()
 	defer ec.mutex.RUnlock()
@@ -289,15 +290,17 @@ func (ec *EventCollector) Events() []Event {
 	// Return defensive copy
 	events := make([]Event, len(ec.events))
 	copy(events, ec.events)
+
 	return events
 }
 
-// EventsByType returns events filtered by type
+// EventsByType returns events filtered by type.
 func (ec *EventCollector) EventsByType(eventType string) []Event {
 	ec.mutex.RLock()
 	defer ec.mutex.RUnlock()
 
 	var filtered []Event
+
 	for _, event := range ec.events {
 		if event.Type() == eventType {
 			filtered = append(filtered, event)
@@ -307,12 +310,13 @@ func (ec *EventCollector) EventsByType(eventType string) []Event {
 	return filtered
 }
 
-// EventsInTimeRange returns events within a time range
+// EventsInTimeRange returns events within a time range.
 func (ec *EventCollector) EventsInTimeRange(start, end time.Time) []Event {
 	ec.mutex.RLock()
 	defer ec.mutex.RUnlock()
 
 	var filtered []Event
+
 	for _, event := range ec.events {
 		timestamp := event.Timestamp()
 		if (timestamp.Equal(start) || timestamp.After(start)) &&
@@ -324,7 +328,7 @@ func (ec *EventCollector) EventsInTimeRange(start, end time.Time) []Event {
 	return filtered
 }
 
-// Clear removes all collected events
+// Clear removes all collected events.
 func (ec *EventCollector) Clear() {
 	ec.mutex.Lock()
 	defer ec.mutex.Unlock()
@@ -332,7 +336,7 @@ func (ec *EventCollector) Clear() {
 	ec.events = ec.events[:0]
 }
 
-// Count returns the number of collected events
+// Count returns the number of collected events.
 func (ec *EventCollector) Count() int {
 	ec.mutex.RLock()
 	defer ec.mutex.RUnlock()
@@ -340,13 +344,13 @@ func (ec *EventCollector) Count() int {
 	return len(ec.events)
 }
 
-// PipelineEventHandler provides a base for pipeline event handlers
+// PipelineEventHandler provides a base for pipeline event handlers.
 type PipelineEventHandler struct {
 	eventTypes []string
 	handler    func(ctx context.Context, event Event) error
 }
 
-// NewPipelineEventHandler creates a new pipeline event handler
+// NewPipelineEventHandler creates a new pipeline event handler.
 func NewPipelineEventHandler(eventTypes []string, handler func(ctx context.Context, event Event) error) *PipelineEventHandler {
 	return &PipelineEventHandler{
 		eventTypes: eventTypes,
@@ -364,10 +368,11 @@ func (h *PipelineEventHandler) CanHandle(eventType string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
-// ProgressTracker tracks progress across the entire pipeline
+// ProgressTracker tracks progress across the entire pipeline.
 type ProgressTracker struct {
 	totalPhases   int
 	currentPhase  int
@@ -376,7 +381,7 @@ type ProgressTracker struct {
 	startTime     time.Time
 }
 
-// NewProgressTracker creates a new progress tracker
+// NewProgressTracker creates a new progress tracker.
 func NewProgressTracker() *ProgressTracker {
 	return &ProgressTracker{
 		totalPhases:   4, // parsing, planning, execution, emission
@@ -386,7 +391,7 @@ func NewProgressTracker() *ProgressTracker {
 	}
 }
 
-// UpdatePhaseProgress updates progress for a specific phase
+// UpdatePhaseProgress updates progress for a specific phase.
 func (pt *ProgressTracker) UpdatePhaseProgress(phase domain.ProcessingPhase, progress float64) {
 	pt.mutex.Lock()
 	defer pt.mutex.Unlock()
@@ -394,12 +399,13 @@ func (pt *ProgressTracker) UpdatePhaseProgress(phase domain.ProcessingPhase, pro
 	pt.phaseProgress[phase] = progress
 }
 
-// OverallProgress calculates overall pipeline progress
+// OverallProgress calculates overall pipeline progress.
 func (pt *ProgressTracker) OverallProgress() float64 {
 	pt.mutex.RLock()
 	defer pt.mutex.RUnlock()
 
 	totalProgress := 0.0
+
 	for phase := domain.PhaseParsing; phase <= domain.PhaseEmission; phase++ {
 		if progress, exists := pt.phaseProgress[phase]; exists {
 			totalProgress += progress
@@ -409,12 +415,12 @@ func (pt *ProgressTracker) OverallProgress() float64 {
 	return totalProgress / float64(pt.totalPhases)
 }
 
-// ElapsedTime returns time elapsed since tracking started
+// ElapsedTime returns time elapsed since tracking started.
 func (pt *ProgressTracker) ElapsedTime() time.Duration {
 	return time.Since(pt.startTime)
 }
 
-// EstimatedTimeRemaining estimates remaining time based on current progress
+// EstimatedTimeRemaining estimates remaining time based on current progress.
 func (pt *ProgressTracker) EstimatedTimeRemaining() time.Duration {
 	progress := pt.OverallProgress()
 	if progress <= 0 {
@@ -423,5 +429,6 @@ func (pt *ProgressTracker) EstimatedTimeRemaining() time.Duration {
 
 	elapsed := pt.ElapsedTime()
 	totalEstimated := time.Duration(float64(elapsed) / progress)
+
 	return totalEstimated - elapsed
 }

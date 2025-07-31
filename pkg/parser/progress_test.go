@@ -14,6 +14,7 @@ import (
 
 func TestASTParser_CalculateProgressInterval(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -92,6 +93,7 @@ func TestASTParser_CalculateProgressInterval(t *testing.T) {
 
 func TestASTParser_ShouldReportProgress(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -205,11 +207,13 @@ func TestASTParser_ShouldReportProgress(t *testing.T) {
 
 func TestASTParser_TrackProgress(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
 	// Track events published
 	var publishedEvents []events.Event
+
 	handler := events.NewFuncEventHandler("progress.update", func(ctx context.Context, event events.Event) error {
 		publishedEvents = append(publishedEvents, event)
 		return nil
@@ -273,6 +277,7 @@ func TestASTParser_TrackProgress(t *testing.T) {
 				if tt.expectFinalEvent {
 					// Check if we have a final event (contains "completed")
 					finalEventFound := false
+
 					for _, event := range publishedEvents {
 						if progressEvent, ok := event.(*events.ProgressEvent); ok {
 							if len(progressEvent.Message) > 0 &&
@@ -282,6 +287,7 @@ func TestASTParser_TrackProgress(t *testing.T) {
 							}
 						}
 					}
+
 					assert.True(t, finalEventFound, "Should have published final progress event")
 				}
 			} else {
@@ -293,6 +299,7 @@ func TestASTParser_TrackProgress(t *testing.T) {
 
 func TestASTParser_TrackProgress_ContextCancellation(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -329,6 +336,7 @@ func TestASTParser_TrackProgress_ContextCancellation(t *testing.T) {
 
 func TestASTParser_TrackProgress_AdaptiveFrequency(t *testing.T) {
 	logger := zaptest.NewLogger(t)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -337,11 +345,13 @@ func TestASTParser_TrackProgress_AdaptiveFrequency(t *testing.T) {
 		event     events.Event
 		timestamp time.Time
 	}
+
 	handler := events.NewFuncEventHandler("progress.update", func(ctx context.Context, event events.Event) error {
 		publishedEvents = append(publishedEvents, struct {
 			event     events.Event
 			timestamp time.Time
 		}{event, time.Now()})
+
 		return nil
 	})
 	err := eventBus.Subscribe("progress.update", handler)
@@ -384,6 +394,7 @@ func TestASTParser_TrackProgress_AdaptiveFrequency(t *testing.T) {
 
 func BenchmarkCalculateProgressInterval(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -393,6 +404,7 @@ func BenchmarkCalculateProgressInterval(b *testing.B) {
 	testTotals := []int{1, 10, 50, 200, 1000}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		for _, total := range testTotals {
 			parser.calculateProgressInterval(total)
@@ -402,6 +414,7 @@ func BenchmarkCalculateProgressInterval(b *testing.B) {
 
 func BenchmarkShouldReportProgress(b *testing.B) {
 	logger := zaptest.NewLogger(b)
+
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
@@ -412,6 +425,7 @@ func BenchmarkShouldReportProgress(b *testing.B) {
 	lastReport := now.Add(-200 * time.Millisecond)
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		parser.shouldReportProgress(lastReport, 10, 100)
 	}

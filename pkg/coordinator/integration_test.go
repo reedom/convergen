@@ -25,7 +25,11 @@ func TestCoordinatorEndToEndIntegration(t *testing.T) {
 
 	// Create coordinator
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	// Verify all subsystems are initialized
 	verifyCoordinatorSubsystems(t, coord)
@@ -58,6 +62,7 @@ func TestCoordinatorComponentLifecycle(t *testing.T) {
 
 	// Test component manager initialization
 	ctx := context.Background()
+
 	err := concreteCoord.componentMgr.Initialize(ctx, config)
 	if err != nil {
 		t.Fatalf("Component initialization failed: %v", err)
@@ -104,7 +109,11 @@ func TestCoordinatorErrorHandlingIntegration(t *testing.T) {
 	config.ErrorThreshold = 5
 
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	concreteCoord := coord.(*ConcreteCoordinator)
 
@@ -164,7 +173,11 @@ func TestCoordinatorMetricsIntegration(t *testing.T) {
 	config.EnableMetrics = true
 
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	concreteCoord := coord.(*ConcreteCoordinator)
 
@@ -235,7 +248,11 @@ func TestCoordinatorResourceManagementIntegration(t *testing.T) {
 	config.ChannelPoolSize = 4
 
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	concreteCoord := coord.(*ConcreteCoordinator)
 	ctx := context.Background()
@@ -260,6 +277,7 @@ func TestCoordinatorResourceManagementIntegration(t *testing.T) {
 	if buffer == nil {
 		t.Error("GetBuffer returned nil")
 	}
+
 	bufferPool.PutBuffer(buffer)
 
 	// Test channel pool
@@ -272,6 +290,7 @@ func TestCoordinatorResourceManagementIntegration(t *testing.T) {
 	if eventChan == nil {
 		t.Error("GetEventChannel returned nil")
 	}
+
 	channelPool.PutEventChannel(eventChan)
 
 	// Test resource usage tracking
@@ -294,12 +313,17 @@ func TestCoordinatorContextManagementIntegration(t *testing.T) {
 	config := createIntegrationTestConfig()
 
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	concreteCoord := coord.(*ConcreteCoordinator)
 
 	// Test pipeline context creation
 	parentCtx := context.Background()
+
 	pipelineCtx, cancel := concreteCoord.contextMgr.CreatePipelineContext(
 		parentCtx, 5*time.Second)
 	defer cancel()
@@ -345,7 +369,11 @@ func TestCoordinatorConcurrentOperations(t *testing.T) {
 	config.MaxConcurrency = 4
 
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	concreteCoord := coord.(*ConcreteCoordinator)
 
@@ -407,6 +435,7 @@ func TestCoordinatorShutdownIntegration(t *testing.T) {
 
 	// Initialize components
 	ctx := context.Background()
+
 	err := concreteCoord.componentMgr.Initialize(ctx, config)
 	if err != nil {
 		t.Fatalf("Component initialization failed: %v", err)
@@ -525,7 +554,7 @@ func verifyCoordinatorSubsystems(t *testing.T, coord Coordinator) {
 	}
 }
 
-// Test error type for integration tests
+// Test error type for integration tests.
 type testError struct {
 	message string
 }
@@ -546,13 +575,20 @@ func TestCoordinatorPerformanceIntegration(t *testing.T) {
 	config.EnableMetrics = true
 
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	// Measure coordinator creation time
 	start := time.Now()
 	coord2 := New(logger, config)
 	creationTime := time.Since(start)
-	coord2.Shutdown(context.Background())
+
+	if err := coord2.Shutdown(context.Background()); err != nil {
+		t.Errorf("Shutdown failed: %v", err)
+	}
 
 	if creationTime > 100*time.Millisecond {
 		t.Errorf("Coordinator creation took too long: %v", creationTime)
@@ -560,9 +596,11 @@ func TestCoordinatorPerformanceIntegration(t *testing.T) {
 
 	// Measure metrics collection performance
 	start = time.Now()
+
 	for i := 0; i < 1000; i++ {
 		_ = coord.GetMetrics()
 	}
+
 	metricsTime := time.Since(start)
 
 	avgMetricsTime := metricsTime / 1000
@@ -572,9 +610,11 @@ func TestCoordinatorPerformanceIntegration(t *testing.T) {
 
 	// Measure status collection performance
 	start = time.Now()
+
 	for i := 0; i < 1000; i++ {
 		_ = coord.GetStatus()
 	}
+
 	statusTime := time.Since(start)
 
 	avgStatusTime := statusTime / 1000
@@ -616,7 +656,9 @@ func TestCoordinatorMemoryUsageIntegration(t *testing.T) {
 
 	// Cleanup
 	for _, coord := range coords {
-		coord.Shutdown(context.Background())
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
 	}
 
 	t.Logf("Memory usage - Current: %d bytes, Goroutines: %d",
@@ -636,7 +678,11 @@ func TestCoordinatorStressTest(t *testing.T) {
 	config.EventBufferSize = 10000
 
 	coord := New(logger, config)
-	defer coord.Shutdown(context.Background())
+	defer func() {
+		if err := coord.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
 
 	concreteCoord := coord.(*ConcreteCoordinator)
 
@@ -696,7 +742,7 @@ func TestCoordinatorStressTest(t *testing.T) {
 	}
 
 	// Should have processed many events
-	if finalMetrics.EventCounts["stress_event"] != int64(numGoroutines*operationsPerGoroutine/5) {
+	if finalMetrics != nil && finalMetrics.EventCounts["stress_event"] != int64(numGoroutines*operationsPerGoroutine/5) {
 		t.Errorf("Expected %d stress events, got %d",
 			numGoroutines*operationsPerGoroutine/5,
 			finalMetrics.EventCounts["stress_event"])

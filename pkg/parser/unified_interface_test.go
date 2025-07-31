@@ -151,10 +151,12 @@ func TestLegacyParser_Basic(t *testing.T) {
 
 	// Test validation with non-existent file
 	ctx := context.Background()
+
 	errors, warnings, err := parser.Validate(ctx, "nonexistent.go")
 	if err == nil {
 		t.Error("Validate() expected error for non-existent file")
 	}
+
 	if len(errors) == 0 {
 		t.Error("Validate() expected errors for non-existent file")
 	}
@@ -190,6 +192,7 @@ func TestModernParser_Basic(t *testing.T) {
 	if !actualConfig.EnableConcurrentLoading {
 		t.Error("ModernParser should enable concurrent loading")
 	}
+
 	if !actualConfig.EnableMethodConcurrency {
 		t.Error("ModernParser should enable method concurrency")
 	}
@@ -214,6 +217,7 @@ func TestAdaptiveParser_Basic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
+
 	defer os.Remove(tempFile.Name())
 	defer tempFile.Close()
 

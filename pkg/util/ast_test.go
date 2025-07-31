@@ -28,12 +28,14 @@ func loadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Packag
 	conf := types.Config{Importer: importer.Default()}
 	pkg, err := conf.Check("example.go", fset, []*ast.File{file}, nil)
 	require.Nil(t, err)
+
 	return file, fset, pkg
 }
 
 func getCodeText(t *testing.T, fset *token.FileSet, file *ast.File) string {
 	buf := bytes.Buffer{}
 	require.Nil(t, printer.Fprint(&buf, fset, file))
+
 	return buf.String()
 }
 
@@ -50,6 +52,7 @@ func TestRemoveMatchComments(t *testing.T) {
 		}
 	`
 	fset := token.NewFileSet()
+
 	file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
 	if err != nil {
 		t.Fatal(err)
@@ -82,6 +85,7 @@ func TestMatchComments(t *testing.T) {
 
 	// Test with an empty comment group.
 	commentGroup := &ast.CommentGroup{}
+
 	result = util.MatchComments(commentGroup, nil)
 	if result {
 		t.Error("Expected false, but got true")
@@ -95,6 +99,7 @@ func TestMatchComments(t *testing.T) {
 		},
 	}
 	pattern := regexp.MustCompile(`foo`)
+
 	result = util.MatchComments(commentGroup, pattern)
 	if result {
 		t.Error("Expected false, but got true")
@@ -108,6 +113,7 @@ func TestMatchComments(t *testing.T) {
 		},
 	}
 	pattern = regexp.MustCompile(`another`)
+
 	result = util.MatchComments(commentGroup, pattern)
 	if !result {
 		t.Error("Expected true, but got false")
@@ -134,9 +140,11 @@ func TestExtractMatchComments(t *testing.T) {
 	if len(commentGroup.List) != 2 {
 		t.Errorf("Expected 2 comments, but got %d", len(commentGroup.List))
 	}
+
 	if len(result) != 1 {
 		t.Errorf("Expected 1 comment, but got %d", len(result))
 	}
+
 	if result[0].Text != "// This is another comment." {
 		t.Errorf("Expected comment '%s', but got '%s'", "// This is another comment.", result[0].Text)
 	}
@@ -170,15 +178,18 @@ func TestRemoveDecl(t *testing.T) {
 
 	// Check that the "foo" declaration was actually removed.
 	foundFoo := false
+
 	for _, decl := range file.Decls {
 		funcDecl, ok := decl.(*ast.FuncDecl)
 		if !ok {
 			continue
 		}
+
 		if funcDecl.Name.Name == "foo" {
 			foundFoo = true
 		}
 	}
+
 	assert.False(t, foundFoo, "Expected declaration 'foo' to be removed, but it wasn't")
 
 	// Call the function to remove the "bar" declaration.
@@ -186,29 +197,35 @@ func TestRemoveDecl(t *testing.T) {
 
 	// Check that the "bar" declaration was actually removed.
 	foundBar := false
+
 	for _, decl := range file.Decls {
 		funcDecl, ok := decl.(*ast.FuncDecl)
 		if !ok {
 			continue
 		}
+
 		if funcDecl.Name.Name == "bar" {
 			foundBar = true
 		}
 	}
+
 	assert.False(t, foundBar, "Expected declaration 'bar' to be removed, but it wasn't")
 
 	// Check that the remaining declarations are correct.
 	// Check that the "bar" declaration was actually removed.
 	foundMain := false
+
 	for _, decl := range file.Decls {
 		funcDecl, ok := decl.(*ast.FuncDecl)
 		if !ok {
 			continue
 		}
+
 		if funcDecl.Name.Name == "main" {
 			foundMain = true
 		}
 	}
+
 	assert.True(t, foundMain, "Expected declaration 'main' remains, but it doesn't")
 }
 

@@ -17,5 +17,6 @@ func (m *Manipulator) FuncName() string {
 	if m.Pkg != "" {
 		return fmt.Sprintf("%v.%v", m.Pkg, m.Name)
 	}
+
 	return m.Name
 }

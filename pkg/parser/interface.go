@@ -25,13 +25,16 @@ type intfEntry struct {
 // For them, this function also parses notations in their doc comments.
 func (p *Parser) findConvergenEntries() ([]*intfEntry, error) {
 	entries := make([]*intfEntry, 0)
+
 	scope := p.pkg.Types.Scope()
 	for _, name := range scope.Names() {
 		obj := scope.Lookup(name)
+
 		_, ok := obj.Type().Underlying().(*types.Interface)
 		if !ok {
 			continue
 		}
+
 		if p.srcPath != p.fset.Position(obj.Pos()).Filename {
 			// Skip other than the entry file.
 			continue
@@ -47,12 +50,15 @@ func (p *Parser) findConvergenEntries() ([]*intfEntry, error) {
 		logger.Printf("%v: target interface found: %v", p.fset.Position(obj.Pos()), obj.Name())
 
 		notations := util.ExtractMatchComments(docComment, reNotation)
+
 		if docComment != nil {
 			docComment.List = nil
 		}
+
 		cleanUp()
 
 		opts := p.opts
+
 		err := p.parseNotationInComments(notations, option.ValidOpsIntf, &opts)
 		if err != nil {
 			return nil, err
@@ -82,5 +88,6 @@ func isValidIdentifier(id string) bool {
 			return false
 		}
 	}
+
 	return id != ""
 }

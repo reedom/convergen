@@ -8,7 +8,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// TypeCache provides thread-safe caching for type resolution with TTL and memory pressure awareness
+// TypeCache provides thread-safe caching for type resolution with TTL and memory pressure awareness.
 type TypeCache struct {
 	cache             map[string]*cacheEntry
 	mutex             sync.RWMutex
@@ -24,7 +24,7 @@ type TypeCache struct {
 	cleanupInterval   time.Duration
 }
 
-// cacheEntry represents a cached type with metadata
+// cacheEntry represents a cached type with metadata.
 type cacheEntry struct {
 	domainType  domain.Type
 	lastAccess  time.Time
@@ -33,12 +33,12 @@ type cacheEntry struct {
 	ttl         time.Duration
 }
 
-// NewTypeCache creates a new type cache with the specified maximum size
+// NewTypeCache creates a new type cache with the specified maximum size.
 func NewTypeCache(maxSize int) *TypeCache {
 	return NewTypeCacheWithTTL(maxSize, 5*time.Minute, 100) // 5 minute default TTL, 100MB memory threshold
 }
 
-// NewTypeCacheWithTTL creates a new type cache with TTL and memory pressure settings
+// NewTypeCacheWithTTL creates a new type cache with TTL and memory pressure settings.
 func NewTypeCacheWithTTL(maxSize int, defaultTTL time.Duration, memoryThresholdMB int64) *TypeCache {
 	return &TypeCache{
 		cache:             make(map[string]*cacheEntry),
@@ -50,7 +50,7 @@ func NewTypeCacheWithTTL(maxSize int, defaultTTL time.Duration, memoryThresholdM
 	}
 }
 
-// Get retrieves a type from the cache
+// Get retrieves a type from the cache.
 func (tc *TypeCache) Get(key string) domain.Type {
 	tc.mutex.RLock()
 	entry, exists := tc.cache[key]
@@ -66,6 +66,7 @@ func (tc *TypeCache) Get(key string) domain.Type {
 			tc.mutex.Lock()
 			delete(tc.cache, key)
 			tc.mutex.Unlock()
+
 			return nil
 		}
 
@@ -73,20 +74,22 @@ func (tc *TypeCache) Get(key string) domain.Type {
 		entry.lastAccess = time.Now()
 		entry.accessCount++
 		tc.statsMux.Unlock()
+
 		return entry.domainType
 	} else {
 		tc.misses++
 		tc.statsMux.Unlock()
+
 		return nil
 	}
 }
 
-// Put stores a type in the cache
+// Put stores a type in the cache.
 func (tc *TypeCache) Put(key string, domainType domain.Type) {
 	tc.PutWithTTL(key, domainType, tc.defaultTTL)
 }
 
-// PutWithTTL stores a type in the cache with custom TTL
+// PutWithTTL stores a type in the cache with custom TTL.
 func (tc *TypeCache) PutWithTTL(key string, domainType domain.Type, ttl time.Duration) {
 	tc.mutex.Lock()
 	defer tc.mutex.Unlock()
@@ -112,9 +115,10 @@ func (tc *TypeCache) PutWithTTL(key string, domainType domain.Type, ttl time.Dur
 	}
 }
 
-// evictLRU removes the least recently used entry
+// evictLRU removes the least recently used entry.
 func (tc *TypeCache) evictLRU() {
 	var oldestKey string
+
 	var oldestTime time.Time
 
 	for key, entry := range tc.cache {
@@ -132,14 +136,15 @@ func (tc *TypeCache) evictLRU() {
 	}
 }
 
-// Size returns the current number of cached entries
+// Size returns the current number of cached entries.
 func (tc *TypeCache) Size() int {
 	tc.mutex.RLock()
 	defer tc.mutex.RUnlock()
+
 	return len(tc.cache)
 }
 
-// HitRate returns the cache hit rate
+// HitRate returns the cache hit rate.
 func (tc *TypeCache) HitRate() float64 {
 	tc.statsMux.RLock()
 	defer tc.statsMux.RUnlock()
@@ -148,10 +153,11 @@ func (tc *TypeCache) HitRate() float64 {
 	if total == 0 {
 		return 0.0
 	}
+
 	return float64(tc.hits) / float64(total)
 }
 
-// Stats returns cache statistics
+// Stats returns cache statistics.
 func (tc *TypeCache) Stats() CacheStats {
 	tc.statsMux.RLock()
 	defer tc.statsMux.RUnlock()
@@ -167,7 +173,7 @@ func (tc *TypeCache) Stats() CacheStats {
 	}
 }
 
-// Clear removes all entries from the cache
+// Clear removes all entries from the cache.
 func (tc *TypeCache) Clear() {
 	tc.mutex.Lock()
 	defer tc.mutex.Unlock()
@@ -182,7 +188,7 @@ func (tc *TypeCache) Clear() {
 	tc.statsMux.Unlock()
 }
 
-// CacheStats represents cache performance statistics
+// CacheStats represents cache performance statistics.
 type CacheStats struct {
 	Size      int     `json:"size"`
 	MaxSize   int     `json:"max_size"`
@@ -193,15 +199,16 @@ type CacheStats struct {
 	Expired   int64   `json:"expired"`
 }
 
-// isExpired checks if a cache entry has expired
+// isExpired checks if a cache entry has expired.
 func (tc *TypeCache) isExpired(entry *cacheEntry) bool {
 	if entry.ttl <= 0 {
 		return false // No TTL set
 	}
+
 	return time.Since(entry.createdAt) > entry.ttl
 }
 
-// maybeCleanup performs periodic cleanup of expired entries
+// maybeCleanup performs periodic cleanup of expired entries.
 func (tc *TypeCache) maybeCleanup() {
 	if time.Since(tc.lastCleanup) < tc.cleanupInterval {
 		return
@@ -211,7 +218,7 @@ func (tc *TypeCache) maybeCleanup() {
 	tc.cleanupExpired()
 }
 
-// cleanupExpired removes all expired entries from the cache
+// cleanupExpired removes all expired entries from the cache.
 func (tc *TypeCache) cleanupExpired() {
 	var keysToDelete []string
 
@@ -232,9 +239,10 @@ func (tc *TypeCache) cleanupExpired() {
 	}
 }
 
-// checkMemoryPressure performs aggressive cleanup if memory usage is high
+// checkMemoryPressure performs aggressive cleanup if memory usage is high.
 func (tc *TypeCache) checkMemoryPressure() {
 	var memStats runtime.MemStats
+
 	runtime.ReadMemStats(&memStats)
 
 	// Convert to MB
@@ -246,7 +254,7 @@ func (tc *TypeCache) checkMemoryPressure() {
 	}
 }
 
-// evictOldest removes the specified number of oldest entries
+// evictOldest removes the specified number of oldest entries.
 func (tc *TypeCache) evictOldest(count int) {
 	if count <= 0 || len(tc.cache) == 0 {
 		return
@@ -276,6 +284,7 @@ func (tc *TypeCache) evictOldest(count int) {
 	evicted := 0
 	for i := 0; i < len(entries) && evicted < count; i++ {
 		delete(tc.cache, entries[i].key)
+
 		evicted++
 	}
 

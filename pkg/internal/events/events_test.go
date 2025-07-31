@@ -82,12 +82,15 @@ func TestInMemoryEventBus(t *testing.T) {
 		defer bus.Close()
 
 		var handledEvents []Event
+
 		var mutex sync.Mutex
 
 		handler := NewFuncEventHandler("test.event", func(ctx context.Context, event Event) error {
 			mutex.Lock()
 			defer mutex.Unlock()
+
 			handledEvents = append(handledEvents, event)
+
 			return nil
 		})
 
@@ -140,12 +143,14 @@ func TestInMemoryEventBus(t *testing.T) {
 		defer bus.Close()
 
 		var handledCount int32
+
 		var mutex sync.Mutex
 
 		handler1 := NewFuncEventHandler("test.event", func(ctx context.Context, event Event) error {
 			mutex.Lock()
 			handledCount++
 			mutex.Unlock()
+
 			return nil
 		})
 
@@ -153,6 +158,7 @@ func TestInMemoryEventBus(t *testing.T) {
 			mutex.Lock()
 			handledCount++
 			mutex.Unlock()
+
 			return nil
 		})
 
@@ -267,6 +273,7 @@ func TestFuncEventHandler(t *testing.T) {
 func TestMiddlewareEventBus(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	innerBus := NewInMemoryEventBus(logger)
+
 	bus := NewMiddlewareEventBus(innerBus, logger)
 	defer bus.Close()
 
@@ -290,6 +297,7 @@ func TestMiddlewareEventBus(t *testing.T) {
 
 	t.Run("middleware processing", func(t *testing.T) {
 		var middlewareCalled bool
+
 		var eventProcessed bool
 
 		middleware := &testMiddleware{
@@ -322,7 +330,7 @@ func TestMiddlewareEventBus(t *testing.T) {
 	})
 }
 
-// Test middleware implementation
+// Test middleware implementation.
 type testMiddleware struct {
 	process func(ctx context.Context, event Event, next func(ctx context.Context, event Event) error) error
 }
@@ -409,6 +417,7 @@ func TestBusStats(t *testing.T) {
 		var wg sync.WaitGroup
 		for i := 0; i < 100; i++ {
 			wg.Add(1)
+
 			go func() {
 				defer wg.Done()
 				stats.incrementPublished("test.event")

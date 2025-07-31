@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -12,7 +13,14 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// EmitterConfig defines configuration parameters for the code generation engine
+// Static errors for err113 compliance.
+var (
+	ErrExecutionResultsNil    = errors.New("execution results cannot be nil")
+	ErrGeneratedCodeNil       = errors.New("generated code cannot be nil")
+	ErrMethodGenerationErrors = errors.New("method generation errors")
+)
+
+// EmitterConfig defines configuration parameters for the code generation engine.
 type EmitterConfig struct {
 	// Output preferences
 	PreferCompositeLiterals bool   `json:"prefer_composite_literals"`
@@ -46,7 +54,7 @@ type EmitterConfig struct {
 	DebugMode       bool `json:"debug_mode"`
 }
 
-// DefaultEmitterConfig returns sensible default configuration
+// DefaultEmitterConfig returns sensible default configuration.
 func DefaultEmitterConfig() *EmitterConfig {
 	return &EmitterConfig{
 		PreferCompositeLiterals:  true,
@@ -71,7 +79,7 @@ func DefaultEmitterConfig() *EmitterConfig {
 	}
 }
 
-// Emitter coordinates the code generation pipeline with event-driven architecture
+// Emitter coordinates the code generation pipeline with event-driven architecture.
 type Emitter interface {
 	// GenerateCode generates complete Go code from execution results
 	GenerateCode(ctx context.Context, results *domain.ExecutionResults) (*GeneratedCode, error)
@@ -89,7 +97,7 @@ type Emitter interface {
 	Shutdown(ctx context.Context) error
 }
 
-// ConcreteEmitter implements the Emitter interface
+// ConcreteEmitter implements the Emitter interface.
 type ConcreteEmitter struct {
 	config   *EmitterConfig
 	logger   *zap.Logger
@@ -110,7 +118,7 @@ type ConcreteEmitter struct {
 	mutex    sync.RWMutex
 }
 
-// NewEmitter creates a new code generation engine
+// NewEmitter creates a new code generation engine.
 func NewEmitter(logger *zap.Logger, eventBus events.EventBus, config *EmitterConfig) Emitter {
 	if config == nil {
 		config = DefaultEmitterConfig()
@@ -151,10 +159,10 @@ func NewEmitter(logger *zap.Logger, eventBus events.EventBus, config *EmitterCon
 	return emitter
 }
 
-// GenerateCode generates complete Go code from execution results
+// GenerateCode generates complete Go code from execution results.
 func (e *ConcreteEmitter) GenerateCode(ctx context.Context, results *domain.ExecutionResults) (*GeneratedCode, error) {
 	if results == nil {
-		return nil, fmt.Errorf("execution results cannot be nil")
+		return nil, ErrExecutionResultsNil
 	}
 
 	e.logger.Info("starting code generation",
@@ -185,6 +193,7 @@ func (e *ConcreteEmitter) GenerateCode(ctx context.Context, results *domain.Exec
 
 	// Generate methods concurrently or sequentially based on configuration
 	var methodCodes []*MethodCode
+
 	var err error
 
 	if e.config.EnableConcurrentGen && len(results.Methods) > 1 {
@@ -241,6 +250,7 @@ func (e *ConcreteEmitter) GenerateCode(ctx context.Context, results *domain.Exec
 	if len(methodCodes) > 0 {
 		firstMethod = methodCodes[0]
 	}
+
 	e.metrics.RecordGeneration(firstMethod, results.PackageName, methodCodes)
 
 	// Emit generation completed event
@@ -263,10 +273,10 @@ func (e *ConcreteEmitter) GenerateCode(ctx context.Context, results *domain.Exec
 	return generatedCode, nil
 }
 
-// GenerateMethod generates code for a single method
+// GenerateMethod generates code for a single method.
 func (e *ConcreteEmitter) GenerateMethod(ctx context.Context, method *domain.MethodResult) (*MethodCode, error) {
 	if method == nil {
-		return nil, fmt.Errorf("method result cannot be nil")
+		return nil, ErrMethodResultNil
 	}
 
 	e.logger.Debug("generating method code",
@@ -294,10 +304,10 @@ func (e *ConcreteEmitter) GenerateMethod(ctx context.Context, method *domain.Met
 	return methodCode, nil
 }
 
-// OptimizeOutput applies global optimizations to generated code
+// OptimizeOutput applies global optimizations to generated code.
 func (e *ConcreteEmitter) OptimizeOutput(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error) {
 	if code == nil {
-		return nil, fmt.Errorf("generated code cannot be nil")
+		return nil, ErrGeneratedCodeNil
 	}
 
 	e.logger.Debug("optimizing generated code",
@@ -311,12 +321,12 @@ func (e *ConcreteEmitter) OptimizeOutput(ctx context.Context, code *GeneratedCod
 	return optimizedCode, nil
 }
 
-// GetMetrics returns current emitter metrics
+// GetMetrics returns current emitter metrics.
 func (e *ConcreteEmitter) GetMetrics() *EmitterMetrics {
 	return e.metrics.GetSnapshot()
 }
 
-// Shutdown gracefully shuts down the emitter
+// Shutdown gracefully shuts down the emitter.
 func (e *ConcreteEmitter) Shutdown(ctx context.Context) error {
 	e.logger.Info("shutting down emitter")
 
@@ -344,7 +354,7 @@ func (e *ConcreteEmitter) Shutdown(ctx context.Context) error {
 		return nil
 	case <-ctx.Done():
 		e.logger.Warn("emitter shutdown timed out")
-		return ctx.Err()
+		return fmt.Errorf("emitter shutdown context cancelled: %w", ctx.Err())
 	}
 }
 
@@ -362,10 +372,12 @@ func (e *ConcreteEmitter) generateMethodsConcurrently(ctx context.Context, metho
 	}
 
 	semaphore := make(chan struct{}, maxConcurrency)
+
 	var wg sync.WaitGroup
 
 	for i, method := range methods {
 		wg.Add(1)
+
 		go func(index int, m *domain.MethodResult) {
 			defer wg.Done()
 
@@ -382,6 +394,7 @@ func (e *ConcreteEmitter) generateMethodsConcurrently(ctx context.Context, metho
 
 	// Check for errors
 	var generationErrors []error
+
 	var validResults []*MethodCode
 
 	for i, err := range errors {
@@ -393,7 +406,7 @@ func (e *ConcreteEmitter) generateMethodsConcurrently(ctx context.Context, metho
 	}
 
 	if len(generationErrors) > 0 {
-		return validResults, fmt.Errorf("method generation errors: %v", generationErrors)
+		return validResults, fmt.Errorf("%w: %v", ErrMethodGenerationErrors, generationErrors)
 	}
 
 	return validResults, nil
@@ -407,6 +420,7 @@ func (e *ConcreteEmitter) generateMethodsSequentially(ctx context.Context, metho
 		if err != nil {
 			return results, fmt.Errorf("method %s generation failed: %w", method.Method.Name, err)
 		}
+
 		results = append(results, methodCode)
 	}
 
@@ -417,7 +431,7 @@ func (e *ConcreteEmitter) calculateConfigHash() string {
 	// Simple hash calculation for configuration
 	// In practice, this would be more sophisticated
 	return fmt.Sprintf("%x", int(e.config.OptimizationLevel)*17+
-		int(e.config.MaxFieldsForComposite)*31+
+		e.config.MaxFieldsForComposite*31+
 		len(e.config.CustomTemplates)*47)
 }
 
@@ -431,10 +445,14 @@ func (e *ConcreteEmitter) emitEvent(ctx context.Context, eventType string, data 
 		event.WithMetadata(key, value)
 	}
 
-	return e.eventBus.Publish(event)
+	if err := e.eventBus.Publish(event); err != nil {
+		return fmt.Errorf("failed to publish event: %w", err)
+	}
+
+	return nil
 }
 
-// SetEventBus sets the event bus for this emitter
+// SetEventBus sets the event bus for this emitter.
 func (e *ConcreteEmitter) SetEventBus(eventBus events.EventBus) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()

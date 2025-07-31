@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -14,7 +15,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// CodeOptimizer applies various optimization techniques to generated code
+// Static errors for err113 compliance.
+var (
+	ErrMethodCodeNilOptimizer = errors.New("method code cannot be nil")
+)
+
+// CodeOptimizer applies various optimization techniques to generated code.
 type CodeOptimizer interface {
 	// OptimizeCode applies all configured optimizations
 	OptimizeCode(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error)
@@ -41,7 +47,7 @@ type CodeOptimizer interface {
 	Shutdown(ctx context.Context) error
 }
 
-// ConcreteCodeOptimizer implements CodeOptimizer
+// ConcreteCodeOptimizer implements CodeOptimizer.
 type ConcreteCodeOptimizer struct {
 	config  *EmitterConfig
 	logger  *zap.Logger
@@ -58,7 +64,7 @@ type ConcreteCodeOptimizer struct {
 	controlFlowAnalyzer ControlFlowAnalyzer
 }
 
-// OptimizerMetrics tracks optimization performance and results
+// OptimizerMetrics tracks optimization performance and results.
 type OptimizerMetrics struct {
 	mu                    sync.RWMutex
 	OptimizationsApplied  map[string]int64 `json:"optimizations_applied"`
@@ -182,7 +188,7 @@ type CFGEdge struct {
 	Condition string `json:"condition,omitempty"`
 }
 
-// NewCodeOptimizer creates a new code optimizer
+// NewCodeOptimizer creates a new code optimizer.
 func NewCodeOptimizer(config *EmitterConfig, logger *zap.Logger, metrics *EmitterMetrics) CodeOptimizer {
 	optimizer := &ConcreteCodeOptimizer{
 		config:  config,
@@ -201,10 +207,10 @@ func NewCodeOptimizer(config *EmitterConfig, logger *zap.Logger, metrics *Emitte
 	return optimizer
 }
 
-// OptimizeCode applies all configured optimizations
+// OptimizeCode applies all configured optimizations.
 func (co *ConcreteCodeOptimizer) OptimizeCode(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error) {
 	if code == nil {
-		return nil, fmt.Errorf("generated code cannot be nil")
+		return nil, ErrGeneratedCodeNil
 	}
 
 	if co.config.OptimizationLevel == OptimizationNone {
@@ -245,6 +251,7 @@ func (co *ConcreteCodeOptimizer) OptimizeCode(ctx context.Context, code *Generat
 
 	// Apply optimizations based on level
 	var err error
+
 	switch co.config.OptimizationLevel {
 	case OptimizationBasic:
 		err = co.applyBasicOptimizations(optimizedCode)
@@ -274,10 +281,10 @@ func (co *ConcreteCodeOptimizer) OptimizeCode(ctx context.Context, code *Generat
 	return optimizedCode, nil
 }
 
-// OptimizeMethodCode optimizes a single method
+// OptimizeMethodCode optimizes a single method.
 func (co *ConcreteCodeOptimizer) OptimizeMethodCode(method *MethodCode) error {
 	if method == nil {
-		return fmt.Errorf("method code cannot be nil")
+		return ErrMethodCodeNilOptimizer
 	}
 
 	co.logger.Debug("optimizing method code",
@@ -294,6 +301,7 @@ func (co *ConcreteCodeOptimizer) OptimizeMethodCode(method *MethodCode) error {
 			co.logger.Warn("method body optimization failed", zap.Error(err))
 		} else {
 			method.Body = optimized
+
 			co.addOptimization("method_body", int64(optimizations))
 		}
 	}
@@ -305,6 +313,7 @@ func (co *ConcreteCodeOptimizer) OptimizeMethodCode(method *MethodCode) error {
 			co.logger.Warn("error handling optimization failed", zap.Error(err))
 		} else {
 			method.ErrorHandling = optimized
+
 			co.addOptimization("error_handling", int64(optimizations))
 		}
 	}
@@ -312,7 +321,7 @@ func (co *ConcreteCodeOptimizer) OptimizeMethodCode(method *MethodCode) error {
 	return nil
 }
 
-// EliminateDeadCode removes unused variables and unreachable code
+// EliminateDeadCode removes unused variables and unreachable code.
 func (co *ConcreteCodeOptimizer) EliminateDeadCode(code *GeneratedCode) error {
 	if !co.config.EnableDeadCodeElim {
 		return nil
@@ -327,9 +336,12 @@ func (co *ConcreteCodeOptimizer) EliminateDeadCode(code *GeneratedCode) error {
 				co.logger.Warn("dead code elimination failed",
 					zap.String("method", method.Name),
 					zap.Error(err))
+
 				continue
 			}
+
 			method.Body = optimized
+
 			co.updateDeadCodeEliminated(int64(eliminated))
 		}
 	}
@@ -337,7 +349,7 @@ func (co *ConcreteCodeOptimizer) EliminateDeadCode(code *GeneratedCode) error {
 	return nil
 }
 
-// OptimizeVariableNames improves variable naming and removes conflicts
+// OptimizeVariableNames improves variable naming and removes conflicts.
 func (co *ConcreteCodeOptimizer) OptimizeVariableNames(code *GeneratedCode) error {
 	if !co.config.EnableVarOptimization {
 		return nil
@@ -352,9 +364,12 @@ func (co *ConcreteCodeOptimizer) OptimizeVariableNames(code *GeneratedCode) erro
 				co.logger.Warn("variable optimization failed",
 					zap.String("method", method.Name),
 					zap.Error(err))
+
 				continue
 			}
+
 			method.Body = optimized
+
 			co.updateVariablesOptimized(int64(optimizations))
 		}
 	}
@@ -362,7 +377,7 @@ func (co *ConcreteCodeOptimizer) OptimizeVariableNames(code *GeneratedCode) erro
 	return nil
 }
 
-// SimplifyExpressions simplifies complex expressions where possible
+// SimplifyExpressions simplifies complex expressions where possible.
 func (co *ConcreteCodeOptimizer) SimplifyExpressions(code *GeneratedCode) error {
 	co.logger.Debug("simplifying expressions")
 
@@ -373,9 +388,12 @@ func (co *ConcreteCodeOptimizer) SimplifyExpressions(code *GeneratedCode) error 
 				co.logger.Warn("expression simplification failed",
 					zap.String("method", method.Name),
 					zap.Error(err))
+
 				continue
 			}
+
 			method.Body = optimized
+
 			co.updateExpressionsSimplified(int64(simplifications))
 		}
 	}
@@ -383,7 +401,7 @@ func (co *ConcreteCodeOptimizer) SimplifyExpressions(code *GeneratedCode) error 
 	return nil
 }
 
-// RemoveRedundancy removes redundant operations and assignments
+// RemoveRedundancy removes redundant operations and assignments.
 func (co *ConcreteCodeOptimizer) RemoveRedundancy(code *GeneratedCode) error {
 	co.logger.Debug("removing redundancy")
 
@@ -394,9 +412,12 @@ func (co *ConcreteCodeOptimizer) RemoveRedundancy(code *GeneratedCode) error {
 				co.logger.Warn("redundancy removal failed",
 					zap.String("method", method.Name),
 					zap.Error(err))
+
 				continue
 			}
+
 			method.Body = optimized
+
 			co.updateRedundancyRemoved(int64(removed))
 		}
 	}
@@ -404,12 +425,12 @@ func (co *ConcreteCodeOptimizer) RemoveRedundancy(code *GeneratedCode) error {
 	return nil
 }
 
-// GetMetrics returns optimization metrics
+// GetMetrics returns optimization metrics.
 func (co *ConcreteCodeOptimizer) GetMetrics() *OptimizerMetrics {
 	return co.metrics
 }
 
-// Shutdown gracefully shuts down the optimizer
+// Shutdown gracefully shuts down the optimizer.
 func (co *ConcreteCodeOptimizer) Shutdown(ctx context.Context) error {
 	co.logger.Info("shutting down code optimizer")
 	return nil
@@ -510,56 +531,58 @@ func (co *ConcreteCodeOptimizer) optimizeCodeBlock(code string) (string, int, er
 func (co *ConcreteCodeOptimizer) countOptimizationsApplied() int64 {
 	co.metrics.mu.RLock()
 	defer co.metrics.mu.RUnlock()
+
 	total := int64(0)
 	for _, count := range co.metrics.OptimizationsApplied {
 		total += count
 	}
+
 	return total
 }
 
-// addOptimization safely adds optimization counts
+// addOptimization safely adds optimization counts.
 func (co *ConcreteCodeOptimizer) addOptimization(category string, count int64) {
 	co.metrics.mu.Lock()
 	defer co.metrics.mu.Unlock()
 	co.metrics.OptimizationsApplied[category] += count
 }
 
-// updateDeadCodeEliminated safely updates dead code eliminated count
+// updateDeadCodeEliminated safely updates dead code eliminated count.
 func (co *ConcreteCodeOptimizer) updateDeadCodeEliminated(count int64) {
 	co.metrics.mu.Lock()
 	defer co.metrics.mu.Unlock()
 	co.metrics.DeadCodeEliminated += count
 }
 
-// updateVariablesOptimized safely updates variables optimized count
+// updateVariablesOptimized safely updates variables optimized count.
 func (co *ConcreteCodeOptimizer) updateVariablesOptimized(count int64) {
 	co.metrics.mu.Lock()
 	defer co.metrics.mu.Unlock()
 	co.metrics.VariablesOptimized += count
 }
 
-// updateExpressionsSimplified safely updates expressions simplified count
+// updateExpressionsSimplified safely updates expressions simplified count.
 func (co *ConcreteCodeOptimizer) updateExpressionsSimplified(count int64) {
 	co.metrics.mu.Lock()
 	defer co.metrics.mu.Unlock()
 	co.metrics.ExpressionsSimplified += count
 }
 
-// updateRedundancyRemoved safely updates redundancy removed count
+// updateRedundancyRemoved safely updates redundancy removed count.
 func (co *ConcreteCodeOptimizer) updateRedundancyRemoved(count int64) {
 	co.metrics.mu.Lock()
 	defer co.metrics.mu.Unlock()
 	co.metrics.RedundancyRemoved += count
 }
 
-// updateOptimizationTime safely updates total optimization time
+// updateOptimizationTime safely updates total optimization time.
 func (co *ConcreteCodeOptimizer) updateOptimizationTime(duration time.Duration) {
 	co.metrics.mu.Lock()
 	defer co.metrics.mu.Unlock()
 	co.metrics.TotalOptimizationTime += duration
 }
 
-// NewOptimizerMetrics creates a new OptimizerMetrics instance
+// NewOptimizerMetrics creates a new OptimizerMetrics instance.
 func NewOptimizerMetrics() *OptimizerMetrics {
 	return &OptimizerMetrics{
 		OptimizationsApplied: make(map[string]int64),
@@ -582,6 +605,7 @@ func (dce *DefaultDeadCodeEliminator) EliminateInCode(code string) (string, int,
 
 	// Remove empty lines and unnecessary whitespace
 	lines := strings.Split(code, "\n")
+
 	var cleaned []string
 
 	for _, line := range lines {
@@ -691,6 +715,7 @@ func (rr *DefaultRedundancyRemover) RemoveInCode(code string) (string, int, erro
 	// Simple redundancy removal
 	// Remove duplicate blank lines
 	re := regexp.MustCompile(`\n\s*\n\s*\n`)
+
 	optimized := re.ReplaceAllString(code, "\n\n")
 	if optimized != code {
 		removed++
@@ -718,7 +743,12 @@ func NewASTAnalyzer(logger *zap.Logger) ASTAnalyzer {
 func (aa *DefaultASTAnalyzer) ParseCode(code string) (*ast.File, *token.FileSet, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "", code, parser.ParseComments)
-	return file, fset, err
+
+	if err != nil {
+		return nil, fset, fmt.Errorf("failed to parse generated code: %w", err)
+	}
+
+	return file, fset, nil
 }
 
 func (aa *DefaultASTAnalyzer) AnalyzeUsage(file *ast.File) (*UsageAnalysis, error) {

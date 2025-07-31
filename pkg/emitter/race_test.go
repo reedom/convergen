@@ -17,11 +17,12 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// TestConcurrentMetricsAccess tests thread safety of CodeGenMetrics
+// TestConcurrentMetricsAccess tests thread safety of CodeGenMetrics.
 func TestConcurrentMetricsAccess(t *testing.T) {
 	metrics := NewCodeGenMetrics()
 
 	const numGoroutines = 10
+
 	const operationsPerGoroutine = 100
 
 	var wg sync.WaitGroup
@@ -29,8 +30,10 @@ func TestConcurrentMetricsAccess(t *testing.T) {
 	// Start multiple goroutines updating metrics concurrently
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
+
 			for j := 0; j < operationsPerGoroutine; j++ {
 				metrics.IncrementMethods()
 				metrics.AddGenerationTime(time.Millisecond)
@@ -45,8 +48,10 @@ func TestConcurrentMetricsAccess(t *testing.T) {
 	// Also read metrics concurrently
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
+
 			for j := 0; j < operationsPerGoroutine/2; j++ {
 				snapshot := metrics.GetSnapshot()
 				assert.NotNil(t, snapshot)
@@ -67,11 +72,12 @@ func TestConcurrentMetricsAccess(t *testing.T) {
 	assert.True(t, snapshot.TotalGenerationTime > 0)
 }
 
-// TestConcurrentEmitterMetricsAccess tests thread safety of EmitterMetrics
+// TestConcurrentEmitterMetricsAccess tests thread safety of EmitterMetrics.
 func TestConcurrentEmitterMetricsAccess(t *testing.T) {
 	metrics := NewEmitterMetrics()
 
 	const numGoroutines = 8
+
 	const operationsPerGoroutine = 50
 
 	var wg sync.WaitGroup
@@ -89,8 +95,10 @@ func TestConcurrentEmitterMetricsAccess(t *testing.T) {
 	// Start multiple goroutines updating metrics concurrently
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
+
 			for j := 0; j < operationsPerGoroutine; j++ {
 				metrics.RecordGeneration(methodCode, "test_package", []*MethodCode{methodCode})
 				metrics.AddGenerationTime(time.Millisecond * time.Duration(j+1))
@@ -104,8 +112,10 @@ func TestConcurrentEmitterMetricsAccess(t *testing.T) {
 	// Also read metrics concurrently
 	for i := 0; i < 3; i++ {
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
+
 			for j := 0; j < operationsPerGoroutine; j++ {
 				snapshot := metrics.GetSnapshot()
 				assert.NotNil(t, snapshot)
@@ -128,7 +138,7 @@ func TestConcurrentEmitterMetricsAccess(t *testing.T) {
 	assert.Equal(t, expectedGenerations, snapshot.ErrorsEncountered)
 }
 
-// TestConcurrentCodeGeneration tests concurrent method generation
+// TestConcurrentCodeGeneration tests concurrent method generation.
 func TestConcurrentCodeGeneration(t *testing.T) {
 	// Use a no-op logger for high concurrency testing to avoid test infrastructure race conditions
 	logger := zap.NewNop()
@@ -138,13 +148,18 @@ func TestConcurrentCodeGeneration(t *testing.T) {
 	config.MaxConcurrentMethods = 4
 
 	emitter := NewEmitter(logger, eventBus, config)
-	defer emitter.Shutdown(context.Background())
+	defer func() {
+		if err := emitter.Shutdown(context.Background()); err != nil {
+			t.Errorf("emitter.Shutdown failed: %v", err)
+		}
+	}()
 
 	// Create multiple methods for concurrent generation
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
 	destType := domain.NewBasicType("Dest", reflect.Struct)
 
 	methods := make([]*domain.MethodResult, 10)
+
 	for i := 0; i < 10; i++ {
 		method, err := domain.NewMethod("ConvertMethod", sourceType, destType)
 		require.NoError(t, err)
@@ -166,13 +181,16 @@ func TestConcurrentCodeGeneration(t *testing.T) {
 	}
 
 	const numWorkers = 5
+
 	var wg sync.WaitGroup
 
 	// Generate methods concurrently
 	for worker := 0; worker < numWorkers; worker++ {
 		wg.Add(1)
+
 		go func(workerID int) {
 			defer wg.Done()
+
 			for i := workerID; i < len(methods); i += numWorkers {
 				methodCode, err := emitter.GenerateMethod(context.Background(), methods[i])
 				assert.NoError(t, err)
@@ -189,9 +207,10 @@ func TestConcurrentCodeGeneration(t *testing.T) {
 	t.Logf("Concurrent code generation completed. Emitter metrics: %d generations, %d methods",
 		metrics.TotalGenerations, metrics.TotalMethods)
 	// Note: The primary goal is race condition detection rather than specific counts
+	assert.NotNil(t, emitter)
 }
 
-// TestConcurrentEmitterOperations tests various emitter operations under concurrency
+// TestConcurrentEmitterOperations tests various emitter operations under concurrency.
 func TestConcurrentEmitterOperations(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
@@ -199,7 +218,11 @@ func TestConcurrentEmitterOperations(t *testing.T) {
 	config.EnableConcurrentGen = true
 
 	emitter := NewEmitter(logger, eventBus, config)
-	defer emitter.Shutdown(context.Background())
+	defer func() {
+		if err := emitter.Shutdown(context.Background()); err != nil {
+			t.Errorf("emitter.Shutdown failed: %v", err)
+		}
+	}()
 
 	sourceType := domain.NewBasicType("ConcurrentSource", reflect.Struct)
 	destType := domain.NewBasicType("ConcurrentDest", reflect.Struct)
@@ -227,11 +250,13 @@ func TestConcurrentEmitterOperations(t *testing.T) {
 	}
 
 	const numOperations = 10
+
 	var wg sync.WaitGroup
 
 	// Perform various operations concurrently
 	for i := 0; i < numOperations; i++ {
 		wg.Add(1)
+
 		go func(opID int) {
 			defer wg.Done()
 
@@ -263,7 +288,7 @@ func TestConcurrentEmitterOperations(t *testing.T) {
 	assert.True(t, finalMetrics.TotalGenerations > 0)
 }
 
-// TestStressTesting performs high-stress concurrent testing
+// TestStressTesting performs high-stress concurrent testing.
 func TestStressTesting(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping stress test in short mode")
@@ -277,7 +302,11 @@ func TestStressTesting(t *testing.T) {
 	config.MaxConcurrentMethods = 8
 
 	emitter := NewEmitter(logger, eventBus, config)
-	defer emitter.Shutdown(context.Background())
+	defer func() {
+		if err := emitter.Shutdown(context.Background()); err != nil {
+			t.Errorf("emitter.Shutdown failed: %v", err)
+		}
+	}()
 
 	sourceType := domain.NewBasicType("StressSource", reflect.Struct)
 	destType := domain.NewBasicType("StressDest", reflect.Struct)
@@ -297,6 +326,7 @@ func TestStressTesting(t *testing.T) {
 	}
 
 	const stressLevel = 100
+
 	var wg sync.WaitGroup
 
 	startTime := time.Now()
@@ -304,6 +334,7 @@ func TestStressTesting(t *testing.T) {
 	// High stress concurrent generation
 	for i := 0; i < stressLevel; i++ {
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
 
@@ -330,20 +361,24 @@ func TestStressTesting(t *testing.T) {
 	metrics := emitter.GetMetrics()
 	t.Logf("Stress test completed successfully. Total methods in emitter metrics: %d", metrics.TotalMethods)
 	// Note: The main goal is race condition detection, not specific metric counting
+	assert.NotNil(t, emitter)
 }
 
-// TestRaceDetectorCompliance ensures all operations pass race detector
+// TestRaceDetectorCompliance ensures all operations pass race detector.
 func TestRaceDetectorCompliance(t *testing.T) {
 	// This test is specifically designed to trigger race conditions if they exist
 	// It should always pass when run with -race flag if thread safety is correct
-
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
 	config := DefaultEmitterConfig()
 	config.EnableConcurrentGen = true
 
 	emitter := NewEmitter(logger, eventBus, config)
-	defer emitter.Shutdown(context.Background())
+	defer func() {
+		if err := emitter.Shutdown(context.Background()); err != nil {
+			t.Errorf("emitter.Shutdown failed: %v", err)
+		}
+	}()
 
 	sourceType := domain.NewBasicType("RaceTestSource", reflect.Struct)
 	destType := domain.NewBasicType("RaceTestDest", reflect.Struct)
@@ -367,14 +402,15 @@ func TestRaceDetectorCompliance(t *testing.T) {
 	// Multiple concurrent operations designed to trigger races
 	for i := 0; i < 20; i++ {
 		wg.Add(1)
-		go func(id int) {
+
+		go func(_ int) {
 			defer wg.Done()
 
 			// Mix of read and write operations
 			for j := 0; j < 50; j++ {
 				switch j % 4 {
 				case 0:
-					emitter.GenerateMethod(context.Background(), methodResult)
+					_, _ = emitter.GenerateMethod(context.Background(), methodResult)
 				case 1:
 					emitter.GetMetrics()
 				case 2:

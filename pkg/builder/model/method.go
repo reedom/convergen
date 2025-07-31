@@ -37,6 +37,7 @@ func (m *MethodEntry) Recv() types.Type {
 	if sig.Recv() == nil {
 		return nil
 	}
+
 	return sig.Recv().Type()
 }
 
@@ -57,6 +58,7 @@ func (m *MethodEntry) Results() []types.Type {
 			}
 		}
 	}
+
 	return list
 }
 
@@ -70,10 +72,12 @@ func (m *MethodEntry) RetError() bool {
 // It assumes that there is only one source variable.
 func (m *MethodEntry) SrcVar() *types.Var {
 	sig := m.Method.Type().(*types.Signature)
+
 	params := sig.Params()
 	if params.Len() == 0 {
 		return nil
 	}
+
 	return params.At(0)
 }
 
@@ -81,10 +85,12 @@ func (m *MethodEntry) SrcVar() *types.Var {
 // It assumes that there is only one destination variable.
 func (m *MethodEntry) DstVar() *types.Var {
 	sig := m.Method.Type().(*types.Signature)
+
 	results := sig.Results()
 	if results.Len() == 0 {
 		return nil
 	}
+
 	return results.At(0)
 }
 
@@ -92,11 +98,14 @@ func (m *MethodEntry) DstVar() *types.Var {
 func (m *MethodEntry) AdditionalArgVars() []*types.Var {
 	sig := m.Method.Type().(*types.Signature)
 	params := make([]*types.Var, sig.Params().Len())
+
 	for i := 0; i < sig.Params().Len(); i++ {
 		params[i] = sig.Params().At(i)
 	}
+
 	if len(params) <= 1 {
 		return nil
 	}
+
 	return params[1:]
 }

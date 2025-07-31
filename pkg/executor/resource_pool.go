@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -10,7 +11,14 @@ import (
 	"go.uber.org/zap"
 )
 
-// ResourcePool manages worker pools, memory allocation, and resource throttling
+// Static errors for err113 compliance.
+var (
+	ErrWorkerQueueFull     = errors.New("worker queue is full")
+	ErrConcurrentJobsLimit = errors.New("maximum concurrent jobs limit reached")
+	ErrMemoryLimitReached  = errors.New("memory limit reached")
+)
+
+// ResourcePool manages worker pools, memory allocation, and resource throttling.
 type ResourcePool struct {
 	config  *ExecutorConfig
 	logger  *zap.Logger
@@ -37,7 +45,7 @@ type ResourcePool struct {
 	performanceHistory []float64
 }
 
-// NewResourcePool creates a new resource pool
+// NewResourcePool creates a new resource pool.
 func NewResourcePool(config *ExecutorConfig, logger *zap.Logger, metrics *ExecutionMetrics) *ResourcePool {
 	pool := &ResourcePool{
 		config:             config,
@@ -68,7 +76,7 @@ func NewResourcePool(config *ExecutorConfig, logger *zap.Logger, metrics *Execut
 	return pool
 }
 
-// SetLimits updates resource limits dynamically
+// SetLimits updates resource limits dynamically.
 func (rp *ResourcePool) SetLimits(maxWorkers, maxMemoryMB int) {
 	rp.mutex.Lock()
 	defer rp.mutex.Unlock()
@@ -88,7 +96,7 @@ func (rp *ResourcePool) SetLimits(maxWorkers, maxMemoryMB int) {
 	}
 }
 
-// SubmitJob submits a field execution job to the resource pool
+// SubmitJob submits a field execution job to the resource pool.
 func (rp *ResourcePool) SubmitJob(ctx context.Context, job *FieldExecution) error {
 	// Check resource limits
 	if err := rp.checkResourceLimits(); err != nil {
@@ -100,25 +108,27 @@ func (rp *ResourcePool) SubmitJob(ctx context.Context, job *FieldExecution) erro
 		rp.mutex.Lock()
 		rp.activeJobs++
 		rp.mutex.Unlock()
+
 		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("resource acquisition context cancelled: %w", ctx.Err())
 	default:
-		return fmt.Errorf("worker queue is full")
+		return ErrWorkerQueueFull
 	}
 }
 
-// GetAvailableWorkers returns the number of available workers
+// GetAvailableWorkers returns the number of available workers.
 func (rp *ResourcePool) GetAvailableWorkers() int {
 	return len(rp.availableWorkers)
 }
 
-// GetMetrics returns current resource pool metrics
+// GetMetrics returns current resource pool metrics.
 func (rp *ResourcePool) GetMetrics() *ResourceMetrics {
 	rp.mutex.RLock()
 	defer rp.mutex.RUnlock()
 
 	var m runtime.MemStats
+
 	runtime.ReadMemStats(&m)
 
 	totalWorkers := len(rp.workers)
@@ -142,7 +152,7 @@ func (rp *ResourcePool) GetMetrics() *ResourceMetrics {
 	}
 }
 
-// Shutdown gracefully shuts down the resource pool
+// Shutdown gracefully shuts down the resource pool.
 func (rp *ResourcePool) Shutdown(ctx context.Context) error {
 	rp.logger.Info("shutting down resource pool")
 
@@ -172,7 +182,7 @@ func (rp *ResourcePool) Shutdown(ctx context.Context) error {
 		return nil
 	case <-ctx.Done():
 		rp.logger.Warn("resource pool shutdown timed out")
-		return ctx.Err()
+		return fmt.Errorf("resource pool shutdown context cancelled: %w", ctx.Err())
 	}
 }
 
@@ -243,6 +253,7 @@ func (rp *ResourcePool) workerLoop(worker *Worker) {
 			if !idleTimer.Stop() {
 				<-idleTimer.C
 			}
+
 			idleTimer.Reset(rp.config.WorkerIdleTimeout)
 
 			// Execute job
@@ -254,6 +265,7 @@ func (rp *ResourcePool) workerLoop(worker *Worker) {
 				rp.logger.Debug("removing idle worker", zap.String("worker_id", worker.ID))
 				return
 			}
+
 			idleTimer.Reset(rp.config.WorkerIdleTimeout)
 
 		case <-worker.Done:
@@ -279,6 +291,7 @@ func (rp *ResourcePool) executeJob(worker *Worker, job *FieldExecution) {
 
 	// Track memory usage
 	var startMem runtime.MemStats
+
 	runtime.ReadMemStats(&startMem)
 
 	// Execute the job (this would integrate with field executor)
@@ -287,6 +300,7 @@ func (rp *ResourcePool) executeJob(worker *Worker, job *FieldExecution) {
 
 	// Track memory usage after execution
 	var endMem runtime.MemStats
+
 	runtime.ReadMemStats(&endMem)
 
 	// Update worker metrics
@@ -299,6 +313,7 @@ func (rp *ResourcePool) executeJob(worker *Worker, job *FieldExecution) {
 
 	memUsedMB := int((endMem.Alloc - startMem.Alloc) / 1024 / 1024)
 	worker.Metrics.CurrentMemoryMB = memUsedMB
+
 	if memUsedMB > worker.Metrics.PeakMemoryMB {
 		worker.Metrics.PeakMemoryMB = memUsedMB
 	}
@@ -330,6 +345,7 @@ func (rp *ResourcePool) shouldRemoveIdleWorker() bool {
 
 	// Remove if we have low job queue utilization
 	queueUtilization := float64(len(rp.workerQueue)) / float64(cap(rp.workerQueue))
+
 	return queueUtilization < 0.1
 }
 
@@ -358,7 +374,9 @@ func (rp *ResourcePool) scaleDownWorkers(targetCount int) {
 
 		if worker.State == WorkerStateIdle {
 			close(worker.Done)
+
 			removedCount++
+
 			rp.logger.Debug("scaling down worker", zap.String("worker_id", workerID))
 		}
 	}
@@ -368,8 +386,10 @@ func (rp *ResourcePool) scaleDownWorkers(targetCount int) {
 
 func (rp *ResourcePool) startResourceMonitoring() {
 	rp.wg.Add(1)
+
 	go func() {
 		defer rp.wg.Done()
+
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
@@ -424,8 +444,10 @@ func (rp *ResourcePool) startAdaptiveManagement() {
 	}
 
 	rp.wg.Add(1)
+
 	go func() {
 		defer rp.wg.Done()
+
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 
@@ -475,24 +497,26 @@ func (rp *ResourcePool) checkResourceLimits() error {
 	defer rp.mutex.RUnlock()
 
 	if rp.activeJobs >= rp.maxJobs {
-		return fmt.Errorf("maximum concurrent jobs limit reached: %d", rp.maxJobs)
+		return fmt.Errorf("%w: %d", ErrConcurrentJobsLimit, rp.maxJobs)
 	}
 
 	var m runtime.MemStats
+
 	runtime.ReadMemStats(&m)
 	currentMemoryMB := int(m.Alloc / 1024 / 1024)
 
 	if currentMemoryMB >= rp.memoryLimitMB {
-		return fmt.Errorf("memory limit reached: %dMB", currentMemoryMB)
+		return fmt.Errorf("%w: %dMB", ErrMemoryLimitReached, currentMemoryMB)
 	}
 
 	return nil
 }
 
-// Utility functions
+// Utility functions.
 func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}
+
 	return b
 }

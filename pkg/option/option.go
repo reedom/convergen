@@ -44,6 +44,7 @@ func (o Options) ShouldSkip(fieldName string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -52,6 +53,7 @@ func (o Options) CompareFieldName(a, b string) bool {
 	if o.ExactCase {
 		return a == b
 	}
+
 	return strings.EqualFold(a, b)
 }
 

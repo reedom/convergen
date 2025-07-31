@@ -18,12 +18,12 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrMethodProcessingPanic     = errors.New("method processing panic")
-	ErrExpectedSignature         = errors.New("expected signature but got different type")
-	ErrMethodMustHaveParameters  = errors.New("method must have one or more parameters as copy source")
+	ErrMethodProcessingPanic      = errors.New("method processing panic")
+	ErrExpectedSignature          = errors.New("expected signature but got different type")
+	ErrMethodMustHaveParameters   = errors.New("method must have one or more parameters as copy source")
 	ErrMethodMustHaveReturnValues = errors.New("method must have one or more return values as copy destination")
-	ErrAllMethodsFailed          = errors.New("all methods failed to process")
-	ErrPartialProcessingFailure  = errors.New("partial processing failure")
+	ErrAllMethodsFailed           = errors.New("all methods failed to process")
+	ErrPartialProcessingFailure   = errors.New("partial processing failure")
 )
 
 // MethodProcessingResult contains the result of processing a method.

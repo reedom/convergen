@@ -10,7 +10,7 @@ import (
 	"github.com/reedom/convergen/v8/pkg/executor"
 )
 
-// OutputStrategy determines the optimal code generation approach
+// OutputStrategy determines the optimal code generation approach.
 type OutputStrategy interface {
 	// SelectStrategy determines the best construction strategy for a method
 	SelectStrategy(ctx context.Context, method *domain.MethodResult) ConstructionStrategy
@@ -25,7 +25,7 @@ type OutputStrategy interface {
 	EstimatePerformance(method *domain.MethodResult) *PerformanceEstimate
 }
 
-// ConcreteOutputStrategy implements OutputStrategy
+// ConcreteOutputStrategy implements OutputStrategy.
 type ConcreteOutputStrategy struct {
 	config *EmitterConfig
 	logger *zap.Logger
@@ -37,7 +37,7 @@ type ConcreteOutputStrategy struct {
 	maintainabilityWeight float64
 }
 
-// PerformanceEstimate contains performance estimates for different strategies
+// PerformanceEstimate contains performance estimates for different strategies.
 type PerformanceEstimate struct {
 	CompositeLiteral *StrategyEstimate    `json:"composite_literal"`
 	AssignmentBlock  *StrategyEstimate    `json:"assignment_block"`
@@ -45,7 +45,7 @@ type PerformanceEstimate struct {
 	Recommended      ConstructionStrategy `json:"recommended"`
 }
 
-// StrategyEstimate contains estimates for a specific strategy
+// StrategyEstimate contains estimates for a specific strategy.
 type StrategyEstimate struct {
 	GenerationTime   float64 `json:"generation_time"`   // Estimated generation time in ms
 	ExecutionTime    float64 `json:"execution_time"`    // Estimated runtime execution time in ns
@@ -55,7 +55,7 @@ type StrategyEstimate struct {
 	LinesOfCode      int     `json:"lines_of_code"`     // Estimated lines of generated code
 }
 
-// NewOutputStrategy creates a new output strategy analyzer
+// NewOutputStrategy creates a new output strategy analyzer.
 func NewOutputStrategy(config *EmitterConfig, logger *zap.Logger) OutputStrategy {
 	return &ConcreteOutputStrategy{
 		config:                config,
@@ -67,7 +67,7 @@ func NewOutputStrategy(config *EmitterConfig, logger *zap.Logger) OutputStrategy
 	}
 }
 
-// SelectStrategy determines the best construction strategy for a method
+// SelectStrategy determines the best construction strategy for a method.
 func (os *ConcreteOutputStrategy) SelectStrategy(ctx context.Context, method *domain.MethodResult) ConstructionStrategy {
 	if method == nil {
 		return StrategyAssignmentBlock // Safe default
@@ -97,7 +97,7 @@ func (os *ConcreteOutputStrategy) SelectStrategy(ctx context.Context, method *do
 	return strategy
 }
 
-// AnalyzeFieldComplexity analyzes the complexity of fields for strategy selection
+// AnalyzeFieldComplexity analyzes the complexity of fields for strategy selection.
 func (os *ConcreteOutputStrategy) AnalyzeFieldComplexity(fields []*executor.FieldResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
 
@@ -108,6 +108,7 @@ func (os *ConcreteOutputStrategy) AnalyzeFieldComplexity(fields []*executor.Fiel
 	metrics.FieldCount = len(fields)
 
 	var totalComplexity float64
+
 	var cyclomaticComplexity int
 
 	for _, field := range fields {
@@ -123,13 +124,13 @@ func (os *ConcreteOutputStrategy) AnalyzeFieldComplexity(fields []*executor.Fiel
 		// Count converter fields (complex transformations)
 		if os.isConverterField(field) {
 			metrics.ConverterFields++
-			cyclomaticComplexity += 1
+			cyclomaticComplexity++
 		}
 
 		// Count nested fields (complex types)
 		if os.isNestedField(field) {
 			metrics.NestedFields++
-			cyclomaticComplexity += 1
+			cyclomaticComplexity++
 		}
 	}
 
@@ -143,7 +144,7 @@ func (os *ConcreteOutputStrategy) AnalyzeFieldComplexity(fields []*executor.Fiel
 	return metrics
 }
 
-// ShouldUseCompositeLiteral determines if composite literal approach is optimal
+// ShouldUseCompositeLiteral determines if composite literal approach is optimal.
 func (os *ConcreteOutputStrategy) ShouldUseCompositeLiteral(method *domain.MethodResult) bool {
 	if method == nil {
 		return false
@@ -165,7 +166,7 @@ func (os *ConcreteOutputStrategy) ShouldUseCompositeLiteral(method *domain.Metho
 		complexity.CyclomaticComplexity <= 2
 }
 
-// EstimatePerformance estimates the performance characteristics of different strategies
+// EstimatePerformance estimates the performance characteristics of different strategies.
 func (os *ConcreteOutputStrategy) EstimatePerformance(method *domain.MethodResult) *PerformanceEstimate {
 	fields := os.extractFieldResults(method)
 	fieldCount := len(fields)
@@ -361,7 +362,7 @@ func (os *ConcreteOutputStrategy) canUseCompositeLiteral(complexity *ComplexityM
 		complexity.ComplexityScore < 30.0
 }
 
-func (os *ConcreteOutputStrategy) calculateStrategyScore(estimate *StrategyEstimate, complexity *ComplexityMetrics, weights map[string]float64) float64 {
+func (os *ConcreteOutputStrategy) calculateStrategyScore(estimate *StrategyEstimate, _ *ComplexityMetrics, weights map[string]float64) float64 {
 	if estimate == nil {
 		return 0.0
 	}
@@ -408,10 +409,12 @@ func (os *ConcreteOutputStrategy) getMixedApproachWeights() map[string]float64 {
 
 func (os *ConcreteOutputStrategy) extractFieldResults(method *domain.MethodResult) []*executor.FieldResult {
 	var results []*executor.FieldResult
+
 	for _, fieldResult := range method.Metadata {
 		if fr, ok := fieldResult.(*executor.FieldResult); ok {
 			results = append(results, fr)
 		}
 	}
+
 	return results
 }

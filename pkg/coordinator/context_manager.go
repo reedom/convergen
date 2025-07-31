@@ -9,7 +9,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// ContextManager manages context propagation and cancellation throughout the pipeline
+const (
+	// StatusCancelled represents a cancelled context status.
+	StatusCancelled = "cancelled"
+)
+
+// ContextManager manages context propagation and cancellation throughout the pipeline.
 type ContextManager interface {
 	// Create pipeline context with timeout
 	CreatePipelineContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc)
@@ -36,7 +41,7 @@ type ContextManager interface {
 	GetActiveContextCount() int
 }
 
-// ConcreteContextManager implements ContextManager
+// ConcreteContextManager implements ContextManager.
 type ConcreteContextManager struct {
 	logger *zap.Logger
 	config *Config
@@ -54,7 +59,7 @@ type ConcreteContextManager struct {
 	shutdown chan struct{}
 }
 
-// NewContextManager creates a new context manager
+// NewContextManager creates a new context manager.
 func NewContextManager(logger *zap.Logger, config *Config) ContextManager {
 	mgr := &ConcreteContextManager{
 		logger:          logger,
@@ -69,7 +74,7 @@ func NewContextManager(logger *zap.Logger, config *Config) ContextManager {
 	return mgr
 }
 
-// CreatePipelineContext creates a new pipeline context with timeout
+// CreatePipelineContext creates a new pipeline context with timeout.
 func (c *ConcreteContextManager) CreatePipelineContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -99,7 +104,7 @@ func (c *ConcreteContextManager) CreatePipelineContext(parent context.Context, t
 	return ctx, wrappedCancel
 }
 
-// CreateComponentContext creates a context for a specific component
+// CreateComponentContext creates a context for a specific component.
 func (c *ConcreteContextManager) CreateComponentContext(parent context.Context, component string) context.Context {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -121,7 +126,7 @@ func (c *ConcreteContextManager) CreateComponentContext(parent context.Context, 
 	return ctx
 }
 
-// ShouldCancel checks if the context indicates pipeline should be cancelled
+// ShouldCancel checks if the context indicates pipeline should be cancelled.
 func (c *ConcreteContextManager) ShouldCancel(ctx context.Context) bool {
 	select {
 	case <-ctx.Done():
@@ -129,6 +134,7 @@ func (c *ConcreteContextManager) ShouldCancel(ctx context.Context) bool {
 		c.logger.Debug("context cancellation detected",
 			zap.Error(err),
 			zap.String("reason", c.getCancellationReason(err)))
+
 		return true
 	case <-c.shutdown:
 		c.logger.Debug("context manager shutdown detected")
@@ -138,7 +144,7 @@ func (c *ConcreteContextManager) ShouldCancel(ctx context.Context) bool {
 	}
 }
 
-// CancelAll cancels all active contexts
+// CancelAll cancels all active contexts.
 func (c *ConcreteContextManager) CancelAll() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -160,7 +166,7 @@ func (c *ConcreteContextManager) CancelAll() {
 	close(c.shutdown)
 }
 
-// AddMetadata adds metadata to a context
+// AddMetadata adds metadata to a context.
 func (c *ConcreteContextManager) AddMetadata(ctx context.Context, key string, value interface{}) context.Context {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -180,7 +186,7 @@ func (c *ConcreteContextManager) AddMetadata(ctx context.Context, key string, va
 	return context.WithValue(ctx, contextKey(key), value)
 }
 
-// GetMetadata retrieves metadata from a context
+// GetMetadata retrieves metadata from a context.
 func (c *ConcreteContextManager) GetMetadata(ctx context.Context, key string) (interface{}, bool) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -200,7 +206,7 @@ func (c *ConcreteContextManager) GetMetadata(ctx context.Context, key string) (i
 	return nil, false
 }
 
-// TrackContext adds a context to the tracking system
+// TrackContext adds a context to the tracking system.
 func (c *ConcreteContextManager) TrackContext(ctx context.Context, description string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -212,7 +218,7 @@ func (c *ConcreteContextManager) TrackContext(ctx context.Context, description s
 		zap.Int("active_contexts", len(c.activeContexts)))
 }
 
-// GetActiveContextCount returns the number of active contexts
+// GetActiveContextCount returns the number of active contexts.
 func (c *ConcreteContextManager) GetActiveContextCount() int {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -236,13 +242,13 @@ func (c *ConcreteContextManager) addComponentMetadata(ctx context.Context, compo
 
 	// Add component-specific configuration
 	switch component {
-	case "parser":
+	case ComponentParser:
 		ctx = context.WithValue(ctx, contextKeyConfig, c.config.ParserConfig)
-	case "planner":
+	case ComponentPlanner:
 		ctx = context.WithValue(ctx, contextKeyConfig, c.config.PlannerConfig)
-	case "executor":
+	case ComponentExecutor:
 		ctx = context.WithValue(ctx, contextKeyConfig, c.config.ExecutorConfig)
-	case "emitter":
+	case ComponentEmitter:
 		ctx = context.WithValue(ctx, contextKeyConfig, c.config.EmitterConfig)
 	}
 
@@ -270,7 +276,7 @@ func (c *ConcreteContextManager) wrapCancelFunc(ctx context.Context, cancel cont
 func (c *ConcreteContextManager) getCancellationReason(err error) string {
 	switch err {
 	case context.Canceled:
-		return "cancelled"
+		return StatusCancelled
 	case context.DeadlineExceeded:
 		return "timeout"
 	default:
@@ -284,7 +290,7 @@ func (c *ConcreteContextManager) generatePipelineID() string {
 
 // Context cleanup methods
 
-// CleanupContext removes a context from tracking
+// CleanupContext removes a context from tracking.
 func (c *ConcreteContextManager) CleanupContext(ctx context.Context) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -298,7 +304,7 @@ func (c *ConcreteContextManager) CleanupContext(ctx context.Context) {
 		zap.Int("remaining_contexts", len(c.activeContexts)))
 }
 
-// GetContextInfo returns information about a specific context
+// GetContextInfo returns information about a specific context.
 func (c *ConcreteContextManager) GetContextInfo(ctx context.Context) map[string]interface{} {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -334,7 +340,7 @@ func (c *ConcreteContextManager) GetContextInfo(ctx context.Context) map[string]
 	// Add context status
 	select {
 	case <-ctx.Done():
-		info["status"] = "cancelled"
+		info["status"] = StatusCancelled
 		info["error"] = ctx.Err().Error()
 	default:
 		info["status"] = "active"
@@ -343,7 +349,7 @@ func (c *ConcreteContextManager) GetContextInfo(ctx context.Context) map[string]
 	return info
 }
 
-// GetAllContextInfo returns information about all active contexts
+// GetAllContextInfo returns information about all active contexts.
 func (c *ConcreteContextManager) GetAllContextInfo() map[string]interface{} {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -354,6 +360,7 @@ func (c *ConcreteContextManager) GetAllContextInfo() map[string]interface{} {
 
 	// Add details for each context
 	contexts := make([]map[string]interface{}, 0, len(c.activeContexts))
+
 	for ctx, description := range c.activeContexts {
 		contextInfo := map[string]interface{}{
 			"description": description,
@@ -369,7 +376,7 @@ func (c *ConcreteContextManager) GetAllContextInfo() map[string]interface{} {
 		// Add status
 		select {
 		case <-ctx.Done():
-			contextInfo["status"] = "cancelled"
+			contextInfo["status"] = StatusCancelled
 		default:
 			contextInfo["status"] = "active"
 		}
@@ -382,7 +389,7 @@ func (c *ConcreteContextManager) GetAllContextInfo() map[string]interface{} {
 	return info
 }
 
-// Context key definitions
+// Context key definitions.
 type contextKey string
 
 const (
@@ -396,45 +403,49 @@ const (
 
 // Utility functions for extracting context values
 
-// GetPipelineID extracts pipeline ID from context
+// GetPipelineID extracts pipeline ID from context.
 func GetPipelineID(ctx context.Context) (string, bool) {
 	if value := ctx.Value(contextKeyPipelineID); value != nil {
 		if pipelineID, ok := value.(string); ok {
 			return pipelineID, true
 		}
 	}
+
 	return "", false
 }
 
-// GetComponentName extracts component name from context
+// GetComponentName extracts component name from context.
 func GetComponentName(ctx context.Context) (string, bool) {
 	if value := ctx.Value(contextKeyComponent); value != nil {
 		if component, ok := value.(string); ok {
 			return component, true
 		}
 	}
+
 	return "", false
 }
 
-// GetStartTime extracts start time from context
+// GetStartTime extracts start time from context.
 func GetStartTime(ctx context.Context) (time.Time, bool) {
 	if value := ctx.Value(contextKeyStartTime); value != nil {
 		if startTime, ok := value.(time.Time); ok {
 			return startTime, true
 		}
 	}
+
 	return time.Time{}, false
 }
 
-// GetElapsedTime calculates elapsed time since context creation
+// GetElapsedTime calculates elapsed time since context creation.
 func GetElapsedTime(ctx context.Context) (time.Duration, bool) {
 	if startTime, ok := GetStartTime(ctx); ok {
 		return time.Since(startTime), true
 	}
+
 	return 0, false
 }
 
-// IsContextActive checks if context is still active (not cancelled)
+// IsContextActive checks if context is still active (not cancelled).
 func IsContextActive(ctx context.Context) bool {
 	select {
 	case <-ctx.Done():
