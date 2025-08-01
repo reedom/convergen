@@ -71,7 +71,7 @@ func createTestFieldResult(fieldID, result, strategy string, success bool) *exec
 func TestEmitter_GenerateCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	emitter := NewEmitter(logger, eventBus, config)
 
@@ -126,7 +126,7 @@ func TestEmitter_GenerateCode(t *testing.T) {
 func TestEmitter_GenerateMethod(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	emitter := NewEmitter(logger, eventBus, config)
 
@@ -170,7 +170,7 @@ func TestEmitter_GenerateMethod(t *testing.T) {
 func TestEmitter_OptimizeOutput(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.OptimizationLevel = OptimizationAggressive
 
 	emitter := NewEmitter(logger, eventBus, config)
@@ -182,7 +182,7 @@ func TestEmitter_OptimizeOutput(t *testing.T) {
 			{
 				Name:      "TestMethod",
 				Signature: "func TestMethod(src *Source) (*Dest, error)",
-				Body: "	var dest Dest\n	dest.Field = src.Field\n	return &dest, nil\n",
+				Body:      "	var dest Dest\n	dest.Field = src.Field\n	return &dest, nil\n",
 			},
 		},
 		Metadata: &GenerationMetadata{},
@@ -210,7 +210,7 @@ func TestEmitter_OptimizeOutput(t *testing.T) {
 func TestEmitter_GetMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	emitter := NewEmitter(logger, eventBus, config)
 
@@ -229,7 +229,7 @@ func TestEmitter_GetMetrics(t *testing.T) {
 func TestEmitter_Shutdown(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	emitter := NewEmitter(logger, eventBus, config)
 
@@ -243,8 +243,8 @@ func TestEmitter_Shutdown(t *testing.T) {
 	}
 }
 
-func TestDefaultEmitterConfig(t *testing.T) {
-	config := DefaultEmitterConfig()
+func TestDefaultConfig(t *testing.T) {
+	config := DefaultConfig()
 
 	if config == nil {
 		t.Fatal("Default config is nil")
@@ -270,7 +270,7 @@ func TestDefaultEmitterConfig(t *testing.T) {
 func TestEmitter_ConcurrentGeneration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.EnableConcurrentGen = true
 	config.MaxConcurrentMethods = 2
 
@@ -337,7 +337,7 @@ func TestEmitter_ConcurrentGeneration(t *testing.T) {
 func TestEmitter_ErrorHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	emitter := NewEmitter(logger, eventBus, config)
 
@@ -367,7 +367,7 @@ func TestEmitter_ErrorHandling(t *testing.T) {
 func TestEmitter_ComplexFieldHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	emitter := NewEmitter(logger, eventBus, config)
 

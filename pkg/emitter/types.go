@@ -176,8 +176,8 @@ type ImportAnalysis struct {
 	OptimizationsSuggested []string             `json:"optimizations_suggested"`
 }
 
-// EmitterMetrics tracks overall emitter performance.
-type EmitterMetrics struct {
+// Metrics tracks overall emitter performance.
+type Metrics struct {
 	mu                    sync.RWMutex
 	TotalGenerations      int64         `json:"total_generations"`
 	TotalMethods          int64         `json:"total_methods"`
@@ -225,7 +225,7 @@ type PerformanceSnapshot struct {
 // GenerationRequest represents a request for code generation.
 type GenerationRequest struct {
 	ExecutionResults *domain.ExecutionResults `json:"execution_results"`
-	Config           *EmitterConfig           `json:"config"`
+	Config           *Config                  `json:"config"`
 	Context          map[string]interface{}   `json:"context"`
 	RequestID        string                   `json:"request_id"`
 	Timestamp        time.Time                `json:"timestamp"`
@@ -272,7 +272,7 @@ type TemplateData struct {
 	Fields          []*executor.FieldResult `json:"fields"`
 	Package         string                  `json:"package"`
 	Imports         []*Import               `json:"imports"`
-	Config          *EmitterConfig          `json:"config"`
+	Config          *Config                 `json:"config"`
 	Metadata        map[string]interface{}  `json:"metadata"`
 	HelperFunctions map[string]interface{}  `json:"helper_functions"`
 }
@@ -379,9 +379,9 @@ func NewCustomTemplate(name, content string) interface{} {
 	return content
 }
 
-// NewEmitterMetrics creates default emitter metrics.
-func NewEmitterMetrics() *EmitterMetrics {
-	return &EmitterMetrics{
+// NewMetrics creates default emitter metrics.
+func NewMetrics() *Metrics {
+	return &Metrics{
 		TotalGenerations:      0,
 		TotalMethods:          0,
 		TotalFields:           0,
@@ -399,7 +399,7 @@ func NewEmitterMetrics() *EmitterMetrics {
 }
 
 // RecordGeneration records generation metrics in a thread-safe manner.
-func (m *EmitterMetrics) RecordGeneration(methodCode *MethodCode, packageName string, methods []*MethodCode) {
+func (m *Metrics) RecordGeneration(methodCode *MethodCode, packageName string, methods []*MethodCode) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -419,7 +419,7 @@ func (m *EmitterMetrics) RecordGeneration(methodCode *MethodCode, packageName st
 }
 
 // GetSnapshot returns a thread-safe snapshot of current metrics.
-func (m *EmitterMetrics) GetSnapshot() *EmitterMetrics {
+func (m *Metrics) GetSnapshot() *Metrics {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -448,7 +448,7 @@ func (m *EmitterMetrics) GetSnapshot() *EmitterMetrics {
 	performanceHistory := make([]PerformanceSnapshot, len(m.PerformanceHistory))
 	copy(performanceHistory, m.PerformanceHistory)
 
-	return &EmitterMetrics{
+	return &Metrics{
 		TotalGenerations:      m.TotalGenerations,
 		TotalMethods:          m.TotalMethods,
 		TotalFields:           m.TotalFields,
@@ -471,7 +471,7 @@ func (m *EmitterMetrics) GetSnapshot() *EmitterMetrics {
 }
 
 // AddGenerationTime safely adds generation time to metrics.
-func (m *EmitterMetrics) AddGenerationTime(duration time.Duration) {
+func (m *Metrics) AddGenerationTime(duration time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -482,7 +482,7 @@ func (m *EmitterMetrics) AddGenerationTime(duration time.Duration) {
 }
 
 // RecordStrategyUsage safely records strategy usage.
-func (m *EmitterMetrics) RecordStrategyUsage(strategy string, duration time.Duration) {
+func (m *Metrics) RecordStrategyUsage(strategy string, duration time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -499,7 +499,7 @@ func (m *EmitterMetrics) RecordStrategyUsage(strategy string, duration time.Dura
 }
 
 // RecordError safely records error occurrences.
-func (m *EmitterMetrics) RecordError(errorType string) {
+func (m *Metrics) RecordError(errorType string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -513,7 +513,7 @@ func (m *EmitterMetrics) RecordError(errorType string) {
 }
 
 // UpdateMemoryUsage safely updates memory usage statistics.
-func (m *EmitterMetrics) UpdateMemoryUsage(current int64) {
+func (m *Metrics) UpdateMemoryUsage(current int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

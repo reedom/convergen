@@ -6,19 +6,19 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
-// ExecutorState represents the current state of the executor.
-type ExecutorState string
+// State represents the current state of the executor.
+type State string
 
 const (
-	ExecutorStateIdle         ExecutorState = "idle"
-	ExecutorStateExecuting    ExecutorState = "executing"
-	ExecutorStateShuttingDown ExecutorState = "shutting_down"
-	ExecutorStateError        ExecutorState = "error"
+	StateIdle         State = "idle"
+	StateExecuting    State = "executing"
+	StateShuttingDown State = "shutting_down"
+	StateError        State = "error"
 )
 
-// ExecutorStatus provides comprehensive status information about the executor.
-type ExecutorStatus struct {
-	State                ExecutorState              `json:"state"`
+// Status provides comprehensive status information about the executor.
+type Status struct {
+	State                State                      `json:"state"`
 	StartTime            time.Time                  `json:"start_time"`
 	CurrentPlan          *domain.ExecutionPlan      `json:"current_plan,omitempty"`
 	PlanStartTime        *time.Time                 `json:"plan_start_time,omitempty"`
@@ -40,7 +40,7 @@ type BatchExecution struct {
 	MethodName    string                 `json:"method_name"`
 	BatchIndex    int                    `json:"batch_index"`
 	DependsOn     []string               `json:"depends_on"`
-	Configuration *ExecutorConfig        `json:"configuration"`
+	Configuration *Config                `json:"configuration"`
 	StartTime     time.Time              `json:"start_time"`
 	Context       map[string]interface{} `json:"context,omitempty"`
 }
@@ -65,7 +65,7 @@ type FieldExecution struct {
 	Mapping       *domain.FieldMapping   `json:"mapping"`
 	BatchID       string                 `json:"batch_id"`
 	MethodName    string                 `json:"method_name"`
-	Configuration *ExecutorConfig        `json:"configuration"`
+	Configuration *Config                `json:"configuration"`
 	Context       map[string]interface{} `json:"context,omitempty"`
 	StartTime     time.Time              `json:"start_time"`
 	Timeout       time.Duration          `json:"timeout"`

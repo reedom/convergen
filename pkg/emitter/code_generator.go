@@ -47,7 +47,7 @@ type CodeGenerator interface {
 
 // ConcreteCodeGenerator implements CodeGenerator.
 type ConcreteCodeGenerator struct {
-	config      *EmitterConfig
+	config      *Config
 	logger      *zap.Logger
 	strategies  map[string]GenerationStrategy
 	validator   CodeValidator
@@ -89,7 +89,7 @@ type GenerationStrategy interface {
 }
 
 // NewCodeGenerator creates a new code generator.
-func NewCodeGenerator(config *EmitterConfig, logger *zap.Logger, metrics *EmitterMetrics) CodeGenerator {
+func NewCodeGenerator(config *Config, logger *zap.Logger, metrics *Metrics) CodeGenerator {
 	generator := &ConcreteCodeGenerator{
 		config:      config,
 		logger:      logger,

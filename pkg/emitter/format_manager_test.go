@@ -9,7 +9,7 @@ import (
 
 func TestFormatManager_FormatCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	formatMgr := NewFormatManager(config, logger)
 
 	// Create test generated code
@@ -57,7 +57,7 @@ func TestFormatManager_FormatCode(t *testing.T) {
 
 func TestFormatManager_ApplyGoFormat(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	formatMgr := NewFormatManager(config, logger)
 
 	// Test with valid Go code
@@ -86,7 +86,7 @@ fmt.Println("hello")
 
 func TestFormatManager_ValidateFormat(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	formatMgr := NewFormatManager(config, logger)
 
 	// Test with valid, properly formatted code
@@ -115,7 +115,7 @@ func main() {
 
 func TestFormatManager_FormatImports(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	formatMgr := NewFormatManager(config, logger)
 
 	imports := &ImportDeclaration{
@@ -146,7 +146,7 @@ func TestFormatManager_FormatImports(t *testing.T) {
 
 func TestFormatManager_OptimizeLayout(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	formatMgr := NewFormatManager(config, logger)
 
 	// Create test code with suboptimal layout
@@ -255,7 +255,7 @@ func TestCodeLinter(t *testing.T) {
 
 func TestFormatManager_EdgeCases(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	formatMgr := NewFormatManager(config, logger)
 
 	// Test with nil generated code
@@ -298,7 +298,7 @@ func TestFormatManager_EdgeCases(t *testing.T) {
 
 func TestFormatManager_PrivateMethods(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	formatMgr := NewFormatManager(config, logger).(*ConcreteFormatManager)
 
 	// Test optimizeBlankLines (currently 0% coverage)

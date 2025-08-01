@@ -25,7 +25,7 @@ func TestNewExecutor(t *testing.T) {
 	assert.NotNil(t, executor)
 
 	status := executor.GetStatus()
-	assert.Equal(t, ExecutorStateIdle, status.State)
+	assert.Equal(t, StateIdle, status.State)
 	assert.NotNil(t, status.StartTime)
 }
 
@@ -69,7 +69,7 @@ func TestExecutor_ExecutePlan(t *testing.T) {
 			eventBus := events.NewInMemoryEventBus(logger)
 			defer eventBus.Close()
 
-			config := DefaultExecutorConfig()
+			config := DefaultConfig()
 			config.ExecutionTimeout = 10 * time.Second
 			config.EnableMetrics = true
 
@@ -110,7 +110,7 @@ func TestExecutor_ExecuteBatch(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	executor := NewExecutor(logger, eventBus, DefaultExecutorConfig())
+	executor := NewExecutor(logger, eventBus, DefaultConfig())
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -138,7 +138,7 @@ func TestExecutor_ExecuteField(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	executor := NewExecutor(logger, eventBus, DefaultExecutorConfig())
+	executor := NewExecutor(logger, eventBus, DefaultConfig())
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -166,7 +166,7 @@ func TestExecutor_GetMetrics(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	config.EnableMetrics = true
 
 	executor := NewExecutor(logger, eventBus, config)
@@ -191,7 +191,7 @@ func TestExecutor_GetStatus(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	executor := NewExecutor(logger, eventBus, DefaultExecutorConfig())
+	executor := NewExecutor(logger, eventBus, DefaultConfig())
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -203,7 +203,7 @@ func TestExecutor_GetStatus(t *testing.T) {
 
 	status := executor.GetStatus()
 	assert.NotNil(t, status)
-	assert.Equal(t, ExecutorStateIdle, status.State)
+	assert.Equal(t, StateIdle, status.State)
 	assert.NotNil(t, status.ActiveBatches)
 	assert.NotNil(t, status.CompletedBatches)
 	assert.NotNil(t, status.QueuedBatches)
@@ -215,7 +215,7 @@ func TestExecutor_ConcurrentExecution(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	config.MaxWorkers = 8
 	config.EnableMetrics = true
 
@@ -284,7 +284,7 @@ func TestExecutor_ResourceLimits(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	config.MaxWorkers = 2        // Low worker limit
 	config.MaxMemoryMB = 64      // Low memory limit
 	config.MaxConcurrentJobs = 5 // Low job limit
@@ -320,7 +320,7 @@ func TestExecutor_Shutdown(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	executor := NewExecutor(logger, eventBus, DefaultExecutorConfig())
+	executor := NewExecutor(logger, eventBus, DefaultConfig())
 
 	// Start a long-running plan
 	plan := createTestExecutionPlan("shutdown_test", 3, 5)
@@ -347,7 +347,7 @@ func BenchmarkExecutor_ExecutePlan(b *testing.B) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	config.EnableMetrics = false // Disable for accurate benchmarking
 
 	executor := NewExecutor(logger, eventBus, config)
@@ -444,7 +444,7 @@ func createTestBatchExecution(id string, fieldCount int) *BatchExecution {
 		MethodName:    "TestMethod",
 		BatchIndex:    0,
 		DependsOn:     []string{},
-		Configuration: DefaultExecutorConfig(),
+		Configuration: DefaultConfig(),
 		StartTime:     time.Now(),
 		Context:       make(map[string]interface{}),
 	}
@@ -459,7 +459,7 @@ func createTestFieldExecution(id, strategy string) *FieldExecution {
 		Mapping:       mapping,
 		BatchID:       "test_batch",
 		MethodName:    "TestMethod",
-		Configuration: DefaultExecutorConfig(),
+		Configuration: DefaultConfig(),
 		Context:       make(map[string]interface{}),
 		StartTime:     time.Now(),
 		Timeout:       5 * time.Second,

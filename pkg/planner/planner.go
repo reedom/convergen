@@ -23,15 +23,15 @@ var (
 type ExecutionPlanner struct {
 	logger    *zap.Logger
 	eventBus  events.EventBus
-	config    *PlannerConfig
+	config    *Config
 	depGraph  DependencyGraph
 	optimizer PlanOptimizer
-	metrics   *PlannerMetrics
+	metrics   *Metrics
 	mutex     sync.RWMutex
 }
 
-// PlannerConfig configures the execution planner behavior.
-type PlannerConfig struct {
+// Config configures the execution planner behavior.
+type Config struct {
 	MaxConcurrentWorkers int           `json:"max_concurrent_workers"`
 	MaxMemoryMB          int           `json:"max_memory_mb"`
 	PlanningTimeout      time.Duration `json:"planning_timeout"`
@@ -44,9 +44,9 @@ type PlannerConfig struct {
 }
 
 // NewExecutionPlanner creates a new execution planner.
-func NewExecutionPlanner(logger *zap.Logger, eventBus events.EventBus, config *PlannerConfig) *ExecutionPlanner {
+func NewExecutionPlanner(logger *zap.Logger, eventBus events.EventBus, config *Config) *ExecutionPlanner {
 	if config == nil {
-		config = DefaultPlannerConfig()
+		config = DefaultConfig()
 	}
 
 	// Validate and fix invalid configuration values
@@ -64,7 +64,7 @@ func NewExecutionPlanner(logger *zap.Logger, eventBus events.EventBus, config *P
 
 	depGraph := NewDependencyGraph(logger)
 	optimizer := NewPlanOptimizer(config, logger)
-	metrics := NewPlannerMetrics()
+	metrics := NewMetrics()
 
 	return &ExecutionPlanner{
 		logger:    logger,
@@ -76,9 +76,9 @@ func NewExecutionPlanner(logger *zap.Logger, eventBus events.EventBus, config *P
 	}
 }
 
-// DefaultPlannerConfig returns sensible default configuration.
-func DefaultPlannerConfig() *PlannerConfig {
-	return &PlannerConfig{
+// DefaultConfig returns sensible default configuration.
+func DefaultConfig() *Config {
+	return &Config{
 		MaxConcurrentWorkers: runtime.NumCPU(),
 		MaxMemoryMB:          512,
 		PlanningTimeout:      30 * time.Second,
@@ -584,8 +584,8 @@ type ExecutionBatch struct {
 	ConcurrencyLevel    int                    `json:"concurrency_level"`
 }
 
-// PlannerMetrics tracks planner performance and statistics.
-type PlannerMetrics struct {
+// Metrics tracks planner performance and statistics.
+type Metrics struct {
 	TotalPlansCreated    int64         `json:"total_plans_created"`
 	AveragePlanningTime  time.Duration `json:"average_planning_time"`
 	CyclesDetected       int64         `json:"cycles_detected"`
@@ -594,13 +594,13 @@ type PlannerMetrics struct {
 	mutex                sync.RWMutex
 }
 
-// NewPlannerMetrics creates new planner metrics.
-func NewPlannerMetrics() *PlannerMetrics {
-	return &PlannerMetrics{}
+// NewMetrics creates new planner metrics.
+func NewMetrics() *Metrics {
+	return &Metrics{}
 }
 
 // RecordPlan records metrics for a completed plan.
-func (pm *PlannerMetrics) RecordPlan(duration time.Duration) {
+func (pm *Metrics) RecordPlan(duration time.Duration) {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
 

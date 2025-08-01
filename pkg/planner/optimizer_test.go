@@ -46,7 +46,7 @@ func TestPlanOptimizer_OptimizePlan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
-			config := &PlannerConfig{
+			config := &Config{
 				EnableOptimizations:  true,
 				OptimizationLevel:    tt.optimizationLevel,
 				MaxConcurrentWorkers: 8,
@@ -92,7 +92,7 @@ func TestPlanOptimizer_OptimizePlan(t *testing.T) {
 
 func TestPlanOptimizer_ApplyBatchOptimizations(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultPlannerConfig()
+	config := DefaultConfig()
 	optimizer := NewPlanOptimizer(config, logger)
 
 	// Create test batches with varying sizes
@@ -137,7 +137,7 @@ func TestPlanOptimizer_ApplyBatchOptimizations(t *testing.T) {
 
 func TestPlanOptimizer_OptimizeConcurrency(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := &PlannerConfig{
+	config := &Config{
 		MaxConcurrentWorkers: 8,
 		EnableOptimizations:  true,
 		OptimizationLevel:    1,
@@ -179,7 +179,7 @@ func TestPlanOptimizer_OptimizeConcurrency(t *testing.T) {
 
 func TestPlanOptimizer_OptimizeResourceUsage(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := &PlannerConfig{
+	config := &Config{
 		MaxMemoryMB:         256,
 		EnableOptimizations: true,
 		OptimizationLevel:   1,
@@ -221,7 +221,7 @@ func TestPlanOptimizer_OptimizeResourceUsage(t *testing.T) {
 
 func TestPlanOptimizer_DisabledOptimizations(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := &PlannerConfig{
+	config := &Config{
 		EnableOptimizations: false, // Disabled
 		OptimizationLevel:   2,
 	}
@@ -254,7 +254,7 @@ func TestPlanOptimizer_DisabledOptimizations(t *testing.T) {
 
 func TestPlanOptimizer_BatchMerging(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := &PlannerConfig{
+	config := &Config{
 		EnableOptimizations:  true,
 		OptimizationLevel:    2, // Aggressive optimization enables batch merging
 		MinBatchSize:         3,
@@ -305,7 +305,7 @@ func TestPlanOptimizer_BatchMerging(t *testing.T) {
 
 func BenchmarkPlanOptimizer_OptimizePlan(b *testing.B) {
 	logger := zaptest.NewLogger(b)
-	config := &PlannerConfig{
+	config := &Config{
 		EnableOptimizations:  true,
 		OptimizationLevel:    1,
 		MaxConcurrentWorkers: 8,

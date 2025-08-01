@@ -38,7 +38,7 @@ type ImportManager interface {
 
 // ConcreteImportManager implements ImportManager.
 type ConcreteImportManager struct {
-	config           *EmitterConfig
+	config           *Config
 	logger           *zap.Logger
 	standardLibs     map[string]bool
 	aliasCounter     map[string]int
@@ -60,7 +60,7 @@ type AliasPattern struct {
 }
 
 // NewImportManager creates a new import manager.
-func NewImportManager(config *EmitterConfig, logger *zap.Logger) ImportManager {
+func NewImportManager(config *Config, logger *zap.Logger) ImportManager {
 	manager := &ConcreteImportManager{
 		config:       config,
 		logger:       logger,

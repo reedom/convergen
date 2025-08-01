@@ -375,33 +375,33 @@ func TestComplexityMetrics_ShouldUseComposite(t *testing.T) {
 	}
 }
 
-func TestNewEmitterMetrics(t *testing.T) {
-	metrics := NewEmitterMetrics()
+func TestNewMetrics(t *testing.T) {
+	metrics := NewMetrics()
 
 	if metrics == nil {
-		t.Error("NewEmitterMetrics should return metrics")
+		t.Error("NewMetrics should return metrics")
 		return
 	}
 
 	if metrics.StrategyUsage == nil {
-		t.Error("NewEmitterMetrics should initialize StrategyUsage map")
+		t.Error("NewMetrics should initialize StrategyUsage map")
 	}
 
 	if metrics.StrategyPerformance == nil {
-		t.Error("NewEmitterMetrics should initialize StrategyPerformance map")
+		t.Error("NewMetrics should initialize StrategyPerformance map")
 	}
 
 	if metrics.OptimizationsApplied == nil {
-		t.Error("NewEmitterMetrics should initialize OptimizationsApplied map")
+		t.Error("NewMetrics should initialize OptimizationsApplied map")
 	}
 
 	if metrics.ErrorsByType == nil {
-		t.Error("NewEmitterMetrics should initialize ErrorsByType map")
+		t.Error("NewMetrics should initialize ErrorsByType map")
 	}
 }
 
-func TestEmitterMetrics_RecordGeneration(t *testing.T) {
-	metrics := NewEmitterMetrics()
+func TestMetrics_RecordGeneration(t *testing.T) {
+	metrics := NewMetrics()
 	initialMethods := metrics.TotalMethods
 
 	methodCode := &MethodCode{
@@ -427,8 +427,8 @@ func TestEmitterMetrics_RecordGeneration(t *testing.T) {
 	}
 }
 
-func TestEmitterMetrics_GetSnapshot(t *testing.T) {
-	metrics := NewEmitterMetrics()
+func TestMetrics_GetSnapshot(t *testing.T) {
+	metrics := NewMetrics()
 	metrics.TotalMethods = 10
 	metrics.TotalLines = 100
 
@@ -481,7 +481,7 @@ func TestTemplateData(t *testing.T) {
 		Imports: []*Import{
 			{Path: "fmt", Standard: true, Used: true},
 		},
-		Config: DefaultEmitterConfig(),
+		Config: DefaultConfig(),
 		Metadata: map[string]interface{}{
 			"version": "1.0.0",
 		},
@@ -701,7 +701,7 @@ func TestGenerationRequestResponse(t *testing.T) {
 
 	request := &GenerationRequest{
 		ExecutionResults: executionResults,
-		Config:           DefaultEmitterConfig(),
+		Config:           DefaultConfig(),
 		Context: map[string]interface{}{
 			"version": "1.0.0",
 		},

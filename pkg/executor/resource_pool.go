@@ -20,7 +20,7 @@ var (
 
 // ResourcePool manages worker pools, memory allocation, and resource throttling.
 type ResourcePool struct {
-	config  *ExecutorConfig
+	config  *Config
 	logger  *zap.Logger
 	metrics *ExecutionMetrics
 
@@ -46,7 +46,7 @@ type ResourcePool struct {
 }
 
 // NewResourcePool creates a new resource pool.
-func NewResourcePool(config *ExecutorConfig, logger *zap.Logger, metrics *ExecutionMetrics) *ResourcePool {
+func NewResourcePool(config *Config, logger *zap.Logger, metrics *ExecutionMetrics) *ResourcePool {
 	pool := &ResourcePool{
 		config:             config,
 		logger:             logger,

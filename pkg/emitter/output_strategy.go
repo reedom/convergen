@@ -27,7 +27,7 @@ type OutputStrategy interface {
 
 // ConcreteOutputStrategy implements OutputStrategy.
 type ConcreteOutputStrategy struct {
-	config *EmitterConfig
+	config *Config
 	logger *zap.Logger
 
 	// Strategy selection weights
@@ -56,7 +56,7 @@ type StrategyEstimate struct {
 }
 
 // NewOutputStrategy creates a new output strategy analyzer.
-func NewOutputStrategy(config *EmitterConfig, logger *zap.Logger) OutputStrategy {
+func NewOutputStrategy(config *Config, logger *zap.Logger) OutputStrategy {
 	return &ConcreteOutputStrategy{
 		config:                config,
 		logger:                logger,

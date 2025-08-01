@@ -13,24 +13,24 @@ import (
 
 // CompositeLiteralStrategy generates code using composite literal initialization.
 type CompositeLiteralStrategy struct {
-	config *EmitterConfig
+	config *Config
 	logger *zap.Logger
 }
 
 // AssignmentBlockStrategy generates code using assignment blocks.
 type AssignmentBlockStrategy struct {
-	config *EmitterConfig
+	config *Config
 	logger *zap.Logger
 }
 
 // MixedApproachStrategy combines both composite literals and assignments.
 type MixedApproachStrategy struct {
-	config *EmitterConfig
+	config *Config
 	logger *zap.Logger
 }
 
 // NewCompositeLiteralStrategy creates a new composite literal strategy.
-func NewCompositeLiteralStrategy(config *EmitterConfig, logger *zap.Logger) GenerationStrategy {
+func NewCompositeLiteralStrategy(config *Config, logger *zap.Logger) GenerationStrategy {
 	return &CompositeLiteralStrategy{
 		config: config,
 		logger: logger,
@@ -38,7 +38,7 @@ func NewCompositeLiteralStrategy(config *EmitterConfig, logger *zap.Logger) Gene
 }
 
 // NewAssignmentBlockStrategy creates a new assignment block strategy.
-func NewAssignmentBlockStrategy(config *EmitterConfig, logger *zap.Logger) GenerationStrategy {
+func NewAssignmentBlockStrategy(config *Config, logger *zap.Logger) GenerationStrategy {
 	return &AssignmentBlockStrategy{
 		config: config,
 		logger: logger,
@@ -46,7 +46,7 @@ func NewAssignmentBlockStrategy(config *EmitterConfig, logger *zap.Logger) Gener
 }
 
 // NewMixedApproachStrategy creates a new mixed approach strategy.
-func NewMixedApproachStrategy(config *EmitterConfig, logger *zap.Logger) GenerationStrategy {
+func NewMixedApproachStrategy(config *Config, logger *zap.Logger) GenerationStrategy {
 	return &MixedApproachStrategy{
 		config: config,
 		logger: logger,

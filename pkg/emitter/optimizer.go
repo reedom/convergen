@@ -49,7 +49,7 @@ type CodeOptimizer interface {
 
 // ConcreteCodeOptimizer implements CodeOptimizer.
 type ConcreteCodeOptimizer struct {
-	config  *EmitterConfig
+	config  *Config
 	logger  *zap.Logger
 	metrics *OptimizerMetrics
 
@@ -189,7 +189,7 @@ type CFGEdge struct {
 }
 
 // NewCodeOptimizer creates a new code optimizer.
-func NewCodeOptimizer(config *EmitterConfig, logger *zap.Logger, metrics *EmitterMetrics) CodeOptimizer {
+func NewCodeOptimizer(config *Config, logger *zap.Logger, metrics *Metrics) CodeOptimizer {
 	optimizer := &ConcreteCodeOptimizer{
 		config:  config,
 		logger:  logger,

@@ -36,7 +36,7 @@ type FieldExecutor interface {
 
 // ConcreteFieldExecutor implements FieldExecutor.
 type ConcreteFieldExecutor struct {
-	config   *ExecutorConfig
+	config   *Config
 	logger   *zap.Logger
 	eventBus events.EventBus
 	metrics  *ExecutionMetrics
@@ -83,13 +83,13 @@ type ExecutionContext struct {
 	Data          map[string]interface{} `json:"data"`
 	SourceValue   interface{}            `json:"source_value"`
 	TargetType    domain.Type            `json:"target_type"`
-	Configuration *ExecutorConfig        `json:"configuration"`
+	Configuration *Config                `json:"configuration"`
 	Logger        *zap.Logger            `json:"-"`
 	Cache         map[string]interface{} `json:"-"`
 }
 
 // NewFieldExecutor creates a new field executor.
-func NewFieldExecutor(config *ExecutorConfig, logger *zap.Logger, eventBus events.EventBus, metrics *ExecutionMetrics) FieldExecutor {
+func NewFieldExecutor(config *Config, logger *zap.Logger, eventBus events.EventBus, metrics *ExecutionMetrics) FieldExecutor {
 	executor := &ConcreteFieldExecutor{
 		config:     config,
 		logger:     logger,

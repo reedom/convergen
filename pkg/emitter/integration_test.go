@@ -17,7 +17,7 @@ import (
 func TestEmitterIntegration_CompleteWorkflow(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.OptimizationLevel = OptimizationBasic
 
 	// Create event-aware emitter
@@ -135,10 +135,10 @@ func TestEmitterIntegration_CompleteWorkflow(t *testing.T) {
 func TestEmitterIntegration_EventPipeline(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	emitter := NewEmitter(logger, eventBus, config)
-	eventHandler := NewEmitterEventHandler(emitter, eventBus, logger)
+	eventHandler := NewEventHandler(emitter, eventBus, logger)
 
 	// Register event handlers
 	err := eventHandler.RegisterEventHandlers()
@@ -252,7 +252,7 @@ func TestEmitterIntegration_EventPipeline(t *testing.T) {
 func TestEmitterIntegration_OptimizationPipeline(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.OptimizationLevel = OptimizationAggressive
 	config.EnableDeadCodeElim = true
 	config.EnableVarOptimization = true

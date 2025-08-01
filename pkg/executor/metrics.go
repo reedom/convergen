@@ -262,7 +262,7 @@ func (em *ExecutionMetrics) UpdateResourceMetrics(resourceMetrics *ResourceMetri
 }
 
 // RecordExecutorStatus records executor status metrics.
-func (em *ExecutionMetrics) RecordExecutorStatus(status *ExecutorStatus) {
+func (em *ExecutionMetrics) RecordExecutorStatus(status *Status) {
 	if !em.enabled {
 		return
 	}

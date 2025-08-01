@@ -13,8 +13,8 @@ import (
 
 func TestCodeGenerator_GenerateMethodCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 
 	generator := NewCodeGenerator(config, logger, metrics)
 
@@ -70,8 +70,8 @@ func TestCodeGenerator_GenerateMethodCode(t *testing.T) {
 
 func TestCodeGenerator_GenerateFieldCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 
 	generator := NewCodeGenerator(config, logger, metrics)
 
@@ -145,8 +145,8 @@ func TestCodeGenerator_GenerateFieldCode(t *testing.T) {
 
 func TestCodeGenerator_GenerateErrorHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 
 	generator := NewCodeGenerator(config, logger, metrics)
 
@@ -187,8 +187,8 @@ func TestCodeGenerator_GenerateErrorHandling(t *testing.T) {
 
 func TestCodeGenerator_GetMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 
 	generator := NewCodeGenerator(config, logger, metrics)
 
@@ -206,8 +206,8 @@ func TestCodeGenerator_GetMetrics(t *testing.T) {
 
 func TestCodeGenerator_Shutdown(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 
 	generator := NewCodeGenerator(config, logger, metrics)
 
@@ -223,8 +223,8 @@ func TestCodeGenerator_Shutdown(t *testing.T) {
 
 func TestCodeGenerator_HelperFunctions(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 
 	generator := NewCodeGenerator(config, logger, metrics).(*ConcreteCodeGenerator)
 
@@ -275,8 +275,8 @@ func TestCodeGenerator_HelperFunctions(t *testing.T) {
 
 func TestCodeGenerator_ErrorHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 
 	generator := NewCodeGenerator(config, logger, metrics)
 	ctx := context.Background()
@@ -306,8 +306,8 @@ func TestCodeGenerator_ErrorHandling(t *testing.T) {
 
 func TestCodeGenerator_ComplexScenarios(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 
 	generator := NewCodeGenerator(config, logger, metrics)
 
@@ -370,9 +370,9 @@ func TestCodeGenerator_ComplexScenarios(t *testing.T) {
 
 func TestCodeGenerator_StrategySelection(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.MaxFieldsForComposite = 3 // Set threshold for composite literal strategy
-	metrics := NewEmitterMetrics()
+	metrics := NewMetrics()
 
 	generator := NewCodeGenerator(config, logger, metrics)
 

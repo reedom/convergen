@@ -326,10 +326,10 @@ func (c *ConcreteComponentManager) registerDefaultFactories() {
 
 	// Planner factory
 	c.factories[ComponentPlanner] = func(config interface{}) (PipelineComponent, error) {
-		plannerConfig, ok := config.(*planner.PlannerConfig)
+		plannerConfig, ok := config.(*planner.Config)
 		if !ok {
 			// Use the default from planner package
-			plannerConfig = &planner.PlannerConfig{
+			plannerConfig = &planner.Config{
 				MaxConcurrentWorkers: 4,
 				MaxMemoryMB:          512,
 				PlanningTimeout:      30 * time.Second,
@@ -349,9 +349,9 @@ func (c *ConcreteComponentManager) registerDefaultFactories() {
 
 	// Executor factory
 	c.factories["executor"] = func(config interface{}) (PipelineComponent, error) {
-		executorConfig, ok := config.(*executor.ExecutorConfig)
+		executorConfig, ok := config.(*executor.Config)
 		if !ok {
-			executorConfig = executor.DefaultExecutorConfig()
+			executorConfig = executor.DefaultConfig()
 		}
 
 		e := executor.NewExecutor(c.logger, c.eventBus, executorConfig)
@@ -361,9 +361,9 @@ func (c *ConcreteComponentManager) registerDefaultFactories() {
 
 	// Emitter factory
 	c.factories[ComponentEmitter] = func(config interface{}) (PipelineComponent, error) {
-		emitterConfig, ok := config.(*emitter.EmitterConfig)
+		emitterConfig, ok := config.(*emitter.Config)
 		if !ok {
-			emitterConfig = emitter.DefaultEmitterConfig()
+			emitterConfig = emitter.DefaultConfig()
 		}
 
 		e := emitter.NewEmitter(c.logger, c.eventBus, emitterConfig)

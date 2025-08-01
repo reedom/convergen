@@ -14,7 +14,7 @@ import (
 
 func TestCompositeLiteralStrategy(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	strategy := NewCompositeLiteralStrategy(config, logger)
 
 	if strategy.Name() != "composite_literal" {
@@ -101,7 +101,7 @@ func TestCompositeLiteralStrategy(t *testing.T) {
 
 func TestCompositeLiteralStrategy_CannotHandle(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.MaxFieldsForComposite = 2 // Low threshold for testing
 	strategy := NewCompositeLiteralStrategy(config, logger)
 
@@ -160,7 +160,7 @@ func TestCompositeLiteralStrategy_CannotHandle(t *testing.T) {
 
 func TestAssignmentBlockStrategy(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	strategy := NewAssignmentBlockStrategy(config, logger)
 
 	if strategy.Name() != "assignment_block" {
@@ -273,7 +273,7 @@ func TestAssignmentBlockStrategy(t *testing.T) {
 
 func TestMixedApproachStrategy(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	strategy := NewMixedApproachStrategy(config, logger)
 
 	if strategy.Name() != "mixed_approach" {
@@ -363,7 +363,7 @@ func TestMixedApproachStrategy(t *testing.T) {
 
 func TestMixedApproachStrategy_CannotHandle(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	strategy := NewMixedApproachStrategy(config, logger)
 
 	// Create test method
@@ -418,7 +418,7 @@ func TestMixedApproachStrategy_CannotHandle(t *testing.T) {
 
 func TestStrategies_RequiredImports(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	// Create test method
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
@@ -472,7 +472,7 @@ func TestStrategies_RequiredImports(t *testing.T) {
 
 func TestStrategies_ComplexityMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	// Create test methods
 	sourceType := domain.NewBasicType("Source", reflect.Struct)
@@ -545,7 +545,7 @@ func TestStrategies_ComplexityMetrics(t *testing.T) {
 
 func TestStrategies_EdgeCases(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 
 	strategies := []GenerationStrategy{
 		NewCompositeLiteralStrategy(config, logger),

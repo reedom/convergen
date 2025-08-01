@@ -31,17 +31,17 @@ const (
 	EventStrategySelected      = "emitter.strategy.selected"
 )
 
-// EmitterEventHandler handles emitter-specific events.
-type EmitterEventHandler struct {
+// EventHandler handles emitter-specific events.
+type EventHandler struct {
 	emitter    Emitter
 	logger     *zap.Logger
 	eventBus   events.EventBus
 	middleware []events.EventMiddleware
 }
 
-// NewEmitterEventHandler creates a new emitter event handler.
-func NewEmitterEventHandler(emitter Emitter, eventBus events.EventBus, logger *zap.Logger) *EmitterEventHandler {
-	return &EmitterEventHandler{
+// NewEventHandler creates a new emitter event handler.
+func NewEventHandler(emitter Emitter, eventBus events.EventBus, logger *zap.Logger) *EventHandler {
+	return &EventHandler{
 		emitter:    emitter,
 		logger:     logger,
 		eventBus:   eventBus,
@@ -50,7 +50,7 @@ func NewEmitterEventHandler(emitter Emitter, eventBus events.EventBus, logger *z
 }
 
 // RegisterEventHandlers registers all emitter event handlers.
-func (h *EmitterEventHandler) RegisterEventHandlers() error {
+func (h *EventHandler) RegisterEventHandlers() error {
 	// Subscribe to execution pipeline events
 	if err := h.eventBus.Subscribe("executor.completed", h); err != nil {
 		return fmt.Errorf("failed to subscribe to executor.completed: %w", err)
@@ -67,7 +67,7 @@ func (h *EmitterEventHandler) RegisterEventHandlers() error {
 }
 
 // Handle processes events for the emitter.
-func (h *EmitterEventHandler) Handle(ctx context.Context, event events.Event) error {
+func (h *EventHandler) Handle(ctx context.Context, event events.Event) error {
 	h.logger.Debug("handling emitter event",
 		zap.String("event_type", event.Type()),
 		zap.String("event_id", event.ID()))
@@ -85,7 +85,7 @@ func (h *EmitterEventHandler) Handle(ctx context.Context, event events.Event) er
 }
 
 // CanHandle returns true if this handler can process the event type.
-func (h *EmitterEventHandler) CanHandle(eventType string) bool {
+func (h *EventHandler) CanHandle(eventType string) bool {
 	switch eventType {
 	case "executor.completed", "planner.method_planned":
 		return true
@@ -97,8 +97,8 @@ func (h *EmitterEventHandler) CanHandle(eventType string) bool {
 // Event publishing methods
 
 // PublishEmitterStarted publishes an emitter started event.
-func (h *EmitterEventHandler) PublishEmitterStarted(ctx context.Context, packageName string, methodCount int) error {
-	event := NewEmitterStartedEvent(ctx, packageName, methodCount)
+func (h *EventHandler) PublishEmitterStarted(ctx context.Context, packageName string, methodCount int) error {
+	event := NewStartedEvent(ctx, packageName, methodCount)
 	if err := h.eventBus.Publish(event); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
@@ -107,8 +107,8 @@ func (h *EmitterEventHandler) PublishEmitterStarted(ctx context.Context, package
 }
 
 // PublishEmitterCompleted publishes an emitter completed event.
-func (h *EmitterEventHandler) PublishEmitterCompleted(ctx context.Context, code *GeneratedCode, metrics *EmitterMetrics) error {
-	event := NewEmitterCompletedEvent(ctx, code, metrics)
+func (h *EventHandler) PublishEmitterCompleted(ctx context.Context, code *GeneratedCode, metrics *Metrics) error {
+	event := NewCompletedEvent(ctx, code, metrics)
 	if err := h.eventBus.Publish(event); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
@@ -117,8 +117,8 @@ func (h *EmitterEventHandler) PublishEmitterCompleted(ctx context.Context, code 
 }
 
 // PublishEmitterFailed publishes an emitter failed event.
-func (h *EmitterEventHandler) PublishEmitterFailed(ctx context.Context, err error, partialCode *GeneratedCode) error {
-	event := NewEmitterFailedEvent(ctx, err, partialCode)
+func (h *EventHandler) PublishEmitterFailed(ctx context.Context, err error, partialCode *GeneratedCode) error {
+	event := NewFailedEvent(ctx, err, partialCode)
 	if err := h.eventBus.Publish(event); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
@@ -127,7 +127,7 @@ func (h *EmitterEventHandler) PublishEmitterFailed(ctx context.Context, err erro
 }
 
 // PublishCodeGenerationStarted publishes a code generation started event.
-func (h *EmitterEventHandler) PublishCodeGenerationStarted(ctx context.Context, methodName string, strategy ConstructionStrategy) error {
+func (h *EventHandler) PublishCodeGenerationStarted(ctx context.Context, methodName string, strategy ConstructionStrategy) error {
 	event := NewCodeGenerationStartedEvent(ctx, methodName, strategy)
 	if err := h.eventBus.Publish(event); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
@@ -137,7 +137,7 @@ func (h *EmitterEventHandler) PublishCodeGenerationStarted(ctx context.Context, 
 }
 
 // PublishMethodGenerated publishes a method generated event.
-func (h *EmitterEventHandler) PublishMethodGenerated(ctx context.Context, method *MethodCode, duration time.Duration) error {
+func (h *EventHandler) PublishMethodGenerated(ctx context.Context, method *MethodCode, duration time.Duration) error {
 	event := NewMethodGeneratedEvent(ctx, method, duration)
 	if err := h.eventBus.Publish(event); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
@@ -147,7 +147,7 @@ func (h *EmitterEventHandler) PublishMethodGenerated(ctx context.Context, method
 }
 
 // PublishStrategySelected publishes a strategy selected event.
-func (h *EmitterEventHandler) PublishStrategySelected(ctx context.Context, methodName string, strategy ConstructionStrategy, reason string) error {
+func (h *EventHandler) PublishStrategySelected(ctx context.Context, methodName string, strategy ConstructionStrategy, reason string) error {
 	event := NewStrategySelectedEvent(ctx, methodName, strategy, reason)
 	if err := h.eventBus.Publish(event); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
@@ -158,7 +158,7 @@ func (h *EmitterEventHandler) PublishStrategySelected(ctx context.Context, metho
 
 // Event handlers
 
-func (h *EmitterEventHandler) handleExecutorCompleted(_ context.Context, event events.Event) error {
+func (h *EventHandler) handleExecutorCompleted(_ context.Context, event events.Event) error {
 	h.logger.Debug("handling executor completed event")
 
 	// Extract execution results from event metadata
@@ -196,7 +196,7 @@ func (h *EmitterEventHandler) handleExecutorCompleted(_ context.Context, event e
 	return nil
 }
 
-func (h *EmitterEventHandler) handleMethodPlanned(_ context.Context, event events.Event) error {
+func (h *EventHandler) handleMethodPlanned(_ context.Context, event events.Event) error {
 	h.logger.Debug("handling method planned event")
 
 	// This could be used for pre-planning optimization or strategy hints
@@ -211,69 +211,69 @@ func (h *EmitterEventHandler) handleMethodPlanned(_ context.Context, event event
 
 // Event types
 
-// EmitterStartedEvent represents the start of code generation.
-type EmitterStartedEvent struct {
+// StartedEvent represents the start of code generation.
+type StartedEvent struct {
 	events.BaseEvent
 	PackageName string `json:"package_name"`
 	MethodCount int    `json:"method_count"`
 }
 
 // Type returns the event type.
-func (e *EmitterStartedEvent) Type() string {
+func (e *StartedEvent) Type() string {
 	return e.BaseEvent.Type()
 }
 
-// NewEmitterStartedEvent creates a new emitter started event.
-func NewEmitterStartedEvent(ctx context.Context, packageName string, methodCount int) *EmitterStartedEvent {
+// NewStartedEvent creates a new emitter started event.
+func NewStartedEvent(ctx context.Context, packageName string, methodCount int) *StartedEvent {
 	base := events.NewBaseEvent(EventEmitterStarted, ctx)
 
-	return &EmitterStartedEvent{
+	return &StartedEvent{
 		BaseEvent:   *base,
 		PackageName: packageName,
 		MethodCount: methodCount,
 	}
 }
 
-// EmitterCompletedEvent represents successful code generation completion.
-type EmitterCompletedEvent struct {
+// CompletedEvent represents successful code generation completion.
+type CompletedEvent struct {
 	events.BaseEvent
-	Code    *GeneratedCode  `json:"code"`
-	Metrics *EmitterMetrics `json:"metrics"`
+	Code    *GeneratedCode `json:"code"`
+	Metrics *Metrics       `json:"metrics"`
 }
 
 // Type returns the event type.
-func (e *EmitterCompletedEvent) Type() string {
+func (e *CompletedEvent) Type() string {
 	return e.BaseEvent.Type()
 }
 
-// NewEmitterCompletedEvent creates a new emitter completed event.
-func NewEmitterCompletedEvent(ctx context.Context, code *GeneratedCode, metrics *EmitterMetrics) *EmitterCompletedEvent {
+// NewCompletedEvent creates a new emitter completed event.
+func NewCompletedEvent(ctx context.Context, code *GeneratedCode, metrics *Metrics) *CompletedEvent {
 	base := events.NewBaseEvent(EventEmitterCompleted, ctx)
 	base.WithMetadata("package_name", code.PackageName)
 	base.WithMetadata("methods_generated", len(code.Methods))
 	base.WithMetadata("lines_generated", metrics.TotalLines)
 
-	return &EmitterCompletedEvent{
+	return &CompletedEvent{
 		BaseEvent: *base,
 		Code:      code,
 		Metrics:   metrics,
 	}
 }
 
-// EmitterFailedEvent represents code generation failure.
-type EmitterFailedEvent struct {
+// FailedEvent represents code generation failure.
+type FailedEvent struct {
 	events.BaseEvent
 	Error       error          `json:"error"`
 	PartialCode *GeneratedCode `json:"partial_code,omitempty"`
 }
 
 // Type returns the event type.
-func (e *EmitterFailedEvent) Type() string {
+func (e *FailedEvent) Type() string {
 	return e.BaseEvent.Type()
 }
 
-// NewEmitterFailedEvent creates a new emitter failed event.
-func NewEmitterFailedEvent(ctx context.Context, err error, partialCode *GeneratedCode) *EmitterFailedEvent {
+// NewFailedEvent creates a new emitter failed event.
+func NewFailedEvent(ctx context.Context, err error, partialCode *GeneratedCode) *FailedEvent {
 	base := events.NewBaseEvent(EventEmitterFailed, ctx)
 	base.WithMetadata("error_message", err.Error())
 
@@ -281,7 +281,7 @@ func NewEmitterFailedEvent(ctx context.Context, err error, partialCode *Generate
 		base.WithMetadata("partial_methods", len(partialCode.Methods))
 	}
 
-	return &EmitterFailedEvent{
+	return &FailedEvent{
 		BaseEvent:   *base,
 		Error:       err,
 		PartialCode: partialCode,
@@ -370,13 +370,13 @@ func NewStrategySelectedEvent(ctx context.Context, methodName string, strategy C
 // EventAwareEmitter wraps an emitter with event publishing capabilities.
 type EventAwareEmitter struct {
 	inner        Emitter
-	eventHandler *EmitterEventHandler
+	eventHandler *EventHandler
 	logger       *zap.Logger
 }
 
 // NewEventAwareEmitter creates a new event-aware emitter.
 func NewEventAwareEmitter(inner Emitter, eventBus events.EventBus, logger *zap.Logger) *EventAwareEmitter {
-	eventHandler := NewEmitterEventHandler(inner, eventBus, logger)
+	eventHandler := NewEventHandler(inner, eventBus, logger)
 
 	// Register event handlers
 	if err := eventHandler.RegisterEventHandlers(); err != nil {
@@ -459,7 +459,7 @@ func (e *EventAwareEmitter) OptimizeOutput(ctx context.Context, code *GeneratedC
 	return optimizedCode, nil
 }
 
-func (e *EventAwareEmitter) GetMetrics() *EmitterMetrics {
+func (e *EventAwareEmitter) GetMetrics() *Metrics {
 	return e.inner.GetMetrics()
 }
 

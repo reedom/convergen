@@ -9,7 +9,7 @@ import (
 
 func TestImportManager_AnalyzeImports(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	importMgr := NewImportManager(config, logger)
 
 	// Create test generated code with various import needs
@@ -67,7 +67,7 @@ func TestImportManager_AnalyzeImports(t *testing.T) {
 
 func TestImportManager_GenerateImports(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	importMgr := NewImportManager(config, logger)
 
 	// Create test analysis
@@ -133,7 +133,7 @@ func TestImportManager_GenerateImports(t *testing.T) {
 
 func TestImportManager_ResolveConflicts(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	importMgr := NewImportManager(config, logger)
 
 	// Create conflicting imports
@@ -184,7 +184,7 @@ func TestImportManager_ResolveConflicts(t *testing.T) {
 
 func TestImportManager_OptimizeImports(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	importMgr := NewImportManager(config, logger)
 
 	// Create imports that can be optimized
@@ -217,7 +217,7 @@ func TestImportManager_OptimizeImports(t *testing.T) {
 
 func TestImportManager_PrivateMethods(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	importMgr := NewImportManager(config, logger).(*ConcreteImportManager)
 
 	// Test AddImport (0% coverage)
@@ -456,7 +456,7 @@ func TestImportManager_PrivateMethods(t *testing.T) {
 
 func TestImportManager_EdgeCases(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	importMgr := NewImportManager(config, logger)
 
 	// Test with malformed import paths

@@ -64,10 +64,10 @@ func (s ComponentStatus) String() string {
 // Config defines configuration for the coordinator.
 type Config struct {
 	// Component configurations
-	ParserConfig   *parser.ParserConfig     `json:"parser_config,omitempty"`
-	PlannerConfig  *planner.PlannerConfig   `json:"planner_config,omitempty"`
-	ExecutorConfig *executor.ExecutorConfig `json:"executor_config,omitempty"`
-	EmitterConfig  *emitter.EmitterConfig   `json:"emitter_config,omitempty"`
+	ParserConfig   *parser.ParserConfig   `json:"parser_config,omitempty"`
+	PlannerConfig  *planner.Config `json:"planner_config,omitempty"`
+	ExecutorConfig *executor.Config       `json:"executor_config,omitempty"`
+	EmitterConfig  *emitter.Config        `json:"emitter_config,omitempty"`
 
 	// Coordinator-specific settings
 	MaxConcurrency   int           `json:"max_concurrency"`
@@ -102,7 +102,7 @@ func DefaultConfig() *Config {
 			MaxConcurrentWorkers:  4,
 			TypeResolutionTimeout: 30 * time.Second,
 		},
-		PlannerConfig: &planner.PlannerConfig{
+		PlannerConfig: &planner.Config{
 			MaxConcurrentWorkers: 4,
 			MaxMemoryMB:          512,
 			PlanningTimeout:      30 * time.Second,
@@ -113,8 +113,8 @@ func DefaultConfig() *Config {
 			EnableMetrics:        true,
 			DebugMode:            false,
 		},
-		ExecutorConfig: executor.DefaultExecutorConfig(),
-		EmitterConfig:  emitter.DefaultEmitterConfig(),
+		ExecutorConfig: executor.DefaultConfig(),
+		EmitterConfig:  emitter.DefaultConfig(),
 
 		MaxConcurrency:   4,
 		EventBufferSize:  1000,

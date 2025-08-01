@@ -13,9 +13,9 @@ import (
 
 func TestCodeOptimizer_OptimizeCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.OptimizationLevel = OptimizationBasic
-	metrics := NewEmitterMetrics()
+	metrics := NewMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics)
 
 	// Create test method
@@ -78,7 +78,7 @@ func TestCodeOptimizer_OptimizeCode(t *testing.T) {
 
 func TestCodeOptimizer_OptimizationLevels(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	metrics := NewEmitterMetrics()
+	metrics := NewMetrics()
 
 	levels := []OptimizationLevel{
 		OptimizationBasic,
@@ -100,7 +100,7 @@ func TestCodeOptimizer_OptimizationLevels(t *testing.T) {
 
 	for _, level := range levels {
 		t.Run(level.String(), func(t *testing.T) {
-			config := DefaultEmitterConfig()
+			config := DefaultConfig()
 			config.OptimizationLevel = level
 			optimizer := NewCodeOptimizer(config, logger, metrics)
 
@@ -122,9 +122,9 @@ func TestCodeOptimizer_OptimizationLevels(t *testing.T) {
 
 func TestCodeOptimizer_OptimizeMethodCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.OptimizationLevel = OptimizationBasic
-	metrics := NewEmitterMetrics()
+	metrics := NewMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
 
 	// Test with method code
@@ -162,9 +162,9 @@ func TestCodeOptimizer_OptimizeMethodCode(t *testing.T) {
 
 func TestCodeOptimizer_EliminateDeadCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.EnableDeadCodeElim = true
-	metrics := NewEmitterMetrics()
+	metrics := NewMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
 
 	generatedCode := &GeneratedCode{
@@ -193,9 +193,9 @@ func TestCodeOptimizer_EliminateDeadCode(t *testing.T) {
 
 func TestCodeOptimizer_OptimizeVariableNames(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.EnableVarOptimization = true
-	metrics := NewEmitterMetrics()
+	metrics := NewMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
 
 	generatedCode := &GeneratedCode{
@@ -224,8 +224,8 @@ func TestCodeOptimizer_OptimizeVariableNames(t *testing.T) {
 
 func TestCodeOptimizer_SimplifyExpressions(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
 
 	generatedCode := &GeneratedCode{
@@ -245,8 +245,8 @@ func TestCodeOptimizer_SimplifyExpressions(t *testing.T) {
 
 func TestCodeOptimizer_RemoveRedundancy(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
 
 	generatedCode := &GeneratedCode{
@@ -266,8 +266,8 @@ func TestCodeOptimizer_RemoveRedundancy(t *testing.T) {
 
 func TestCodeOptimizer_GetMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
 
 	metricsResult := optimizer.GetMetrics()
@@ -282,8 +282,8 @@ func TestCodeOptimizer_GetMetrics(t *testing.T) {
 
 func TestCodeOptimizer_Shutdown(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics)
 
 	ctx := context.Background()
@@ -605,8 +605,8 @@ func TestOptimizerMetrics(t *testing.T) {
 
 func TestOptimizer_EdgeCases(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	config := DefaultEmitterConfig()
-	metrics := NewEmitterMetrics()
+	config := DefaultConfig()
+	metrics := NewMetrics()
 	optimizer := NewCodeOptimizer(config, logger, metrics).(*ConcreteCodeOptimizer)
 
 	// Test with empty generated code

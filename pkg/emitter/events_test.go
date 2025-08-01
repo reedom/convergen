@@ -15,9 +15,9 @@ import (
 func TestEmitterEventHandler_RegisterEventHandlers(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
+	emitter := NewEmitter(logger, eventBus, DefaultConfig())
 
-	handler := NewEmitterEventHandler(emitter, eventBus, logger)
+	handler := NewEventHandler(emitter, eventBus, logger)
 
 	err := handler.RegisterEventHandlers()
 	if err != nil {
@@ -41,9 +41,9 @@ func TestEmitterEventHandler_RegisterEventHandlers(t *testing.T) {
 func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
+	emitter := NewEmitter(logger, eventBus, DefaultConfig())
 
-	handler := NewEmitterEventHandler(emitter, eventBus, logger)
+	handler := NewEventHandler(emitter, eventBus, logger)
 	ctx := context.Background()
 
 	// Test publishing emitter started event
@@ -75,7 +75,7 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 		PackageName: "testpkg",
 		Methods:     []*MethodCode{methodCode},
 	}
-	metrics := &EmitterMetrics{
+	metrics := &Metrics{
 		TotalMethods: 1,
 		TotalLines:   10,
 	}
@@ -103,9 +103,9 @@ func TestEmitterEventHandler_PublishEvents(t *testing.T) {
 func TestEmitterEventHandler_HandleExecutorCompleted(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
+	emitter := NewEmitter(logger, eventBus, DefaultConfig())
 
-	handler := NewEmitterEventHandler(emitter, eventBus, logger)
+	handler := NewEventHandler(emitter, eventBus, logger)
 	ctx := context.Background()
 
 	// Create executor completed event
@@ -145,9 +145,9 @@ func TestEmitterEventHandler_HandleExecutorCompleted(t *testing.T) {
 func TestEmitterEventHandler_HandleMethodPlanned(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
+	emitter := NewEmitter(logger, eventBus, DefaultConfig())
 
-	handler := NewEmitterEventHandler(emitter, eventBus, logger)
+	handler := NewEventHandler(emitter, eventBus, logger)
 	ctx := context.Background()
 
 	// Create method planned event
@@ -164,7 +164,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 	ctx := context.Background()
 
 	// Test EmitterStartedEvent
-	startedEvent := NewEmitterStartedEvent(ctx, "testpkg", 5)
+	startedEvent := NewStartedEvent(ctx, "testpkg", 5)
 	if startedEvent.Type() != EventEmitterStarted {
 		t.Errorf("Expected event type %s, got %s", EventEmitterStarted, startedEvent.Type())
 	}
@@ -179,9 +179,9 @@ func TestEmitterEvents_Creation(t *testing.T) {
 
 	// Test EmitterCompletedEvent
 	code := &GeneratedCode{PackageName: "testpkg", Methods: []*MethodCode{}}
-	metrics := &EmitterMetrics{TotalMethods: 3}
+	metrics := &Metrics{TotalMethods: 3}
 
-	completedEvent := NewEmitterCompletedEvent(ctx, code, metrics)
+	completedEvent := NewCompletedEvent(ctx, code, metrics)
 	if completedEvent.Type() != EventEmitterCompleted {
 		t.Errorf("Expected event type %s, got %s", EventEmitterCompleted, completedEvent.Type())
 	}
@@ -194,7 +194,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 		Timestamp: time.Now(),
 	}
 
-	failedEvent := NewEmitterFailedEvent(ctx, testErr, nil)
+	failedEvent := NewFailedEvent(ctx, testErr, nil)
 	if failedEvent.Type() != EventEmitterFailed {
 		t.Errorf("Expected event type %s, got %s", EventEmitterFailed, failedEvent.Type())
 	}
@@ -244,7 +244,7 @@ func TestEmitterEvents_Creation(t *testing.T) {
 func TestEventAwareEmitter_GenerateCode(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	innerEmitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
+	innerEmitter := NewEmitter(logger, eventBus, DefaultConfig())
 
 	eventAwareEmitter := NewEventAwareEmitter(innerEmitter, eventBus, logger)
 
@@ -289,7 +289,7 @@ func TestEventAwareEmitter_GenerateCode(t *testing.T) {
 func TestEventAwareEmitter_GenerateMethod(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	innerEmitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
+	innerEmitter := NewEmitter(logger, eventBus, DefaultConfig())
 
 	eventAwareEmitter := NewEventAwareEmitter(innerEmitter, eventBus, logger)
 
@@ -329,7 +329,7 @@ func TestEventAwareEmitter_GenerateMethod(t *testing.T) {
 func TestEventAwareEmitter_DelegatedMethods(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	innerEmitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
+	innerEmitter := NewEmitter(logger, eventBus, DefaultConfig())
 
 	eventAwareEmitter := NewEventAwareEmitter(innerEmitter, eventBus, logger)
 
@@ -368,9 +368,9 @@ func TestEventAwareEmitter_DelegatedMethods(t *testing.T) {
 func TestEmitterEventHandler_ErrorHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	emitter := NewEmitter(logger, eventBus, DefaultEmitterConfig())
+	emitter := NewEmitter(logger, eventBus, DefaultConfig())
 
-	handler := NewEmitterEventHandler(emitter, eventBus, logger)
+	handler := NewEventHandler(emitter, eventBus, logger)
 	ctx := context.Background()
 
 	// Test handling event with missing metadata

@@ -17,8 +17,8 @@ import (
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
-// TestConcurrentMetricsAccess tests thread safety of CodeGenMetrics.
-func TestConcurrentMetricsAccess(t *testing.T) {
+// TestConcurrentCodeGenMetrics tests thread safety of CodeGenMetrics.
+func TestConcurrentCodeGenMetrics(t *testing.T) {
 	metrics := NewCodeGenMetrics()
 
 	const numGoroutines = 10
@@ -72,9 +72,9 @@ func TestConcurrentMetricsAccess(t *testing.T) {
 	assert.True(t, snapshot.TotalGenerationTime > 0)
 }
 
-// TestConcurrentEmitterMetricsAccess tests thread safety of EmitterMetrics.
-func TestConcurrentEmitterMetricsAccess(t *testing.T) {
-	metrics := NewEmitterMetrics()
+// TestConcurrentMetricsAccess tests thread safety of Metrics.
+func TestConcurrentMetricsAccess(t *testing.T) {
+	metrics := NewMetrics()
 
 	const numGoroutines = 8
 
@@ -143,7 +143,7 @@ func TestConcurrentCodeGeneration(t *testing.T) {
 	// Use a no-op logger for high concurrency testing to avoid test infrastructure race conditions
 	logger := zap.NewNop()
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.EnableConcurrentGen = true
 	config.MaxConcurrentMethods = 4
 
@@ -214,7 +214,7 @@ func TestConcurrentCodeGeneration(t *testing.T) {
 func TestConcurrentEmitterOperations(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.EnableConcurrentGen = true
 
 	emitter := NewEmitter(logger, eventBus, config)
@@ -297,7 +297,7 @@ func TestStressTesting(t *testing.T) {
 	// Use a no-op logger for stress testing to avoid race conditions in test infrastructure
 	logger := zap.NewNop()
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.EnableConcurrentGen = true
 	config.MaxConcurrentMethods = 8
 
@@ -370,7 +370,7 @@ func TestRaceDetectorCompliance(t *testing.T) {
 	// It should always pass when run with -race flag if thread safety is correct
 	logger := zaptest.NewLogger(t)
 	eventBus := events.NewInMemoryEventBus(logger)
-	config := DefaultEmitterConfig()
+	config := DefaultConfig()
 	config.EnableConcurrentGen = true
 
 	emitter := NewEmitter(logger, eventBus, config)

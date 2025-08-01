@@ -14,8 +14,8 @@ var (
 	ErrFormattedMessage = errors.New("formatted error message")
 )
 
-// LoggerOpt is a function that modifies the logger options.
-type LoggerOpt func(*option)
+// Opt is a function that modifies the logger options.
+type Opt func(*option)
 
 // option is a structure that holds the logger options.
 type option struct {
@@ -28,28 +28,28 @@ var logger = log.New(io.Discard, "", 0) // logger is the info logger instance.
 var elogger = log.New(os.Stderr, "", 0) // elogger is the error logger instance.
 
 // Enable sets the enabled flag to true.
-func Enable() LoggerOpt {
+func Enable() Opt {
 	return func(opt *option) {
 		opt.enabled = true
 	}
 }
 
 // Output sets the output destination of the logger.
-func Output(out io.Writer) LoggerOpt {
+func Output(out io.Writer) Opt {
 	return func(opt *option) {
 		opt.out = out
 	}
 }
 
 // ForTest sets the forTest flag to true.
-func ForTest() LoggerOpt {
+func ForTest() Opt {
 	return func(opt *option) {
 		opt.forTest = true
 	}
 }
 
 // SetupLogger sets up the logger with the provided options.
-func SetupLogger(options ...LoggerOpt) {
+func SetupLogger(options ...Opt) {
 	opt := option{}
 	for _, o := range options {
 		o(&opt)

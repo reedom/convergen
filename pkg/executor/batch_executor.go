@@ -36,7 +36,7 @@ type BatchExecutor interface {
 
 // ConcreteBatchExecutor implements BatchExecutor.
 type ConcreteBatchExecutor struct {
-	config        *ExecutorConfig
+	config        *Config
 	logger        *zap.Logger
 	eventBus      events.EventBus
 	resourcePool  *ResourcePool
@@ -54,7 +54,7 @@ type ConcreteBatchExecutor struct {
 }
 
 // NewBatchExecutor creates a new batch executor.
-func NewBatchExecutor(config *ExecutorConfig, logger *zap.Logger, eventBus events.EventBus, resourcePool *ResourcePool, metrics *ExecutionMetrics) BatchExecutor {
+func NewBatchExecutor(config *Config, logger *zap.Logger, eventBus events.EventBus, resourcePool *ResourcePool, metrics *ExecutionMetrics) BatchExecutor {
 	return &ConcreteBatchExecutor{
 		config:        config,
 		logger:        logger,

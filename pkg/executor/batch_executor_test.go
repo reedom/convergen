@@ -19,7 +19,7 @@ func TestNewBatchExecutor(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
 
@@ -67,7 +67,7 @@ func TestBatchExecutor_ExecuteBatch(t *testing.T) {
 			eventBus := events.NewInMemoryEventBus(logger)
 			defer eventBus.Close()
 
-			config := DefaultExecutorConfig()
+			config := DefaultConfig()
 			config.BatchTimeout = 30 * time.Second
 			config.EnableMetrics = true
 
@@ -120,7 +120,7 @@ func TestBatchExecutor_ExecuteBatchWithNilBatch(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
 
@@ -149,7 +149,7 @@ func TestBatchExecutor_ExecuteBatchWithDependencies(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
 
@@ -206,7 +206,7 @@ func TestBatchExecutor_ConcurrentBatchExecution(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	config.MaxWorkers = 8
 	config.EnableMetrics = true
 
@@ -285,7 +285,7 @@ func TestBatchExecutor_GetMetrics(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
 
@@ -327,7 +327,7 @@ func TestBatchExecutor_ContextCancellation(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	config.BatchTimeout = 1 * time.Minute // Long timeout
 
 	metrics := NewExecutionMetrics(true)
@@ -374,7 +374,7 @@ func TestBatchExecutor_ResourceLimits(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	config.MaxWorkers = 2   // Limited workers
 	config.MaxMemoryMB = 64 // Limited memory
 	config.EnableMetrics = true
@@ -419,7 +419,7 @@ func TestBatchExecutor_EmptyBatch(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	metrics := NewExecutionMetrics(true)
 	resourcePool := NewResourcePool(config, logger, metrics)
 
@@ -461,7 +461,7 @@ func BenchmarkBatchExecutor_ExecuteBatch(b *testing.B) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	config.EnableMetrics = false // Disable for accurate benchmarking
 
 	metrics := NewExecutionMetrics(false)
@@ -503,7 +503,7 @@ func BenchmarkBatchExecutor_ConcurrentBatches(b *testing.B) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultExecutorConfig()
+	config := DefaultConfig()
 	config.MaxWorkers = 8
 	config.EnableMetrics = false
 

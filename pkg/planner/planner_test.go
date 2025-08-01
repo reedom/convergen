@@ -80,7 +80,7 @@ func TestExecutionPlanner_CreateExecutionPlan(t *testing.T) {
 			err = eventBus.Subscribe("plan.completed", completedHandler)
 			require.NoError(t, err)
 
-			planner := NewExecutionPlanner(logger, eventBus, &PlannerConfig{
+			planner := NewExecutionPlanner(logger, eventBus, &Config{
 				MaxConcurrentWorkers: 4,
 				MaxMemoryMB:          256,
 				PlanningTimeout:      5 * time.Second,
@@ -123,7 +123,7 @@ func TestExecutionPlanner_DependencyHandling(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	planner := NewExecutionPlanner(logger, eventBus, DefaultPlannerConfig())
+	planner := NewExecutionPlanner(logger, eventBus, DefaultConfig())
 
 	// Create methods with dependencies
 	methods := createTestMethodsWithDependencies()
@@ -152,7 +152,7 @@ func TestExecutionPlanner_ConcurrentProcessing(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := &PlannerConfig{
+	config := &Config{
 		MaxConcurrentWorkers: 8,
 		MaxMemoryMB:          512,
 		PlanningTimeout:      10 * time.Second,
@@ -208,7 +208,7 @@ func TestExecutionPlanner_OptimizationLevels(t *testing.T) {
 	plans := make([]*domain.ExecutionPlan, len(optimizationLevels))
 
 	for i, level := range optimizationLevels {
-		config := DefaultPlannerConfig()
+		config := DefaultConfig()
 		config.OptimizationLevel = level
 
 		planner := NewExecutionPlanner(logger, eventBus, config)
@@ -235,18 +235,18 @@ func TestExecutionPlanner_ErrorHandling(t *testing.T) {
 	tests := []struct {
 		name          string
 		methods       []*domain.Method
-		config        *PlannerConfig
+		config        *Config
 		expectedError string
 	}{
 		{
 			name:    "circular dependencies",
 			methods: createTestMethodsWithCircularDependencies(),
-			config:  DefaultPlannerConfig(),
+			config:  DefaultConfig(),
 		},
 		{
 			name:    "invalid configuration",
 			methods: createTestMethods(1, 1),
-			config: &PlannerConfig{
+			config: &Config{
 				MaxConcurrentWorkers: -1,
 				MaxMemoryMB:          -1,
 				PlanningTimeout:      -1,
@@ -275,7 +275,7 @@ func TestExecutionPlanner_ResourceLimits(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := &PlannerConfig{
+	config := &Config{
 		MaxConcurrentWorkers: 2,
 		MaxMemoryMB:          64,
 		PlanningTimeout:      1 * time.Second,
@@ -316,7 +316,7 @@ func BenchmarkExecutionPlanner_CreatePlan(b *testing.B) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultPlannerConfig()
+	config := DefaultConfig()
 	config.EnableMetrics = false // Disable for more accurate benchmarking
 
 	planner := NewExecutionPlanner(logger, eventBus, config)
@@ -337,7 +337,7 @@ func BenchmarkExecutionPlanner_LargeScale(b *testing.B) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	config := DefaultPlannerConfig()
+	config := DefaultConfig()
 	config.EnableMetrics = false
 	config.OptimizationLevel = 0 // Disable optimizations for baseline
 

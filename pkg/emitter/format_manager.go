@@ -113,7 +113,7 @@ type LintIssue struct {
 }
 
 // NewFormatManager creates a new format manager.
-func NewFormatManager(config *EmitterConfig, logger *zap.Logger) FormatManager {
+func NewFormatManager(config *Config, logger *zap.Logger) FormatManager {
 	formatConfig := &FormatConfig{
 		IndentStyle:         config.IndentStyle,
 		LineWidth:           config.LineWidth,

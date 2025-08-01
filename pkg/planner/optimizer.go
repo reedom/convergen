@@ -20,12 +20,12 @@ type PlanOptimizer interface {
 
 // ConcretePlanOptimizer implements PlanOptimizer.
 type ConcretePlanOptimizer struct {
-	config *PlannerConfig
+	config *Config
 	logger *zap.Logger
 }
 
 // NewPlanOptimizer creates a new plan optimizer.
-func NewPlanOptimizer(config *PlannerConfig, logger *zap.Logger) PlanOptimizer {
+func NewPlanOptimizer(config *Config, logger *zap.Logger) PlanOptimizer {
 	return &ConcretePlanOptimizer{
 		config: config,
 		logger: logger,

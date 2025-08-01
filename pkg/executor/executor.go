@@ -18,8 +18,8 @@ var (
 	ErrExecutionPlanNil = errors.New("execution plan cannot be nil")
 )
 
-// ExecutorConfig defines configuration parameters for the execution engine.
-type ExecutorConfig struct {
+// Config defines configuration parameters for the execution engine.
+type Config struct {
 	// Worker pool settings
 	MaxWorkers        int           `json:"max_workers"`
 	MinWorkers        int           `json:"min_workers"`
@@ -53,9 +53,9 @@ type ExecutorConfig struct {
 	DebugMode       bool          `json:"debug_mode"`
 }
 
-// DefaultExecutorConfig returns sensible default configuration.
-func DefaultExecutorConfig() *ExecutorConfig {
-	return &ExecutorConfig{
+// DefaultConfig returns sensible default configuration.
+func DefaultConfig() *Config {
+	return &Config{
 		MaxWorkers:          8,
 		MinWorkers:          2,
 		WorkerIdleTimeout:   30 * time.Second,
@@ -120,7 +120,7 @@ type Executor interface {
 	GetMetrics() *ExecutionMetrics
 
 	// GetStatus returns current executor status
-	GetStatus() *ExecutorStatus
+	GetStatus() *Status
 
 	// Shutdown gracefully shuts down the executor
 	Shutdown(ctx context.Context) error
@@ -128,7 +128,7 @@ type Executor interface {
 
 // ConcreteExecutor implements the Executor interface.
 type ConcreteExecutor struct {
-	config   *ExecutorConfig
+	config   *Config
 	logger   *zap.Logger
 	eventBus events.EventBus
 
@@ -139,23 +139,23 @@ type ConcreteExecutor struct {
 	metrics       *ExecutionMetrics
 
 	// State management
-	status   *ExecutorStatus
+	status   *Status
 	shutdown chan struct{}
 	wg       sync.WaitGroup
 	mutex    sync.RWMutex
 }
 
 // NewExecutor creates a new execution engine.
-func NewExecutor(logger *zap.Logger, eventBus events.EventBus, config *ExecutorConfig) Executor {
+func NewExecutor(logger *zap.Logger, eventBus events.EventBus, config *Config) Executor {
 	if config == nil {
-		config = DefaultExecutorConfig()
+		config = DefaultConfig()
 	}
 
 	metrics := NewExecutionMetrics(config.EnableMetrics)
 	resourcePool := NewResourcePool(config, logger, metrics)
 
-	status := &ExecutorStatus{
-		State:            ExecutorStateIdle,
+	status := &Status{
+		State:            StateIdle,
 		StartTime:        time.Now(),
 		ActiveBatches:    make(map[string]*BatchExecution),
 		CompletedBatches: make(map[string]*BatchResult),
@@ -222,8 +222,8 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 	e.resourcePool.SetLimits(plan.GlobalLimits.MaxWorkers, plan.GlobalLimits.MaxMemoryMB)
 
 	// Update executor status
-	e.updateStatus(func(status *ExecutorStatus) {
-		status.State = ExecutorStateExecuting
+	e.updateStatus(func(status *Status) {
+		status.State = StateExecuting
 		status.CurrentPlan = plan
 		status.PlanStartTime = &startTime
 	})
@@ -281,8 +281,8 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 	result.Metrics = e.metrics.GetSnapshot()
 
 	// Update executor status
-	e.updateStatus(func(status *ExecutorStatus) {
-		status.State = ExecutorStateIdle
+	e.updateStatus(func(status *Status) {
+		status.State = StateIdle
 		status.CurrentPlan = nil
 		status.PlanStartTime = nil
 		status.LastCompletedPlan = plan
@@ -340,7 +340,7 @@ func (e *ConcreteExecutor) GetMetrics() *ExecutionMetrics {
 }
 
 // GetStatus returns current executor status.
-func (e *ConcreteExecutor) GetStatus() *ExecutorStatus {
+func (e *ConcreteExecutor) GetStatus() *Status {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
 
@@ -371,8 +371,8 @@ func (e *ConcreteExecutor) Shutdown(ctx context.Context) error {
 	close(e.shutdown)
 
 	// Update status
-	e.updateStatus(func(status *ExecutorStatus) {
-		status.State = ExecutorStateShuttingDown
+	e.updateStatus(func(status *Status) {
+		status.State = StateShuttingDown
 	})
 
 	// Shutdown components
@@ -458,7 +458,7 @@ func (e *ConcreteExecutor) executeMethod(ctx context.Context, methodName string,
 	return methodResult, nil
 }
 
-func (e *ConcreteExecutor) updateStatus(updateFn func(*ExecutorStatus)) {
+func (e *ConcreteExecutor) updateStatus(updateFn func(*Status)) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	updateFn(e.status)

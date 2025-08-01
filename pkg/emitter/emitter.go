@@ -20,8 +20,8 @@ var (
 	ErrMethodGenerationErrors = errors.New("method generation errors")
 )
 
-// EmitterConfig defines configuration parameters for the code generation engine.
-type EmitterConfig struct {
+// Config defines configuration parameters for the code generation engine.
+type Config struct {
 	// Output preferences
 	PreferCompositeLiterals bool   `json:"prefer_composite_literals"`
 	MaxFieldsForComposite   int    `json:"max_fields_for_composite"`
@@ -54,9 +54,9 @@ type EmitterConfig struct {
 	DebugMode       bool `json:"debug_mode"`
 }
 
-// DefaultEmitterConfig returns sensible default configuration.
-func DefaultEmitterConfig() *EmitterConfig {
-	return &EmitterConfig{
+// DefaultConfig returns sensible default configuration.
+func DefaultConfig() *Config {
+	return &Config{
 		PreferCompositeLiterals:  true,
 		MaxFieldsForComposite:    5,
 		IndentStyle:              "\t",
@@ -91,7 +91,7 @@ type Emitter interface {
 	OptimizeOutput(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error)
 
 	// GetMetrics returns current emitter metrics
-	GetMetrics() *EmitterMetrics
+	GetMetrics() *Metrics
 
 	// Shutdown gracefully shuts down the emitter
 	Shutdown(ctx context.Context) error
@@ -99,7 +99,7 @@ type Emitter interface {
 
 // ConcreteEmitter implements the Emitter interface.
 type ConcreteEmitter struct {
-	config   *EmitterConfig
+	config   *Config
 	logger   *zap.Logger
 	eventBus events.EventBus
 
@@ -112,19 +112,19 @@ type ConcreteEmitter struct {
 	optimizer   CodeOptimizer
 
 	// State management
-	metrics  *EmitterMetrics
+	metrics  *Metrics
 	shutdown chan struct{}
 	wg       sync.WaitGroup
 	mutex    sync.RWMutex
 }
 
 // NewEmitter creates a new code generation engine.
-func NewEmitter(logger *zap.Logger, eventBus events.EventBus, config *EmitterConfig) Emitter {
+func NewEmitter(logger *zap.Logger, eventBus events.EventBus, config *Config) Emitter {
 	if config == nil {
-		config = DefaultEmitterConfig()
+		config = DefaultConfig()
 	}
 
-	metrics := NewEmitterMetrics()
+	metrics := NewMetrics()
 
 	emitter := &ConcreteEmitter{
 		config:   config,
@@ -322,7 +322,7 @@ func (e *ConcreteEmitter) OptimizeOutput(ctx context.Context, code *GeneratedCod
 }
 
 // GetMetrics returns current emitter metrics.
-func (e *ConcreteEmitter) GetMetrics() *EmitterMetrics {
+func (e *ConcreteEmitter) GetMetrics() *Metrics {
 	return e.metrics.GetSnapshot()
 }
 

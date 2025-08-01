@@ -491,15 +491,15 @@ func createIntegrationTestConfig() *Config {
 			CacheSize:             1000,
 			EnableProgress:        false,
 		},
-		PlannerConfig: planner.DefaultPlannerConfig(),
-		ExecutorConfig: &executor.ExecutorConfig{
+		PlannerConfig: planner.DefaultConfig(),
+		ExecutorConfig: &executor.Config{
 			MaxWorkers:        4,
 			MinWorkers:        1,
 			MaxConcurrentJobs: 10,
 			ExecutionTimeout:  30 * time.Second,
 			RetryAttempts:     3,
 		},
-		EmitterConfig: emitter.DefaultEmitterConfig(),
+		EmitterConfig: emitter.DefaultConfig(),
 
 		MaxConcurrency:   2,
 		EventBufferSize:  100,
