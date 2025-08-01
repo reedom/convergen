@@ -12,7 +12,8 @@ const (
 
 // FixturePath constructs a path to a test fixture
 func FixturePath(usecaseName, filename string) string {
-	return filepath.Join(FixtureBasePath, usecaseName, filename)
+	// Always construct path relative to tests directory
+	return filepath.Join("..", "..", FixtureBasePath, usecaseName, filename)
 }
 
 // SourceFixture returns the path to a setup.go fixture
@@ -54,4 +55,14 @@ func AssertImport(importPath string) CodeAssertion {
 // AssertStructInit checks for struct initialization patterns
 func AssertStructInit(structName string) CodeAssertion {
 	return Contains(fmt.Sprintf("= &%s{}", structName))
+}
+
+// AssertHasGeneratedFunction checks for any generated function (including receiver methods)
+func AssertHasGeneratedFunction() CodeAssertion {
+	return MatchesRegex(`func (\(\w+ \*\w+\) )?\w+\(.*\).*\{`)
+}
+
+// AssertConverterFunction checks for any conversion function pattern
+func AssertConverterFunction() CodeAssertion {
+	return MatchesRegex(`func \w+(To\w+|\w+To\w+)\(`)
 }

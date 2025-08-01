@@ -1,25 +1,25 @@
 # Tasks
 
-## TASK-001: Create Test Scenario Framework  
+## TASK-001: Create Test Scenario Framework  ✅
 **Requirements**: FR-001
-- [ ] Define `TestScenario` struct with input/output specifications
-- [ ] Create `CodeAssertion` types for generated code validation
-- [ ] Implement scenario runner that integrates with existing parser/generator
-- [ ] Add helper functions for common test patterns
+- [x] Define `TestScenario` struct with input/output specifications
+- [x] Create `CodeAssertion` types for generated code validation
+- [x] Implement scenario runner that integrates with existing parser/generator
+- [x] Add helper functions for common test patterns
 
-## TASK-002: Migrate Existing Tests
+## TASK-002: Migrate Existing Tests ✅
 **Requirements**: FR-001, NFR-003  
-- [ ] Convert current `usecases_test.go` table entries to new scenario format
-- [ ] Preserve all existing test cases and expected behavior
-- [ ] Verify no regression in test coverage or functionality
-- [ ] Update test execution to use new framework
+- [x] Convert current `usecases_test.go` table entries to new scenario format
+- [x] Preserve all existing test cases and expected behavior
+- [x] Verify no regression in test coverage or functionality
+- [x] Update test execution to use new framework
 
-## TASK-003: Enhance Test Organization
+## TASK-003: Enhance Test Organization ✅
 **Requirements**: FR-005
-- [ ] Create `scenarios/` directory structure with categories
-- [ ] Organize tests by annotation type (style, match, etc.)
-- [ ] Create separate files for edge cases and error conditions
-- [ ] Add `testdata/` organization to match scenario categories
+- [x] Create `scenarios/` directory structure with categories
+- [x] Organize tests by annotation type (style, match, etc.)
+- [x] Create separate files for edge cases and error conditions
+- [x] Add `testdata/` organization to match scenario categories
 
 ## TASK-004: Add Missing Annotation Coverage
 **Requirements**: FR-002
