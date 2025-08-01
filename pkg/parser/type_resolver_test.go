@@ -276,7 +276,7 @@ func TestTypeResolver_ResolveSignatureType(t *testing.T) {
 		types.NewVar(0, nil, "", errorType),
 	)
 
-	signature := types.NewSignature(nil, params, results, false)
+	signature := types.NewSignatureType(nil, nil, nil, params, results, false)
 
 	ctx := context.Background()
 	domainType, err := resolver.ResolveType(ctx, signature)

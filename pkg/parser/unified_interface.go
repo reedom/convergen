@@ -286,7 +286,7 @@ func (lp *LegacyParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	// Collect all methods
 	var allMethods []*model.MethodEntry
 
-	var interfaces []*ParsedInterfaceInfo
+	interfaces := make([]*ParsedInterfaceInfo, 0, len(methodsInfo))
 
 	for _, info := range methodsInfo {
 		allMethods = append(allMethods, info.Methods...)
@@ -448,7 +448,7 @@ func (mp *ModernParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	// Collect all methods and enhanced interface information
 	var allMethods []*model.MethodEntry
 
-	var interfaces []*ParsedInterfaceInfo
+	interfaces := make([]*ParsedInterfaceInfo, 0, len(methodsInfo))
 
 	for _, info := range methodsInfo {
 		allMethods = append(allMethods, info.Methods...)

@@ -164,7 +164,7 @@ func (p *Parser) Parse() ([]*model.MethodsInfo, error) {
 
 	var allMethods []*model.MethodEntry
 
-	var list []*model.MethodsInfo
+	list := make([]*model.MethodsInfo, 0, len(entries))
 
 	for _, entry := range entries {
 		methods, err := p.parseMethods(entry)

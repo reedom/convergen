@@ -470,7 +470,7 @@ func (m *ConcreteMetricsCollector) GetTopErrors(limit int) []string {
 		count     int64
 	}
 
-	var errors []errorCount
+	errors := make([]errorCount, 0, len(m.errorCounts))
 	for errorType, count := range m.errorCounts {
 		errors = append(errors, errorCount{errorType, count})
 	}

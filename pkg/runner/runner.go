@@ -41,7 +41,7 @@ func Run(conf config.Config) error {
 
 	builder := p.CreateBuilder()
 
-	var funcBlocks []model.FunctionsBlock
+	funcBlocks := make([]model.FunctionsBlock, 0, len(methods))
 
 	for _, info := range methods {
 		functions, err := builder.CreateFunctions(info.Methods)

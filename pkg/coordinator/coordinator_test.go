@@ -210,7 +210,7 @@ func testDefaultConfigValues(t *testing.T, config *Config) {
 func testDefaultConfigComponents(t *testing.T, config *Config) {
 	components := map[string]interface{}{
 		"ParserConfig":   config.ParserConfig,
-		"planner.Config":  config.PlannerConfig,
+		"planner.Config": config.PlannerConfig,
 		"ExecutorConfig": config.ExecutorConfig,
 		"EmitterConfig":  config.EmitterConfig,
 	}

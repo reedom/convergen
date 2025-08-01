@@ -200,7 +200,7 @@ func (be *ConcreteBatchExecutor) ExecuteBatchWithDependencies(ctx context.Contex
 func (be *ConcreteBatchExecutor) executeFieldsConcurrently(ctx context.Context, batch *BatchExecution, concurrencyLevel int) (map[string]*FieldResult, []ExecutionError) {
 	fieldResults := make(map[string]*FieldResult)
 
-	var errors []ExecutionError
+	errors := make([]ExecutionError, 0, len(batch.Mappings))
 
 	var resultMutex sync.Mutex
 

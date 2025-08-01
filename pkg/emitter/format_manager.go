@@ -396,7 +396,7 @@ func (fm *ConcreteFormatManager) formatMethodCode(method *MethodCode) error {
 func (fm *ConcreteFormatManager) formatCodeBlock(code string, indentLevel int) string {
 	lines := strings.Split(code, "\n")
 
-	var formatted []string
+	formatted := make([]string, 0, len(lines))
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)

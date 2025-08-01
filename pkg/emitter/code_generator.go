@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/executor"
@@ -450,7 +452,7 @@ func (cg *ConcreteCodeGenerator) generateErrorCheck(err domain.ExecutionError) s
 
 func (cg *ConcreteCodeGenerator) getHelperFunctions() map[string]interface{} {
 	return map[string]interface{}{
-		"capitalize": strings.Title,
+		"capitalize": cases.Title(language.English).String,
 		"camelCase":  cg.toCamelCase,
 		"snakeCase":  cg.toSnakeCase,
 		"indent":     cg.indent,
@@ -468,7 +470,7 @@ func (cg *ConcreteCodeGenerator) toCamelCase(s string) string {
 	// Simple camel case conversion
 	words := strings.Split(s, "_")
 	for i := 1; i < len(words); i++ {
-		words[i] = strings.Title(words[i])
+		words[i] = cases.Title(language.English).String(words[i])
 	}
 
 	return strings.Join(words, "")
