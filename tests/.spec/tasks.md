@@ -21,12 +21,20 @@
 - [x] Create separate files for edge cases and error conditions
 - [x] Add `testdata/` organization to match scenario categories
 
-## TASK-004: Add Missing Annotation Coverage
+## TASK-004: Add Missing Annotation Coverage ✅
 **Requirements**: FR-002
-- [ ] Audit current annotation test coverage
-- [ ] Identify missing annotation scenarios (positive/negative cases)
-- [ ] Create test fixtures for uncovered annotations
-- [ ] Implement comprehensive annotation test scenarios
+- [x] Audit current annotation test coverage
+- [x] Identify missing annotation scenarios (positive/negative cases)
+- [x] Create test fixtures for uncovered annotations
+- [x] Implement comprehensive annotation test scenarios
+
+## TASK-005: Redesign Behavior-Driven Testing Framework 🔄
+**Requirements**: FR-001, FR-003, NFR-001
+- [x] Redesign TestScenario for inline code generation
+- [x] Implement runtime code compilation and execution
+- [x] Create behavior testing with actual type conversion
+- [x] Add comprehensive annotation coverage with behavior tests
+- [ ] Update all existing tests to use new framework
 
 ## TASK-005: Implement Code Assertions
 **Requirements**: FR-003
