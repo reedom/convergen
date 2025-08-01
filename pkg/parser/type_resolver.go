@@ -97,7 +97,7 @@ func (tr *TypeResolver) ResolveType(ctx context.Context, goType types.Type) (dom
 
 	switch t := goType.(type) {
 	case *types.Basic:
-		domainType, err = tr.resolveBasicType(t)
+		domainType = tr.resolveBasicType(t)
 	case *types.Named:
 		domainType, err = tr.resolveNamedType(ctx, t)
 	case *types.Pointer:
@@ -133,10 +133,10 @@ func (tr *TypeResolver) ResolveType(ctx context.Context, goType types.Type) (dom
 }
 
 // resolveBasicType handles basic Go types (int, string, bool, etc.)
-func (tr *TypeResolver) resolveBasicType(basic *types.Basic) (domain.Type, error) {
+func (tr *TypeResolver) resolveBasicType(basic *types.Basic) domain.Type {
 	kind := tr.mapBasicTypeKind(basic.Kind())
 
-	return domain.NewBasicType(basic.Name(), kind), nil
+	return domain.NewBasicType(basic.Name(), kind)
 }
 
 // resolveNamedType handles named types with generics support.

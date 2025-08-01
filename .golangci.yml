@@ -1,5 +1,11 @@
 # Comprehensive golangci-lint configuration for convergen
 # Updated for golangci-lint v1.64.8 with Go 1.24.5 support
+# 
+# IMPORTANT: This tool is used as a Go generator via go:generate.
+# When users run "//go:generate go run github.com/reedom/convergen",
+# the tool is compiled with the USER'S Go version, not this project's go.mod version.
+# Therefore, compatibility must be maintained with older Go versions.
+#
 # See https://golangci-lint.run/usage/configuration/ for all options
 
 run:
@@ -12,9 +18,9 @@ run:
   # Include test files in analysis
   tests: true
 
-  # Go version
-  go: "1.24"
-    # Enable concurrency for faster analysis
+  # Go version - set to minimum supported for backward compatibility
+  # This tool may be compiled with older Go versions via go:generate
+  go: "1.21"
 # Output configuration
 output:
   # Format: colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions
@@ -44,7 +50,8 @@ linters:
     - unused         # Detect unused constants, variables, functions
 
     # Code formatting and style
-    - gofmt          # Check if code is gofmt-ed
+    # gofmt disabled - conflicts with goimports alignment preferences in Makefile
+    # - gofmt          # Check if code is gofmt-ed
     - goimports      # Check if imports are sorted and grouped correctly
     - revive         # Fast, configurable, extensible, flexible linter
     - stylecheck     # Stylecheck (ST class of checks)
@@ -68,7 +75,8 @@ linters:
     - bodyclose      # Check if HTTP response body is closed successfully
     - rowserrcheck   # Check if Err of rows is checked successfully
     - sqlclosecheck  # Check if sql.Rows and sql.Stmt are closed
-    - copyloopvar    # Check for pointers to enclosing loop variables (replaces exportloopref)
+    # copyloopvar disabled - tool must maintain compatibility with Go <1.22 for go:generate usage
+    # - copyloopvar    # Check for pointers to enclosing loop variables (requires Go 1.22+)
 
     # Code consistency
     - goconst        # Find repeated strings that could be replaced by a constant
@@ -113,7 +121,7 @@ linters-settings:
   nestif:
     min-complexity: 5
 
-  # Magic numbers (using mnd instead of gomnd in newer versions)
+  # Magic numbers (mnd replaces gomnd in golangci-lint v1.55+, fallback to gomnd for older versions)
   mnd:
     checks:
       - argument
@@ -269,9 +277,10 @@ issues:
       linters:
         - wrapcheck
 
-    # Allow magic numbers in time operations
+    # Allow magic numbers in time operations (both mnd and gomnd for compatibility)
     - text: "Magic number: (1000|60|24|30|365), in <operation> detected"
       linters:
+        - mnd
         - gomnd
 
     # Exclude specific issues for main.go

@@ -185,10 +185,7 @@ func (fm *ConcreteFormatManager) FormatCode(ctx context.Context, code *Generated
 	}
 
 	// Assemble complete source code
-	sourceCode, err := fm.assembleSourceCode(formattedCode)
-	if err != nil {
-		return nil, fmt.Errorf("source assembly failed: %w", err)
-	}
+	sourceCode := fm.assembleSourceCode(formattedCode)
 
 	// Apply Go formatting
 	if fm.config.UseGoFmt || fm.config.UseGoImports {
@@ -369,31 +366,31 @@ func (fm *ConcreteFormatManager) formatMethodCode(method *MethodCode) error {
 
 	// Format method body
 	if method.Body != "" {
-		formatted := fm.formatCodeBlock(method.Body, 1)
+		formatted := fm.formatCodeBlock(method.Body)
 		method.Body = formatted
 	}
 
 	// Format error handling code
 	if method.ErrorHandling != "" {
-		formatted := fm.formatCodeBlock(method.ErrorHandling, 1)
+		formatted := fm.formatCodeBlock(method.ErrorHandling)
 		method.ErrorHandling = formatted
 	}
 
 	// Format field code
 	for _, field := range method.Fields {
 		if field.Assignment != "" {
-			field.Assignment = fm.formatCodeBlock(field.Assignment, 1)
+			field.Assignment = fm.formatCodeBlock(field.Assignment)
 		}
 
 		if field.ErrorCheck != "" {
-			field.ErrorCheck = fm.formatCodeBlock(field.ErrorCheck, 1)
+			field.ErrorCheck = fm.formatCodeBlock(field.ErrorCheck)
 		}
 	}
 
 	return nil
 }
 
-func (fm *ConcreteFormatManager) formatCodeBlock(code string, indentLevel int) string {
+func (fm *ConcreteFormatManager) formatCodeBlock(code string) string {
 	lines := strings.Split(code, "\n")
 
 	formatted := make([]string, 0, len(lines))
@@ -406,14 +403,14 @@ func (fm *ConcreteFormatManager) formatCodeBlock(code string, indentLevel int) s
 		}
 
 		// Apply indentation
-		indent := strings.Repeat(fm.config.IndentStyle, indentLevel)
+		indent := strings.Repeat(fm.config.IndentStyle, 1)
 		formatted = append(formatted, indent+trimmed)
 	}
 
 	return strings.Join(formatted, "\n")
 }
 
-func (fm *ConcreteFormatManager) assembleSourceCode(code *GeneratedCode) (string, error) {
+func (fm *ConcreteFormatManager) assembleSourceCode(code *GeneratedCode) string {
 	var source strings.Builder
 
 	// Package declaration
@@ -459,7 +456,7 @@ func (fm *ConcreteFormatManager) assembleSourceCode(code *GeneratedCode) (string
 		}
 	}
 
-	return source.String(), nil
+	return source.String()
 }
 
 func (fm *ConcreteFormatManager) optimizeMethodOrdering(methods []*MethodCode) {

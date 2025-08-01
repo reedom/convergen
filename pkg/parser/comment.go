@@ -80,19 +80,25 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 		case annotationStyle:
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <style> arg", p.fset.Position(n.Pos()))
-			} else if style, ok := gmodel.NewDstVarStyleFromValue(args[0]); !ok {
-				return logger.Errorf("%v: invalid <style> arg", p.fset.Position(n.Pos()))
-			} else {
-				opts.Style = style
 			}
+
+			style, ok := gmodel.NewDstVarStyleFromValue(args[0])
+			if !ok {
+				return logger.Errorf("%v: invalid <style> arg", p.fset.Position(n.Pos()))
+			}
+
+			opts.Style = style
 		case annotationMatch:
 			if len(args) == 0 {
 				return logger.Errorf("%v: needs <algorithm> arg", p.fset.Position(n.Pos()))
-			} else if rule, ok := gmodel.NewMatchRuleFromValue(args[0]); !ok {
-				return logger.Errorf("%v: invalid <algorithm> arg", p.fset.Position(n.Pos()))
-			} else {
-				opts.Rule = rule
 			}
+
+			rule, ok := gmodel.NewMatchRuleFromValue(args[0])
+			if !ok {
+				return logger.Errorf("%v: invalid <algorithm> arg", p.fset.Position(n.Pos()))
+			}
+
+			opts.Rule = rule
 		case annotationCase:
 			opts.ExactCase = true
 		case annotationCaseOff:
@@ -206,27 +212,29 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 // It returns the scope and object of the type if found, or nil if not found.
 // typeName is the fully qualified name of the type, including package name.
 // pos is the position where the lookup occurs.
-func (p *Parser) lookupType(typeName string, pos token.Pos) (*types.Scope, types.Object) {
+func (p *Parser) lookupType(typeName string, pos token.Pos) types.Object {
 	names := strings.Split(typeName, ".")
 	if len(names) == 1 {
 		inner := p.pkg.Types.Scope().Innermost(pos)
-		return inner.LookupParent(names[0], pos)
+		_, obj := inner.LookupParent(names[0], pos)
+
+		return obj
 	}
 
 	pkgPath, ok := p.imports.LookupPath(names[0])
 	if !ok {
-		return nil, nil
+		return nil
 	}
 
 	pkg, ok := p.pkg.Imports[pkgPath]
 	if !ok {
-		return nil, nil
+		return nil
 	}
 
 	scope := pkg.Types.Scope()
 	obj := scope.Lookup(names[1])
 
-	return scope, obj
+	return obj
 }
 
 // resolveConverters resolves the types and error flag of the FieldConverter `conv` by
@@ -277,7 +285,7 @@ func (p *Parser) resolveConverters(generatingMethods []*bmodel.MethodEntry, conv
 // with the given name and position.
 // It checks that the function is a valid converter function and can be used as such.
 func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, retType types.Type, retError bool, err error) {
-	_, obj := p.lookupType(funcName, pos)
+	obj := p.lookupType(funcName, pos)
 	if obj == nil {
 		err = logger.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
 		return
@@ -310,7 +318,7 @@ func (p *Parser) lookupConverterFunc(funcName string, pos token.Pos) (argType, r
 // as a manipulator function for a certain option. It returns a new Manipulator instance
 // on success, and an error on failure.
 func (p *Parser) lookupManipulatorFunc(funcName, optName string, pos token.Pos) (*option.Manipulator, error) {
-	_, obj := p.lookupType(funcName, pos)
+	obj := p.lookupType(funcName, pos)
 	if obj == nil {
 		return nil, logger.Errorf("%v: function %v not found", p.fset.Position(pos), funcName)
 	}

@@ -124,10 +124,7 @@ func (ep *ExecutionPlanner) CreateExecutionPlan(ctx context.Context, methods []*
 	}
 
 	// Calculate resource allocation
-	resources, err := ep.calculateResourceAllocation(ctx, batches)
-	if err != nil {
-		return nil, fmt.Errorf("failed to calculate resource allocation: %w", err)
-	}
+	resources := ep.calculateResourceAllocation(ctx, batches)
 
 	// Create method-specific execution plans
 	methodPlans, err := ep.createMethodPlans(ctx, methods, batches)
@@ -265,7 +262,7 @@ func (ep *ExecutionPlanner) generateExecutionBatches(_ context.Context) ([]*Exec
 }
 
 // calculateResourceAllocation determines optimal resource limits.
-func (ep *ExecutionPlanner) calculateResourceAllocation(_ context.Context, batches []*ExecutionBatch) (*domain.ResourceLimits, error) {
+func (ep *ExecutionPlanner) calculateResourceAllocation(_ context.Context, batches []*ExecutionBatch) *domain.ResourceLimits {
 	maxConcurrency := 0
 	totalMemoryMB := 0
 
@@ -293,7 +290,7 @@ func (ep *ExecutionPlanner) calculateResourceAllocation(_ context.Context, batch
 		MaxFieldsPerBatch:   ep.config.MaxBatchSize,
 		EnableGoroutinePool: true,
 		EnableMemoryPool:    true,
-	}, nil
+	}
 }
 
 // createMethodPlans creates execution plans for individual methods.

@@ -1,7 +1,13 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
+)
+
+// Static errors for err113 compliance.
+var (
+	ErrInvalidPetStatusValue = errors.New("invalid value for PetStatus")
 )
 
 type PetStatus string
@@ -12,7 +18,8 @@ func NewPetStatusFromValue(value string) (PetStatus, error) {
 			return s, nil
 		}
 	}
-	return PetStatus(""), fmt.Errorf("invalid value for PetStatus(%v)", value)
+
+	return PetStatus(""), fmt.Errorf("%w: %v", ErrInvalidPetStatusValue, value)
 }
 
 func (s PetStatus) String() string {

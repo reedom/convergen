@@ -21,7 +21,7 @@ import (
 // the provided configuration options.
 func Run(conf config.Config) error {
 	if conf.Log != "" {
-		f, err := os.OpenFile(conf.Log, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
+		f, err := os.OpenFile(conf.Log, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0600)
 		if err != nil {
 			return fmt.Errorf("failed to open log file %s: %w", conf.Log, err)
 		}

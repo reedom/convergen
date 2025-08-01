@@ -2,7 +2,6 @@ package planner
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
 	"go.uber.org/zap"
@@ -62,19 +61,13 @@ func (po *ConcretePlanOptimizer) OptimizePlan(ctx context.Context, methodPlans m
 // applyBasicOptimizations applies conservative optimization strategies.
 func (po *ConcretePlanOptimizer) applyBasicOptimizations(_ context.Context, methodPlans map[string]*domain.MethodPlan, batches []*ExecutionBatch) error {
 	// Optimize batch sizes
-	if err := po.optimizeBatchSizes(batches); err != nil {
-		return fmt.Errorf("batch size optimization failed: %w", err)
-	}
+	po.optimizeBatchSizes(batches)
 
 	// Balance worker allocation
-	if err := po.balanceWorkerAllocation(methodPlans); err != nil {
-		return fmt.Errorf("worker allocation optimization failed: %w", err)
-	}
+	po.balanceWorkerAllocation(methodPlans)
 
 	// Optimize memory usage
-	if err := po.optimizeMemoryUsage(methodPlans, batches); err != nil {
-		return fmt.Errorf("memory optimization failed: %w", err)
-	}
+	po.optimizeMemoryUsage(methodPlans, batches)
 
 	po.logger.Info("basic optimizations applied successfully")
 
@@ -89,19 +82,13 @@ func (po *ConcretePlanOptimizer) applyAggressiveOptimizations(ctx context.Contex
 	}
 
 	// Advanced batch merging
-	if err := po.mergeBatches(batches); err != nil {
-		return fmt.Errorf("batch merging optimization failed: %w", err)
-	}
+	po.mergeBatches(batches)
 
 	// Pipeline optimization
-	if err := po.optimizePipeline(methodPlans, batches); err != nil {
-		return fmt.Errorf("pipeline optimization failed: %w", err)
-	}
+	po.optimizePipeline(methodPlans, batches)
 
 	// Resource pooling optimization
-	if err := po.optimizeResourcePooling(methodPlans); err != nil {
-		return fmt.Errorf("resource pooling optimization failed: %w", err)
-	}
+	po.optimizeResourcePooling(methodPlans)
 
 	po.logger.Info("aggressive optimizations applied successfully")
 
@@ -173,7 +160,7 @@ func (po *ConcretePlanOptimizer) OptimizeResourceUsage(methodPlans map[string]*d
 
 // Helper methods for optimization strategies
 
-func (po *ConcretePlanOptimizer) optimizeBatchSizes(batches []*ExecutionBatch) error {
+func (po *ConcretePlanOptimizer) optimizeBatchSizes(batches []*ExecutionBatch) {
 	for _, batch := range batches {
 		mappingCount := len(batch.Mappings)
 
@@ -189,11 +176,9 @@ func (po *ConcretePlanOptimizer) optimizeBatchSizes(batches []*ExecutionBatch) e
 			batch.ConcurrencyLevel = min(mappingCount, po.config.MaxConcurrentWorkers)
 		}
 	}
-
-	return nil
 }
 
-func (po *ConcretePlanOptimizer) balanceWorkerAllocation(methodPlans map[string]*domain.MethodPlan) error {
+func (po *ConcretePlanOptimizer) balanceWorkerAllocation(methodPlans map[string]*domain.MethodPlan) {
 	// Calculate priority scores for methods
 	priorities := po.calculateMethodPriorities(methodPlans)
 
@@ -220,11 +205,9 @@ func (po *ConcretePlanOptimizer) balanceWorkerAllocation(methodPlans map[string]
 			remainingWorkers -= allocated
 		}
 	}
-
-	return nil
 }
 
-func (po *ConcretePlanOptimizer) optimizeMemoryUsage(methodPlans map[string]*domain.MethodPlan, batches []*ExecutionBatch) error {
+func (po *ConcretePlanOptimizer) optimizeMemoryUsage(methodPlans map[string]*domain.MethodPlan, batches []*ExecutionBatch) {
 	// Calculate memory usage patterns
 	for _, plan := range methodPlans {
 		// Optimize memory based on field complexity
@@ -243,11 +226,9 @@ func (po *ConcretePlanOptimizer) optimizeMemoryUsage(methodPlans map[string]*dom
 			}
 		}
 	}
-
-	return nil
 }
 
-func (po *ConcretePlanOptimizer) mergeBatches(batches []*ExecutionBatch) error {
+func (po *ConcretePlanOptimizer) mergeBatches(batches []*ExecutionBatch) {
 	// Find batches that can be merged without violating dependencies
 	i := 0
 	for i < len(batches)-1 {
@@ -273,11 +254,9 @@ func (po *ConcretePlanOptimizer) mergeBatches(batches []*ExecutionBatch) error {
 			i++
 		}
 	}
-
-	return nil
 }
 
-func (po *ConcretePlanOptimizer) optimizePipeline(methodPlans map[string]*domain.MethodPlan, _ []*ExecutionBatch) error {
+func (po *ConcretePlanOptimizer) optimizePipeline(methodPlans map[string]*domain.MethodPlan, _ []*ExecutionBatch) {
 	// Implement pipeline optimization strategies
 	// This is a placeholder for more sophisticated pipeline optimization
 	for _, plan := range methodPlans {
@@ -285,11 +264,9 @@ func (po *ConcretePlanOptimizer) optimizePipeline(methodPlans map[string]*domain
 			plan.Strategy = domain.MethodStrategyPipelined
 		}
 	}
-
-	return nil
 }
 
-func (po *ConcretePlanOptimizer) optimizeResourcePooling(methodPlans map[string]*domain.MethodPlan) error {
+func (po *ConcretePlanOptimizer) optimizeResourcePooling(methodPlans map[string]*domain.MethodPlan) {
 	// Enable resource pooling for methods with high resource usage
 	for _, plan := range methodPlans {
 		if plan.MemoryRequirementMB > 100 || plan.RequiredWorkers > 4 {
@@ -299,8 +276,6 @@ func (po *ConcretePlanOptimizer) optimizeResourcePooling(methodPlans map[string]
 			_ = plan // Mark as used until implementation
 		}
 	}
-
-	return nil
 }
 
 func (po *ConcretePlanOptimizer) sortBatchesByDuration(batches []*ExecutionBatch) {

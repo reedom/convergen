@@ -135,13 +135,12 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	}
 
 	// Generate method signature
-	signature, err := cg.generateMethodSignature(method)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate method signature: %w", err)
-	}
+	signature := cg.generateMethodSignature(method)
 
 	// Generate method body based on strategy
 	var body string
+
+	var err error
 
 	var generationStrategy GenerationStrategy
 
@@ -358,9 +357,9 @@ func (cg *ConcreteCodeGenerator) registerDefaultStrategies() {
 	cg.strategies["mixed_approach"] = NewMixedApproachStrategy(cg.config, cg.logger)
 }
 
-func (cg *ConcreteCodeGenerator) generateMethodSignature(method *domain.MethodResult) (string, error) {
+func (cg *ConcreteCodeGenerator) generateMethodSignature(method *domain.MethodResult) string {
 	// Simplified method signature generation
-	return fmt.Sprintf("func %s(src *SourceType) (*DestType, error)", method.Method.Name), nil
+	return fmt.Sprintf("func %s(src *SourceType) (*DestType, error)", method.Method.Name)
 }
 
 func (cg *ConcreteCodeGenerator) hasErrorHandling(method *domain.MethodResult) bool {

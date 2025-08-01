@@ -257,10 +257,30 @@ func (bus *InMemoryEventBus) Stats() *BusStats {
 	bus.mutex.RLock()
 	defer bus.mutex.RUnlock()
 
-	// Return a copy to avoid race conditions
-	statsCopy := *bus.stats
+	// Return a copy to avoid race conditions (exclude mutex to fix copylocks issue)
+	statsCopy := &BusStats{
+		publishedEvents:  copyStringInt64Map(bus.stats.publishedEvents),
+		subscriptions:    copyStringInt64Map(bus.stats.subscriptions),
+		handlerSuccesses: copyStringInt64Map(bus.stats.handlerSuccesses),
+		handlerErrors:    copyStringInt64Map(bus.stats.handlerErrors),
+		// mutex field intentionally omitted to avoid copying lock
+	}
 
-	return &statsCopy
+	return statsCopy
+}
+
+// copyStringInt64Map creates a deep copy of a map[string]int64.
+func copyStringInt64Map(original map[string]int64) map[string]int64 {
+	if original == nil {
+		return nil
+	}
+
+	copy := make(map[string]int64, len(original))
+	for k, v := range original {
+		copy[k] = v
+	}
+
+	return copy
 }
 
 // Emit emits an event with context (alias for Publish for compatibility).

@@ -123,10 +123,7 @@ func TestDependencyGraph_TopologicalSort(t *testing.T) {
 				if err := g.AddDependency(mappings[1].ID, mappings[0].ID); err != nil {
 					return err
 				}
-				if err := g.AddDependency(mappings[2].ID, mappings[1].ID); err != nil {
-					return err
-				}
-				return nil
+				return g.AddDependency(mappings[2].ID, mappings[1].ID)
 			},
 			expectedBatches: 3,
 			expectedError:   false,
@@ -149,10 +146,7 @@ func TestDependencyGraph_TopologicalSort(t *testing.T) {
 				if err := g.AddDependency(mappings[1].ID, mappings[0].ID); err != nil {
 					return err
 				}
-				if err := g.AddDependency(mappings[3].ID, mappings[2].ID); err != nil {
-					return err
-				}
-				return nil
+				return g.AddDependency(mappings[3].ID, mappings[2].ID)
 			},
 			expectedBatches: 2,
 			expectedError:   false,

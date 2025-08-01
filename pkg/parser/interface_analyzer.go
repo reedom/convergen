@@ -94,10 +94,7 @@ func (p *ASTParser) analyzeInterface(_ context.Context, _ *packages.Package, fil
 	}
 
 	// Extract and parse annotations
-	annotations, err := p.extractInterfaceAnnotations(file, obj)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract annotations: %w", err)
-	}
+	annotations := p.extractInterfaceAnnotations(file, obj)
 
 	// Parse interface-level options
 	options, err := p.parseInterfaceOptions(annotations)
@@ -135,10 +132,10 @@ func (p *ASTParser) analyzeInterface(_ context.Context, _ *packages.Package, fil
 }
 
 // extractInterfaceAnnotations extracts all annotations from interface comments.
-func (p *ASTParser) extractInterfaceAnnotations(file *ast.File, obj types.Object) ([]*Annotation, error) {
+func (p *ASTParser) extractInterfaceAnnotations(file *ast.File, obj types.Object) []*Annotation {
 	docComment := p.getDocComment(file, obj)
 	if docComment == nil {
-		return nil, nil
+		return nil
 	}
 
 	var annotations []*Annotation
@@ -149,7 +146,7 @@ func (p *ASTParser) extractInterfaceAnnotations(file *ast.File, obj types.Object
 		}
 	}
 
-	return annotations, nil
+	return annotations
 }
 
 // parseAnnotation parses a single annotation from a comment.

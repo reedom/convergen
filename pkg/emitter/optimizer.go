@@ -296,26 +296,18 @@ func (co *ConcreteCodeOptimizer) OptimizeMethodCode(method *MethodCode) error {
 
 	// Optimize method body
 	if method.Body != "" {
-		optimized, optimizations, err := co.optimizeCodeBlock(method.Body)
-		if err != nil {
-			co.logger.Warn("method body optimization failed", zap.Error(err))
-		} else {
-			method.Body = optimized
+		optimized, optimizations := co.optimizeCodeBlock(method.Body)
+		method.Body = optimized
 
-			co.addOptimization("method_body", int64(optimizations))
-		}
+		co.addOptimization("method_body", int64(optimizations))
 	}
 
 	// Optimize error handling
 	if method.ErrorHandling != "" {
-		optimized, optimizations, err := co.optimizeCodeBlock(method.ErrorHandling)
-		if err != nil {
-			co.logger.Warn("error handling optimization failed", zap.Error(err))
-		} else {
-			method.ErrorHandling = optimized
+		optimized, optimizations := co.optimizeCodeBlock(method.ErrorHandling)
+		method.ErrorHandling = optimized
 
-			co.addOptimization("error_handling", int64(optimizations))
-		}
+		co.addOptimization("error_handling", int64(optimizations))
 	}
 
 	return nil
@@ -489,7 +481,7 @@ func (co *ConcreteCodeOptimizer) applyMaximalOptimizations(code *GeneratedCode) 
 	return nil
 }
 
-func (co *ConcreteCodeOptimizer) optimizeCodeBlock(code string) (string, int, error) {
+func (co *ConcreteCodeOptimizer) optimizeCodeBlock(code string) (string, int) {
 	optimizations := 0
 	optimized := code
 
@@ -525,7 +517,7 @@ func (co *ConcreteCodeOptimizer) optimizeCodeBlock(code string) (string, int, er
 		optimizations += redundant
 	}
 
-	return optimized, optimizations, nil
+	return optimized, optimizations
 }
 
 func (co *ConcreteCodeOptimizer) countOptimizationsApplied() int64 {

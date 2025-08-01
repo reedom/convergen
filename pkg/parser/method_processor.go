@@ -53,10 +53,7 @@ func (p *ASTParser) processMethod(ctx context.Context, pkg *packages.Package, fi
 	}
 
 	// Extract method annotations
-	annotations, err := p.extractMethodAnnotations(file, methodObj)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract method annotations: %w", err)
-	}
+	annotations := p.extractMethodAnnotations(file, methodObj)
 
 	// Parse method-specific options
 	methodOpts, err := p.parseMethodOptions(annotations, interfaceOpts)
@@ -138,10 +135,10 @@ func (p *ASTParser) validateMethodSignature(signature *types.Signature, methodOb
 }
 
 // extractMethodAnnotations extracts annotations from method comments.
-func (p *ASTParser) extractMethodAnnotations(file *ast.File, methodObj types.Object) ([]*Annotation, error) {
+func (p *ASTParser) extractMethodAnnotations(file *ast.File, methodObj types.Object) []*Annotation {
 	docComment := p.getMethodDocComment(file, methodObj)
 	if docComment == nil {
-		return nil, nil
+		return nil
 	}
 
 	var annotations []*Annotation
@@ -152,7 +149,7 @@ func (p *ASTParser) extractMethodAnnotations(file *ast.File, methodObj types.Obj
 		}
 	}
 
-	return annotations, nil
+	return annotations
 }
 
 // parseMethodOptions converts method annotations to options, inheriting from interface options.

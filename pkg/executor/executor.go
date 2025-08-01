@@ -243,7 +243,7 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 		go func(name string, mPlan *domain.MethodPlan) {
 			defer methodWg.Done()
 
-			methodResult, err := e.executeMethod(ctx, name, mPlan)
+			methodResult := e.executeMethod(ctx, name, mPlan)
 
 			resultMutex.Lock()
 			if methodResult != nil {
@@ -251,16 +251,6 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 				result.Results[name] = methodResult.Data
 			}
 			resultMutex.Unlock()
-
-			if err != nil {
-				errorChannel <- ExecutionError{
-					BatchID:   name,
-					Error:     err.Error(),
-					ErrorType: "method_execution",
-					Timestamp: time.Now(),
-					Retryable: false,
-				}
-			}
 		}(methodName, methodPlan)
 	}
 
@@ -407,7 +397,7 @@ func (e *ConcreteExecutor) Shutdown(ctx context.Context) error {
 
 // Helper methods
 
-func (e *ConcreteExecutor) executeMethod(ctx context.Context, methodName string, methodPlan *domain.MethodPlan) (*MethodResult, error) {
+func (e *ConcreteExecutor) executeMethod(ctx context.Context, methodName string, methodPlan *domain.MethodPlan) *MethodResult {
 	e.logger.Debug("executing method",
 		zap.String("method", methodName),
 		zap.Int("batches", len(methodPlan.Batches)))
@@ -455,7 +445,7 @@ func (e *ConcreteExecutor) executeMethod(ctx context.Context, methodName string,
 	methodResult.Duration = methodResult.EndTime.Sub(methodResult.StartTime)
 	methodResult.Success = len(methodResult.Errors) == 0
 
-	return methodResult, nil
+	return methodResult
 }
 
 func (e *ConcreteExecutor) updateStatus(updateFn func(*Status)) {

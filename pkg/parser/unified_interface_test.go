@@ -219,7 +219,11 @@ func TestAdaptiveParser_Basic(t *testing.T) {
 	}
 
 	defer os.Remove(tempFile.Name())
-	defer tempFile.Close()
+	defer func() {
+		if err := tempFile.Close(); err != nil {
+			t.Logf("Failed to close temp file: %v", err)
+		}
+	}()
 
 	// Write small content
 	_, err = tempFile.WriteString("package test\n")

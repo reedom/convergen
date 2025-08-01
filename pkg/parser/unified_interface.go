@@ -669,14 +669,7 @@ func (ap *AdaptiveParser) ParseSourceFile(ctx context.Context, sourcePath, destP
 	strategy := ap.determineStrategy(sourcePath, destPath)
 
 	// Create appropriate parser based on determined strategy
-	parser, err := ap.createParserForStrategy(strategy)
-	if err != nil {
-		return &ParseResult{
-			Errors:         []ParseError{{Code: "ADAPTIVE_PARSER_CREATE_FAILED", Message: err.Error(), Phase: PhasePackageLoading}},
-			ProcessingTime: time.Since(startTime),
-			Strategy:       ap.strategy,
-		}, err
-	}
+	parser := ap.createParserForStrategy(strategy)
 
 	ap.currentParser = parser
 	ap.adaptiveStrategy = strategy
@@ -706,10 +699,7 @@ func (ap *AdaptiveParser) ParseSourceFiles(ctx context.Context, files []SourceFi
 	strategy := ap.determineMultiFileStrategy(files)
 
 	// Create appropriate parser
-	parser, err := ap.createParserForStrategy(strategy)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create adaptive parser: %w", err)
-	}
+	parser := ap.createParserForStrategy(strategy)
 
 	ap.currentParser = parser
 	ap.adaptiveStrategy = strategy
@@ -831,18 +821,18 @@ func (ap *AdaptiveParser) determineMultiFileStrategy(files []SourceFile) ParseSt
 }
 
 // createParserForStrategy creates the appropriate parser for the given strategy.
-func (ap *AdaptiveParser) createParserForStrategy(strategy ParseStrategy) (ConvergenParser, error) {
+func (ap *AdaptiveParser) createParserForStrategy(strategy ParseStrategy) ConvergenParser {
 	// Clone config to avoid modifying the original
 	configCopy := CloneConfig(ap.config)
 
 	switch strategy {
 	case StrategyLegacy:
-		return NewLegacyParser(configCopy), nil
+		return NewLegacyParser(configCopy)
 	case StrategyModern:
-		return NewModernParser(configCopy), nil
+		return NewModernParser(configCopy)
 	default:
 		// Default to legacy for unknown strategies
-		return NewLegacyParser(configCopy), nil
+		return NewLegacyParser(configCopy)
 	}
 }
 

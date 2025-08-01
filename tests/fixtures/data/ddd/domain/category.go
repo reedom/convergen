@@ -1,7 +1,12 @@
 package domain
 
 import (
-	"fmt"
+	"errors"
+)
+
+// Static errors for err113 compliance.
+var (
+	ErrCategoryNameEmpty = errors.New("category name is empty")
 )
 
 type Category struct {
@@ -11,7 +16,7 @@ type Category struct {
 
 func NewCategory(id uint, name string) (*Category, error) {
 	if name == "" {
-		return nil, fmt.Errorf("category name is empty")
+		return nil, ErrCategoryNameEmpty
 	}
 
 	return &Category{id: id, name: name}, nil

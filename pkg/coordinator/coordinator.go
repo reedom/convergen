@@ -328,7 +328,7 @@ func (c *ConcreteCoordinator) waitForCompletion(ctx context.Context, input *Pipe
 
 			// Check for completion
 			if status.Stage == StageCompleted {
-				return c.assembleResult(startTime, input, status)
+				return c.assembleResult(startTime, input, status), nil
 			}
 
 			// Check for failure
@@ -345,7 +345,7 @@ func (c *ConcreteCoordinator) waitForCompletion(ctx context.Context, input *Pipe
 	}
 }
 
-func (c *ConcreteCoordinator) assembleResult(startTime time.Time, input *PipelineInput, status *PipelineStatus) (*GenerationResult, error) {
+func (c *ConcreteCoordinator) assembleResult(startTime time.Time, input *PipelineInput, status *PipelineStatus) *GenerationResult {
 	duration := time.Since(startTime)
 
 	// Get component metrics
@@ -396,7 +396,7 @@ func (c *ConcreteCoordinator) assembleResult(startTime time.Time, input *Pipelin
 		}
 	}
 
-	return result, nil
+	return result
 }
 
 func (c *ConcreteCoordinator) updateStatus(stage PipelineStage, progress float64) {

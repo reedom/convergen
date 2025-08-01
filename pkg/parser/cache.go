@@ -76,12 +76,12 @@ func (tc *TypeCache) Get(key string) domain.Type {
 		tc.statsMux.Unlock()
 
 		return entry.domainType
-	} else {
-		tc.misses++
-		tc.statsMux.Unlock()
-
-		return nil
 	}
+
+	tc.misses++
+	tc.statsMux.Unlock()
+
+	return nil
 }
 
 // Put stores a type in the cache.
