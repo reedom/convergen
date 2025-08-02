@@ -59,152 +59,260 @@ func (p *Parser) parseNotationInComments(notations []*ast.Comment, validOps map[
 	var posReverse token.Pos
 
 	for _, n := range notations {
-		m := reNotation.FindStringSubmatch(n.Text)
-		if len(m) < 2 {
-			return fmt.Errorf("%w: %#v", ErrInvalidNotationFormat, m)
-		}
-
-		var args []string
-		if len(m) == 3 {
-			args = strings.Fields(m[2])
-		}
-
-		if _, ok := validOps[m[1]]; !ok {
-			logger.Printf(`%v: ":%v" is invalid or unknown notation here`, p.fset.Position(n.Pos()), m[1])
-			continue
-		}
-
-		switch m[1] {
-		case buildTag:
-			// do nothing
-		case annotationStyle:
-			if len(args) == 0 {
-				return logger.Errorf("%v: needs <style> arg", p.fset.Position(n.Pos()))
-			}
-
-			style, ok := gmodel.NewDstVarStyleFromValue(args[0])
-			if !ok {
-				return logger.Errorf("%v: invalid <style> arg", p.fset.Position(n.Pos()))
-			}
-
-			opts.Style = style
-		case annotationMatch:
-			if len(args) == 0 {
-				return logger.Errorf("%v: needs <algorithm> arg", p.fset.Position(n.Pos()))
-			}
-
-			rule, ok := gmodel.NewMatchRuleFromValue(args[0])
-			if !ok {
-				return logger.Errorf("%v: invalid <algorithm> arg", p.fset.Position(n.Pos()))
-			}
-
-			opts.Rule = rule
-		case annotationCase:
-			opts.ExactCase = true
-		case annotationCaseOff:
-			opts.ExactCase = false
-		case annotationGetter:
-			opts.Getter = true
-		case annotationGetterOff:
-			opts.Getter = false
-		case annotationStringer:
-			opts.Stringer = true
-		case annotationStringerOff:
-			opts.Stringer = false
-		case annotationTypecast:
-			opts.Typecast = true
-		case annotationTypeCastOff:
-			opts.Typecast = false
-		case "recv":
-			if len(args) == 0 {
-				return logger.Errorf("%v: needs name for the receiver", p.fset.Position(n.Pos()))
-			} else if !isValidIdentifier(args[0]) {
-				return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
-			}
-
-			opts.Receiver = args[0]
-		case annotationReverse:
-			opts.Reverse = true
-			posReverse = n.Pos()
-		case annotationSkip:
-			if len(args) == 0 {
-				return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
-			}
-
-			matcher, err := option.NewPatternMatcher(args[0], opts.ExactCase)
-			if err != nil {
-				return logger.Errorf("%v: invalid regexp", p.fset.Position(n.Pos()))
-			}
-
-			opts.SkipFields = append(opts.SkipFields, matcher)
-		case annotationMap:
-			if len(args) < 2 {
-				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
-			}
-
-			src := args[0]
-			dst := args[1]
-
-			matcher := option.NewNameMatcher(src, dst, n.Pos())
-			if strings.HasPrefix(src, "$") {
-				opts.TemplatedNameMapper = append(opts.TemplatedNameMapper, matcher)
-			} else {
-				opts.NameMapper = append(opts.NameMapper, matcher)
-			}
-		case annotationConv:
-			if len(args) < 2 {
-				return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
-			}
-
-			src := args[1]
-
-			dst := src
-			if 3 <= len(args) {
-				dst = args[2]
-			}
-
-			converter := option.NewFieldConverter(args[0], src, dst, n.Pos())
-			opts.Converters = append(opts.Converters, converter)
-		case annotationLiteral:
-			if len(args) < 2 {
-				return logger.Errorf("%v: needs <dst> <literal> args", p.fset.Position(n.Pos()))
-			}
-
-			m = reLiteral.FindStringSubmatch(m[2])
-			setter := option.NewLiteralSetter(args[0], m[1], n.Pos())
-			opts.Literals = append(opts.Literals, setter)
-		case annotationPreprocess:
-			if len(args) < 1 {
-				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
-			}
-
-			pp, err := p.lookupManipulatorFunc(args[0], "preprocess", n.Pos())
-			if err != nil {
-				return err
-			}
-
-			opts.PreProcess = pp
-		case annotationPostprocess:
-			if len(args) < 1 {
-				return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
-			}
-
-			pp, err := p.lookupManipulatorFunc(args[0], "postprocess", n.Pos())
-			if err != nil {
-				return err
-			}
-
-			opts.PostProcess = pp
-		default:
-			fmt.Printf("%v: unknown notation %v\n", p.fset.Position(n.Pos()), m[1])
+		if err := p.processNotation(n, validOps, opts, &posReverse); err != nil {
+			return err
 		}
 	}
 
-	// validation
+	return p.validateNotationOptions(opts, posReverse)
+}
+
+// processNotation processes a single notation comment.
+func (p *Parser) processNotation(n *ast.Comment, validOps map[string]struct{}, opts *option.Options, posReverse *token.Pos) error {
+	m := reNotation.FindStringSubmatch(n.Text)
+	if len(m) < 2 {
+		return fmt.Errorf("%w: %#v", ErrInvalidNotationFormat, m)
+	}
+
+	var args []string
+	if len(m) == 3 {
+		args = strings.Fields(m[2])
+	}
+
+	if _, ok := validOps[m[1]]; !ok {
+		logger.Printf(`%v: ":%v" is invalid or unknown notation here`, p.fset.Position(n.Pos()), m[1])
+		return nil
+	}
+
+	return p.applyNotation(m[1], args, m, n, opts, posReverse)
+}
+
+// applyNotation applies a parsed notation to the options.
+func (p *Parser) applyNotation(notation string, args []string, fullMatch []string, n *ast.Comment, opts *option.Options, posReverse *token.Pos) error {
+	// Handle simple boolean flags first
+	if p.applyBooleanFlags(notation, opts, posReverse, n) {
+		return nil
+	}
+
+	// Handle complex annotations that require argument processing
+	return p.applyComplexAnnotations(notation, args, fullMatch, n, opts)
+}
+
+// applyBooleanFlags handles simple boolean flag annotations.
+func (p *Parser) applyBooleanFlags(notation string, opts *option.Options, posReverse *token.Pos, n *ast.Comment) bool {
+	switch notation {
+	case buildTag:
+		// do nothing
+		return true
+	case annotationCase, annotationCaseOff:
+		opts.ExactCase = (notation == annotationCase)
+		return true
+	case annotationGetter, annotationGetterOff:
+		opts.Getter = (notation == annotationGetter)
+		return true
+	case annotationStringer, annotationStringerOff:
+		opts.Stringer = (notation == annotationStringer)
+		return true
+	case annotationTypecast, annotationTypeCastOff:
+		opts.Typecast = (notation == annotationTypecast)
+		return true
+	case annotationReverse:
+		opts.Reverse = true
+		*posReverse = n.Pos()
+		return true
+	default:
+		return false
+	}
+}
+
+// applyComplexAnnotations handles annotations that require argument processing.
+func (p *Parser) applyComplexAnnotations(notation string, args []string, fullMatch []string, n *ast.Comment, opts *option.Options) error {
+	// Handle basic argument annotations first
+	if err := p.applyBasicArgumentAnnotations(notation, args, n, opts); !errors.Is(err, errAnnotationNotHandled) {
+		return err
+	}
+
+	// Handle special processing annotations
+	return p.applySpecialProcessingAnnotations(notation, args, fullMatch, n, opts)
+}
+
+// errAnnotationNotHandled indicates an annotation was not handled by a specific processor.
+var errAnnotationNotHandled = fmt.Errorf("annotation not handled")
+
+// applyBasicArgumentAnnotations handles annotations with simple argument requirements.
+func (p *Parser) applyBasicArgumentAnnotations(notation string, args []string, n *ast.Comment, opts *option.Options) error {
+	switch notation {
+	case annotationStyle:
+		return p.applyStyleNotation(args, n, opts)
+	case annotationMatch:
+		return p.applyMatchNotation(args, n, opts)
+	case "recv":
+		return p.applyReceiverNotation(args, n, opts)
+	case annotationSkip:
+		return p.applySkipNotation(args, n, opts)
+	case annotationMap:
+		return p.applyMapNotation(args, n, opts)
+	case annotationConv:
+		return p.applyConvNotation(args, n, opts)
+	case annotationPreprocess:
+		return p.applyPreprocessNotation(args, n, opts)
+	case annotationPostprocess:
+		return p.applyPostprocessNotation(args, n, opts)
+	default:
+		return errAnnotationNotHandled
+	}
+}
+
+// applySpecialProcessingAnnotations handles annotations requiring special processing.
+func (p *Parser) applySpecialProcessingAnnotations(notation string, args []string, fullMatch []string, n *ast.Comment, opts *option.Options) error {
+	switch notation {
+	case annotationLiteral:
+		return p.applyLiteralNotation(args, fullMatch, n, opts)
+	default:
+		fmt.Printf("%v: unknown notation %v\n", p.fset.Position(n.Pos()), notation)
+		return nil
+	}
+}
+
+// applyStyleNotation applies style notation to options.
+func (p *Parser) applyStyleNotation(args []string, n *ast.Comment, opts *option.Options) error {
+	if len(args) == 0 {
+		return logger.Errorf("%v: needs <style> arg", p.fset.Position(n.Pos()))
+	}
+
+	style, ok := gmodel.NewDstVarStyleFromValue(args[0])
+	if !ok {
+		return logger.Errorf("%v: invalid <style> arg", p.fset.Position(n.Pos()))
+	}
+
+	opts.Style = style
+	return nil
+}
+
+// applyMatchNotation applies match notation to options.
+func (p *Parser) applyMatchNotation(args []string, n *ast.Comment, opts *option.Options) error {
+	if len(args) == 0 {
+		return logger.Errorf("%v: needs <algorithm> arg", p.fset.Position(n.Pos()))
+	}
+
+	rule, ok := gmodel.NewMatchRuleFromValue(args[0])
+	if !ok {
+		return logger.Errorf("%v: invalid <algorithm> arg", p.fset.Position(n.Pos()))
+	}
+
+	opts.Rule = rule
+	return nil
+}
+
+// applyReceiverNotation applies receiver notation to options.
+func (p *Parser) applyReceiverNotation(args []string, n *ast.Comment, opts *option.Options) error {
+	if len(args) == 0 {
+		return logger.Errorf("%v: needs name for the receiver", p.fset.Position(n.Pos()))
+	} else if !isValidIdentifier(args[0]) {
+		return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
+	}
+
+	opts.Receiver = args[0]
+	return nil
+}
+
+// applySkipNotation applies skip notation to options.
+func (p *Parser) applySkipNotation(args []string, n *ast.Comment, opts *option.Options) error {
+	if len(args) == 0 {
+		return logger.Errorf("%v: needs <field> arg", p.fset.Position(n.Pos()))
+	}
+
+	matcher, err := option.NewPatternMatcher(args[0], opts.ExactCase)
+	if err != nil {
+		return logger.Errorf("%v: invalid regexp", p.fset.Position(n.Pos()))
+	}
+
+	opts.SkipFields = append(opts.SkipFields, matcher)
+	return nil
+}
+
+// applyMapNotation applies map notation to options.
+func (p *Parser) applyMapNotation(args []string, n *ast.Comment, opts *option.Options) error {
+	if len(args) < 2 {
+		return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
+	}
+
+	src := args[0]
+	dst := args[1]
+
+	matcher := option.NewNameMatcher(src, dst, n.Pos())
+	if strings.HasPrefix(src, "$") {
+		opts.TemplatedNameMapper = append(opts.TemplatedNameMapper, matcher)
+	} else {
+		opts.NameMapper = append(opts.NameMapper, matcher)
+	}
+	return nil
+}
+
+// applyConvNotation applies conv notation to options.
+func (p *Parser) applyConvNotation(args []string, n *ast.Comment, opts *option.Options) error {
+	if len(args) < 2 {
+		return logger.Errorf("%v: needs <src> <dst> args", p.fset.Position(n.Pos()))
+	}
+
+	src := args[1]
+	dst := src
+	if 3 <= len(args) {
+		dst = args[2]
+	}
+
+	converter := option.NewFieldConverter(args[0], src, dst, n.Pos())
+	opts.Converters = append(opts.Converters, converter)
+	return nil
+}
+
+// applyLiteralNotation applies literal notation to options.
+func (p *Parser) applyLiteralNotation(args []string, fullMatch []string, n *ast.Comment, opts *option.Options) error {
+	if len(args) < 2 {
+		return logger.Errorf("%v: needs <dst> <literal> args", p.fset.Position(n.Pos()))
+	}
+
+	m := reLiteral.FindStringSubmatch(fullMatch[2])
+	setter := option.NewLiteralSetter(args[0], m[1], n.Pos())
+	opts.Literals = append(opts.Literals, setter)
+	return nil
+}
+
+// applyPreprocessNotation applies preprocess notation to options.
+func (p *Parser) applyPreprocessNotation(args []string, n *ast.Comment, opts *option.Options) error {
+	if len(args) < 1 {
+		return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
+	}
+
+	pp, err := p.lookupManipulatorFunc(args[0], "preprocess", n.Pos())
+	if err != nil {
+		return err
+	}
+
+	opts.PreProcess = pp
+	return nil
+}
+
+// applyPostprocessNotation applies postprocess notation to options.
+func (p *Parser) applyPostprocessNotation(args []string, n *ast.Comment, opts *option.Options) error {
+	if len(args) < 1 {
+		return logger.Errorf("%v: needs <func> arg", p.fset.Position(n.Pos()))
+	}
+
+	pp, err := p.lookupManipulatorFunc(args[0], "postprocess", n.Pos())
+	if err != nil {
+		return err
+	}
+
+	opts.PostProcess = pp
+	return nil
+}
+
+// validateNotationOptions validates the final option configuration.
+func (p *Parser) validateNotationOptions(opts *option.Options, posReverse token.Pos) error {
 	if opts.Reverse && opts.Style == gmodel.DstVarReturn {
 		return logger.Errorf(`%v: to use ":reverse", style must be ":style arg"`, p.fset.Position(posReverse))
 	}
-
 	return nil
 }
 

@@ -207,123 +207,178 @@ func (p *ASTParser) parseInterfaceOptions(annotations []*Annotation) (*domain.In
 
 // applyInterfaceAnnotation applies a single annotation to interface options.
 func (p *ASTParser) applyInterfaceAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	// Handle simple boolean flags first
+	if p.applyInterfaceBooleanFlags(options, annotation) {
+		return nil
+	}
+
+	// Handle complex annotations that require argument processing
+	return p.applyInterfaceComplexAnnotations(options, annotation)
+}
+
+// applyInterfaceBooleanFlags handles simple boolean flag annotations for interfaces.
+func (p *ASTParser) applyInterfaceBooleanFlags(options *domain.InterfaceOptions, annotation *Annotation) bool {
 	switch annotation.Type {
 	case "convergen":
 		// Base annotation, no action needed
-		return nil
-
-	case "style":
-		if len(annotation.Args) == 0 {
-			return ErrStyleAnnotationRequiresArgument
-		}
-
-		style, err := p.parseStyle(annotation.Args[0])
-		if err != nil {
-			return fmt.Errorf("invalid style: %w", err)
-		}
-
-		options.Style = style
-
-	case "match":
-		if len(annotation.Args) == 0 {
-			return ErrMatchAnnotationRequiresArgument
-		}
-
-		rule, err := p.parseMatchRule(annotation.Args[0])
-		if err != nil {
-			return fmt.Errorf("invalid match rule: %w", err)
-		}
-
-		options.MatchRule = rule
-
-	case "case":
-		options.CaseSensitive = true
-
-	case "case:off":
-		options.CaseSensitive = false
-
-	case "getter":
-		options.UseGetter = true
-
-	case "getter:off":
-		options.UseGetter = false
-
-	case "stringer":
-		options.UseStringer = true
-
-	case "stringer:off":
-		options.UseStringer = false
-
-	case "typecast":
-		options.UseTypecast = true
-
-	case "typecast:off":
-		options.UseTypecast = false
-
-	case "recv":
-		if len(annotation.Args) == 0 {
-			return ErrRecvAnnotationRequiresReceiverName
-		}
-
-		if !p.isValidIdentifier(annotation.Args[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidReceiverName, annotation.Args[0])
-		}
-
-		options.ReceiverName = annotation.Args[0]
-
+		return true
+	case "case", "case:off":
+		options.CaseSensitive = annotation.Type == "case"
+		return true
+	case "getter", "getter:off":
+		options.UseGetter = annotation.Type == "getter"
+		return true
+	case "stringer", "stringer:off":
+		options.UseStringer = annotation.Type == "stringer"
+		return true
+	case "typecast", "typecast:off":
+		options.UseTypecast = annotation.Type == "typecast"
+		return true
 	case "reverse":
 		options.AllowReverse = true
-
-	case "skip":
-		if len(annotation.Args) == 0 {
-			return ErrSkipAnnotationRequiresFieldPattern
-		}
-
-		options.SkipFields = append(options.SkipFields, annotation.Args[0])
-
-	case "map":
-		if len(annotation.Args) < 2 {
-			return ErrMapAnnotationRequiresArguments
-		}
-
-		options.FieldMappings[annotation.Args[0]] = annotation.Args[1]
-
-	case "conv":
-		if len(annotation.Args) < 2 {
-			return ErrConvAnnotationRequiresArguments
-		}
-
-		options.TypeConverters[annotation.Args[1]] = annotation.Args[0]
-
-	case "literal":
-		if len(annotation.Args) < 2 {
-			return ErrLiteralAnnotationRequiresArguments
-		}
-		// Parse the literal value (may contain spaces)
-		value := strings.Join(annotation.Args[1:], " ")
-		options.LiteralAssignments[annotation.Args[0]] = value
-
-	case "preprocess":
-		if len(annotation.Args) == 0 {
-			return ErrPreprocessAnnotationRequiresFunction
-		}
-
-		options.PreprocessFunction = annotation.Args[0]
-
-	case "postprocess":
-		if len(annotation.Args) == 0 {
-			return ErrPostprocessAnnotationRequiresFunction
-		}
-
-		options.PostprocessFunction = annotation.Args[0]
-
+		return true
 	default:
-		p.logger.Warn("unknown interface annotation",
-			zap.String("type", annotation.Type),
-			zap.String("position", p.fileSet.Position(annotation.Position).String()))
+		return false
+	}
+}
+
+// applyInterfaceComplexAnnotations handles annotations that require argument processing.
+func (p *ASTParser) applyInterfaceComplexAnnotations(options *domain.InterfaceOptions, annotation *Annotation) error {
+	switch annotation.Type {
+	case "style":
+		return p.applyStyleAnnotation(options, annotation)
+	case "match":
+		return p.applyMatchAnnotation(options, annotation)
+	case "recv":
+		return p.applyRecvAnnotation(options, annotation)
+	case "skip":
+		return p.applySkipAnnotation(options, annotation)
+	case "map":
+		return p.applyMapAnnotation(options, annotation)
+	case "conv":
+		return p.applyConvAnnotation(options, annotation)
+	case "literal":
+		return p.applyLiteralAnnotation(options, annotation)
+	case "preprocess":
+		return p.applyPreprocessAnnotation(options, annotation)
+	case "postprocess":
+		return p.applyPostprocessAnnotation(options, annotation)
+	default:
+		p.logUnknownAnnotation(annotation)
+		return nil
+	}
+}
+
+// applyStyleAnnotation applies style annotation to interface options.
+func (p *ASTParser) applyStyleAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	if len(annotation.Args) == 0 {
+		return ErrStyleAnnotationRequiresArgument
 	}
 
+	style, err := p.parseStyle(annotation.Args[0])
+	if err != nil {
+		return fmt.Errorf("invalid style: %w", err)
+	}
+
+	options.Style = style
 	return nil
+}
+
+// applyMatchAnnotation applies match annotation to interface options.
+func (p *ASTParser) applyMatchAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	if len(annotation.Args) == 0 {
+		return ErrMatchAnnotationRequiresArgument
+	}
+
+	rule, err := p.parseMatchRule(annotation.Args[0])
+	if err != nil {
+		return fmt.Errorf("invalid match rule: %w", err)
+	}
+
+	options.MatchRule = rule
+	return nil
+}
+
+// applyRecvAnnotation applies receiver annotation to interface options.
+func (p *ASTParser) applyRecvAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	if len(annotation.Args) == 0 {
+		return ErrRecvAnnotationRequiresReceiverName
+	}
+
+	if !p.isValidIdentifier(annotation.Args[0]) {
+		return fmt.Errorf("%w: %s", ErrInvalidReceiverName, annotation.Args[0])
+	}
+
+	options.ReceiverName = annotation.Args[0]
+	return nil
+}
+
+// applySkipAnnotation applies skip annotation to interface options.
+func (p *ASTParser) applySkipAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	if len(annotation.Args) == 0 {
+		return ErrSkipAnnotationRequiresFieldPattern
+	}
+
+	options.SkipFields = append(options.SkipFields, annotation.Args[0])
+	return nil
+}
+
+// applyMapAnnotation applies map annotation to interface options.
+func (p *ASTParser) applyMapAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	if len(annotation.Args) < 2 {
+		return ErrMapAnnotationRequiresArguments
+	}
+
+	options.FieldMappings[annotation.Args[0]] = annotation.Args[1]
+	return nil
+}
+
+// applyConvAnnotation applies conv annotation to interface options.
+func (p *ASTParser) applyConvAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	if len(annotation.Args) < 2 {
+		return ErrConvAnnotationRequiresArguments
+	}
+
+	options.TypeConverters[annotation.Args[1]] = annotation.Args[0]
+	return nil
+}
+
+// applyLiteralAnnotation applies literal annotation to interface options.
+func (p *ASTParser) applyLiteralAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	if len(annotation.Args) < 2 {
+		return ErrLiteralAnnotationRequiresArguments
+	}
+	// Parse the literal value (may contain spaces)
+	value := strings.Join(annotation.Args[1:], " ")
+	options.LiteralAssignments[annotation.Args[0]] = value
+	return nil
+}
+
+// applyPreprocessAnnotation applies preprocess annotation to interface options.
+func (p *ASTParser) applyPreprocessAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	if len(annotation.Args) == 0 {
+		return ErrPreprocessAnnotationRequiresFunction
+	}
+
+	options.PreprocessFunction = annotation.Args[0]
+	return nil
+}
+
+// applyPostprocessAnnotation applies postprocess annotation to interface options.
+func (p *ASTParser) applyPostprocessAnnotation(options *domain.InterfaceOptions, annotation *Annotation) error {
+	if len(annotation.Args) == 0 {
+		return ErrPostprocessAnnotationRequiresFunction
+	}
+
+	options.PostprocessFunction = annotation.Args[0]
+	return nil
+}
+
+// logUnknownAnnotation logs a warning for unknown annotations.
+func (p *ASTParser) logUnknownAnnotation(annotation *Annotation) {
+	p.logger.Warn("unknown interface annotation",
+		zap.String("type", annotation.Type),
+		zap.String("position", p.fileSet.Position(annotation.Position).String()))
 }
 
 // parseStyle converts string to domain.VariableStyle.
@@ -362,17 +417,27 @@ func (p *ASTParser) isValidIdentifier(id string) bool {
 
 	for i, r := range id {
 		if i == 0 {
-			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_') {
+			if !p.isValidFirstChar(r) {
 				return false
 			}
 		} else {
-			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+			if !p.isValidSubsequentChar(r) {
 				return false
 			}
 		}
 	}
 
 	return true
+}
+
+// isValidFirstChar checks if a rune is valid as the first character of an identifier.
+func (p *ASTParser) isValidFirstChar(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_'
+}
+
+// isValidSubsequentChar checks if a rune is valid as a subsequent character of an identifier.
+func (p *ASTParser) isValidSubsequentChar(r rune) bool {
+	return p.isValidFirstChar(r) || (r >= '0' && r <= '9')
 }
 
 // getDocComment retrieves the documentation comment for an object.

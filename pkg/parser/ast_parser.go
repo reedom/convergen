@@ -429,7 +429,7 @@ func (p *ASTParser) countAnnotations(interfaces []*InterfaceInfo) int {
 }
 
 // countMethodAnnotations counts annotations for a specific method.
-func (p *ASTParser) countMethodAnnotations(method types.Object) int {
+func (p *ASTParser) countMethodAnnotations(_ types.Object) int {
 	// This would analyze the method's documentation for annotations
 	// Implementation details depend on the annotation format
 	return 0 // Placeholder
