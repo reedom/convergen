@@ -66,6 +66,9 @@ go test ./tests -parallel 4 -v
 | `ConvertAnnotationScenario(func, src, dst)` | Test `:conv` annotations | `ConvertAnnotationScenario("Hash", "Password", "Hashed")` |
 | `LiteralAnnotationScenario(field, value)` | Test `:literal` annotations | `LiteralAnnotationScenario("Status", `"active"`)` |
 | `SkipAnnotationScenario(pattern)` | Test `:skip` annotations | `SkipAnnotationScenario("Password")` |
+| `TypecastAnnotationScenario()` | Test `:typecast` annotations | `TypecastAnnotationScenario()` |
+| `StringerAnnotationScenario()` | Test `:stringer` annotations | `StringerAnnotationScenario()` |
+| `RecvAnnotationScenario(var)` | Test `:recv` annotations | `RecvAnnotationScenario("c")` |
 
 ## Error Scenario Builders
 

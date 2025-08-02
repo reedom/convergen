@@ -209,6 +209,87 @@ type Convergen interface {
 }`, pattern))
 }
 
+// TypecastAnnotationScenario creates a scenario for testing :typecast annotation.
+func TypecastAnnotationScenario() InlineScenario {
+	return NewInlineScenario(
+		"TypecastAnnotation",
+		"Test :typecast annotation for type casting",
+	).WithTypes(`
+type User struct {
+	ID   int64
+	Name string
+}
+
+type UserModel struct {
+	ID   int32  // Different numeric type requiring casting
+	Name string
+}`).WithInterface(`
+type Convergen interface {
+	// :typecast
+	Convert(*User) *UserModel
+}`)
+}
+
+// StringerAnnotationScenario creates a scenario for testing :stringer annotation.
+func StringerAnnotationScenario() InlineScenario {
+	return NewInlineScenario(
+		"StringerAnnotation",
+		"Test :stringer annotation for String() method usage",
+	).WithTypes(`
+type Status int
+
+const (
+	Active Status = iota
+	Inactive
+)
+
+func (s Status) String() string {
+	switch s {
+	case Active:
+		return "active"
+	case Inactive:
+		return "inactive"
+	default:
+		return "unknown"
+	}
+}
+
+type User struct {
+	Name   string
+	Status Status
+}
+
+type UserModel struct {
+	Name   string
+	Status string  // String representation
+}`).WithInterface(`
+type Convergen interface {
+	// :stringer
+	Convert(*User) *UserModel
+}`)
+}
+
+// RecvAnnotationScenario creates a scenario for testing :recv annotation.
+func RecvAnnotationScenario(receiverVar string) InlineScenario {
+	return NewInlineScenario(
+		fmt.Sprintf("RecvAnnotation_%s", receiverVar),
+		"Test :recv annotation for receiver method generation",
+	).WithTypes(`
+type User struct {
+	Name string
+	Age  int
+}
+
+type UserModel struct {
+	Name string
+	Age  int
+}`).WithInterface(fmt.Sprintf(`
+type Convergen interface {
+	// :recv %s
+	Convert(*User) *UserModel
+}`, receiverVar))
+}
+
 // Error Scenario Builders.
 
 // InvalidSyntaxScenario creates a scenario with invalid Go syntax.

@@ -83,6 +83,30 @@ func TestBehaviorDrivenScenarios(t *testing.T) {
 				helpers.CompilesSuccessfully(),
 			),
 
+		// Typecast annotation test
+		helpers.TypecastAnnotationScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.Contains("int32(src.ID)"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		// Stringer annotation test
+		helpers.StringerAnnotationScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.Contains("src.Status.String()"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		// Recv annotation test
+		helpers.RecvAnnotationScenario("c").
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.Contains("func (c"),
+				helpers.CompilesSuccessfully(),
+			),
+
 		// Error scenario - invalid annotation
 		helpers.NewInlineScenario(
 			"InvalidAnnotation",
@@ -117,6 +141,9 @@ func TestAnnotationCoverage(t *testing.T) {
 		"conv_custom":    helpers.ConvertAnnotationScenario("HashPassword", "Password", "HashedPassword").WithBehaviorTests(),
 		"literal_string": helpers.LiteralAnnotationScenario("Status", `"active"`).WithBehaviorTests(),
 		"skip_field":     helpers.SkipAnnotationScenario("Password").WithBehaviorTests(),
+		"typecast":       helpers.TypecastAnnotationScenario().WithBehaviorTests(),
+		"stringer":       helpers.StringerAnnotationScenario().WithBehaviorTests(),
+		"recv_var":       helpers.RecvAnnotationScenario("c").WithBehaviorTests(),
 	}
 
 	for name, scenario := range annotationTests {
