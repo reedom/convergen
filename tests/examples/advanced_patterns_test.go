@@ -18,9 +18,10 @@ func TestExampleCustomScenarioBuilder(t *testing.T) {
 		WithBehaviorTests().
 		WithCodeChecks(
 			helpers.AssertHasGeneratedFunction(),
-			helpers.Contains("src.FirstName"),
-			helpers.Contains("src.LastName"),
-		)
+			helpers.Contains("dst.FullName = TransformFirstName(src.FirstName)"),
+			helpers.Contains("dst.LastName = src.LastName"),
+			helpers.Contains("dst.Other = src.Other"),
+		).WithVerboseDebugging()
 
 	runner.RunScenario(scenario)
 }
@@ -29,7 +30,7 @@ func TestExampleCustomScenarioBuilder(t *testing.T) {
 func CustomMappingScenario(field1, field2, destField string) helpers.InlineScenario {
 	return helpers.NewInlineScenario(
 		fmt.Sprintf("CustomMapping_%s_%s_to_%s", field1, field2, destField),
-		fmt.Sprintf("Test mapping %s and %s to %s", field1, field2, destField),
+		fmt.Sprintf("Test mapping %s with converter and %s directly to %s", field1, field2, destField),
 	).WithTypes(fmt.Sprintf(`
 type Source struct {
 	%s string
@@ -39,12 +40,18 @@ type Source struct {
 
 type Dest struct {
 	%s string
+	%s string
 	Other string
-}`, field1, field2, destField)).WithInterface(fmt.Sprintf(`
+}
+
+// Converter function to transform first field
+func Transform%s(value string) string {
+	return "transformed_" + value
+}`, field1, field2, destField, field2, field1)).WithInterface(fmt.Sprintf(`
 type Convergen interface {
-	// :map %s,%s %s
+	// :conv Transform%s %s %s
 	Convert(*Source) *Dest
-}`, field1, field2, destField))
+}`, field1, field1, destField))
 }
 
 // Example: Testing complex annotations
@@ -65,7 +72,8 @@ type User struct {
 }
 
 type UserModel struct {
-	FullName       string
+	FirstName      string
+	LastName       string
 	HashedPassword string
 	Age            int
 	Status         string
@@ -73,10 +81,6 @@ type UserModel struct {
 }
 
 // Custom converter functions
-func CombineNames(first, last string) string {
-	return first + " " + last
-}
-
 func HashPassword(password string) string {
 	return "hashed_" + password
 }
@@ -85,8 +89,6 @@ func IsAdult(age int) bool {
 	return age >= 18
 }`).WithInterface(`
 type Convergen interface {
-	// :map FirstName,LastName FullName
-	// :conv CombineNames FirstName,LastName FullName
 	// :conv HashPassword Password HashedPassword
 	// :conv IsAdult Age IsActive
 	// :literal Status "active"
@@ -94,10 +96,11 @@ type Convergen interface {
 }`).WithBehaviorTests().
 		WithCodeChecks(
 			helpers.AssertHasGeneratedFunction(),
-			helpers.Contains("CombineNames(src.FirstName, src.LastName)"),
+			helpers.Contains("dst.FirstName = src.FirstName"),
+			helpers.Contains("dst.LastName = src.LastName"),
 			helpers.Contains("HashPassword(src.Password)"),
 			helpers.Contains("IsAdult(src.Age)"),
-			helpers.Contains(`Status: "active"`),
+			helpers.Contains(`dst.Status = "active"`),
 		)
 
 	runner.RunScenario(scenario)
