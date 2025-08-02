@@ -130,6 +130,61 @@ scenario := helpers.NewInlineScenario("Test", "Description").
 runner.RunScenario(scenario)
 ```
 
+## Debugging Test Failures
+
+### Enhanced Debugging Features
+
+When tests fail, you now get detailed debugging information:
+
+#### Basic Debugging (Default)
+```go
+scenario := helpers.NewInlineScenario("Test", "Description").
+    WithTypes(types).
+    WithInterface(interface).
+    WithCodeChecks(helpers.Contains("expected_pattern"))
+// Failure shows: assertion details + hint to use verbose debugging
+```
+
+#### Verbose Debugging 
+```go
+scenario := helpers.NewInlineScenario("Test", "Description").
+    WithTypes(types).
+    WithInterface(interface).
+    WithCodeChecks(helpers.Contains("expected_pattern")).
+    WithVerboseDebugging() // Shows full source + generated code
+```
+
+#### Debug Helper Functions
+```go
+// Enable debugging for any scenario
+debugScenario := helpers.WithDebug(existingScenario)
+
+// Create debug-enabled scenario from scratch
+scenario := helpers.DebugScenario("Test", "Description")
+```
+
+### What You Get on Failure
+
+#### Code Generation Failures
+- ❌ Clear error message with scenario name
+- 📄 Source file content that was generated
+- 🔧 Generated code (first 1000 chars)
+- 🚨 Separate source creation vs. code generation errors
+- 📍 File paths for manual inspection
+
+#### Assertion Failures
+- ❌ Failed assertion details (type, pattern, message)
+- 📊 Full generated code (in verbose mode)
+- 💡 Helpful hint to enable verbose debugging
+- ✅ Successful assertions logged (in verbose mode)
+
+### Debugging Workflow
+
+1. **Run test normally** - get basic failure info
+2. **Add `.WithVerboseDebugging()`** - see full generated code
+3. **Use `helpers.WithDebug(scenario)`** for quick debugging
+4. **Check source file** at the logged path for manual inspection
+
 ## Best Practices
 
 1. **Use `t.Parallel()`** for independent tests
@@ -138,3 +193,5 @@ runner.RunScenario(scenario)
 4. **Include error scenarios** for comprehensive coverage
 5. **Group related tests** using batch execution
 6. **Follow naming conventions** for clarity and organization
+7. **Enable verbose debugging** when investigating failures
+8. **Use debug helpers** for quick troubleshooting

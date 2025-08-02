@@ -71,26 +71,74 @@ func (isr *InlineScenarioRunner) RunScenario(scenario TestScenario) {
 			primaryError = codeErr
 		}
 
+		// Handle success scenarios
 		if scenario.ShouldSucceed {
-			require.NoError(t, primaryError, "Expected successful code generation")
-			require.NotEmpty(t, generatedCode, "Expected non-empty generated code")
-
-			// Run code assertions
-			isr.runCodeAssertions(t, scenario, generatedCode)
-
-			// Run behavior tests if provided
-			if len(scenario.BehaviorTests) > 0 {
-				isr.runBehaviorTests(t, scenario, sourceFile, generatedCode)
-			}
-		} else {
-			require.Error(t, primaryError, "Expected error for scenario: %s", scenario.Name)
-
-			if scenario.ExpectedError != "" {
-				assert.Contains(t, primaryError.Error(), scenario.ExpectedError,
-					"Error message should contain expected text")
-			}
+			isr.handleSuccessScenario(t, scenario, primaryError, sourceFile, generatedCode, sourceErr, codeErr)
+			return
 		}
+
+		// Handle failure scenarios
+		isr.handleFailureScenario(t, scenario, primaryError)
 	})
+}
+
+// handleSuccessScenario processes scenarios that should succeed.
+func (isr *InlineScenarioRunner) handleSuccessScenario(t *testing.T, scenario TestScenario, primaryError error, sourceFile, generatedCode string, sourceErr, codeErr error) {
+	t.Helper()
+
+	if primaryError != nil {
+		// Enhanced error reporting with debugging information
+		sourceContent := isr.readSourceFileContent(sourceFile)
+		t.Errorf("❌ Code generation failed for scenario '%s':\n"+
+			"Error: %v\n"+
+			"Source file: %s\n"+
+			"Generated code length: %d\n"+
+			"Source creation error: %v\n"+
+			"Code generation error: %v\n"+
+			"--- Source File Content ---\n%s\n"+
+			"--- Generated Code (first 1000 chars) ---\n%s\n"+
+			"--- End Debug Output ---",
+			scenario.Name, primaryError, sourceFile, len(generatedCode),
+			sourceErr, codeErr, sourceContent, truncateString(generatedCode, 1000))
+		return
+	}
+
+	require.NotEmpty(t, generatedCode, "Expected non-empty generated code for scenario '%s'", scenario.Name)
+
+	// Log successful generation details for debugging
+	if scenario.VerboseDebugging {
+		sourceContent := isr.readSourceFileContent(sourceFile)
+		t.Logf("✅ Code generation successful for scenario '%s':\n"+
+			"Generated code length: %d characters\n"+
+			"Source file: %s\n"+
+			"--- Source File Content ---\n%s\n"+
+			"--- Generated Code ---\n%s\n"+
+			"--- End Debug Output ---",
+			scenario.Name, len(generatedCode), sourceFile, sourceContent, generatedCode)
+	} else {
+		t.Logf("✅ Code generation successful for scenario '%s': %d characters generated",
+			scenario.Name, len(generatedCode))
+	}
+
+	// Run code assertions
+	isr.runCodeAssertions(t, scenario, generatedCode)
+
+	// Run behavior tests if provided
+	if len(scenario.BehaviorTests) > 0 {
+		isr.runBehaviorTests(t, scenario, sourceFile, generatedCode)
+	}
+}
+
+// handleFailureScenario processes scenarios that should fail.
+func (isr *InlineScenarioRunner) handleFailureScenario(t *testing.T, scenario TestScenario, primaryError error) {
+	t.Helper()
+
+	require.Error(t, primaryError, "Expected error for scenario: %s", scenario.Name)
+
+	if scenario.ExpectedError != "" {
+		assert.Contains(t, primaryError.Error(), scenario.ExpectedError,
+			"Error message should contain expected text")
+	}
 }
 
 // createSourceFile creates a temporary Go file with the scenario's inline code.
@@ -210,8 +258,23 @@ func (isr *InlineScenarioRunner) runCodeAssertions(t *testing.T, scenario TestSc
 		result := assertion.Assert(generatedCode)
 
 		if !result.Success {
-			t.Errorf("Assertion %d failed for scenario %s: %s\nDetails: %s",
-				i+1, scenario.Name, result.Message, result.Details)
+			if scenario.VerboseDebugging {
+				t.Errorf("❌ Assertion %d failed for scenario '%s':\n"+
+					"Type: %s\n"+
+					"Pattern: %s\n"+
+					"Message: %s\n"+
+					"Details: %s\n"+
+					"--- Full Generated Code ---\n%s\n"+
+					"--- End Generated Code ---",
+					i+1, scenario.Name, assertion.Type, assertion.Pattern,
+					result.Message, result.Details, generatedCode)
+			} else {
+				t.Errorf("❌ Assertion %d failed for scenario '%s': %s (pattern: %s)\n"+
+					"Use .WithVerboseDebugging() to see full generated code",
+					i+1, scenario.Name, result.Message, assertion.Pattern)
+			}
+		} else if scenario.VerboseDebugging {
+			t.Logf("✅ Assertion %d passed for scenario '%s': %s", i+1, scenario.Name, assertion.Pattern)
 		}
 	}
 }
@@ -272,6 +335,33 @@ func (isr *InlineScenarioRunner) createBehaviorTestFile(t *testing.T, scenario T
 	require.NoError(t, err, "Failed to write behavior test file")
 
 	return testFile
+}
+
+// truncateString truncates a string to maxLen characters with ellipsis if needed.
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "\n... (truncated, full length: " + fmt.Sprintf("%d", len(s)) + " characters)"
+}
+
+// readSourceFileContent reads the source file content for debugging purposes.
+func (isr *InlineScenarioRunner) readSourceFileContent(sourceFile string) string {
+	if sourceFile == "" {
+		return "(source file not created)"
+	}
+
+	// Security: Ensure the file is within our temp directory
+	if !strings.HasPrefix(sourceFile, isr.tempDir) {
+		return fmt.Sprintf("(security: file outside temp directory: %s)", sourceFile)
+	}
+
+	content, err := os.ReadFile(sourceFile) // #nosec G304 - file path is validated above
+	if err != nil {
+		return fmt.Sprintf("(error reading source file: %v)", err)
+	}
+
+	return string(content)
 }
 
 // RunScenarios executes multiple scenarios.

@@ -82,6 +82,22 @@ func (bt BehaviorTest) ExpectError() BehaviorTest {
 	return bt
 }
 
+// Debugging helpers.
+
+// DebugScenario creates a scenario with verbose debugging enabled.
+// Use this when you need to see the full generated code output.
+func DebugScenario(name, description string) InlineScenario {
+	return InlineScenario{
+		Name:        name,
+		Description: description,
+	}
+}
+
+// WithDebug enables verbose debugging for any scenario.
+func WithDebug(scenario TestScenario) TestScenario {
+	return scenario.WithVerboseDebugging()
+}
+
 // Annotation-specific scenario builders.
 
 // StyleAnnotationScenario creates a scenario for testing :style annotation.

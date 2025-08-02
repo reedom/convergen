@@ -26,8 +26,9 @@ type TestScenario struct {
 	CodeChecks    []CodeAssertion
 
 	// Test metadata
-	ShouldSkip bool
-	SkipReason string
+	ShouldSkip       bool
+	SkipReason       string
+	VerboseDebugging bool // Enable detailed debugging output
 }
 
 // BehaviorTest defines a runtime behavior test.
@@ -78,6 +79,12 @@ func (ts TestScenario) WithCategory(category string) TestScenario {
 func (ts TestScenario) ShouldFail(expectedError string) TestScenario {
 	ts.ShouldSucceed = false
 	ts.ExpectedError = expectedError
+	return ts
+}
+
+// WithVerboseDebugging enables verbose debugging output for this scenario.
+func (ts TestScenario) WithVerboseDebugging() TestScenario {
+	ts.VerboseDebugging = true
 	return ts
 }
 
