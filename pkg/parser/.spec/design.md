@@ -1,621 +1,319 @@
 # Parser Package Design
 
-This document outlines the design of the `pkg/parser` package, which transforms Go source code into domain models for the generation pipeline.
-
-## 🏗️ **Implemented Architecture Status: ✅ ENTERPRISE PRODUCTION READY**
-
-**Architecture Score**: 4.9/5 | **Last Reviewed**: 2025-07-28  
-**Implementation Status**: Comprehensively enhanced with concurrent processing, unified interface, and enterprise-grade error handling  
-**Design Patterns**: Factory, Pool, Strategy, Observer, Circuit Breaker patterns fully implemented
-
-### 🚀 **Architecture Enhancement Summary (2025-07-28)**
-
-**Major Architectural Achievements**:
-- **Unified Parser Interface**: Complete abstraction with strategy pattern (LegacyParser, ModernParser, AdaptiveParser)
-- **Concurrent Processing Engine**: 40-70% performance improvement with worker pools and intelligent resource management
-- **Enterprise Error Handling**: Circuit breaker pattern, rich contextual errors, and comprehensive recovery mechanisms
-- **Configuration Management**: Centralized configuration with functional options and validation
-- **Performance Monitoring**: Comprehensive metrics collection with cache hit rates and resource tracking
+This document outlines the technical architecture and design decisions for the `pkg/parser` package.
 
 ## Architecture Overview
 
 The parser follows a multi-stage pipeline architecture with clear separation of concerns:
 
 1. **Source Analysis**: AST parsing and basic structure extraction
-2. **Annotation Processing**: Comment-based configuration parsing
-3. **Type Resolution**: Comprehensive type analysis with generic support
-4. **Domain Model Construction**: Transformation to domain entities
-5. **Validation**: Model consistency and correctness verification
+2. **Interface Discovery**: Identification of convergen-annotated interfaces  
+3. **Annotation Processing**: Comment-based configuration parsing
+4. **Type Resolution**: Comprehensive type analysis with generic support
+5. **Domain Model Construction**: Transformation to domain entities
 6. **Event Emission**: Publishing results to the generation pipeline
 
-## Core Components
+## Core Design Patterns
+
+### Strategy Pattern Implementation
+
+The parser implements a strategy pattern to support different parsing approaches:
+
+```go
+type ParseStrategy int
+
+const (
+    StrategyLegacy ParseStrategy = iota  // Traditional synchronous parsing
+    StrategyModern                       // Concurrent processing with worker pools
+    StrategyAuto                         // Adaptive strategy selection
+)
+
+type ConvergenParser interface {
+    ParseSourceFile(ctx context.Context, sourcePath, destPath string) (*ParseResult, error)
+    GetStrategy() ParseStrategy
+    SetConfig(config *ParserConfig) error
+}
+```
+
+**Design Rationale**: Multiple strategies allow optimization for different use cases while maintaining backward compatibility.
+
+### Factory Pattern for Parser Creation
+
+```go
+type ParserFactory struct {
+    defaultConfig *ParserConfig
+}
+
+func (pf *ParserFactory) CreateParser(strategy ParseStrategy) (ConvergenParser, error)
+```
+
+**Design Decision**: Factory pattern encapsulates parser creation logic and allows for consistent configuration management across different strategies.
+
+### Worker Pool Pattern for Concurrency
+
+```go
+type PackageLoader struct {
+    workerPool    chan struct{}
+    cache         map[string]*CacheEntry
+    cacheMutex    sync.RWMutex
+    circuitBreaker *CircuitBreaker
+}
+```
+
+**Design Rationale**: Bounded worker pools prevent resource exhaustion while providing controlled concurrency for package loading and method processing.
+
+## Component Architecture
 
 ### Parser Coordinator
 
+The main `Parser` struct orchestrates the parsing pipeline:
+
 ```go
-// Parser orchestrates the parsing pipeline
 type Parser struct {
-    config        *Config
-    eventBus      events.EventBus
-    typeResolver  *TypeResolver
-    annotationReg *AnnotationRegistry
-    validator     *DomainValidator
-    cache         *ParseCache
-    logger        *zap.Logger
-}
-
-// Main parsing entry point with context support
-func (p *Parser) Parse(ctx context.Context, sourcePath string) (*domain.GenerationResult, error) {
-    // 1. Load and analyze source file
-    pkg, err := p.loadPackage(ctx, sourcePath)
-    if err != nil {
-        return nil, fmt.Errorf("failed to load package: %w", err)
-    }
-    
-    // 2. Discover converter interfaces
-    interfaces, err := p.discoverInterfaces(ctx, pkg)
-    if err != nil {
-        return nil, fmt.Errorf("interface discovery failed: %w", err)
-    }
-    
-    // 3. Process each interface
-    methods := make([]*domain.Method, 0)
-    for _, intf := range interfaces {
-        interfaceMethods, err := p.processInterface(ctx, intf)
-        if err != nil {
-            return nil, fmt.Errorf("interface processing failed: %w", err)
-        }
-        methods = append(methods, interfaceMethods...)
-    }
-    
-    // 4. Validate domain models
-    if err := p.validator.ValidateMethods(ctx, methods); err != nil {
-        return nil, fmt.Errorf("validation failed: %w", err)
-    }
-    
-    // 5. Generate base code
-    baseCode, err := p.generateBaseCode(ctx, pkg, interfaces)
-    if err != nil {
-        return nil, fmt.Errorf("base code generation failed: %w", err)
-    }
-    
-    // 6. Emit parse event
-    event := &ParseEvent{
-        Methods:  methods,
-        BaseCode: baseCode,
-        Context:  ctx,
-    }
-    
-    if err := p.eventBus.Publish(ctx, event); err != nil {
-        return nil, fmt.Errorf("failed to emit parse event: %w", err)
-    }
-    
-    return &domain.GenerationResult{
-        Methods:  methods,
-        BaseCode: baseCode,
-    }, nil
+    srcPath       string
+    file          *ast.File
+    fset          *token.FileSet
+    pkg           *packages.Package
+    opts          option.Options
+    imports       util.ImportNames
+    intfEntries   []*intfEntry
+    packageLoader *PackageLoader
+    config        *ParserConfig
 }
 ```
 
-### Interface Discovery
+**Design Principle**: Single Responsibility - the Parser coordinates but delegates specialized tasks to dedicated components.
+
+### Configuration Management
+
+Functional options pattern for flexible configuration:
 
 ```go
-// InterfaceDiscoverer finds converter interfaces in source code
-type InterfaceDiscoverer struct {
-    typeInfo *types.Info
-    fset     *token.FileSet
-    logger   *zap.Logger
+type ParserConfig struct {
+    EnableConcurrentLoading   bool
+    EnableMethodConcurrency   bool
+    MaxConcurrentWorkers      int
+    TypeResolutionTimeout     time.Duration
+    CacheSize                 int
+    EnablePerformanceMetrics  bool
 }
 
-// DiscoverInterfaces finds all converter interfaces
-func (d *InterfaceDiscoverer) DiscoverInterfaces(ctx context.Context, pkg *packages.Package) ([]*ConvergenInterface, error) {
-    interfaces := make([]*ConvergenInterface, 0)
-    
-    // Walk through all files in package
-    for _, file := range pkg.Syntax {
-        for _, decl := range file.Decls {
-            if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
-                for _, spec := range genDecl.Specs {
-                    if typeSpec, ok := spec.(*ast.TypeSpec); ok {
-                        if interfaceType, ok := typeSpec.Type.(*ast.InterfaceType); ok {
-                            if intf := d.checkConvergenInterface(ctx, typeSpec, interfaceType, genDecl.Doc); intf != nil {
-                                interfaces = append(interfaces, intf)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    return interfaces, nil
-}
-
-// checkConvergenInterface determines if interface is a converter
-func (d *InterfaceDiscoverer) checkConvergenInterface(ctx context.Context, spec *ast.TypeSpec, iface *ast.InterfaceType, doc *ast.CommentGroup) *ConvergenInterface {
-    // Check if named "Convergen"
-    if spec.Name.Name == "Convergen" {
-        return d.createConvergenInterface(ctx, spec, iface, doc)
-    }
-    
-    // Check for :convergen annotation
-    if doc != nil {
-        for _, comment := range doc.List {
-            if strings.Contains(comment.Text, ":convergen") {
-                return d.createConvergenInterface(ctx, spec, iface, doc)
-            }
-        }
-    }
-    
-    return nil
-}
+func WithTimeout(timeout time.Duration) ConfigOption
+func WithConcurrency(workers int) ConfigOption
 ```
 
-### Annotation Processing System
+**Design Benefit**: Immutable configuration with validation and sensible defaults.
+
+### Error Handling Architecture
+
+Multi-layer error handling with rich context:
 
 ```go
-// AnnotationRegistry manages extensible annotation processing
-type AnnotationRegistry struct {
-    processors map[string]AnnotationProcessor
-    validators []AnnotationValidator
-    logger     *zap.Logger
+type ErrorHandler struct {
+    classifier    *ErrorClassifier
+    recovery      *ErrorRecovery
+    contextLogger *zap.Logger
 }
 
-// AnnotationProcessor handles specific annotation types
-type AnnotationProcessor interface {
-    Name() string
-    Pattern() *regexp.Regexp
-    Parse(ctx context.Context, comment string, context ProcessingContext) (AnnotationConfig, error)
-    Validate(ctx context.Context, config AnnotationConfig, context ValidationContext) error
-}
-
-// Built-in annotation processors
-type MatchAnnotationProcessor struct{}
-
-func (p *MatchAnnotationProcessor) Parse(ctx context.Context, comment string, context ProcessingContext) (AnnotationConfig, error) {
-    // Parse :match <algorithm> annotation
-    matches := p.Pattern().FindStringSubmatch(comment)
-    if len(matches) < 2 {
-        return nil, fmt.Errorf("invalid :match annotation format")
-    }
-    
-    algorithm := strings.TrimSpace(matches[1])
-    if algorithm != "name" && algorithm != "none" {
-        return nil, fmt.Errorf("invalid match algorithm: %s", algorithm)
-    }
-    
-    return &MatchConfig{
-        Algorithm: algorithm,
-    }, nil
-}
-
-// Registry-based processing
-func (r *AnnotationRegistry) ProcessComments(ctx context.Context, comments []*ast.Comment, context ProcessingContext) ([]AnnotationConfig, error) {
-    configs := make([]AnnotationConfig, 0)
-    
-    for _, comment := range comments {
-        text := strings.TrimPrefix(comment.Text, "//")
-        text = strings.TrimSpace(text)
-        
-        if !strings.HasPrefix(text, ":") {
-            continue
-        }
-        
-        // Find matching processor
-        for _, processor := range r.processors {
-            if processor.Pattern().MatchString(text) {
-                config, err := processor.Parse(ctx, text, context)
-                if err != nil {
-                    return nil, fmt.Errorf("failed to parse %s annotation: %w", processor.Name(), err)
-                }
-                configs = append(configs, config)
-                break
-            }
-        }
-    }
-    
-    // Validate annotation combinations
-    if err := r.validateConfigs(ctx, configs, context); err != nil {
-        return nil, fmt.Errorf("annotation validation failed: %w", err)
-    }
-    
-    return configs, nil
-}
-```
-
-### Type Resolution Engine
-
-```go
-// TypeResolver handles comprehensive type analysis
-type TypeResolver struct {
-    typeInfo  *types.Info
-    cache     *TypeCache
-    logger    *zap.Logger
-}
-
-// ResolveType converts Go types to domain types
-func (r *TypeResolver) ResolveType(ctx context.Context, goType types.Type) (domain.Type, error) {
-    // Check cache first
-    if cached, ok := r.cache.Get(goType.String()); ok {
-        return cached, nil
-    }
-    
-    var domainType domain.Type
-    var err error
-    
-    switch t := goType.(type) {
-    case *types.Basic:
-        domainType, err = r.resolveBasicType(ctx, t)
-    case *types.Named:
-        domainType, err = r.resolveNamedType(ctx, t)
-    case *types.Struct:
-        domainType, err = r.resolveStructType(ctx, t)
-    case *types.Slice:
-        domainType, err = r.resolveSliceType(ctx, t)
-    case *types.Map:
-        domainType, err = r.resolveMapType(ctx, t)
-    case *types.Interface:
-        domainType, err = r.resolveInterfaceType(ctx, t)
-    case *types.Pointer:
-        domainType, err = r.resolvePointerType(ctx, t)
-    case *types.TypeParam:
-        domainType, err = r.resolveTypeParam(ctx, t)
-    default:
-        err = fmt.Errorf("unsupported type: %T", t)
-    }
-    
-    if err != nil {
-        return nil, err
-    }
-    
-    // Cache the result
-    r.cache.Put(goType.String(), domainType)
-    return domainType, nil
-}
-
-// resolveStructType handles struct types with field ordering
-func (r *TypeResolver) resolveStructType(ctx context.Context, structType *types.Struct) (domain.Type, error) {
-    fields := make([]domain.Field, structType.NumFields())
-    
-    for i := 0; i < structType.NumFields(); i++ {
-        field := structType.Field(i)
-        tag := structType.Tag(i)
-        
-        fieldType, err := r.ResolveType(ctx, field.Type())
-        if err != nil {
-            return nil, fmt.Errorf("failed to resolve field %s type: %w", field.Name(), err)
-        }
-        
-        fields[i] = domain.Field{
-            Name:     field.Name(),
-            Type:     fieldType,
-            Tags:     reflect.StructTag(tag),
-            Position: i,  // Preserve field order
-            Exported: field.Exported(),
-        }
-    }
-    
-    return &domain.StructType{
-        Fields:  fields,
-        Package: structType.String(), // Package info for cross-package support
-    }, nil
-}
-```
-
-### Method Processing
-
-```go
-// MethodProcessor converts interface methods to domain models
-type MethodProcessor struct {
-    typeResolver  *TypeResolver
-    annotationReg *AnnotationRegistry
-    validator     *MethodValidator
-    logger        *zap.Logger
-}
-
-// ProcessMethod converts an interface method to domain model
-func (p *MethodProcessor) ProcessMethod(ctx context.Context, method *types.Func, comments []*ast.Comment, intf *ConvergenInterface) (*domain.Method, error) {
-    signature := method.Type().(*types.Signature)
-    
-    // Extract method signature info
-    methodSig, err := p.extractSignature(ctx, method, signature)
-    if err != nil {
-        return nil, fmt.Errorf("failed to extract method signature: %w", err)
-    }
-    
-    // Process annotations
-    annotations, err := p.annotationReg.ProcessComments(ctx, comments, ProcessingContext{
-        Method:    method,
-        Interface: intf,
-    })
-    if err != nil {
-        return nil, fmt.Errorf("failed to process annotations: %w", err)
-    }
-    
-    // Build method configuration
-    config, err := p.buildMethodConfig(ctx, annotations, intf.Config)
-    if err != nil {
-        return nil, fmt.Errorf("failed to build method config: %w", err)
-    }
-    
-    // Create domain method
-    domainMethod := &domain.Method{
-        Name:       method.Name(),
-        SourceType: methodSig.SourceType,
-        DestType:   methodSig.DestType,
-        Config:     config,
-        Signature:  methodSig,
-    }
-    
-    // Generate field mappings (will be done in planner)
-    // This is kept minimal in parser - detailed mapping is planner's job
-    
-    return domainMethod, nil
-}
-```
-
-### Base Code Generation
-
-```go
-// BaseCodeGenerator creates clean source without converter interfaces
-type BaseCodeGenerator struct {
-    fset   *token.FileSet
-    logger *zap.Logger
-}
-
-// GenerateBaseCode removes converter interfaces and replaces with markers
-func (g *BaseCodeGenerator) GenerateBaseCode(ctx context.Context, pkg *packages.Package, interfaces []*ConvergenInterface) (string, error) {
-    var buf bytes.Buffer
-    
-    for _, file := range pkg.Syntax {
-        // Clone AST for modification
-        fileCopy := g.cloneFile(file)
-        
-        // Remove converter interfaces and add markers
-        g.replaceInterfaces(fileCopy, interfaces)
-        
-        // Format and write to buffer
-        if err := format.Node(&buf, g.fset, fileCopy); err != nil {
-            return "", fmt.Errorf("failed to format file: %w", err)
-        }
-    }
-    
-    return buf.String(), nil
-}
-```
-
-## Event Integration
-
-### Parse Event Definition
-
-```go
-// ParseEvent represents successful parsing completion
-type ParseEvent struct {
-    BaseEvent
-    Methods  []*domain.Method
-    BaseCode string
-    Metrics  ParseMetrics
-}
-
-// ParseMetrics track parsing performance
-type ParseMetrics struct {
-    ParseDurationMS     int64
-    InterfacesFound     int
-    MethodsProcessed    int
-    AnnotationsProcessed int
-    TypesResolved       int
-    CacheHitRate        float64
-}
-```
-
-## Caching Strategy
-
-### Multi-Level Caching
-
-```go
-// ParseCache provides multi-level caching
-type ParseCache struct {
-    typeCache       *TypeCache
-    methodCache     *MethodCache
-    annotationCache *AnnotationCache
-    packageCache    *PackageCache
-}
-
-// TypeCache caches resolved type information
-type TypeCache struct {
-    cache map[string]domain.Type
-    mutex sync.RWMutex
-    stats CacheStats
-}
-
-// Concurrent-safe caching with LRU eviction
-func (c *TypeCache) Get(key string) (domain.Type, bool) {
-    c.mutex.RLock()
-    defer c.mutex.RUnlock()
-    
-    if value, ok := c.cache[key]; ok {
-        c.stats.Hits++
-        return value, true
-    }
-    
-    c.stats.Misses++
-    return nil, false
-}
-```
-
-## Error Handling Strategy
-
-### Rich Error Context
-
-```go
-// ParseError provides detailed parsing error information
 type ParseError struct {
-    Code     ErrorCode
-    Message  string
-    File     string
-    Line     int
-    Column   int
-    Context  string
-    Cause    error
-    Suggestions []string
-}
-
-// Error aggregation for batch reporting
-type ErrorCollector struct {
-    errors []ParseError
-    mutex  sync.Mutex
-}
-
-func (c *ErrorCollector) Collect(err ParseError) {
-    c.mutex.Lock()
-    defer c.mutex.Unlock()
-    c.errors = append(c.errors, err)
+    Code      string
+    Message   string
+    Phase     ParsePhase
+    Severity  ErrorSeverity
+    Context   map[string]interface{}
 }
 ```
 
-This design provides a robust, extensible parser that efficiently transforms Go source code into domain models while supporting concurrent processing, comprehensive error handling, and integration with the event-driven pipeline architecture.
+**Design Philosophy**: Fail-fast detection with graceful recovery and comprehensive error context.
 
-## 📊 **Enhanced Implementation Analysis (2025-07-28)**
+## Type Resolution Design
 
-### **🔍 Comprehensive Architecture Implementation**
+### Generic Type Support
 
-The parser package implements a **world-class enterprise architecture** with complete enhancement across all components:
+The type resolver handles Go 1.21+ generics through a multi-phase approach:
 
-#### **✅ Enhanced Core Components**
+1. **Type Parameter Detection**: Identify generic type parameters in interfaces
+2. **Constraint Analysis**: Parse and validate type constraints
+3. **Instantiation Resolution**: Resolve concrete types from generic signatures
+4. **Compatibility Checking**: Validate type compatibility across conversions
 
-| Component | Implementation File | Status | Architecture Score | Enhancements |
-|-----------|-------------------|---------|-------------------|--------------|
-| **UnifiedInterface** | `unified_interface.go` | ✅ **NEW** | 4.9/5 | Strategy pattern with LegacyParser, ModernParser, AdaptiveParser |
-| **ASTParser** | `ast_parser.go` | ✅ **ENHANCED** | 4.8/5 | Event-driven with concurrent processing, enhanced from 4.5 |
-| **ConcurrentMethod** | `concurrent_method.go` | ✅ **NEW** | 4.8/5 | Parallel method processing with error recovery |
-| **PackageLoader** | `package_loader.go` | ✅ **NEW** | 4.8/5 | Concurrent package loading with caching |
-| **ErrorHandler** | `error_handler.go` | ✅ **NEW** | 4.9/5 | Rich contextual error system with categorization |
-| **ErrorRecovery** | `error_recovery.go` | ✅ **NEW** | 4.9/5 | Circuit breaker pattern with retry logic |
-| **Config** | `config.go` | ✅ **NEW** | 4.8/5 | Centralized configuration with functional options |
-| **TypeResolver** | `type_resolver.go` | ✅ **ENHANCED** | 4.5/5 | Full generics support with enhanced caching, improved from 4.3 |
-| **InterfaceAnalyzer** | `interface_analyzer.go` | ✅ **ENHANCED** | 4.4/5 | Enhanced annotation processing, improved from 4.2 |
-| **MethodProcessor** | `method.go` | ✅ **ENHANCED** | 4.3/5 | Enhanced domain model transformation, improved from 4.1 |
-| **TypeCache** | `cache.go` | ✅ **ENHANCED** | 4.6/5 | TTL-based LRU with memory pressure detection, improved from 4.4 |
-| **PerformanceTest** | `performance_test.go` | ✅ **NEW** | 4.7/5 | Comprehensive benchmarking and performance validation |
-
-#### **🎯 Advanced Design Patterns Implemented**
-
-1. **Factory Pattern** ⭐⭐⭐⭐⭐
-   ```go
-   // Implemented in multiple constructors
-   func NewASTParser(logger *zap.Logger, eventBus events.EventBus, config *ParserConfig) *ASTParser
-   func NewTypeResolver(cache *TypeCache, logger *zap.Logger) *TypeResolver
-   func NewTypeCache(maxSize int) *TypeCache
-   ```
-
-2. **Pool Pattern** ⭐⭐⭐⭐⭐
-   ```go
-   // TypeResolverPool with round-robin distribution
-   type TypeResolverPool struct {
-       resolvers []*TypeResolver
-       current   int
-       mutex     sync.Mutex
-   }
-   ```
-
-3. **Strategy Pattern** ⭐⭐⭐⭐☆
-   ```go
-   // Multiple type resolution strategies
-   switch t := goType.(type) {
-   case *types.Basic:    domainType, err = tr.resolveBasicType(t)
-   case *types.Named:    domainType, err = tr.resolveNamedType(ctx, t)
-   case *types.Struct:   domainType, err = tr.resolveStructType(ctx, t)
-   // ... comprehensive type coverage
-   }
-   ```
-
-4. **Observer Pattern** ⭐⭐⭐⭐☆
-   ```go
-   // Event-driven progress tracking and metrics
-   parseStartedEvent := events.NewParseStartedEvent(ctx, sourcePath)
-   parsedEvent := events.NewParsedEvent(ctx, methods, baseCode)
-   progressEvent := events.NewProgressEvent(ctx, phase, current, total, message)
-   ```
-
-### **🚀 Performance Architecture**
-
-#### **Concurrent Processing Engine**
-- **Worker Pools**: `errgroup.SetLimit(p.config.MaxConcurrentWorkers)`
-- **Bounded Resources**: Configurable limits prevent resource exhaustion
-- **Context Propagation**: Full cancellation and timeout support
-- **Progress Tracking**: Real-time progress events with metrics
-
-#### **Intelligent Caching System**
 ```go
-// LRU Cache with Performance Metrics
+type TypeResolver struct {
+    typeInfo    *types.Info
+    packageInfo *packages.Package
+    cache       *TypeCache
+    logger      *zap.Logger
+}
+```
+
+**Design Challenge**: Go's type system complexity requires careful handling of:
+- Type parameters and constraints
+- Interface satisfaction
+- Method set computation
+- Import path resolution
+
+### Caching Strategy
+
+LRU cache with TTL for type resolution results:
+
+```go
 type TypeCache struct {
-    cache    map[string]*cacheEntry
-    mutex    sync.RWMutex
-    hits     int64
-    misses   int64
-    hitRate  float64  // Real-time hit rate calculation
+    cache      map[string]*CacheEntry
+    accessTime map[string]time.Time
+    mutex      sync.RWMutex
+    maxSize    int
+    ttl        time.Duration
 }
 ```
 
-### **🔒 Security & Quality Architecture**
+**Design Trade-off**: Memory usage vs. performance - cache size is configurable to balance these concerns.
 
-#### **Thread Safety Implementation**
-- **Comprehensive Synchronization**: `sync.RWMutex` across all shared resources
-- **Concurrent Collections**: `sync.Map` for high-performance concurrent access
-- **Resource Cleanup**: Proper `Close()` methods with graceful shutdown
+## Concurrency Design
 
-#### **Error Handling Architecture**
+### Package Loading Concurrency
+
+Concurrent package loading with bounded resources:
+
 ```go
-// Rich Error Context with Source Location
-return nil, fmt.Errorf("failed to resolve type %s at %s: %w", 
-    typeName, p.fileSet.Position(obj.Pos()).String(), err)
+func (pl *PackageLoader) LoadPackageConcurrent(ctx context.Context, sourcePath, destPath string) (*LoadResult, error) {
+    // Worker pool limits concurrent operations
+    select {
+    case pl.workerPool <- struct{}{}:
+        defer func() { <-pl.workerPool }()
+    case <-ctx.Done():
+        return nil, ctx.Err()
+    }
+    
+    // Proceed with loading...
+}
 ```
 
-### **📈 Architecture Improvements Over Original Design**
+**Design Consideration**: Context cancellation and timeout handling prevent hanging operations.
 
-#### **Enhanced Beyond Specification**
+### Method Processing Concurrency
 
-1. **Event Bus Integration** - Full event-driven architecture
-2. **Concurrent Type Resolution** - Worker pools for parallel processing  
-3. **Advanced Caching** - LRU with hit rate metrics and TTL support
-4. **Progress Tracking** - Real-time progress events during parsing
-5. **Resource Management** - Bounded workers and memory management
-6. **Cross-Reference Resolution** - Advanced method dependency resolution
+Parallel method processing with error aggregation:
 
-#### **Modern Go Practices**
+```go
+func (p *Parser) parseMethodsConcurrent(entry *intfEntry) ([]*model.MethodEntry, error) {
+    methodChan := make(chan methodResult, len(entry.intf.Methods.List))
+    
+    // Process methods in parallel
+    for _, method := range entry.intf.Methods.List {
+        go func(m *ast.Field) {
+            result := p.processMethodSafe(entry, m)
+            methodChan <- result
+        }(method)
+    }
+    
+    // Collect results with error aggregation
+}
+```
 
-- **Context-First Design**: All operations accept `context.Context`
-- **Structured Logging**: `zap.Logger` with consistent field formatting
-- **Generics Support**: Full Go 1.21+ generics type resolution
-- **Error Wrapping**: Proper error context with `fmt.Errorf` and `%w`
+**Design Principle**: Fail-fast with error aggregation - collect all errors before failing.
 
-## 🎯 **Architecture Assessment Summary**
+## Event System Integration
 
-### **✅ Production-Ready Indicators**
+### Domain Event Publishing
 
-1. **Sophisticated Design**: Event-driven, concurrent, well-layered architecture
-2. **Performance Excellence**: Intelligent caching, worker pools, bounded resources
-3. **Quality Standards**: Comprehensive error handling, proper synchronization
-4. **Modern Practices**: Context propagation, structured logging, graceful shutdown
-5. **Extensibility**: Strategy patterns, registry-based annotation processing
+```go
+type ParseEvent struct {
+    Methods     []*domain.Method
+    Interfaces  []*domain.Interface
+    BaseCode    string
+    ProcessedAt time.Time
+}
 
-### **⚡ Enhanced Performance Characteristics (2025-07-28)**
+func (p *Parser) publishParseEvent(ctx context.Context, methods []*domain.Method) error {
+    event := &ParseEvent{
+        Methods:     methods,
+        ProcessedAt: time.Now(),
+    }
+    return p.eventBus.Publish(ctx, event)
+}
+```
 
-- **Concurrent Processing**: **40-70% improvement** through enhanced worker pools and intelligent resource management
-- **Cache Hit Rates**: **>80%** with TTL-based LRU and memory pressure detection  
-- **Memory Efficiency**: **Intelligent memory management** with pressure detection and bounded workers
-- **Type Resolution**: **Sub-millisecond** caching with comprehensive coverage and enhanced eviction strategies
-- **Error Recovery**: **Circuit breaker pattern** with exponential backoff and intelligent retry logic
-- **Configuration Management**: **Functional options** with validation and centralized configuration
-- **Strategy Selection**: **Adaptive parser** automatically chooses optimal approach based on complexity
+**Design Pattern**: Observer pattern with domain events for loose coupling between parser and downstream components.
 
-### **🏆 Enterprise Architecture Excellence Achieved (2025-07-28)**
+## Performance Optimization Design
 
-The implemented architecture **significantly exceeds enterprise standards** with:
-- **Unified Interface Design**: Clean abstraction with strategy pattern for optimal performance
-- **Advanced Concurrent Processing**: Worker pools, intelligent caching, and resource management
-- **Enterprise Error Handling**: Circuit breaker, rich contextual errors, and comprehensive recovery
-- **Production-Grade Monitoring**: Detailed metrics, performance tracking, and observability
-- **Configuration Flexibility**: Functional options with validation and intelligent defaults
+### Adaptive Strategy Selection
 
-**Final Assessment**: **ENTERPRISE ARCHITECTURE EXCELLENCE ACHIEVED** - Production-ready for large-scale enterprise deployment with industry-leading performance and reliability.
+The adaptive parser automatically selects the optimal strategy:
+
+```go
+func (ap *AdaptiveParser) determineStrategy(ctx context.Context, sourcePath string) ParseStrategy {
+    complexity := ap.assessComplexity(sourcePath)
+    
+    if complexity < 0.3 {
+        return StrategyLegacy  // Simple files don't need concurrency
+    }
+    
+    if complexity > 0.7 {
+        return StrategyModern  // Complex files benefit from concurrency
+    }
+    
+    return StrategyModern  // Default to modern for medium complexity
+}
+```
+
+**Design Heuristics**: File size, interface count, and method complexity drive strategy selection.
+
+### Circuit Breaker Pattern
+
+Fault tolerance for external operations:
+
+```go
+type CircuitBreaker struct {
+    state         CircuitState
+    failureCount  int64
+    lastFailTime  time.Time
+    timeout       time.Duration
+    maxFailures   int64
+}
+```
+
+**Design Purpose**: Prevent cascading failures in distributed parsing scenarios.
+
+## Current Technical Issues
+
+### Memory Management
+
+**Issue**: Type cache can grow unbounded in long-running processes.
+**Solution**: Implement cache eviction policies based on LRU and TTL.
+
+### Error Context Preservation
+
+**Issue**: Complex error chains can lose original context.
+**Solution**: Rich error wrapping with structured context preservation.
+
+### Concurrent Safety
+
+**Issue**: Shared state access patterns need careful synchronization.
+**Solution**: Read-write mutexes for cache access, immutable configuration.
+
+## Design Decisions
+
+### Legacy vs. Modern Parser
+
+**Decision**: Maintain both legacy and modern parsers rather than migrate existing API.
+**Rationale**: Backward compatibility is critical for existing integrations.
+**Trade-off**: Code duplication vs. API stability.
+
+### Configuration Approach
+
+**Decision**: Functional options pattern for configuration.
+**Rationale**: Provides flexibility while maintaining type safety and defaults.
+**Alternative**: Builder pattern was considered but adds complexity.
+
+### Error Handling Strategy
+
+**Decision**: Rich error context with recovery mechanisms.
+**Rationale**: Debugging complex parsing issues requires detailed context.
+**Trade-off**: Performance overhead vs. debuggability.
+
+### Concurrency Model
+
+**Decision**: Worker pool pattern with bounded resources.
+**Rationale**: Predictable resource usage while enabling performance gains.
+**Alternative**: Unbounded goroutines were rejected due to resource exhaustion risk.
