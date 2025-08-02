@@ -307,7 +307,7 @@ type Convergen interface {
 		WithBehaviorTests().
 		WithCodeChecks(
 			helpers.AssertHasGeneratedFunction(),
-			helpers.Contains("Timestamp: src.Timestamp"),
+			helpers.Contains("dst.Timestamp = src.Timestamp"),
 		)
 
 	runner.RunScenario(scenario)
