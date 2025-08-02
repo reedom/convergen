@@ -6,7 +6,7 @@ import (
 	"github.com/reedom/convergen/v8/tests/helpers"
 )
 
-// TestErrorScenarios tests comprehensive error conditions
+// TestErrorScenarios tests comprehensive error conditions.
 func TestErrorScenarios(t *testing.T) {
 	t.Parallel()
 
@@ -53,7 +53,7 @@ func TestErrorScenarios(t *testing.T) {
 	runner.RunScenarios(errorScenarios)
 }
 
-// TestSpecificErrorMessages tests specific error message validation
+// TestSpecificErrorMessages tests specific error message validation.
 func TestSpecificErrorMessages(t *testing.T) {
 	t.Parallel()
 
@@ -134,7 +134,7 @@ type Convergen interface {
 	runner.RunScenarios(scenarios)
 }
 
-// TestErrorRecovery tests error recovery and graceful degradation
+// TestErrorRecovery tests error recovery and graceful degradation.
 func TestErrorRecovery(t *testing.T) {
 	t.Parallel()
 
@@ -200,7 +200,7 @@ type Convergen interface {
 	runner.RunScenarios(scenarios)
 }
 
-// TestAdvancedErrorScenarios tests complex error conditions
+// TestAdvancedErrorScenarios tests complex error conditions.
 func TestAdvancedErrorScenarios(t *testing.T) {
 	t.Parallel()
 

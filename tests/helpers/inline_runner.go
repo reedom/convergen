@@ -1,9 +1,9 @@
+// Package helpers provides testing utilities for the Convergen behavior-driven testing framework.
 package helpers
 
 import (
 	"fmt"
 	"go/format"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,16 +18,16 @@ import (
 	"github.com/reedom/convergen/v8/pkg/parser"
 )
 
-// InlineScenarioRunner handles behavior-driven scenario testing
+// InlineScenarioRunner handles behavior-driven scenario testing.
 type InlineScenarioRunner struct {
 	t       *testing.T
 	tempDir string
 }
 
-// NewInlineScenarioRunner creates a new inline scenario runner
+// NewInlineScenarioRunner creates a new inline scenario runner.
 func NewInlineScenarioRunner(t *testing.T) *InlineScenarioRunner {
 	// Create temporary directory for test files
-	tempDir, err := ioutil.TempDir("", "convergen_test_*")
+	tempDir, err := os.MkdirTemp("", "convergen_test_*")
 	require.NoError(t, err, "Failed to create temp directory")
 
 	return &InlineScenarioRunner{
@@ -36,14 +36,14 @@ func NewInlineScenarioRunner(t *testing.T) *InlineScenarioRunner {
 	}
 }
 
-// Cleanup cleans up temporary files
+// Cleanup cleans up temporary files.
 func (isr *InlineScenarioRunner) Cleanup() {
 	if isr.tempDir != "" {
-		os.RemoveAll(isr.tempDir)
+		_ = os.RemoveAll(isr.tempDir)
 	}
 }
 
-// RunScenario executes a behavior-driven test scenario
+// RunScenario executes a behavior-driven test scenario.
 func (isr *InlineScenarioRunner) RunScenario(scenario TestScenario) {
 	isr.t.Helper()
 
@@ -57,7 +57,7 @@ func (isr *InlineScenarioRunner) RunScenario(scenario TestScenario) {
 
 		// Generate the source file with inline code
 		sourceFile, sourceErr := isr.createSourceFile(scenario)
-		
+
 		// Generate code using Convergen (only if source file creation succeeded)
 		var generatedCode string
 		var codeErr error
@@ -93,12 +93,12 @@ func (isr *InlineScenarioRunner) RunScenario(scenario TestScenario) {
 	})
 }
 
-// createSourceFile creates a temporary Go file with the scenario's inline code
+// createSourceFile creates a temporary Go file with the scenario's inline code.
 func (isr *InlineScenarioRunner) createSourceFile(scenario TestScenario) (string, error) {
 	// Create package directory
 	packageName := "test" + strings.ReplaceAll(scenario.Name, " ", "")
 	packageDir := filepath.Join(isr.tempDir, packageName)
-	err := os.MkdirAll(packageDir, 0755)
+	err := os.MkdirAll(packageDir, 0750)
 	if err != nil {
 		return "", fmt.Errorf("failed to create package directory: %w", err)
 	}
@@ -141,7 +141,7 @@ func (isr *InlineScenarioRunner) createSourceFile(scenario TestScenario) (string
 
 	// Write to file
 	sourceFile := filepath.Join(packageDir, "setup.go")
-	err = ioutil.WriteFile(sourceFile, formatted, 0644)
+	err = os.WriteFile(sourceFile, formatted, 0600)
 	if err != nil {
 		return "", fmt.Errorf("failed to write source file: %w", err)
 	}
@@ -149,7 +149,7 @@ func (isr *InlineScenarioRunner) createSourceFile(scenario TestScenario) (string
 	return sourceFile, nil
 }
 
-// generateCode runs the Convergen pipeline on the source file
+// generateCode runs the Convergen pipeline on the source file.
 func (isr *InlineScenarioRunner) generateCode(sourceFile string) (string, error) {
 	// Create parser
 	p, err := parser.NewParser(sourceFile, "")
@@ -164,7 +164,7 @@ func (isr *InlineScenarioRunner) generateCode(sourceFile string) (string, error)
 	}
 
 	// Build function blocks
-	var funcBlocks []model.FunctionsBlock
+	funcBlocks := make([]model.FunctionsBlock, 0, len(methods))
 	builder := p.CreateBuilder()
 
 	for _, info := range methods {
@@ -202,7 +202,7 @@ func (isr *InlineScenarioRunner) generateCode(sourceFile string) (string, error)
 	return string(actual), nil
 }
 
-// runCodeAssertions executes code assertions
+// runCodeAssertions executes code assertions.
 func (isr *InlineScenarioRunner) runCodeAssertions(t *testing.T, scenario TestScenario, generatedCode string) {
 	t.Helper()
 
@@ -216,13 +216,13 @@ func (isr *InlineScenarioRunner) runCodeAssertions(t *testing.T, scenario TestSc
 	}
 }
 
-// runBehaviorTests compiles and runs behavior tests
+// runBehaviorTests compiles and runs behavior tests.
 func (isr *InlineScenarioRunner) runBehaviorTests(t *testing.T, scenario TestScenario, sourceFile, generatedCode string) {
 	t.Helper()
 
 	// Write generated code to file
 	generatedFile := strings.Replace(sourceFile, ".go", ".gen.go", 1)
-	err := ioutil.WriteFile(generatedFile, []byte(generatedCode), 0644)
+	err := os.WriteFile(generatedFile, []byte(generatedCode), 0600)
 	require.NoError(t, err, "Failed to write generated code")
 
 	// Create test file that uses the generated functions
@@ -241,7 +241,7 @@ func (isr *InlineScenarioRunner) runBehaviorTests(t *testing.T, scenario TestSce
 	}
 }
 
-// createBehaviorTestFile creates a Go test file that tests the generated functions
+// createBehaviorTestFile creates a Go test file that tests the generated functions.
 func (isr *InlineScenarioRunner) createBehaviorTestFile(t *testing.T, scenario TestScenario, sourceFile string) string {
 	t.Helper()
 
@@ -268,13 +268,13 @@ func (isr *InlineScenarioRunner) createBehaviorTestFile(t *testing.T, scenario T
 		fmt.Fprintf(&content, "}\n\n")
 	}
 
-	err := ioutil.WriteFile(testFile, []byte(content.String()), 0644)
+	err := os.WriteFile(testFile, []byte(content.String()), 0600)
 	require.NoError(t, err, "Failed to write behavior test file")
 
 	return testFile
 }
 
-// RunScenarios executes multiple scenarios
+// RunScenarios executes multiple scenarios.
 func (isr *InlineScenarioRunner) RunScenarios(scenarios []TestScenario) {
 	isr.t.Helper()
 

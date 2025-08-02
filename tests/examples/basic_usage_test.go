@@ -36,10 +36,10 @@ type Convergen interface {
 	Convert(*User) *UserModel
 }`).WithBehaviorTests(). // Enable behavior testing
 		WithCodeChecks( // Add code assertions
-		helpers.AssertHasGeneratedFunction(),    // Verify a function was generated
-		helpers.Contains("src.Name"),            // Verify Name field is mapped
-		helpers.Contains("src.Email"),           // Verify Email field is mapped
-	)
+			helpers.AssertHasGeneratedFunction(), // Verify a function was generated
+			helpers.Contains("src.Name"),         // Verify Name field is mapped
+			helpers.Contains("src.Email"),        // Verify Email field is mapped
+		)
 
 	// Execute the test scenario
 	runner.RunScenario(scenario)

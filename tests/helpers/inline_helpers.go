@@ -1,8 +1,9 @@
+// Package helpers provides testing utilities for the Convergen behavior-driven testing framework.
 package helpers
 
 import "fmt"
 
-// NewInlineScenario creates a new inline scenario
+// NewInlineScenario creates a new inline scenario.
 func NewInlineScenario(name, description string) InlineScenario {
 	return InlineScenario{
 		Name:        name,
@@ -10,27 +11,27 @@ func NewInlineScenario(name, description string) InlineScenario {
 	}
 }
 
-// WithTypes adds type definitions to the scenario
+// WithTypes adds type definitions to the scenario.
 func (is InlineScenario) WithTypes(sourceTypes string) InlineScenario {
 	is.SourceTypes = sourceTypes
 	return is
 }
 
-// WithInterface adds an interface definition to the scenario
+// WithInterface adds an interface definition to the scenario.
 func (is InlineScenario) WithInterface(interfaceDef string) InlineScenario {
 	is.Interface = interfaceDef
 	return is
 }
 
-// WithImports adds imports to the scenario
+// WithImports adds imports to the scenario.
 func (is InlineScenario) WithImports(imports ...string) InlineScenario {
 	is.Imports = imports
 	return is
 }
 
-// Common type definitions for reuse
+// Common type definitions for reuse.
 
-// SimpleUserTypes creates basic User and UserModel types
+// SimpleUserTypes creates basic User and UserModel types.
 func SimpleUserTypes() string {
 	return `
 type User struct {
@@ -44,7 +45,7 @@ type UserModel struct {
 }`
 }
 
-// SimpleConverter creates a basic converter interface
+// SimpleConverter creates a basic converter interface.
 func SimpleConverter(methodSig string) string {
 	return fmt.Sprintf(`
 type Convergen interface {
@@ -52,9 +53,9 @@ type Convergen interface {
 }`, methodSig)
 }
 
-// BehaviorTest builders
+// BehaviorTest builders.
 
-// NewBehaviorTest creates a new behavior test
+// NewBehaviorTest creates a new behavior test.
 func NewBehaviorTest(name, description, testFunc string) BehaviorTest {
 	return BehaviorTest{
 		Name:        name,
@@ -63,27 +64,27 @@ func NewBehaviorTest(name, description, testFunc string) BehaviorTest {
 	}
 }
 
-// WithInput sets the input value for a behavior test
+// WithInput sets the input value for a behavior test.
 func (bt BehaviorTest) WithInput(input interface{}) BehaviorTest {
 	bt.Input = input
 	return bt
 }
 
-// WithExpected sets the expected output for a behavior test
+// WithExpected sets the expected output for a behavior test.
 func (bt BehaviorTest) WithExpected(expected interface{}) BehaviorTest {
 	bt.Expected = expected
 	return bt
 }
 
-// ExpectError marks a behavior test as expected to fail
+// ExpectError marks a behavior test as expected to fail.
 func (bt BehaviorTest) ExpectError() BehaviorTest {
 	bt.ShouldError = true
 	return bt
 }
 
-// Annotation-specific scenario builders
+// Annotation-specific scenario builders.
 
-// StyleAnnotationScenario creates a scenario for testing :style annotation
+// StyleAnnotationScenario creates a scenario for testing :style annotation.
 func StyleAnnotationScenario(style string) InlineScenario {
 	return NewInlineScenario(
 		fmt.Sprintf("Style_%s", style),
@@ -104,7 +105,7 @@ type Convergen interface {
 }`, style))
 }
 
-// MatchAnnotationScenario creates a scenario for testing :match annotation
+// MatchAnnotationScenario creates a scenario for testing :match annotation.
 func MatchAnnotationScenario(algorithm string) InlineScenario {
 	return NewInlineScenario(
 		fmt.Sprintf("Match_%s", algorithm),
@@ -125,7 +126,7 @@ type Convergen interface {
 }`, algorithm))
 }
 
-// ConvertAnnotationScenario creates a scenario for testing :conv annotation
+// ConvertAnnotationScenario creates a scenario for testing :conv annotation.
 func ConvertAnnotationScenario(converter, src, dst string) InlineScenario {
 	return NewInlineScenario(
 		"Conv_Converter",
@@ -150,7 +151,7 @@ type Convergen interface {
 }`, converter, src, dst))
 }
 
-// LiteralAnnotationScenario creates a scenario for testing :literal annotation
+// LiteralAnnotationScenario creates a scenario for testing :literal annotation.
 func LiteralAnnotationScenario(field, literal string) InlineScenario {
 	return NewInlineScenario(
 		"Literal_Assignment",
@@ -170,7 +171,7 @@ type Convergen interface {
 }`, field, literal))
 }
 
-// SkipAnnotationScenario creates a scenario for testing :skip annotation
+// SkipAnnotationScenario creates a scenario for testing :skip annotation.
 func SkipAnnotationScenario(pattern string) InlineScenario {
 	return NewInlineScenario(
 		"Skip_Fields",
@@ -192,12 +193,12 @@ type Convergen interface {
 }`, pattern))
 }
 
-// Error Scenario Builders
+// Error Scenario Builders.
 
-// InvalidSyntaxScenario creates a scenario with invalid Go syntax
+// InvalidSyntaxScenario creates a scenario with invalid Go syntax.
 func InvalidSyntaxScenario() InlineScenario {
 	return NewInlineScenario(
-		"InvalidSyntax", 
+		"InvalidSyntax",
 		"Test error handling for invalid Go syntax",
 	).WithTypes(`
 type User struct {
@@ -220,7 +221,7 @@ type Convergen interface {
 }`)
 }
 
-// InvalidAnnotationScenario creates a scenario with invalid annotation
+// InvalidAnnotationScenario creates a scenario with invalid annotation.
 func InvalidAnnotationScenario() InlineScenario {
 	return NewInlineScenario(
 		"InvalidAnnotation",
@@ -239,7 +240,7 @@ type Convergen interface {
 }`)
 }
 
-// TypeMismatchScenario creates a scenario with incompatible types
+// TypeMismatchScenario creates a scenario with incompatible types.
 func TypeMismatchScenario() InlineScenario {
 	return NewInlineScenario(
 		"TypeMismatch",
@@ -257,7 +258,7 @@ type Convergen interface {
 }`)
 }
 
-// MissingConverterFunctionScenario creates a scenario with missing converter function
+// MissingConverterFunctionScenario creates a scenario with missing converter function.
 func MissingConverterFunctionScenario() InlineScenario {
 	return NewInlineScenario(
 		"MissingConverter",
@@ -276,7 +277,7 @@ type Convergen interface {
 }`)
 }
 
-// InvalidMapAnnotationScenario creates a scenario with invalid :map annotation
+// InvalidMapAnnotationScenario creates a scenario with invalid :map annotation.
 func InvalidMapAnnotationScenario() InlineScenario {
 	return NewInlineScenario(
 		"InvalidMapAnnotation",
@@ -295,7 +296,7 @@ type Convergen interface {
 }`)
 }
 
-// CircularDependencyScenario creates a scenario with circular type dependency
+// CircularDependencyScenario creates a scenario with circular type dependency.
 func CircularDependencyScenario() InlineScenario {
 	return NewInlineScenario(
 		"CircularDependency",
@@ -322,7 +323,7 @@ type Convergen interface {
 }`)
 }
 
-// EmptyInterfaceScenario creates a scenario with empty interface
+// EmptyInterfaceScenario creates a scenario with empty interface.
 func EmptyInterfaceScenario() InlineScenario {
 	return NewInlineScenario(
 		"EmptyInterface",
@@ -339,7 +340,7 @@ type Convergen interface {
 }`)
 }
 
-// InvalidReturnTypeScenario creates a scenario with invalid return type
+// InvalidReturnTypeScenario creates a scenario with invalid return type.
 func InvalidReturnTypeScenario() InlineScenario {
 	return NewInlineScenario(
 		"InvalidReturnType",

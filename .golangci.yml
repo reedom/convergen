@@ -100,7 +100,7 @@ linters:
 
     # Whitespace and formatting
     - whitespace     # Check for unnecessary whitespace
-    - wsl            # Forces you to use empty lines
+    # - wsl            # Forces you to use empty lines (disabled for less restrictive styling)
 
 # Linter-specific settings
 linters-settings:

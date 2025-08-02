@@ -43,7 +43,7 @@ func TestBehaviorDrivenScenarios(t *testing.T) {
 				helpers.CompilesSuccessfully(),
 			),
 
-		// Match annotation tests  
+		// Match annotation tests
 		helpers.MatchAnnotationScenario("name").
 			WithBehaviorTests().
 			WithCodeChecks(
@@ -108,13 +108,13 @@ func TestAnnotationCoverage(t *testing.T) {
 
 	// Test each annotation individually for comprehensive coverage
 	annotationTests := map[string]helpers.TestScenario{
-		"match_name": helpers.MatchAnnotationScenario("name").WithBehaviorTests(),
-		"match_none": helpers.MatchAnnotationScenario("none").WithBehaviorTests(),
-		"style_return": helpers.StyleAnnotationScenario("return").WithBehaviorTests(),
-		"style_arg": helpers.StyleAnnotationScenario("arg").WithBehaviorTests(),
-		"conv_custom": helpers.ConvertAnnotationScenario("HashPassword", "Password", "HashedPassword").WithBehaviorTests(),
+		"match_name":     helpers.MatchAnnotationScenario("name").WithBehaviorTests(),
+		"match_none":     helpers.MatchAnnotationScenario("none").WithBehaviorTests(),
+		"style_return":   helpers.StyleAnnotationScenario("return").WithBehaviorTests(),
+		"style_arg":      helpers.StyleAnnotationScenario("arg").WithBehaviorTests(),
+		"conv_custom":    helpers.ConvertAnnotationScenario("HashPassword", "Password", "HashedPassword").WithBehaviorTests(),
 		"literal_string": helpers.LiteralAnnotationScenario("Status", `"active"`).WithBehaviorTests(),
-		"skip_field": helpers.SkipAnnotationScenario("Password").WithBehaviorTests(),
+		"skip_field":     helpers.SkipAnnotationScenario("Password").WithBehaviorTests(),
 	}
 
 	for name, scenario := range annotationTests {

@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-// TestScenario defines a behavior-driven test scenario for Convergen
+// TestScenario defines a behavior-driven test scenario for Convergen.
 type TestScenario struct {
 	Name        string
 	Description string
 	Category    string
 
 	// Inline Code Definition
-	SourceTypes string // Go struct definitions
-	Interface   string // Converter interface definition
+	SourceTypes string   // Go struct definitions
+	Interface   string   // Converter interface definition
 	Imports     []string // Additional imports needed
 
 	// Behavior Tests
@@ -30,17 +30,17 @@ type TestScenario struct {
 	SkipReason string
 }
 
-// BehaviorTest defines a runtime behavior test
+// BehaviorTest defines a runtime behavior test.
 type BehaviorTest struct {
 	Name        string
 	Description string
-	TestFunc    string        // Name of generated function to test
-	Input       interface{}   // Input value for the function
-	Expected    interface{}   // Expected output value
-	ShouldError bool         // Whether this test should produce an error
+	TestFunc    string      // Name of generated function to test
+	Input       interface{} // Input value for the function
+	Expected    interface{} // Expected output value
+	ShouldError bool        // Whether this test should produce an error
 }
 
-// InlineScenario creates a scenario with inline code definitions
+// InlineScenario creates a scenario with inline code definitions.
 type InlineScenario struct {
 	Name        string
 	Description string
@@ -49,7 +49,7 @@ type InlineScenario struct {
 	Imports     []string
 }
 
-// WithBehaviorTests adds behavior tests to the scenario
+// WithBehaviorTests adds behavior tests to the scenario.
 func (is InlineScenario) WithBehaviorTests(tests ...BehaviorTest) TestScenario {
 	return TestScenario{
 		Name:          is.Name,
@@ -62,51 +62,56 @@ func (is InlineScenario) WithBehaviorTests(tests ...BehaviorTest) TestScenario {
 	}
 }
 
-// WithCodeChecks adds code assertions to the scenario
+// WithCodeChecks adds code assertions to the scenario.
 func (ts TestScenario) WithCodeChecks(checks ...CodeAssertion) TestScenario {
 	ts.CodeChecks = append(ts.CodeChecks, checks...)
 	return ts
 }
 
-// WithCategory sets the test category
+// WithCategory sets the test category.
 func (ts TestScenario) WithCategory(category string) TestScenario {
 	ts.Category = category
 	return ts
 }
 
-// ShouldFail marks the scenario as expected to fail
+// ShouldFail marks the scenario as expected to fail.
 func (ts TestScenario) ShouldFail(expectedError string) TestScenario {
 	ts.ShouldSucceed = false
 	ts.ExpectedError = expectedError
 	return ts
 }
 
-// AssertionType defines the type of code assertion
+// AssertionType defines the type of code assertion.
 type AssertionType string
 
 const (
-	AssertionContains    AssertionType = "contains"
+	// AssertionContains checks if code contains a specific pattern.
+	AssertionContains AssertionType = "contains"
+	// AssertionNotContains checks if code does not contain a specific pattern.
 	AssertionNotContains AssertionType = "not_contains"
-	AssertionRegex       AssertionType = "regex"
-	AssertionCompiles    AssertionType = "compiles"
-	AssertionExact       AssertionType = "exact"
+	// AssertionRegex checks if code matches a regular expression.
+	AssertionRegex AssertionType = "regex"
+	// AssertionCompiles checks if code compiles successfully.
+	AssertionCompiles AssertionType = "compiles"
+	// AssertionExact checks if code matches exactly.
+	AssertionExact AssertionType = "exact"
 )
 
-// CodeAssertion defines an assertion to be made against generated code
+// CodeAssertion defines an assertion to be made against generated code.
 type CodeAssertion struct {
 	Type    AssertionType
 	Pattern string
 	Message string
 }
 
-// AssertionResult represents the result of running a code assertion
+// AssertionResult represents the result of running a code assertion.
 type AssertionResult struct {
 	Success bool
 	Message string
 	Details string
 }
 
-// Assert runs the assertion against the provided code and returns the result
+// Assert runs the assertion against the provided code and returns the result.
 func (ca CodeAssertion) Assert(code string) AssertionResult {
 	switch ca.Type {
 	case AssertionContains:
@@ -214,9 +219,9 @@ func (ca CodeAssertion) assertCompiles(code string) AssertionResult {
 	}
 }
 
-// Helper functions for creating common assertions
+// Helper functions for creating common assertions.
 
-// Contains creates a "contains" assertion
+// Contains creates a "contains" assertion.
 func Contains(pattern string) CodeAssertion {
 	return CodeAssertion{
 		Type:    AssertionContains,
@@ -224,7 +229,7 @@ func Contains(pattern string) CodeAssertion {
 	}
 }
 
-// NotContains creates a "not contains" assertion
+// NotContains creates a "not contains" assertion.
 func NotContains(pattern string) CodeAssertion {
 	return CodeAssertion{
 		Type:    AssertionNotContains,
@@ -232,7 +237,7 @@ func NotContains(pattern string) CodeAssertion {
 	}
 }
 
-// MatchesRegex creates a regex assertion
+// MatchesRegex creates a regex assertion.
 func MatchesRegex(pattern string) CodeAssertion {
 	return CodeAssertion{
 		Type:    AssertionRegex,
@@ -240,14 +245,14 @@ func MatchesRegex(pattern string) CodeAssertion {
 	}
 }
 
-// CompilesSuccessfully creates a compilation assertion
+// CompilesSuccessfully creates a compilation assertion.
 func CompilesSuccessfully() CodeAssertion {
 	return CodeAssertion{
 		Type: AssertionCompiles,
 	}
 }
 
-// ExactMatch creates an exact match assertion
+// ExactMatch creates an exact match assertion.
 func ExactMatch(expected string) CodeAssertion {
 	return CodeAssertion{
 		Type:    AssertionExact,
@@ -255,19 +260,19 @@ func ExactMatch(expected string) CodeAssertion {
 	}
 }
 
-// AssertHasGeneratedFunction checks for any generated function (including receiver methods)
+// AssertHasGeneratedFunction checks for any generated function (including receiver methods).
 func AssertHasGeneratedFunction() CodeAssertion {
 	return MatchesRegex(`func (\(\w+ \*\w+\) )?\w+\(.*\).*\{`)
 }
 
-// AssertFunction checks for the presence of a function with the given name
+// AssertFunction checks for the presence of a function with the given name.
 func AssertFunction(funcName string) CodeAssertion {
 	return Contains(fmt.Sprintf("func %s", funcName))
 }
 
-// Error-specific assertion helpers
+// Error-specific assertion helpers.
 
-// AssertErrorContains creates an assertion for error message validation
+// AssertErrorContains creates an assertion for error message validation.
 func AssertErrorContains(pattern string) CodeAssertion {
 	return CodeAssertion{
 		Type:    AssertionContains,
@@ -276,7 +281,7 @@ func AssertErrorContains(pattern string) CodeAssertion {
 	}
 }
 
-// AssertErrorType creates an assertion for specific error types
+// AssertErrorType creates an assertion for specific error types.
 func AssertErrorType(errorType string) CodeAssertion {
 	return CodeAssertion{
 		Type:    AssertionContains,
@@ -285,7 +290,7 @@ func AssertErrorType(errorType string) CodeAssertion {
 	}
 }
 
-// AssertParseError checks for parsing-related errors
+// AssertParseError checks for parsing-related errors.
 func AssertParseError() CodeAssertion {
 	return CodeAssertion{
 		Type:    AssertionRegex,
@@ -294,7 +299,7 @@ func AssertParseError() CodeAssertion {
 	}
 }
 
-// AssertTypeError checks for type-related errors
+// AssertTypeError checks for type-related errors.
 func AssertTypeError() CodeAssertion {
 	return CodeAssertion{
 		Type:    AssertionRegex,
@@ -303,7 +308,7 @@ func AssertTypeError() CodeAssertion {
 	}
 }
 
-// AssertAnnotationError checks for annotation-related errors
+// AssertAnnotationError checks for annotation-related errors.
 func AssertAnnotationError() CodeAssertion {
 	return CodeAssertion{
 		Type:    AssertionRegex,
