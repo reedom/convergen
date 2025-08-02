@@ -189,15 +189,15 @@ type tempTestFile struct {
 // createTempTestFile creates a temporary test file with the given content.
 func createTempTestFile(t *testing.T, content string) *tempTestFile {
 	t.Helper()
-	
+
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "test.go")
-	
+
 	err := os.WriteFile(filePath, []byte(content), 0644)
 	require.NoError(t, err)
-	
+
 	return &tempTestFile{
-		path:    filePath,
+		path: filePath,
 		cleanup: func() {
 			// Cleanup is handled by t.TempDir()
 		},
