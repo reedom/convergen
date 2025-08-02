@@ -332,7 +332,7 @@ func (cb *CircuitBreaker) Execute(operation func() error) error {
 		}
 	}
 
-	if cb.state == StateHalfOpen && cb.requests >= cb.config.MaxRequests {
+	if cb.state == StateHalfOpen && cb.config.MaxRequests <= cb.requests {
 		cb.mutex.Unlock()
 		return ErrCircuitBreakerHalfOpenLimitExceeded
 	}
@@ -349,7 +349,7 @@ func (cb *CircuitBreaker) Execute(operation func() error) error {
 		cb.failures++
 		cb.lastFailTime = time.Now()
 
-		if cb.failures >= cb.config.FailureThreshold {
+		if cb.config.FailureThreshold <= cb.failures {
 			cb.state = StateOpen
 		}
 
@@ -402,7 +402,7 @@ func (rm *RecoveryMetrics) RecordSuccess(attempt int) {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
 
-	if attempt > 0 {
+	if 0 < attempt {
 		rm.SuccessfulRetrys++
 	}
 }

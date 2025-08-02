@@ -65,7 +65,7 @@ func (cls *CompositeLiteralStrategy) CanHandle(method *domain.MethodResult) bool
 	}
 
 	fieldCount := len(method.Metadata)
-	if fieldCount > cls.config.MaxFieldsForComposite {
+	if cls.config.MaxFieldsForComposite < fieldCount {
 		return false
 	}
 
@@ -313,7 +313,7 @@ func (mas *MixedApproachStrategy) CanHandle(method *domain.MethodResult) bool {
 	}
 
 	// Mixed approach is beneficial when we have both simple and complex fields
-	return simpleFields > 0 && complexFields > 0
+	return 0 < simpleFields && 0 < complexFields
 }
 
 func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *domain.MethodResult, data *TemplateData) (string, error) {

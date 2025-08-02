@@ -305,7 +305,7 @@ func (g *ConcreteDependencyGraph) dfsDetectCycle(nodeID string, path *[]string) 
 			}
 		}
 
-		if cycleStart >= 0 {
+		if 0 <= cycleStart {
 			cycle := make([]string, len(*path)-cycleStart+1)
 			copy(cycle, (*path)[cycleStart:])
 			cycle[len(cycle)-1] = nodeID // Close the cycle

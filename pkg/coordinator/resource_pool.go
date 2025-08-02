@@ -306,7 +306,7 @@ func (r *ConcreteResourcePool) updateResourceUsage() {
 
 	// Update memory usage (simulated)
 	r.resourceUsage.CurrentMemoryUsage = int64(len(r.workerPools)) * 1024 * 1024 // 1MB per pool
-	if r.resourceUsage.CurrentMemoryUsage > r.resourceUsage.PeakMemoryUsage {
+	if r.resourceUsage.PeakMemoryUsage < r.resourceUsage.CurrentMemoryUsage {
 		r.resourceUsage.PeakMemoryUsage = r.resourceUsage.CurrentMemoryUsage
 	}
 

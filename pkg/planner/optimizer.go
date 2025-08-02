@@ -106,7 +106,7 @@ func (po *ConcretePlanOptimizer) ApplyBatchOptimizations(batches []*ExecutionBat
 	}
 
 	// Merge small batches if beneficial
-	if po.config.OptimizationLevel >= 1 {
+	if 1 <= po.config.OptimizationLevel {
 		po.mergeSmallBatches(batches)
 	}
 
@@ -126,7 +126,7 @@ func (po *ConcretePlanOptimizer) OptimizeConcurrency(methodPlans map[string]*dom
 	}
 
 	// If total exceeds limits, redistribute
-	if totalWorkers > po.config.MaxConcurrentWorkers {
+	if po.config.MaxConcurrentWorkers < totalWorkers {
 		po.redistributeWorkers(methodPlans, totalWorkers)
 	}
 
@@ -147,7 +147,7 @@ func (po *ConcretePlanOptimizer) OptimizeResourceUsage(methodPlans map[string]*d
 	}
 
 	// If memory exceeds limits, apply memory optimization
-	if totalMemory > po.config.MaxMemoryMB {
+	if po.config.MaxMemoryMB < totalMemory {
 		po.optimizeMemoryAllocation(methodPlans, totalMemory)
 	}
 
@@ -168,7 +168,7 @@ func (po *ConcretePlanOptimizer) optimizeBatchSizes(batches []*ExecutionBatch) {
 		if mappingCount < po.config.MinBatchSize {
 			// Small batch - reduce concurrency to avoid overhead
 			batch.ConcurrencyLevel = 1
-		} else if mappingCount > po.config.MaxBatchSize {
+		} else if po.config.MaxBatchSize < mappingCount {
 			// Large batch - limit concurrency to prevent resource exhaustion
 			batch.ConcurrencyLevel = po.config.MaxConcurrentWorkers / 2
 		} else {
@@ -189,7 +189,7 @@ func (po *ConcretePlanOptimizer) balanceWorkerAllocation(methodPlans map[string]
 	}
 
 	sort.Slice(sortedMethods, func(i, j int) bool {
-		return priorities[sortedMethods[i]] > priorities[sortedMethods[j]]
+		return priorities[sortedMethods[j]] < priorities[sortedMethods[i]]
 	})
 
 	// Allocate workers based on priority
@@ -269,7 +269,7 @@ func (po *ConcretePlanOptimizer) optimizePipeline(methodPlans map[string]*domain
 func (po *ConcretePlanOptimizer) optimizeResourcePooling(methodPlans map[string]*domain.MethodPlan) {
 	// Enable resource pooling for methods with high resource usage
 	for _, plan := range methodPlans {
-		if plan.MemoryRequirementMB > 100 || plan.RequiredWorkers > 4 {
+		if 100 < plan.MemoryRequirementMB || 4 < plan.RequiredWorkers {
 			// Enable advanced resource pooling strategies
 			// This would be implemented based on specific pooling mechanisms
 			// TODO: Implement resource pooling optimization
@@ -396,7 +396,7 @@ func min(a, b int) int {
 }
 
 func max(a, b int) int {
-	if a > b {
+	if b < a {
 		return a
 	}
 

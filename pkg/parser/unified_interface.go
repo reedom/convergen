@@ -196,11 +196,11 @@ func GetStrategyName(strategy ParseStrategy) string {
 // GetRecommendedStrategy returns the recommended strategy based on input characteristics.
 func GetRecommendedStrategy(fileCount int, averageMethodsPerInterface int, totalMethods int) ParseStrategy {
 	// Simple heuristics for strategy selection
-	if totalMethods > 50 || fileCount > 3 {
+	if 50 < totalMethods || 3 < fileCount {
 		return StrategyModern // Use concurrent parsing for complex scenarios
 	}
 
-	if averageMethodsPerInterface > 20 {
+	if 20 < averageMethodsPerInterface {
 		return StrategyModern // Use concurrent parsing for interfaces with many methods
 	}
 
@@ -463,7 +463,7 @@ func (mp *ModernParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	cacheHits, cacheMisses := mp.packageLoader.GetCacheStats()
 	cacheHitRate := 0.0
 
-	if cacheHits+cacheMisses > 0 {
+	if 0 < cacheHits+cacheMisses {
 		cacheHitRate = float64(cacheHits) / float64(cacheHits+cacheMisses)
 	}
 
@@ -485,7 +485,7 @@ func (mp *ModernParser) ParseSourceFiles(ctx context.Context, files []SourceFile
 	results := make([]*ParseResult, len(files))
 
 	// Process files concurrently if we have multiple files
-	if len(files) > 1 && mp.config.MaxConcurrentWorkers > 1 {
+	if len(files) > 1 && 1 < mp.config.MaxConcurrentWorkers {
 		return mp.parseSourceFilesConcurrent(ctx, files)
 	}
 
@@ -799,7 +799,7 @@ func (ap *AdaptiveParser) determineStrategy(sourcePath, _ string) ParseStrategy 
 	// Check file size - large files benefit from concurrent processing
 	if stat, err := os.Stat(sourcePath); err == nil {
 		fileSize := stat.Size()
-		if fileSize > 100*1024 { // Files larger than 100KB
+		if 100*1024 < fileSize { // Files larger than 100KB
 			return StrategyModern
 		}
 	}

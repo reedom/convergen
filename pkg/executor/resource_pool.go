@@ -136,7 +136,7 @@ func (rp *ResourcePool) GetMetrics() *ResourceMetrics {
 	activeWorkers := totalWorkers - availableWorkers
 
 	memoryPressure := float64(rp.memoryUsedMB) / float64(rp.memoryLimitMB)
-	if memoryPressure > 1.0 {
+	if 1.0 < memoryPressure {
 		memoryPressure = 1.0
 	}
 
@@ -314,7 +314,7 @@ func (rp *ResourcePool) executeJob(worker *Worker, job *FieldExecution) {
 	memUsedMB := int((endMem.Alloc - startMem.Alloc) / 1024 / 1024)
 	worker.Metrics.CurrentMemoryMB = memUsedMB
 
-	if memUsedMB > worker.Metrics.PeakMemoryMB {
+	if worker.Metrics.PeakMemoryMB < memUsedMB {
 		worker.Metrics.PeakMemoryMB = memUsedMB
 	}
 
@@ -368,7 +368,7 @@ func (rp *ResourcePool) scaleDownWorkers(targetCount int) {
 	removedCount := 0
 
 	for workerID, worker := range rp.workers {
-		if removedCount >= workersToRemove {
+		if workersToRemove <= removedCount {
 			break
 		}
 
@@ -408,7 +408,7 @@ func (rp *ResourcePool) monitorResources() {
 	metrics := rp.GetMetrics()
 
 	// Check memory pressure
-	if metrics.MemoryPressure > rp.config.MemoryThreshold {
+	if rp.config.MemoryThreshold < metrics.MemoryPressure {
 		rp.logger.Warn("high memory pressure detected",
 			zap.Float64("pressure", metrics.MemoryPressure),
 			zap.Int("memory_used_mb", metrics.MemoryUsedMB),
@@ -432,7 +432,7 @@ func (rp *ResourcePool) handleMemoryPressure() {
 	minWorkers := rp.config.MinWorkers
 	rp.mutex.RUnlock()
 
-	if workerCount > minWorkers {
+	if minWorkers < workerCount {
 		targetWorkers := maxInt(minWorkers, workerCount*3/4)
 		rp.scaleDownWorkers(targetWorkers)
 	}
@@ -474,7 +474,7 @@ func (rp *ResourcePool) adaptiveAdjustment() {
 	}
 
 	// Decide on scaling action
-	if queueUtilization > 0.8 && len(rp.workers) < rp.config.MaxWorkers {
+	if 0.8 < queueUtilization && len(rp.workers) < rp.config.MaxWorkers {
 		// Scale up
 		newWorker := rp.createWorker()
 		rp.startWorker(newWorker)
@@ -496,7 +496,7 @@ func (rp *ResourcePool) checkResourceLimits() error {
 	rp.mutex.RLock()
 	defer rp.mutex.RUnlock()
 
-	if rp.activeJobs >= rp.maxJobs {
+	if rp.maxJobs <= rp.activeJobs {
 		return fmt.Errorf("%w: %d", ErrConcurrentJobsLimit, rp.maxJobs)
 	}
 
@@ -505,7 +505,7 @@ func (rp *ResourcePool) checkResourceLimits() error {
 	runtime.ReadMemStats(&m)
 	currentMemoryMB := int(m.Alloc / 1024 / 1024)
 
-	if currentMemoryMB >= rp.memoryLimitMB {
+	if rp.memoryLimitMB <= currentMemoryMB {
 		return fmt.Errorf("%w: %dMB", ErrMemoryLimitReached, currentMemoryMB)
 	}
 
@@ -514,7 +514,7 @@ func (rp *ResourcePool) checkResourceLimits() error {
 
 // Utility functions.
 func maxInt(a, b int) int {
-	if a > b {
+	if b < a {
 		return a
 	}
 

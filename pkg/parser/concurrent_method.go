@@ -219,7 +219,7 @@ func (cmp *ConcurrentMethodProcessor) collectResults(results []*MethodProcessing
 	cmp.metrics.mutex.Lock()
 
 	cmp.metrics.TotalProcessingTime = time.Since(startTime)
-	if cmp.metrics.SuccessfulMethods > 0 {
+	if 0 < cmp.metrics.SuccessfulMethods {
 		cmp.metrics.AverageMethodTime = cmp.metrics.TotalProcessingTime / time.Duration(cmp.metrics.SuccessfulMethods)
 	}
 	cmp.metrics.mutex.Unlock()

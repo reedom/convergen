@@ -175,7 +175,7 @@ func (m *ConcreteMetricsCollector) GetMetrics() *Metrics {
 
 	var throughput float64
 
-	if executions > 0 {
+	if 0 < executions {
 		avgDuration = time.Duration(totalDur / executions)
 		successRate = float64(successes) / float64(executions)
 
@@ -272,7 +272,7 @@ func (m *ConcreteMetricsCollector) RecordRetry(component string, success bool, d
 	}
 
 	// Update average retry delay
-	if m.retryStats.TotalRetries > 0 {
+	if 0 < m.retryStats.TotalRetries {
 		totalDelay := time.Duration(m.retryStats.AverageRetryDelay.Nanoseconds()*(m.retryStats.TotalRetries-1)) + delay
 		m.retryStats.AverageRetryDelay = time.Duration(totalDelay.Nanoseconds() / m.retryStats.TotalRetries)
 	}
@@ -389,7 +389,7 @@ func (m *ConcreteMetricsCollector) calculateLatencyMetrics() *LatencyMetrics {
 	// Simple bubble sort for demonstration (use sort.Slice in production)
 	for i := 0; i < len(measurements); i++ {
 		for j := i + 1; j < len(measurements); j++ {
-			if measurements[i] > measurements[j] {
+			if measurements[j] < measurements[i] {
 				measurements[i], measurements[j] = measurements[j], measurements[i]
 			}
 		}
@@ -511,7 +511,7 @@ func (m *ConcreteMetricsCollector) GetHealthScore() float64 {
 	}
 
 	errorRate := float64(totalErrors) / float64(metrics.PipelineExecutions)
-	if errorRate > 0.1 { // More than 10% error rate
+	if 0.1 < errorRate { // More than 10% error rate
 		healthScore *= (1.0 - errorRate)
 	}
 
@@ -520,7 +520,7 @@ func (m *ConcreteMetricsCollector) GetHealthScore() float64 {
 		healthScore = 0
 	}
 
-	if healthScore > 1 {
+	if 1 < healthScore {
 		healthScore = 1
 	}
 

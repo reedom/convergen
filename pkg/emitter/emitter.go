@@ -222,7 +222,7 @@ func (e *ConcreteEmitter) GenerateCode(ctx context.Context, results *domain.Exec
 	generatedCode.Imports = importDecl
 
 	// Apply optimizations if enabled
-	if e.config.OptimizationLevel > OptimizationNone {
+	if OptimizationNone < e.config.OptimizationLevel {
 		optimizedCode, err := e.optimizer.OptimizeCode(ctx, generatedCode)
 		if err != nil {
 			e.logger.Warn("optimization failed", zap.Error(err))
@@ -289,7 +289,7 @@ func (e *ConcreteEmitter) GenerateMethod(ctx context.Context, method *domain.Met
 	}
 
 	// Apply method-level optimizations
-	if e.config.OptimizationLevel > OptimizationNone {
+	if OptimizationNone < e.config.OptimizationLevel {
 		if err := e.optimizer.OptimizeMethodCode(methodCode); err != nil {
 			e.logger.Warn("method optimization failed",
 				zap.String("method", method.Method.Name),
@@ -367,7 +367,7 @@ func (e *ConcreteEmitter) generateMethodsConcurrently(ctx context.Context, metho
 
 	// Limit concurrency
 	maxConcurrency := e.config.MaxConcurrentMethods
-	if maxConcurrency <= 0 || maxConcurrency > methodCount {
+	if maxConcurrency <= 0 || methodCount < maxConcurrency {
 		maxConcurrency = methodCount
 	}
 

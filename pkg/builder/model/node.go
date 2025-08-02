@@ -91,7 +91,7 @@ func (n RootNode) AssignExpr() string {
 func (n RootNode) MatcherExpr() string {
 	// Extract field name from full path like "dst.ID" -> "ID"
 	// But for simple root names like "dst", return empty string
-	if idx := strings.LastIndex(n.name, "."); idx >= 0 {
+	if idx := strings.LastIndex(n.name, "."); 0 <= idx {
 		return n.name[idx+1:]
 	}
 	// For simple names without dots (like "dst"), return empty string

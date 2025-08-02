@@ -515,7 +515,7 @@ func (m *CodeGenMetrics) AddGenerationTime(duration time.Duration) {
 	defer m.mu.Unlock()
 
 	m.TotalGenerationTime += duration
-	if m.MethodsGenerated > 0 {
+	if 0 < m.MethodsGenerated {
 		m.AverageMethodTime = m.TotalGenerationTime / time.Duration(m.MethodsGenerated)
 	}
 }

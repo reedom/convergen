@@ -342,7 +342,7 @@ func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPh
 			return
 		case <-done:
 			// Operation completed, emit final progress event
-			if reportCount > 0 { // Only emit final if we've been reporting
+			if 0 < reportCount { // Only emit final if we've been reporting
 				finalEvent := events.NewProgressEvent(ctx, phase, total, total, message+" (completed)")
 				if err := p.eventBus.Publish(finalEvent); err != nil {
 					p.logger.Debug("failed to publish final progress event", zap.Error(err))
@@ -363,7 +363,7 @@ func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPh
 				reportCount++
 
 				// Dynamically adjust frequency for long-running operations
-				if reportCount > 10 && total > 100 {
+				if 10 < reportCount && 100 < total {
 					ticker.Reset(interval * 2) // Slow down reporting for very long operations
 				}
 			}
@@ -405,7 +405,7 @@ func (p *ASTParser) shouldReportProgress(lastReport time.Time, reportCount int, 
 	}
 
 	// For long-running operations, throttle reporting
-	if total > 100 && reportCount > 20 {
+	if 100 < total && 20 < reportCount {
 		// Report less frequently for very long operations
 		return time.Since(lastReport) > 1*time.Second
 	}

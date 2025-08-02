@@ -379,7 +379,7 @@ func (eh *ErrorHandler) IsTemporary(err error) bool {
 
 // ShouldRetry determines if an operation should be retried based on the error.
 func (eh *ErrorHandler) ShouldRetry(err error, attempt int, maxAttempts int) bool {
-	if err == nil || attempt >= maxAttempts {
+	if err == nil || maxAttempts <= attempt {
 		return false
 	}
 

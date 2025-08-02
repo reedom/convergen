@@ -157,12 +157,12 @@ func (em *ExecutionMetrics) RecordBatchExecution(result *BatchResult) {
 	}
 
 	// Track peak concurrent batches
-	if result.WorkersUsed > em.MaxConcurrentBatches {
+	if em.MaxConcurrentBatches < result.WorkersUsed {
 		em.MaxConcurrentBatches = result.WorkersUsed
 	}
 
 	// Update memory metrics
-	if result.MemoryUsedMB > em.PeakMemoryUsageMB {
+	if em.PeakMemoryUsageMB < result.MemoryUsedMB {
 		em.PeakMemoryUsageMB = result.MemoryUsedMB
 	}
 
@@ -195,9 +195,9 @@ func (em *ExecutionMetrics) RecordFieldExecution(result *FieldResult) {
 	em.AverageFieldDuration = em.TotalFieldDuration / time.Duration(em.FieldsProcessed)
 
 	// Calculate throughput
-	if em.FieldsProcessed > 0 {
+	if 0 < em.FieldsProcessed {
 		totalTimeSeconds := time.Since(em.StartTime).Seconds()
-		if totalTimeSeconds > 0 {
+		if 0 < totalTimeSeconds {
 			em.ThroughputPerSecond = float64(em.FieldsProcessed) / totalTimeSeconds
 		}
 	}
@@ -215,7 +215,7 @@ func (em *ExecutionMetrics) RecordFieldExecution(result *FieldResult) {
 	}
 
 	// Record retry metrics
-	if result.RetryCount > 0 {
+	if 0 < result.RetryCount {
 		em.RetryAttempts += int64(result.RetryCount)
 		if result.Success {
 			em.RetriesSuccessful++
@@ -237,11 +237,11 @@ func (em *ExecutionMetrics) UpdateResourceMetrics(resourceMetrics *ResourceMetri
 	defer em.mutex.Unlock()
 
 	// Update peak values
-	if resourceMetrics.MemoryUsedMB > em.PeakMemoryUsageMB {
+	if em.PeakMemoryUsageMB < resourceMetrics.MemoryUsedMB {
 		em.PeakMemoryUsageMB = resourceMetrics.MemoryUsedMB
 	}
 
-	if resourceMetrics.WorkersTotal > em.PeakWorkerCount {
+	if em.PeakWorkerCount < resourceMetrics.WorkersTotal {
 		em.PeakWorkerCount = resourceMetrics.WorkersTotal
 	}
 
@@ -436,7 +436,7 @@ func (em *ExecutionMetrics) calculateBatchesPerSecond() float64 {
 	}
 
 	totalTimeSeconds := time.Since(em.StartTime).Seconds()
-	if totalTimeSeconds > 0 {
+	if 0 < totalTimeSeconds {
 		return float64(em.BatchesExecuted) / totalTimeSeconds
 	}
 

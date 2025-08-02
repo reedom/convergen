@@ -192,7 +192,7 @@ func (pl *PackageLoader) loadPackageInfo(ctx context.Context, sourcePath, destPa
 	}
 
 	// Perform optimization checks
-	if srcStat.Size() > 1024*1024 { // Files > 1MB
+	if srcStat.Size() > 1024*1024 { // 1MB < Files
 		// Log large file warning (can be enhanced with proper logging later)
 		fmt.Printf("Large file detected (%d bytes): %s - consider using incremental parsing\n", srcStat.Size(), sourcePath)
 	}

@@ -460,7 +460,7 @@ func TestCoordinatorShutdownIntegration(t *testing.T) {
 		t.Errorf("Shutdown failed: %v", err)
 	}
 
-	if shutdownDuration > 5*time.Second {
+	if 5*time.Second < shutdownDuration {
 		t.Errorf("Shutdown took too long: %v", shutdownDuration)
 	}
 
@@ -590,7 +590,7 @@ func TestCoordinatorPerformanceIntegration(t *testing.T) {
 		t.Errorf("Shutdown failed: %v", err)
 	}
 
-	if creationTime > 100*time.Millisecond {
+	if 100*time.Millisecond < creationTime {
 		t.Errorf("Coordinator creation took too long: %v", creationTime)
 	}
 
@@ -604,7 +604,7 @@ func TestCoordinatorPerformanceIntegration(t *testing.T) {
 	metricsTime := time.Since(start)
 
 	avgMetricsTime := metricsTime / 1000
-	if avgMetricsTime > time.Millisecond {
+	if time.Millisecond < avgMetricsTime {
 		t.Errorf("Average metrics collection time too high: %v", avgMetricsTime)
 	}
 
@@ -618,7 +618,7 @@ func TestCoordinatorPerformanceIntegration(t *testing.T) {
 	statusTime := time.Since(start)
 
 	avgStatusTime := statusTime / 1000
-	if avgStatusTime > time.Millisecond {
+	if time.Millisecond < avgStatusTime {
 		t.Errorf("Average status collection time too high: %v", avgStatusTime)
 	}
 

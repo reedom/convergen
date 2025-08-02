@@ -362,7 +362,7 @@ func TestMetricsCollectorThroughputCalculation(t *testing.T) {
 
 	// Throughput should be > 0 since we have executions and time has passed
 	if metrics.Throughput <= 0 {
-		t.Errorf("Expected throughput > 0, got %f", metrics.Throughput)
+		t.Errorf("Expected 0 < throughput, got %f", metrics.Throughput)
 	}
 
 	// Verify it's reasonable (should be around 2 executions per elapsed seconds)
@@ -372,7 +372,7 @@ func TestMetricsCollectorThroughputCalculation(t *testing.T) {
 	// Allow some tolerance due to timing variations
 	tolerance := expectedThroughput * 0.5
 	if metrics.Throughput < expectedThroughput-tolerance ||
-		metrics.Throughput > expectedThroughput+tolerance {
+		expectedThroughput+tolerance < metrics.Throughput {
 		t.Logf("Throughput %f is outside expected range %f ± %f",
 			metrics.Throughput, expectedThroughput, tolerance)
 	}
@@ -477,7 +477,7 @@ func TestMetricsCollectorGetHealthScore(t *testing.T) {
 
 	score = concreteCollector.GetHealthScore()
 	// Score should be reduced due to high error rate
-	if score >= expectedScore {
+	if expectedScore <= score {
 		t.Errorf("Expected health score to decrease due to errors, got %f", score)
 	}
 }

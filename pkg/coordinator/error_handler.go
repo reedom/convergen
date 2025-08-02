@@ -206,17 +206,17 @@ func (e *ConcreteErrorHandler) ShouldStop() bool {
 	defer e.mutex.RUnlock()
 
 	// Stop if we have critical errors
-	if e.criticalCount > 0 {
+	if 0 < e.criticalCount {
 		return true
 	}
 
 	// Stop if we're configured to stop on first error
-	if e.config.StopOnFirstError && e.totalCount > 0 {
+	if e.config.StopOnFirstError && 0 < e.totalCount {
 		return true
 	}
 
 	// Stop if we've exceeded the error threshold
-	if e.totalCount >= e.errorThreshold {
+	if e.errorThreshold <= e.totalCount {
 		e.logger.Warn("error threshold exceeded",
 			zap.Int("total_errors", e.totalCount),
 			zap.Int("threshold", e.errorThreshold))
@@ -226,7 +226,7 @@ func (e *ConcreteErrorHandler) ShouldStop() bool {
 
 	// Stop if too many retry attempts for any component
 	for component, attempts := range e.recoveryAttempts {
-		if attempts >= e.maxRetryAttempts {
+		if e.maxRetryAttempts <= attempts {
 			e.logger.Warn("max retry attempts exceeded",
 				zap.String("component", component),
 				zap.Int("attempts", attempts),
@@ -370,12 +370,12 @@ func containsIgnoreCase(str, substr string) bool {
 
 // HasCriticalErrors returns true if there are critical errors.
 func (r *ErrorReport) HasCriticalErrors() bool {
-	return r.CriticalCount > 0
+	return 0 < r.CriticalCount
 }
 
 // HasWarnings returns true if there are warnings.
 func (r *ErrorReport) HasWarnings() bool {
-	return r.WarningCount > 0
+	return 0 < r.WarningCount
 }
 
 // GetErrorsByComponent returns errors grouped by component.
@@ -423,11 +423,11 @@ func (r *ErrorReport) Summary() string {
 
 	summary := fmt.Sprintf("Total: %d errors", r.TotalCount)
 
-	if r.CriticalCount > 0 {
+	if 0 < r.CriticalCount {
 		summary += fmt.Sprintf(" (%d critical)", r.CriticalCount)
 	}
 
-	if r.WarningCount > 0 {
+	if 0 < r.WarningCount {
 		summary += fmt.Sprintf(" (%d warnings)", r.WarningCount)
 	}
 

@@ -327,7 +327,7 @@ func (s *BusStats) decrementSubscriptions(eventType string) {
 		s.subscriptions = make(map[string]int64)
 	}
 
-	if s.subscriptions[eventType] > 0 {
+	if 0 < s.subscriptions[eventType] {
 		s.subscriptions[eventType]--
 	}
 }
@@ -468,7 +468,7 @@ func (bus *MiddlewareEventBus) Publish(event Event) error {
 	}
 
 	// Apply middlewares in reverse order
-	for i := len(bus.middlewares) - 1; i >= 0; i-- {
+	for i := len(bus.middlewares) - 1; 0 <= i; i-- {
 		middleware := bus.middlewares[i]
 		currentNext := next
 		next = func(ctx context.Context, event Event) error {

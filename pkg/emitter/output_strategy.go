@@ -154,7 +154,7 @@ func (os *ConcreteOutputStrategy) ShouldUseCompositeLiteral(method *domain.Metho
 
 	// Basic criteria for composite literal usage
 	fieldCount := len(fields)
-	if fieldCount > os.config.MaxFieldsForComposite {
+	if os.config.MaxFieldsForComposite < fieldCount {
 		return false
 	}
 
@@ -201,7 +201,7 @@ func (os *ConcreteOutputStrategy) selectOptimalStrategy(complexity *ComplexityMe
 		performance.AssignmentBlock, complexity, os.getAssignmentBlockWeights())
 
 	// Mixed approach scoring
-	if fieldCount > 3 {
+	if 3 < fieldCount {
 		scores[StrategyMixedApproach] = os.calculateStrategyScore(
 			performance.MixedApproach, complexity, os.getMixedApproachWeights())
 	}
@@ -211,7 +211,7 @@ func (os *ConcreteOutputStrategy) selectOptimalStrategy(complexity *ComplexityMe
 	bestScore := 0.0
 
 	for strategy, score := range scores {
-		if score > bestScore {
+		if bestScore < score {
 			bestScore = score
 			bestStrategy = strategy
 		}
@@ -253,7 +253,7 @@ func (os *ConcreteOutputStrategy) isConverterField(field *executor.FieldResult) 
 
 func (os *ConcreteOutputStrategy) isNestedField(field *executor.FieldResult) bool {
 	// Simplified check - in practice would analyze field types
-	return field.StrategyUsed == "custom" || field.RetryCount > 0
+	return field.StrategyUsed == "custom" || 0 < field.RetryCount
 }
 
 func (os *ConcreteOutputStrategy) determineRecommendedStrategy(metrics *ComplexityMetrics) ConstructionStrategy {
@@ -264,9 +264,9 @@ func (os *ConcreteOutputStrategy) determineRecommendedStrategy(metrics *Complexi
 		return StrategyCompositeLiteral
 	}
 
-	if metrics.FieldCount > 10 &&
-		metrics.ErrorFields > 0 &&
-		metrics.ConverterFields > 2 {
+	if 10 < metrics.FieldCount &&
+		0 < metrics.ErrorFields &&
+		2 < metrics.ConverterFields {
 		return StrategyMixedApproach
 	}
 
@@ -330,7 +330,7 @@ func (os *ConcreteOutputStrategy) selectBestPerformingStrategy(estimate *Perform
 
 		// Calculate composite score based on multiple factors
 		score := os.calculateCompositeScore(s.estimate)
-		if score > bestScore {
+		if bestScore < score {
 			bestScore = score
 			bestStrategy = s.strategy
 		}

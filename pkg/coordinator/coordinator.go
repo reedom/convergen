@@ -386,7 +386,7 @@ func (c *ConcreteCoordinator) assembleResult(startTime time.Time, input *Pipelin
 	}
 
 	// Add error report if there were non-critical errors
-	if errors := c.errorHandler.GetErrors(); errors.TotalCount > 0 {
+	if errors := c.errorHandler.GetErrors(); 0 < errors.TotalCount {
 		result.Errors = errors
 
 		if len(errors.Warnings) > 0 {
@@ -448,7 +448,7 @@ func (c *ConcreteCoordinator) formatErrors(errors *ErrorReport) string {
 		return "no errors"
 	}
 
-	if errors.CriticalCount > 0 {
+	if 0 < errors.CriticalCount {
 		return fmt.Sprintf("%d critical errors, %d total errors",
 			errors.CriticalCount, errors.TotalCount)
 	}

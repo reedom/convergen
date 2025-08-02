@@ -129,7 +129,7 @@ func (be *ConcreteBatchExecutor) ExecuteBatch(ctx context.Context, batch *BatchE
 			batchMetrics.MinFieldDuration = fieldResult.Duration
 		} else {
 			batchMetrics.AverageFieldDuration = (batchMetrics.AverageFieldDuration + fieldResult.Duration) / 2
-			if fieldResult.Duration > batchMetrics.MaxFieldDuration {
+			if batchMetrics.MaxFieldDuration < fieldResult.Duration {
 				batchMetrics.MaxFieldDuration = fieldResult.Duration
 			}
 
@@ -153,7 +153,7 @@ func (be *ConcreteBatchExecutor) ExecuteBatch(ctx context.Context, batch *BatchE
 	result.MemoryUsedMB = be.calculateMemoryUsage(batch)
 
 	// Calculate performance metrics
-	if result.Duration > 0 {
+	if 0 < result.Duration {
 		batchMetrics.ThroughputPerSecond = float64(len(batch.Mappings)) / result.Duration.Seconds()
 		batchMetrics.ResourceEfficiency = be.calculateResourceEfficiency(batch, result)
 	}
@@ -313,14 +313,14 @@ func (be *ConcreteBatchExecutor) calculateOptimalConcurrency(batch *BatchExecuti
 	concurrency := min(fieldCount, maxWorkers)
 
 	// Respect configuration limits
-	if configuredMax > 0 {
+	if 0 < configuredMax {
 		concurrency = min(concurrency, configuredMax)
 	}
 
 	// Adaptive concurrency based on resource pressure
 	if be.config.AdaptiveConcurrency {
 		resourceMetrics := be.resourcePool.GetMetrics()
-		if resourceMetrics.MemoryPressure > be.config.MemoryThreshold {
+		if be.config.MemoryThreshold < resourceMetrics.MemoryPressure {
 			concurrency = max(1, concurrency/2) // Reduce concurrency under memory pressure
 		}
 	}
@@ -373,7 +373,7 @@ func (be *ConcreteBatchExecutor) calculateMemoryUsage(batch *BatchExecution) int
 	calculated := baseMemory + fieldMemory
 
 	// Respect memory limits in tests
-	if be.config.MaxMemoryMB > 0 && calculated > be.config.MaxMemoryMB {
+	if 0 < be.config.MaxMemoryMB && be.config.MaxMemoryMB < calculated {
 		return be.config.MaxMemoryMB
 	}
 
@@ -386,9 +386,9 @@ func (be *ConcreteBatchExecutor) calculateResourceEfficiency(batch *BatchExecuti
 	idealTime := float64(len(batch.Mappings)) / float64(result.WorkersUsed)
 	actualTime := result.Duration.Seconds()
 
-	if actualTime > 0 {
+	if 0 < actualTime {
 		efficiency := idealTime / actualTime
-		if efficiency > 1.0 {
+		if 1.0 < efficiency {
 			efficiency = 1.0 // Cap at 100%
 		}
 
@@ -412,11 +412,11 @@ func (be *ConcreteBatchExecutor) GetMetrics() *BatchMetrics {
 		metrics.FieldsFailed += result.Metrics.FieldsFailed
 		metrics.RetryCount += result.Metrics.RetryCount
 
-		if result.Metrics.ThroughputPerSecond > metrics.ThroughputPerSecond {
+		if metrics.ThroughputPerSecond < result.Metrics.ThroughputPerSecond {
 			metrics.ThroughputPerSecond = result.Metrics.ThroughputPerSecond
 		}
 
-		if result.Metrics.AverageFieldDuration > metrics.AverageFieldDuration {
+		if metrics.AverageFieldDuration < result.Metrics.AverageFieldDuration {
 			metrics.AverageFieldDuration = result.Metrics.AverageFieldDuration
 		}
 	}
@@ -501,7 +501,7 @@ func min(a, b int) int {
 }
 
 func max(a, b int) int {
-	if a > b {
+	if b < a {
 		return a
 	}
 

@@ -248,7 +248,7 @@ func (tc *TypeCache) checkMemoryPressure() {
 	// Convert to MB
 	allocMB := int64(memStats.Alloc / 1024 / 1024)
 
-	if allocMB > tc.memoryThresholdMB {
+	if tc.memoryThresholdMB < allocMB {
 		// Under memory pressure - remove 25% of entries (oldest first)
 		tc.evictOldest(len(tc.cache) / 4)
 	}
@@ -288,7 +288,7 @@ func (tc *TypeCache) evictOldest(count int) {
 		evicted++
 	}
 
-	if evicted > 0 {
+	if 0 < evicted {
 		tc.statsMux.Lock()
 		tc.evictions += int64(evicted)
 		tc.statsMux.Unlock()

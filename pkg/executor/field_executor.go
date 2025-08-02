@@ -242,7 +242,7 @@ func (fe *ConcreteFieldExecutor) ExecuteFieldWithRetry(ctx context.Context, fiel
 	var lastError error
 
 	for attempt := 0; attempt <= fe.config.RetryAttempts; attempt++ {
-		if attempt > 0 {
+		if 0 < attempt {
 			// Calculate backoff delay
 			backoff := fe.calculateBackoff(attempt)
 
@@ -269,7 +269,7 @@ func (fe *ConcreteFieldExecutor) ExecuteFieldWithRetry(ctx context.Context, fiel
 		lastError = err
 
 		if err == nil && result.Success {
-			if attempt > 0 {
+			if 0 < attempt {
 				result.RetryCount = attempt
 			}
 
@@ -376,13 +376,13 @@ func (fe *ConcreteFieldExecutor) calculateBackoff(attempt int) time.Duration {
 	// Exponential backoff with jitter
 	delay := time.Duration(int64(baseDelay) * int64(1<<(attempt-1)))
 
-	if delay > maxDelay {
+	if maxDelay < delay {
 		delay = maxDelay
 	}
 
 	// Add jitter (up to 25% of delay)
 	jitter := time.Duration(float64(delay) * 0.25)
-	if jitter > 0 {
+	if 0 < jitter {
 		delay += time.Duration(int64(jitter) * int64(attempt) / int64(fe.config.RetryAttempts))
 	}
 

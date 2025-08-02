@@ -432,11 +432,11 @@ func TestErrorHandler_GetRetryDelay(t *testing.T) {
 	delay2 := handler.GetRetryDelay(2)
 	delay3 := handler.GetRetryDelay(3)
 
-	if delay1 >= delay2 {
+	if delay2 <= delay1 {
 		t.Errorf("GetRetryDelay(1) = %v should be less than GetRetryDelay(2) = %v", delay1, delay2)
 	}
 
-	if delay2 >= delay3 {
+	if delay3 <= delay2 {
 		t.Errorf("GetRetryDelay(2) = %v should be less than GetRetryDelay(3) = %v", delay2, delay3)
 	}
 

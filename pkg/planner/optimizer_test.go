@@ -73,7 +73,7 @@ func TestPlanOptimizer_OptimizePlan(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify optimization effects
-			if tt.optimizationLevel > 0 {
+			if 0 < tt.optimizationLevel {
 				// Should have applied some optimizations
 				totalWorkers := 0
 				totalMemory := 0

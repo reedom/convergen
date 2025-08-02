@@ -69,7 +69,7 @@ func TestConcurrentCodeGenMetrics(t *testing.T) {
 	assert.Equal(t, expectedMethods, snapshot.FieldsGenerated)
 	assert.Equal(t, expectedMethods, snapshot.ErrorHandlersGenerated)
 	assert.Equal(t, expectedMethods, snapshot.ErrorsEncountered)
-	assert.True(t, snapshot.TotalGenerationTime > 0)
+	assert.True(t, 0 < snapshot.TotalGenerationTime)
 }
 
 // TestConcurrentMetricsAccess tests thread safety of Metrics.
@@ -133,8 +133,8 @@ func TestConcurrentMetricsAccess(t *testing.T) {
 	expectedGenerations := int64(numGoroutines * operationsPerGoroutine)
 	assert.Equal(t, expectedGenerations, snapshot.TotalGenerations)
 	assert.Equal(t, expectedGenerations, snapshot.TotalMethods)
-	assert.True(t, snapshot.TotalGenerationTime > 0)
-	assert.True(t, snapshot.PeakMemoryUsage > 0)
+	assert.True(t, 0 < snapshot.TotalGenerationTime)
+	assert.True(t, 0 < snapshot.PeakMemoryUsage)
 	assert.Equal(t, expectedGenerations, snapshot.ErrorsEncountered)
 }
 
@@ -285,7 +285,7 @@ func TestConcurrentEmitterOperations(t *testing.T) {
 
 	// Final verification
 	finalMetrics := emitter.GetMetrics()
-	assert.True(t, finalMetrics.TotalGenerations > 0)
+	assert.True(t, 0 < finalMetrics.TotalGenerations)
 }
 
 // TestStressTesting performs high-stress concurrent testing.
@@ -423,7 +423,7 @@ func TestRaceDetectorCompliance(t *testing.T) {
 				case 3:
 					// Force metrics snapshot creation
 					metrics := emitter.GetMetrics()
-					if metrics.TotalMethods > 0 {
+					if 0 < metrics.TotalMethods {
 						// This should not race
 						_ = metrics.TotalGenerations
 					}

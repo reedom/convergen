@@ -413,7 +413,7 @@ func (m *Metrics) RecordGeneration(methodCode *MethodCode, packageName string, m
 	}
 
 	// Update average generation time if we have timing data
-	if m.TotalGenerations > 0 {
+	if 0 < m.TotalGenerations {
 		m.AverageGenerationTime = m.TotalGenerationTime / time.Duration(m.TotalGenerations)
 	}
 }
@@ -476,7 +476,7 @@ func (m *Metrics) AddGenerationTime(duration time.Duration) {
 	defer m.mu.Unlock()
 
 	m.TotalGenerationTime += duration
-	if m.TotalGenerations > 0 {
+	if 0 < m.TotalGenerations {
 		m.AverageGenerationTime = m.TotalGenerationTime / time.Duration(m.TotalGenerations)
 	}
 }
@@ -517,7 +517,7 @@ func (m *Metrics) UpdateMemoryUsage(current int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if current > m.PeakMemoryUsage {
+	if m.PeakMemoryUsage < current {
 		m.PeakMemoryUsage = current
 	}
 
@@ -587,10 +587,10 @@ func NewComplexityMetrics() *ComplexityMetrics {
 
 // IsComplex returns true if the complexity metrics indicate complex code.
 func (cm *ComplexityMetrics) IsComplex() bool {
-	return cm.ComplexityScore > 50.0 ||
-		cm.ErrorFields > 0 ||
-		cm.NestedFields > 2 ||
-		cm.CyclomaticComplexity > 10
+	return 50.0 < cm.ComplexityScore ||
+		0 < cm.ErrorFields ||
+		2 < cm.NestedFields ||
+		10 < cm.CyclomaticComplexity
 }
 
 // ShouldUseComposite returns true if composite literal strategy is recommended.
@@ -614,7 +614,7 @@ func (ob *OrderedBuffer) Add(order int, content, itemType string) {
 	ob.items = append(ob.items, item)
 	ob.itemMap[order] = item
 
-	if order > ob.maxOrder {
+	if ob.maxOrder < order {
 		ob.maxOrder = order
 	}
 
@@ -642,7 +642,7 @@ func (ob *OrderedBuffer) sort() {
 		key := ob.items[i]
 		j := i - 1
 
-		for j >= 0 && ob.items[j].Order > key.Order {
+		for 0 <= j && key.Order < ob.items[j].Order {
 			ob.items[j+1] = ob.items[j]
 			j--
 		}

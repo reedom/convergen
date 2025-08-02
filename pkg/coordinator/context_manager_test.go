@@ -225,7 +225,7 @@ func TestContextManagerContextCleanup(t *testing.T) {
 	cancel()
 
 	finalCount := mgr.GetActiveContextCount()
-	if finalCount >= initialCount {
+	if initialCount <= finalCount {
 		t.Errorf("Expected active context count to decrease, got %d -> %d",
 			initialCount, finalCount)
 	}
@@ -388,7 +388,7 @@ func TestGetElapsedTime(t *testing.T) {
 		t.Errorf("Expected positive elapsed time, got %v", elapsed)
 	}
 
-	if elapsed < 900*time.Millisecond || elapsed > 1100*time.Millisecond {
+	if elapsed < 900*time.Millisecond || 1100*time.Millisecond < elapsed {
 		t.Errorf("Expected elapsed time around 1 second, got %v", elapsed)
 	}
 }

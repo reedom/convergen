@@ -267,7 +267,7 @@ func (ep *ExecutionPlanner) calculateResourceAllocation(_ context.Context, batch
 	totalMemoryMB := 0
 
 	for _, batch := range batches {
-		if batch.ConcurrencyLevel > maxConcurrency {
+		if maxConcurrency < batch.ConcurrencyLevel {
 			maxConcurrency = batch.ConcurrencyLevel
 		}
 
@@ -275,11 +275,11 @@ func (ep *ExecutionPlanner) calculateResourceAllocation(_ context.Context, batch
 	}
 
 	// Apply configuration limits
-	if maxConcurrency > ep.config.MaxConcurrentWorkers {
+	if ep.config.MaxConcurrentWorkers < maxConcurrency {
 		maxConcurrency = ep.config.MaxConcurrentWorkers
 	}
 
-	if totalMemoryMB > ep.config.MaxMemoryMB {
+	if ep.config.MaxMemoryMB < totalMemoryMB {
 		totalMemoryMB = ep.config.MaxMemoryMB
 	}
 
@@ -365,7 +365,7 @@ func (ep *ExecutionPlanner) calculateBatchDependencies(batchIndex int, previousB
 func (ep *ExecutionPlanner) calculateOptimalConcurrency(mappings []*domain.FieldMapping) int {
 	// Calculate optimal concurrency based on mapping characteristics
 	concurrency := len(mappings)
-	if concurrency > ep.config.MaxConcurrentWorkers {
+	if ep.config.MaxConcurrentWorkers < concurrency {
 		concurrency = ep.config.MaxConcurrentWorkers
 	}
 
@@ -384,7 +384,7 @@ func (ep *ExecutionPlanner) splitLargeBatch(batch *ExecutionBatch) []*ExecutionB
 
 	for i := 0; i < len(mappings); i += ep.config.MaxBatchSize {
 		end := i + ep.config.MaxBatchSize
-		if end > len(mappings) {
+		if len(mappings) < end {
 			end = len(mappings)
 		}
 
@@ -412,7 +412,7 @@ func (ep *ExecutionPlanner) determineExecutionStrategy(batches []*ExecutionBatch
 	hasParallelizableBatches := false
 
 	for _, batch := range batches {
-		if len(batch.DependsOn) == 0 || batch.ConcurrencyLevel > 1 {
+		if len(batch.DependsOn) == 0 || 1 < batch.ConcurrencyLevel {
 			hasParallelizableBatches = true
 			break
 		}
@@ -482,7 +482,7 @@ func (ep *ExecutionPlanner) estimateMethodDuration(batches []*ExecutionBatch) in
 func (ep *ExecutionPlanner) calculateMethodWorkers(batches []*ExecutionBatch) int {
 	maxWorkers := 0
 	for _, batch := range batches {
-		if batch.ConcurrencyLevel > maxWorkers {
+		if maxWorkers < batch.ConcurrencyLevel {
 			maxWorkers = batch.ConcurrencyLevel
 		}
 	}
@@ -532,7 +532,7 @@ func (ep *ExecutionPlanner) calculateParallelizationRatio(batches []*ExecutionBa
 	for _, batch := range batches {
 		totalFields += len(batch.Mappings)
 
-		if batch.ConcurrencyLevel > 1 {
+		if 1 < batch.ConcurrencyLevel {
 			parallelFields += len(batch.Mappings)
 		}
 	}
