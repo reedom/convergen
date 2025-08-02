@@ -290,6 +290,103 @@ type Convergen interface {
 }`, receiverVar))
 }
 
+// MapAnnotationScenario creates a scenario for testing :map annotation with basic field mapping.
+func MapAnnotationScenario(srcField, dstField string) InlineScenario {
+	return NewInlineScenario(
+		fmt.Sprintf("MapAnnotation_%s_to_%s", srcField, dstField),
+		"Test :map annotation for explicit field mapping",
+	).WithTypes(`
+type User struct {
+	FirstName string
+	LastName  string
+	UserName  string
+}
+
+type UserModel struct {
+	FullName string
+	Name     string
+}`).WithInterface(fmt.Sprintf(`
+type Convergen interface {
+	// :map %s %s
+	Convert(*User) *UserModel
+}`, srcField, dstField))
+}
+
+// MapTemplatedArgumentsScenario creates a scenario for testing :map with templated arguments ($1, $2).
+func MapTemplatedArgumentsScenario() InlineScenario {
+	return NewInlineScenario(
+		"MapTemplatedArguments",
+		"Test :map annotation with templated arguments ($1, $2)",
+	).WithTypes(`
+type User struct {
+	Name string
+	Age  int
+}
+
+type UserModel struct {
+	FormattedInfo string
+}`).WithInterface(`
+type Convergen interface {
+	// :map $1 FormattedInfo
+	Convert(user *User, additionalInfo string) *UserModel
+}`)
+}
+
+// MapMethodChainScenario creates a scenario for testing :map with method chains and getters.
+func MapMethodChainScenario() InlineScenario {
+	return NewInlineScenario(
+		"MapMethodChain",
+		"Test :map annotation with method chains and getters",
+	).WithTypes(`
+type Profile struct {
+	Name string
+}
+
+func (p *Profile) GetDisplayName() string {
+	return "Display: " + p.Name
+}
+
+type User struct {
+	Profile *Profile
+}
+
+type UserModel struct {
+	DisplayName string
+}`).WithInterface(`
+type Convergen interface {
+	// :map Profile.GetDisplayName() DisplayName
+	Convert(*User) *UserModel
+}`)
+}
+
+// MapNestedFieldScenario creates a scenario for testing :map with nested field paths.
+func MapNestedFieldScenario() InlineScenario {
+	return NewInlineScenario(
+		"MapNestedField",
+		"Test :map annotation with nested field access",
+	).WithTypes(`
+type Address struct {
+	Street string
+	City   string
+}
+
+type User struct {
+	Name    string
+	Address Address
+}
+
+type UserModel struct {
+	Name       string
+	UserStreet string
+	UserCity   string
+}`).WithInterface(`
+type Convergen interface {
+	// :map Address.Street UserStreet
+	// :map Address.City UserCity
+	Convert(*User) *UserModel
+}`)
+}
+
 // Error Scenario Builders.
 
 // InvalidSyntaxScenario creates a scenario with invalid Go syntax.

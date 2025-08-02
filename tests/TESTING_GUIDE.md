@@ -69,6 +69,10 @@ go test ./tests -parallel 4 -v
 | `TypecastAnnotationScenario()` | Test `:typecast` annotations | `TypecastAnnotationScenario()` |
 | `StringerAnnotationScenario()` | Test `:stringer` annotations | `StringerAnnotationScenario()` |
 | `RecvAnnotationScenario(var)` | Test `:recv` annotations | `RecvAnnotationScenario("c")` |
+| `MapAnnotationScenario(src, dst)` | Test `:map` basic field mapping | `MapAnnotationScenario("FirstName", "FullName")` |
+| `MapTemplatedArgumentsScenario()` | Test `:map` with templated args ($1, $2) | `MapTemplatedArgumentsScenario()` |
+| `MapMethodChainScenario()` | Test `:map` with method chains/getters | `MapMethodChainScenario()` |
+| `MapNestedFieldScenario()` | Test `:map` with nested field paths | `MapNestedFieldScenario()` |
 
 ## Error Scenario Builders
 
