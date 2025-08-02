@@ -1,238 +1,170 @@
-# Convergen Testing Framework Examples
+# Testing Framework Examples
 
-This directory contains practical examples demonstrating how to use the Convergen behavior-driven testing framework. These examples serve as templates and learning resources for writing effective tests.
+This directory contains **educational examples** showing how to use the Convergen testing framework APIs. These are **not comprehensive tests** - for complete test coverage, see [`../behavior_test.go`](../behavior_test.go).
 
-## Example Files
+## Purpose
 
-### `basic_usage_test.go`
-Fundamental examples showing the core testing patterns:
-- **ExampleBasicScenario**: Simple struct-to-struct conversion
-- **ExampleAnnotationTesting**: Testing with Convergen annotations
-- **ExampleBuiltInScenarios**: Using pre-built scenario helpers
-- **ExampleErrorTesting**: Testing error conditions
-- **ExampleComplexTypes**: Nested struct conversions
-- **ExampleMultipleAssertions**: Different types of code assertions
-- **ExampleBatchTesting**: Running multiple related tests
-- **ExampleWithImports**: Testing scenarios requiring additional imports
+The examples here focus on **teaching the testing framework**, not testing Convergen itself:
 
-### `advanced_patterns_test.go`
-Advanced testing patterns and techniques:
-- **ExampleCustomScenarioBuilder**: Creating reusable scenario builders
-- **ExampleComplexAnnotations**: Multiple annotations working together
-- **ExampleEdgeCases**: Boundary conditions and edge cases
-- **ExamplePerformanceTesting**: Performance-focused test patterns
-- **ExampleGenericTypes**: Testing with Go generics
-- **ExampleComplexTypeRelationships**: Embedded types and interfaces
-- **ExampleErrorRecoveryPatterns**: Graceful error handling
-- **ExampleCustomAssertions**: Domain-specific assertion patterns
-- **ExampleComprehensiveIntegration**: Full-featured integration test
+- ✅ **Framework usage patterns** - How to write tests
+- ✅ **API demonstrations** - How to use different features  
+- ✅ **Best practices** - Recommended patterns and approaches
+- ❌ **Not comprehensive Convergen testing** - That's in `behavior_test.go`
 
-## How to Use These Examples
+## Examples Overview
 
-### 1. Learning the Framework
-Start with `basic_usage_test.go` to understand the fundamental concepts:
-```bash
-# Run basic examples
-go test ./tests/examples -run ExampleBasic -v
-```
+### [`basic_usage_test.go`](basic_usage_test.go)
+**Learn the framework fundamentals:**
+- `TestFrameworkBasics` - Essential components every test needs
+- `TestCodeAssertions` - How to validate generated code
+- `TestBuiltInScenarios` - Using pre-built scenario helpers
+- `TestErrorScenarios` - Testing failure cases
+- `TestBatchExecution` - Running multiple tests efficiently
+- `TestWithImports` - Handling external dependencies
 
-### 2. Understanding Patterns
-Review `advanced_patterns_test.go` for sophisticated testing techniques:
-```bash
-# Run advanced examples
-go test ./tests/examples -run ExampleAdvanced -v
-```
+### [`advanced_patterns_test.go`](advanced_patterns_test.go)  
+**Master advanced framework features:**
+- `TestCustomScenarioBuilder` - Creating reusable scenario builders
+- `TestVerboseDebugging` - Getting detailed test failure information
+- `TestDebugHelper` - Quick debugging with helper functions
+- `TestCustomAssertions` - Building domain-specific assertions
+- `TestDataDrivenTests` - Table-driven test patterns
+- `TestConditionalAssertions` - Advanced assertion logic
+- `TestScenarioCategories` - Organizing tests with categories
+- `TestPerformancePattern` - Patterns for testing varying complexity
 
-### 3. Copy and Adapt
-Use these examples as templates for your own tests:
-1. Copy the example that most closely matches your use case
-2. Modify the types and interfaces for your scenario
-3. Adjust the assertions to match your expectations
-4. Add any custom converter functions needed
+### [`debug_example_test.go`](debug_example_test.go)
+**Learn debugging techniques:**
+- Basic vs verbose debugging modes
+- Using debug helper functions
+- Understanding failure output
+- Troubleshooting test issues
 
-## Example Categories
+## Quick Start
 
-### Basic Testing Patterns
-
-**Simple Conversion**:
 ```go
-scenario := helpers.NewInlineScenario("Name", "Description").
-    WithTypes(sourceAndDestTypes).
-    WithInterface(converterInterface).
-    WithBehaviorTests().
-    WithCodeChecks(assertions...)
-```
+func TestMyFirst(t *testing.T) {
+    // 1. Create runner
+    runner := helpers.NewInlineScenarioRunner(t)
+    defer runner.Cleanup()
 
-**Annotation Testing**:
-```go
-scenario := helpers.StyleAnnotationScenario("return").WithBehaviorTests()
-```
+    // 2. Define scenario
+    scenario := helpers.NewInlineScenario(
+        "TestName", "Description",
+    ).WithTypes(`type User struct { Name string }`).
+      WithInterface(`type Convergen interface { Convert(*User) *User }`)
 
-**Error Testing**:
-```go
-scenario := helpers.InvalidSyntaxScenario().ShouldFail("expected error")
-```
-
-### Advanced Patterns
-
-**Custom Builders**:
-```go
-func MyAnnotationScenario(param string) helpers.InlineScenario {
-    return helpers.NewInlineScenario(name, description).
-        WithTypes(types).
-        WithInterface(interface)
+    // 3. Run test
+    runner.RunScenario(scenario)
 }
 ```
 
-**Batch Testing**:
+## Learning Path
+
+1. **Start with [`basic_usage_test.go`](basic_usage_test.go)** - Essential patterns
+2. **Try [`debug_example_test.go`](debug_example_test.go)** - Debugging skills  
+3. **Explore [`advanced_patterns_test.go`](advanced_patterns_test.go)** - Advanced techniques
+4. **Check [`../TESTING_GUIDE.md`](../TESTING_GUIDE.md)** - Quick reference
+5. **Review [`../behavior_test.go`](../behavior_test.go)** - Complete test patterns
+
+## Key Concepts
+
+### Framework Components
+- **`InlineScenarioRunner`** - Test execution engine
+- **`InlineScenario`** - Individual test definition
+- **Code Assertions** - Validation of generated code
+- **Built-in Scenarios** - Pre-made test builders
+
+### Testing Patterns
+- **Scenario builders** - Reusable test factories
+- **Batch execution** - Running multiple tests
+- **Debug modes** - Detailed failure information
+- **Custom assertions** - Domain-specific validation
+
+### Best Practices
+- Always `defer runner.Cleanup()`
+- Use descriptive test names and descriptions
+- Prefer built-in scenarios for common patterns
+- Enable verbose debugging for failures
+- Organize tests with categories
+
+## Framework API Reference
+
+### Creating Tests
 ```go
-scenarios := []helpers.TestScenario{
-    scenario1, scenario2, scenario3,
+// Basic scenario
+scenario := helpers.NewInlineScenario("Name", "Description")
+
+// With types and interface
+scenario.WithTypes(`type User struct { Name string }`).
+         WithInterface(`type Convergen interface { Convert(*User) *User }`)
+
+// With assertions
+scenario.WithCodeChecks(
+    helpers.AssertHasGeneratedFunction(),
+    helpers.Contains("pattern"),
+    helpers.CompilesSuccessfully(),
+)
+
+// With debugging
+scenario.WithVerboseDebugging()
+```
+
+### Built-in Scenarios
+```go
+// Style annotations
+helpers.StyleAnnotationScenario("return")
+helpers.StyleAnnotationScenario("arg")
+
+// Match strategies  
+helpers.MatchAnnotationScenario("name")
+helpers.MatchAnnotationScenario("none")
+
+// Custom converters
+helpers.ConvertAnnotationScenario("FuncName", "SrcField", "DstField")
+
+// Error scenarios
+scenario.ShouldFail("expected error message")
+```
+
+### Custom Builders
+```go
+func MyScenarioBuilder(param string) helpers.InlineScenario {
+    return helpers.NewInlineScenario(
+        fmt.Sprintf("Test_%s", param),
+        fmt.Sprintf("Testing %s functionality", param),
+    ).WithTypes(generateTypes(param)).
+      WithInterface(generateInterface(param))
 }
-runner.RunScenarios(scenarios)
 ```
 
-**Complex Assertions**:
-```go
-helpers.MatchesRegex(`func\s+Convert.*\{`)
-helpers.Contains("specific generated pattern")
-helpers.AssertHasGeneratedFunction()
-```
+## Comparison with behavior_test.go
 
-## Common Patterns by Use Case
-
-### Testing New Annotations
-
-When adding a new Convergen annotation:
-
-1. **Create a scenario builder** (see `CustomMappingScenario` example)
-2. **Test positive cases** with various parameters
-3. **Test negative cases** with invalid syntax
-4. **Add edge case tests** with boundary conditions
-
-### Testing Type Conversions
-
-For complex type structures:
-
-1. **Start simple** with basic field mappings
-2. **Add complexity gradually** with nested types
-3. **Test edge cases** like empty structs or single fields
-4. **Verify error handling** for incompatible types
-
-### Integration Testing
-
-For comprehensive feature testing:
-
-1. **Combine multiple annotations** in single scenarios
-2. **Use realistic type structures** from your domain
-3. **Test complete workflows** end-to-end
-4. **Verify all generated code patterns**
+| Examples Directory | behavior_test.go |
+|---|---|
+| 🎓 **Educational** | 🧪 **Validation** |
+| Framework usage patterns | Comprehensive Convergen testing |
+| Simple, focused examples | Complete annotation coverage |
+| Learning progression | Edge cases and error scenarios |
+| API demonstrations | Production test suite |
 
 ## Running Examples
 
-### All Examples
 ```bash
+# All examples
 go test ./tests/examples -v
-```
 
-### Specific Examples
-```bash
-# Run basic usage examples
-go test ./tests/examples -run ExampleBasic -v
+# Specific tests
+go test ./tests/examples -run TestFrameworkBasics -v
+go test ./tests/examples -run TestVerboseDebugging -v
 
-# Run advanced pattern examples
-go test ./tests/examples -run ExampleAdvanced -v
-
-# Run specific example
-go test ./tests/examples -run ExampleCustomScenarioBuilder -v
-```
-
-### With Parallel Execution
-```bash
+# With parallel execution
 go test ./tests/examples -parallel 4 -v
 ```
 
-## Example Output
+## Need Help?
 
-When you run the examples, you'll see output like:
-```
-=== RUN   ExampleBasicScenario
-=== RUN   ExampleBasicScenario/BasicUserConversion
---- PASS: ExampleBasicScenario (0.05s)
-    --- PASS: ExampleBasicScenario/BasicUserConversion (0.05s)
-=== RUN   ExampleAnnotationTesting
-=== RUN   ExampleAnnotationTesting/StyleAnnotation
---- PASS: ExampleAnnotationTesting (0.04s)
-    --- PASS: ExampleAnnotationTesting/StyleAnnotation (0.04s)
-```
-
-## Customizing Examples
-
-### Adapting for Your Domain
-
-1. **Replace type definitions** with your domain models
-2. **Update field names** to match your use case
-3. **Modify annotations** to test your specific patterns
-4. **Adjust assertions** to verify your expected output
-
-### Adding New Examples
-
-1. **Follow naming convention**: `ExampleYourFeature`
-2. **Include clear documentation** explaining the purpose
-3. **Use realistic scenarios** that others can relate to
-4. **Add appropriate assertions** to verify behavior
-
-### Creating Test Suites
-
-Group related examples into test suites:
-```go
-func TestMyFeatureSuite(t *testing.T) {
-    examples := []func(*testing.T){
-        ExampleBasicCase,
-        ExampleAdvancedCase,
-        ExampleErrorCase,
-    }
-    
-    for _, example := range examples {
-        example(t)
-    }
-}
-```
-
-## Best Practices from Examples
-
-### Type Design
-- Use **realistic field names** and types
-- Include **edge cases** like empty structs
-- Test **complex hierarchies** with nested types
-- Consider **generic types** when applicable
-
-### Assertion Strategy
-- **Start with basic assertions** (function existence)
-- **Add specific pattern checks** for critical mappings
-- **Include negative assertions** to verify exclusions
-- **Use custom assertions** for domain-specific patterns
-
-### Error Testing
-- **Test syntax errors** for framework robustness
-- **Verify error messages** are helpful and specific
-- **Check error recovery** for partial failures
-- **Test boundary conditions** that might cause errors
-
-### Performance Considerations
-- **Use parallel testing** for independent scenarios
-- **Batch related tests** to reduce overhead
-- **Profile complex scenarios** to ensure reasonable performance
-- **Consider resource cleanup** to prevent memory leaks
-
-## Contributing Examples
-
-To add new examples:
-
-1. **Create descriptive example functions** following the naming convention
-2. **Include comprehensive documentation** explaining the use case
-3. **Add to this README** with appropriate categorization
-4. **Test thoroughly** to ensure examples work correctly
-5. **Follow the established patterns** from existing examples
-
-These examples provide a foundation for understanding and using the Convergen testing framework effectively. They demonstrate both basic usage and advanced techniques, serving as both learning resources and practical templates for real-world testing scenarios.
+1. **Quick reference**: [`../TESTING_GUIDE.md`](../TESTING_GUIDE.md)
+2. **Full documentation**: [`../README.md`](../README.md)  
+3. **Project context**: [`../../CLAUDE.md`](../../CLAUDE.md)
+4. **Complete test examples**: [`../behavior_test.go`](../behavior_test.go)
