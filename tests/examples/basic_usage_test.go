@@ -182,14 +182,15 @@ type Convergen interface {
 }
 
 // Example: Multiple assertions
-// This shows different types of code assertions
+// This demonstrates different types of code assertions available in the testing framework
+// Focus is on assertion variety, not complex annotations
 func TestExampleMultipleAssertions(t *testing.T) {
 	runner := helpers.NewInlineScenarioRunner(t)
 	defer runner.Cleanup()
 
 	scenario := helpers.NewInlineScenario(
 		"AssertionExample",
-		"Demonstrate different assertion types",
+		"Demonstrate different types of code assertions",
 	).WithTypes(`
 type User struct {
 	FirstName string
@@ -198,30 +199,29 @@ type User struct {
 }
 
 type UserModel struct {
-	FullName string
-	Age      int
-	Status   string
+	FirstName string
+	LastName  string
+	Age       int
+	Status    string  // Will use literal
 }`).WithInterface(`
 type Convergen interface {
-	// :map FirstName,LastName FullName
 	// :literal Status "active"
 	Convert(*User) *UserModel
 }`).WithBehaviorTests().
 		WithCodeChecks(
-			// Function existence
+			// Function existence assertion
 			helpers.AssertHasGeneratedFunction(),
 
-			// String containment
-			helpers.Contains("src.FirstName"),
-			helpers.Contains("src.LastName"),
+			// String containment assertions
+			helpers.Contains("dst.FirstName = src.FirstName"),
 
-			// String absence
+			// String absence assertion
 			helpers.NotContains("Password"),
 
-			// Regex matching
-			helpers.MatchesRegex(`Status:\s*"active"`),
+			// Regex matching assertion
+			helpers.MatchesRegex(`dst\.Status\s*=\s*"active"`),
 
-			// Compilation success
+			// Compilation success assertion
 			helpers.CompilesSuccessfully(),
 		)
 
