@@ -1,13 +1,11 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Quick Reference
-
-- **Project Overview**: See `.claude/01_project/01_convergen_concept_requirements.md`
-- **Architecture**: See `.claude/02_development_docs/01_architecture_design.md`
-- **Code Conventions**: See `.claude/00_general_rules/02_coding_guidelines.md`
-- **SDD Workflow**: See `.claude/00_general_rules/01_sdd_workflow_concepts.md`
+@include .claude/00_general_rules/01_sdd_workflow_concepts.md
+@include .claude/00_general_rules/02_coding_guidelines.md
+@include .claude/01_project/01_convergen_concept_requirements.md
+@include .claude/02_development_docs/01_architecture_design.md
+@include .claude/02_development_docs/02_test_strategy.md
+@include .claude/02_development_docs/03_logging_strategy.md
 
 ## Key Development Commands
 
@@ -28,16 +26,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make lint-docker` - Run linter using Docker (fallback option)
 - `make install-linters` - Install all recommended linting tools
 
-**Note**: Current golangci-lint version (1.53.3) has compatibility issues with Go 1.24.5. 
-Some advanced linters are temporarily disabled. Consider upgrading golangci-lint when newer 
-versions become available that support Go 1.24+.
-
 ### Code Quality Workflow (REQUIRED)
 - **ALWAYS run unit tests and linting after modifying packages**: This ensures consistent code quality
 - **Required workflow after package modification**: 
   1. `go test ./pkg/package-name/...` - Run unit tests for the modified package
-  2. `make lint` - Run comprehensive linting checks (includes formatting)
-  3. Commit only after all tests pass and linting is clean
+  2. `make fmt` - Format all Go code (includes gofmt + goimports)
+  3. `make lint` - Run comprehensive linting checks (includes formatting)
+  4. Commit only after all tests pass and linting is clean
 
 ### Code Formatting & Linting Commands
 - `make fmt` - Format all Go code (includes gofmt + goimports)
@@ -68,7 +63,7 @@ versions become available that support Go 1.24+.
 ## Current Module Information
 
 - **Module Path**: `github.com/reedom/convergen/v8`
-- **Go Version**: 1.23+
+- **Go Version**: 1.21+
 - **Entry Point**: `main.go`
 - **Package Layout**: Standard Go project layout with `pkg/` organization
 
