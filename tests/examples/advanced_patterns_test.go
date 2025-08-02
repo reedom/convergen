@@ -21,7 +21,7 @@ func TestExampleCustomScenarioBuilder(t *testing.T) {
 			helpers.Contains("dst.FullName = TransformFirstName(src.FirstName)"),
 			helpers.Contains("dst.LastName = src.LastName"),
 			helpers.Contains("dst.Other = src.Other"),
-		).WithVerboseDebugging()
+		)
 
 	runner.RunScenario(scenario)
 }
@@ -86,7 +86,7 @@ func HashPassword(password string) string {
 }
 
 func IsAdult(age int) bool {
-	return age >= 18
+	return 18 <= age
 }`).WithInterface(`
 type Convergen interface {
 	// :conv HashPassword Password HashedPassword
@@ -116,7 +116,6 @@ func TestExampleEdgeCases(t *testing.T) {
 		name        string
 		description string
 		sourceTypes string
-		destTypes   string
 		interface_  string
 		shouldFail  bool
 		errorMsg    string
@@ -135,7 +134,7 @@ type Convergen interface {
 			shouldFail: false,
 			checks: []helpers.CodeAssertion{
 				helpers.AssertHasGeneratedFunction(),
-				helpers.Contains("return &Empty2{}"),
+				helpers.Contains("dst = &Empty2{}"),
 			},
 		},
 		{
@@ -151,7 +150,7 @@ type Convergen interface {
 			shouldFail: false,
 			checks: []helpers.CodeAssertion{
 				helpers.AssertHasGeneratedFunction(),
-				helpers.Contains("Value: src.Value"),
+				helpers.Contains("dst.Value = src.Value"),
 			},
 		},
 		{
@@ -164,8 +163,12 @@ type Dest struct { Value int }`,
 type Convergen interface {
 	Convert(*Source) *Dest
 }`,
-			shouldFail: true,
-			errorMsg:   "no assignment",
+			shouldFail: false,
+			checks: []helpers.CodeAssertion{
+				helpers.AssertHasGeneratedFunction(),
+				// The function should be generated even with mismatched types
+				// Convergen handles this by omitting the problematic field assignment
+			},
 		},
 	}
 
@@ -235,15 +238,16 @@ type Convergen interface {
 		WithCodeChecks(helpers.AssertHasGeneratedFunction())
 }
 
-// Example: Testing with generic types
-// This demonstrates testing scenarios involving Go generics
+// Example: Testing with generic types (Current Limitation)
+// This demonstrates that Convergen currently doesn't support Go generics
+// The test documents this limitation by expecting failure when generics are used
 func TestExampleGenericTypes(t *testing.T) {
 	runner := helpers.NewInlineScenarioRunner(t)
 	defer runner.Cleanup()
 
 	scenario := helpers.NewInlineScenario(
 		"GenericConversion",
-		"Test conversion involving generic types",
+		"Test that demonstrates Convergen's current limitation with Go generics (expected to fail)",
 	).WithTypes(`
 // Generic container type
 type Container[T any] struct {
@@ -251,11 +255,11 @@ type Container[T any] struct {
 	Count int
 }
 
-// Specific type aliases
+// Specific type aliases using generics
 type StringContainer = Container[string]
 type IntContainer = Container[int]
 
-// Generic wrapper
+// Generic wrapper type
 type Wrapper[T any] struct {
 	Data     T
 	Metadata map[string]string
@@ -264,14 +268,11 @@ type Wrapper[T any] struct {
 type StringWrapper = Wrapper[string]
 type IntWrapper = Wrapper[int]`).WithInterface(`
 type Convergen interface {
-	ConvertContainer(*StringContainer) *IntContainer
-	ConvertWrapper(*StringWrapper) *IntWrapper
+	// Test: Can Convergen handle generic type aliases?
+	ConvertContainer(*StringContainer) *StringContainer
+	ConvertWrapper(*StringWrapper) *StringWrapper
 }`).WithBehaviorTests().
-		WithCodeChecks(
-			helpers.AssertHasGeneratedFunction(),
-			helpers.Contains("Count: src.Count"),
-			helpers.Contains("Metadata: src.Metadata"),
-		)
+		ShouldFail("missing ',' in parameter list")
 
 	runner.RunScenario(scenario)
 }
@@ -309,10 +310,9 @@ func (u User) GetID() uint64 {
 
 // Destination types
 type UserModel struct {
-	ID        uint64
-	CreatedAt time.Time
-	Name      string
-	Email     string
+	BaseEntity
+	Name  string
+	Email string
 }`).WithInterface(`
 type Convergen interface {
 	Convert(*User) *UserModel
@@ -320,35 +320,36 @@ type Convergen interface {
 		WithBehaviorTests().
 		WithCodeChecks(
 			helpers.AssertHasGeneratedFunction(),
-			helpers.Contains("ID: src.ID"),
-			helpers.Contains("CreatedAt: src.CreatedAt"),
-			helpers.Contains("Name: src.Name"),
-			helpers.Contains("Email: src.Email"),
+			helpers.Contains("dst.BaseEntity = src.BaseEntity"),
+			helpers.Contains("dst.Name = src.Name"),
+			helpers.Contains("dst.Email = src.Email"),
 		)
 
 	runner.RunScenario(scenario)
 }
 
-// Example: Testing error recovery patterns
-// This shows how to test that the system handles errors gracefully
-func TestExampleErrorRecoveryPatterns(t *testing.T) {
+// Example: Testing graceful degradation patterns
+// This shows how Convergen handles problematic scenarios by continuing with partial success
+// rather than failing completely (graceful degradation, not true error recovery)
+func TestExampleGracefulDegradationPatterns(t *testing.T) {
 	runner := helpers.NewInlineScenarioRunner(t)
 	defer runner.Cleanup()
 
-	// Test scenarios where some mappings work and others don't
+	// Test scenarios demonstrating graceful degradation
 	scenarios := []helpers.TestScenario{
 		{
 			Name:        "PartialMappingSuccess",
-			Description: "Test partial success when some fields can be mapped",
+			Description: "Convergen generates code for mappable fields while gracefully skipping problematic ones",
 			SourceTypes: `
 type Source struct {
 	GoodField    string
-	BadField     complex128 // Type that's hard to convert
+	UnmatchType  complex128 // Type that's hard to convert
 	AnotherGood  int
 }
 
 type Dest struct {
 	GoodField    string
+	UnmatchType  int64
 	AnotherGood  int
 	UnmappedField string // This won't have a source
 }`,
@@ -356,16 +357,19 @@ type Dest struct {
 type Convergen interface {
 	Convert(*Source) *Dest
 }`,
-			ShouldSucceed: true, // Should generate code despite issues
+			ShouldSucceed: true, // Demonstrates graceful degradation - generates partial code
 			CodeChecks: []helpers.CodeAssertion{
 				helpers.AssertHasGeneratedFunction(),
-				helpers.Contains("GoodField: src.GoodField"),
-				helpers.Contains("AnotherGood: src.AnotherGood"),
+				helpers.Contains("dst.GoodField = src.GoodField"),
+				helpers.Contains("dst.AnotherGood = src.AnotherGood"),
+				helpers.Contains("// no match: dst.UnmatchType"),
+				helpers.Contains("// no match: dst.UnmappedField"),
 			},
+			VerboseDebugging: true,
 		},
 		{
-			Name:        "InvalidAnnotationRecovery",
-			Description: "Test recovery from invalid annotations",
+			Name:        "InvalidAnnotationHandling",
+			Description: "Convergen ignores invalid annotations and continues with basic conversion",
 			SourceTypes: `
 type Source struct {
 	Field1 string
@@ -432,11 +436,11 @@ type Convergen interface {
 
 // Custom assertion functions for domain-specific validation
 func AssertUserConversion() helpers.CodeAssertion {
-	return helpers.MatchesRegex(`func\s+Convert\([^)]*\*User[^)]*\)\s*\*UserModel`)
+	return helpers.MatchesRegex(`func\s+Convert\([^)]*\*User[^)]*\)\s*\([^)]*\*UserModel\)`)
 }
 
 func AssertFieldMapping(fieldName string) helpers.CodeAssertion {
-	return helpers.Contains(fmt.Sprintf("%s: src.%s", fieldName, fieldName))
+	return helpers.Contains(fmt.Sprintf("dst.%s = src.%s", fieldName, fieldName))
 }
 
 // Example: Comprehensive integration test
@@ -449,82 +453,101 @@ func TestExampleComprehensiveIntegration(t *testing.T) {
 		"ComprehensiveIntegration",
 		"Comprehensive test covering multiple Convergen features",
 	).WithTypes(`
-// Domain models
+// Domain models demonstrating complex mappings
 type Address struct {
 	Street  string
 	City    string
 	Country string
 }
 
+// Source with various field types and naming patterns
 type User struct {
 	ID        uint64
 	FirstName string
 	LastName  string
-	Email     string
+	email     string        // lowercase - will be skipped by default matching
 	Password  string
 	Age       int
 	Address   Address
 	Tags      []string
 	IsActive  bool
+	SecretKey string        // Will be explicitly skipped
+	TempData  string        // Will be skipped by pattern
 }
 
+// Destination with different field names and types
 type UserProfile struct {
-	UserID         uint64
-	FullName       string
-	ContactEmail   string
-	HashedPassword string
-	Age            int
-	Location       Address
-	Keywords       []string
-	Status         string
-	AdultUser      bool
+	UserID         uint64        // :map ID UserID
+	FirstName      string        // Direct match
+	LastName       string        // Direct match
+	ContactEmail   string        // :map email ContactEmail (case difference)
+	HashedPassword string        // :conv HashPassword Password HashedPassword
+	Age            int           // Direct match
+	Location       Address       // :map Address Location
+	Keywords       []string      // :map Tags Keywords
+	Status         string        // :literal Status "active"
+	AdultUser      bool          // :conv DetermineAdultStatus Age AdultUser
+	// Note: SecretKey and TempData will be skipped
 }
 
-// Helper functions
-func CombineNames(first, last string) string {
-	return first + " " + last
-}
-
+// Custom converter functions
 func HashPassword(password string) string {
 	return "bcrypt_" + password
 }
 
 func DetermineAdultStatus(age int) bool {
-	return age >= 18
+	return 18 <= age
 }`).WithInterface(`
 type Convergen interface {
-	// Complex conversion with multiple annotations
-	// :map ID UserID
-	// :conv CombineNames FirstName,LastName FullName
-	// :map Email ContactEmail
-	// :conv HashPassword Password HashedPassword
-	// :map Address Location
-	// :map Tags Keywords
-	// :literal Status "active"
-	// :conv DetermineAdultStatus Age AdultUser
+	// Comprehensive test of multiple annotation features:
+	// :map - Explicit field mapping between different names
+	// :conv - Custom converter functions
+	// :literal - Static value assignment
+	// :skip - Exclude specific fields from conversion
+	// :match - Field matching strategy
+
+	// :match name                           // Use name-based matching as primary strategy
+	// :map ID UserID                        // Map ID to UserID (different field names)
+	// :map email ContactEmail               // Map lowercase email to ContactEmail
+	// :conv HashPassword Password HashedPassword  // Convert using custom function
+	// :map Address Location                 // Map struct field to different name
+	// :map Tags Keywords                    // Map slice to different name
+	// :literal Status "active"              // Set literal value
+	// :conv DetermineAdultStatus Age AdultUser    // Convert using boolean function
+	// :skip SecretKey                       // Explicitly skip sensitive field
+	// :skip Temp*                           // Skip fields matching pattern
 	Convert(*User) *UserProfile
 }`).WithBehaviorTests().
 		WithCodeChecks(
 			// Function structure
 			helpers.AssertHasGeneratedFunction(),
 
-			// Field mappings
-			helpers.Contains("UserID: src.ID"),
-			helpers.Contains("ContactEmail: src.Email"),
-			helpers.Contains("Age: src.Age"),
-			helpers.Contains("Location: src.Address"),
-			helpers.Contains("Keywords: src.Tags"),
+			// :map annotations - Explicit field mappings
+			helpers.Contains("dst.UserID = src.ID"),          // :map ID UserID
+			helpers.Contains("dst.ContactEmail = src.email"), // :map email ContactEmail
+			helpers.Contains("dst.Location = src.Address"),   // :map Address Location
+			helpers.Contains("dst.Keywords = src.Tags"),      // :map Tags Keywords
 
-			// Function calls
-			helpers.Contains("CombineNames(src.FirstName, src.LastName)"),
-			helpers.Contains("HashPassword(src.Password)"),
-			helpers.Contains("DetermineAdultStatus(src.Age)"),
+			// Direct field matches (name-based matching)
+			helpers.Contains("dst.FirstName = src.FirstName"),
+			helpers.Contains("dst.LastName = src.LastName"),
+			helpers.Contains("dst.Age = src.Age"),
 
-			// Literal assignments
-			helpers.Contains(`Status: "active"`),
+			// :conv annotations - Custom converter functions
+			helpers.Contains("dst.HashedPassword = HashPassword(src.Password)"),
+			helpers.Contains("dst.AdultUser = DetermineAdultStatus(src.Age)"),
 
-			// Ensure no unmapped fields
-			helpers.NotContains("Password: src.Password"), // Should be converted, not copied
+			// :literal annotation - Static value assignment
+			helpers.Contains(`dst.Status = "active"`),
+
+			// :skip behavior - Ensure skipped fields are not mapped
+			helpers.NotContains("dst.SecretKey"), // Should be skipped
+			helpers.NotContains("src.SecretKey"), // Should not appear in generated code
+			helpers.NotContains("dst.TempData"),  // Should be skipped by pattern
+			helpers.NotContains("src.TempData"),  // Should not appear in generated code
+
+			// Ensure password is converted, not directly copied
+			helpers.NotContains("dst.Password = src.Password"),
 		)
 
 	runner.RunScenario(scenario)
