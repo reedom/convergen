@@ -150,25 +150,32 @@ type EmptyModel struct {}`).
 		// Nested struct test
 		helpers.NewInlineScenario(
 			"NestedStruct",
-			"Test conversion with nested structs",
+			"Test conversion with nested structs that require field mapping",
 		).WithTypes(`
-type Address struct {
+type SourceAddress struct {
+	Street string
+	City   string
+}
+
+type DestAddress struct {
 	Street string
 	City   string
 }
 
 type User struct {
 	Name    string
-	Address Address
+	Address SourceAddress
 }
 
 type UserModel struct {
 	Name    string
-	Address Address
+	Address DestAddress
 }`).WithInterface(helpers.SimpleConverter("Convert(*User) *UserModel")).
 			WithBehaviorTests().
 			WithCodeChecks(
-				helpers.Contains("Address: src.Address"),
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("dst.Address.Street = src.Address.Street"),
+				helpers.Contains("dst.Address.City = src.Address.City"),
 				helpers.CompilesSuccessfully(),
 			),
 	}
