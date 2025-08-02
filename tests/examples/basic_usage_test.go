@@ -129,41 +129,53 @@ type Convergen interface {
 }
 
 // Example: Complex type structures
-// This demonstrates testing with complex nested types
+// This demonstrates testing with complex nested types that require actual field-by-field conversion.
+// By using different type names (SourceProfile vs DestinationProfile), we force Convergen to
+// generate nested field mapping logic instead of direct assignment.
 func TestExampleComplexTypes(t *testing.T) {
 	runner := helpers.NewInlineScenarioRunner(t)
 	defer runner.Cleanup()
 
 	scenario := helpers.NewInlineScenario(
 		"NestedStructConversion",
-		"Test conversion of nested struct hierarchies",
+		"Test conversion of nested struct hierarchies with field mapping",
 	).WithTypes(`
-type Address struct {
-	Street string
-	City   string
-	Country string
+// Source types
+type SourceProfile struct {
+	FirstName string
+	LastName  string
+	Email     string
 }
 
-type User struct {
-	ID      uint64
-	Name    string
-	Address Address
-	Tags    []string
+type SourceUser struct {
+	ID       uint64
+	Profile  SourceProfile
+	Tags     []string
 }
 
-type UserModel struct {
-	ID      uint64
-	Name    string
-	Address Address
-	Tags    []string
+// Destination types (different names to force field mapping)
+type DestinationProfile struct {
+	FirstName string
+	LastName  string
+	Email     string
+}
+
+type DestinationUser struct {
+	ID       uint64
+	Profile  DestinationProfile
+	Tags     []string
 }`).WithInterface(`
 type Convergen interface {
-	Convert(*User) *UserModel
+	Convert(*SourceUser) *DestinationUser
 }`).WithBehaviorTests().
 		WithCodeChecks(
 			helpers.AssertHasGeneratedFunction(),
-			helpers.Contains("Address: src.Address"),
-			helpers.Contains("Tags: src.Tags"),
+			// Should generate nested struct field mappings (assignment style)
+			helpers.Contains("dst.Profile.FirstName = src.Profile.FirstName"),
+			helpers.Contains("dst.Profile.LastName = src.Profile.LastName"),
+			helpers.Contains("dst.Profile.Email = src.Profile.Email"),
+			// Should handle slice properly
+			helpers.Contains("copy(dst.Tags, src.Tags)"),
 		)
 
 	runner.RunScenario(scenario)
