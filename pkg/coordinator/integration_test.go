@@ -484,7 +484,7 @@ func TestCoordinatorShutdownIntegration(t *testing.T) {
 
 func createIntegrationTestConfig() *Config {
 	return &Config{
-		ParserConfig: &parser.ParserConfig{
+		ParserConfig: &parser.Config{
 			BuildTag:              "convergen",
 			MaxConcurrentWorkers:  4,
 			TypeResolutionTimeout: 30 * time.Second,

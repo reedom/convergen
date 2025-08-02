@@ -46,7 +46,7 @@ func ExampleNewParser() {
 // ExampleNewParserWithConfig demonstrates advanced parser configuration.
 func ExampleNewParserWithConfig() {
 	// Create custom parser configuration for high-performance scenarios
-	config := &parser.ParserConfig{
+	config := &parser.Config{
 		EnableConcurrentLoading: true,
 		EnableMethodConcurrency: true,
 		MaxConcurrentWorkers:    8,
@@ -109,7 +109,7 @@ func ExampleParser_basicWorkflow() {
 // ExampleParser_advancedConfiguration shows advanced configuration options.
 func ExampleParser_advancedConfiguration() {
 	// Configure for a large project with complex type hierarchies
-	config := &parser.ParserConfig{
+	config := &parser.Config{
 		EnableConcurrentLoading: true,             // Enable parallel package loading
 		EnableMethodConcurrency: true,             // Enable parallel method processing
 		MaxConcurrentWorkers:    16,               // High worker count for large projects
@@ -173,7 +173,7 @@ func ExampleParser_errorHandling() {
 // ExampleParser_performanceOptimization shows performance optimization techniques.
 func ExampleParser_performanceOptimization() {
 	// Configuration optimized for performance
-	config := &parser.ParserConfig{
+	config := &parser.Config{
 		EnableConcurrentLoading: true,             // Enable concurrency for I/O bound operations
 		EnableMethodConcurrency: true,             // Enable parallel method processing
 		MaxConcurrentWorkers:    8,                // Optimal for most systems
@@ -201,7 +201,7 @@ func ExampleParser_performanceOptimization() {
 // ExampleParser_memoryOptimization demonstrates memory-conscious configuration.
 func ExampleParser_memoryOptimization() {
 	// Configuration optimized for low memory usage
-	config := &parser.ParserConfig{
+	config := &parser.Config{
 		EnableConcurrentLoading: false,            // Disable concurrency to save memory
 		EnableMethodConcurrency: false,            // Process sequentially
 		MaxConcurrentWorkers:    1,                // Single worker

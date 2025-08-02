@@ -64,10 +64,10 @@ func (s ComponentStatus) String() string {
 // Config defines configuration for the coordinator.
 type Config struct {
 	// Component configurations
-	ParserConfig   *parser.ParserConfig `json:"parser_config,omitempty"`
-	PlannerConfig  *planner.Config      `json:"planner_config,omitempty"`
-	ExecutorConfig *executor.Config     `json:"executor_config,omitempty"`
-	EmitterConfig  *emitter.Config      `json:"emitter_config,omitempty"`
+	ParserConfig   *parser.Config   `json:"parser_config,omitempty"`
+	PlannerConfig  *planner.Config  `json:"planner_config,omitempty"`
+	ExecutorConfig *executor.Config `json:"executor_config,omitempty"`
+	EmitterConfig  *emitter.Config  `json:"emitter_config,omitempty"`
 
 	// Coordinator-specific settings
 	MaxConcurrency   int           `json:"max_concurrency"`
@@ -97,7 +97,7 @@ type Config struct {
 // DefaultConfig returns a sensible default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		ParserConfig: &parser.ParserConfig{
+		ParserConfig: &parser.Config{
 			BuildTag:              "convergen",
 			MaxConcurrentWorkers:  4,
 			TypeResolutionTimeout: 30 * time.Second,

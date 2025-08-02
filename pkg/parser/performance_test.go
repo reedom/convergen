@@ -80,7 +80,7 @@ func TestPackageLoader_CacheManagement(t *testing.T) {
 func TestConcurrentMethodProcessor_ProcessingMetrics(t *testing.T) {
 	// Create a mock parser (we'll need to adapt this based on actual Parser structure)
 	parser := &Parser{
-		config: &ParserConfig{
+		config: &Config{
 			MaxConcurrentWorkers:  2,
 			TypeResolutionTimeout: 5 * time.Second,
 		},
@@ -115,7 +115,7 @@ func TestParserConfig_DefaultValues(t *testing.T) {
 }
 
 func TestParserConfig_CustomConfig(t *testing.T) {
-	config := &ParserConfig{
+	config := &Config{
 		MaxConcurrentWorkers:    8,
 		TypeResolutionTimeout:   60 * time.Second,
 		EnableConcurrentLoading: true,
@@ -137,7 +137,7 @@ func TestParserConfig_CustomConfig(t *testing.T) {
 }
 
 func TestParserConfig_DisabledConcurrency(t *testing.T) {
-	config := &ParserConfig{
+	config := &Config{
 		MaxConcurrentWorkers:    4,
 		TypeResolutionTimeout:   30 * time.Second,
 		EnableConcurrentLoading: false, // Disabled
@@ -185,7 +185,7 @@ func BenchmarkPackageLoader_Concurrent(b *testing.B) {
 
 func BenchmarkConcurrentMethodProcessor_Creation(b *testing.B) {
 	parser := &Parser{
-		config: &ParserConfig{
+		config: &Config{
 			MaxConcurrentWorkers:  4,
 			TypeResolutionTimeout: 5 * time.Second,
 		},

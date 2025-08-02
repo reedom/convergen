@@ -221,7 +221,7 @@ func TestASTParser_TrackProgress(t *testing.T) {
 	err := eventBus.Subscribe("progress.update", handler)
 	assert.NoError(t, err)
 
-	parser := NewASTParser(logger, eventBus, &ParserConfig{
+	parser := NewASTParser(logger, eventBus, &Config{
 		EnableProgress: true,
 	})
 	defer parser.Close()
@@ -303,7 +303,7 @@ func TestASTParser_TrackProgress_ContextCancellation(t *testing.T) {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	parser := NewASTParser(logger, eventBus, &ParserConfig{
+	parser := NewASTParser(logger, eventBus, &Config{
 		EnableProgress: true,
 	})
 	defer parser.Close()
@@ -357,7 +357,7 @@ func TestASTParser_TrackProgress_AdaptiveFrequency(t *testing.T) {
 	err := eventBus.Subscribe("progress.update", handler)
 	assert.NoError(t, err)
 
-	parser := NewASTParser(logger, eventBus, &ParserConfig{
+	parser := NewASTParser(logger, eventBus, &Config{
 		EnableProgress: true,
 	})
 	defer parser.Close()

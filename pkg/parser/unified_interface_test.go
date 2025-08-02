@@ -134,7 +134,7 @@ func TestGetStrategyName(t *testing.T) {
 }
 
 func TestLegacyParser_Basic(t *testing.T) {
-	config := &ParserConfig{
+	config := &Config{
 		BuildTag:                "test",
 		MaxConcurrentWorkers:    2,
 		TypeResolutionTimeout:   5 * time.Second,
@@ -172,7 +172,7 @@ func TestLegacyParser_Basic(t *testing.T) {
 }
 
 func TestModernParser_Basic(t *testing.T) {
-	config := &ParserConfig{
+	config := &Config{
 		BuildTag:                "test",
 		MaxConcurrentWorkers:    4,
 		TypeResolutionTimeout:   5 * time.Second,

@@ -51,7 +51,7 @@ type Parser struct {
 	imports       util.ImportNames  // The import names used in the parsed file.
 	intfEntries   []*intfEntry      // The interface entries parsed from the file.
 	packageLoader *PackageLoader    // Concurrent package loader (optional)
-	config        *ParserConfig     // Parser configuration
+	config        *Config           // Parser configuration
 }
 
 // parserLoadMode is a packages.Load mode that loads types and syntax trees.
@@ -109,7 +109,7 @@ func NewParser(srcPath, dstPath string) (*Parser, error) {
 //	    TypeResolutionTimeout:   30 * time.Second,
 //	}
 //	parser, err := NewParserWithConfig("models.go", "models_gen.go", config)
-func NewParserWithConfig(srcPath, dstPath string, config *ParserConfig) (*Parser, error) {
+func NewParserWithConfig(srcPath, dstPath string, config *Config) (*Parser, error) {
 	validConfig := EnsureValidConfig(config)
 
 	// Use concurrent package loading if enabled
@@ -122,7 +122,7 @@ func NewParserWithConfig(srcPath, dstPath string, config *ParserConfig) (*Parser
 }
 
 // newParserWithConcurrentLoading creates parser using concurrent package loading.
-func newParserWithConcurrentLoading(srcPath, dstPath string, config *ParserConfig) (*Parser, error) {
+func newParserWithConcurrentLoading(srcPath, dstPath string, config *Config) (*Parser, error) {
 	// Create concurrent package loader
 	loader := NewPackageLoader(config.MaxConcurrentWorkers, config.TypeResolutionTimeout)
 
@@ -153,7 +153,7 @@ func newParserWithConcurrentLoading(srcPath, dstPath string, config *ParserConfi
 
 // newParserLegacy creates parser using legacy synchronous loading.
 // This function coordinates the legacy parsing workflow by delegating to specialized functions.
-func newParserLegacy(srcPath, dstPath string, config *ParserConfig) (*Parser, error) {
+func newParserLegacy(srcPath, dstPath string, config *Config) (*Parser, error) {
 	// Prepare file statistics for selective parsing
 	srcStat, dstStat, err := getFileStatistics(srcPath, dstPath)
 	if err != nil {
@@ -262,7 +262,7 @@ func loadPackageWithLegacyParsing(cfg *packages.Config, srcPath string, parseCon
 
 // buildParserFromLegacyLoad constructs a Parser instance from legacy loading results.
 // This function centralizes the Parser struct initialization logic.
-func buildParserFromLegacyLoad(fileSet *token.FileSet, sourceFile *ast.File, pkg *packages.Package, config *ParserConfig) *Parser {
+func buildParserFromLegacyLoad(fileSet *token.FileSet, sourceFile *ast.File, pkg *packages.Package, config *Config) *Parser {
 	return &Parser{
 		srcPath: fileSet.Position(sourceFile.Pos()).Filename,
 		fset:    fileSet,

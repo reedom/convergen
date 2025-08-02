@@ -3,11 +3,11 @@ package parser
 import "time"
 
 // ConfigOption defines a functional option for parser configuration.
-type ConfigOption func(*ParserConfig)
+type ConfigOption func(*Config)
 
 // NewDefaultParserConfig creates a default parser configuration.
-func NewDefaultParserConfig() *ParserConfig {
-	return &ParserConfig{
+func NewDefaultParserConfig() *Config {
+	return &Config{
 		BuildTag:                "convergen",
 		MaxConcurrentWorkers:    4,
 		TypeResolutionTimeout:   30 * time.Second,
@@ -19,8 +19,8 @@ func NewDefaultParserConfig() *ParserConfig {
 }
 
 // NewTestParserConfig creates a configuration optimized for testing.
-func NewTestParserConfig() *ParserConfig {
-	return &ParserConfig{
+func NewTestParserConfig() *Config {
+	return &Config{
 		BuildTag:                "convergen",
 		MaxConcurrentWorkers:    2,
 		TypeResolutionTimeout:   5 * time.Second,
@@ -32,7 +32,7 @@ func NewTestParserConfig() *ParserConfig {
 }
 
 // NewConcurrentParserConfig creates a configuration with concurrency enabled.
-func NewConcurrentParserConfig() *ParserConfig {
+func NewConcurrentParserConfig() *Config {
 	config := NewDefaultParserConfig()
 	config.EnableConcurrentLoading = true
 	config.EnableMethodConcurrency = true
@@ -41,7 +41,7 @@ func NewConcurrentParserConfig() *ParserConfig {
 }
 
 // NewParserConfigWithOptions creates a parser configuration with functional options.
-func NewParserConfigWithOptions(options ...ConfigOption) *ParserConfig {
+func NewParserConfigWithOptions(options ...ConfigOption) *Config {
 	config := NewDefaultParserConfig()
 	for _, option := range options {
 		option(config)
@@ -54,63 +54,63 @@ func NewParserConfigWithOptions(options ...ConfigOption) *ParserConfig {
 
 // WithBuildTag sets the build tag.
 func WithBuildTag(tag string) ConfigOption {
-	return func(config *ParserConfig) {
+	return func(config *Config) {
 		config.BuildTag = tag
 	}
 }
 
 // WithMaxWorkers sets the maximum concurrent workers.
 func WithMaxWorkers(workers int) ConfigOption {
-	return func(config *ParserConfig) {
+	return func(config *Config) {
 		config.MaxConcurrentWorkers = workers
 	}
 }
 
 // WithTimeout sets the type resolution timeout.
 func WithTimeout(timeout time.Duration) ConfigOption {
-	return func(config *ParserConfig) {
+	return func(config *Config) {
 		config.TypeResolutionTimeout = timeout
 	}
 }
 
 // WithCacheSize sets the cache size.
 func WithCacheSize(size int) ConfigOption {
-	return func(config *ParserConfig) {
+	return func(config *Config) {
 		config.CacheSize = size
 	}
 }
 
 // WithProgress enables or disables progress reporting.
 func WithProgress(enabled bool) ConfigOption {
-	return func(config *ParserConfig) {
+	return func(config *Config) {
 		config.EnableProgress = enabled
 	}
 }
 
 // WithConcurrentLoading enables or disables concurrent loading.
 func WithConcurrentLoading(enabled bool) ConfigOption {
-	return func(config *ParserConfig) {
+	return func(config *Config) {
 		config.EnableConcurrentLoading = enabled
 	}
 }
 
 // WithMethodConcurrency enables or disables method concurrency.
 func WithMethodConcurrency(enabled bool) ConfigOption {
-	return func(config *ParserConfig) {
+	return func(config *Config) {
 		config.EnableMethodConcurrency = enabled
 	}
 }
 
 // WithConcurrency enables both concurrent loading and method concurrency.
 func WithConcurrency(enabled bool) ConfigOption {
-	return func(config *ParserConfig) {
+	return func(config *Config) {
 		config.EnableConcurrentLoading = enabled
 		config.EnableMethodConcurrency = enabled
 	}
 }
 
 // EnsureValidConfig ensures the configuration has valid values.
-func EnsureValidConfig(config *ParserConfig) *ParserConfig {
+func EnsureValidConfig(config *Config) *Config {
 	if config == nil {
 		return NewDefaultParserConfig()
 	}
@@ -136,12 +136,12 @@ func EnsureValidConfig(config *ParserConfig) *ParserConfig {
 }
 
 // CloneConfig creates a deep copy of the parser configuration.
-func CloneConfig(config *ParserConfig) *ParserConfig {
+func CloneConfig(config *Config) *Config {
 	if config == nil {
 		return NewDefaultParserConfig()
 	}
 
-	return &ParserConfig{
+	return &Config{
 		BuildTag:                config.BuildTag,
 		MaxConcurrentWorkers:    config.MaxConcurrentWorkers,
 		TypeResolutionTimeout:   config.TypeResolutionTimeout,

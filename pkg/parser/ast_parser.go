@@ -32,15 +32,15 @@ type ASTParser struct {
 	logger   *zap.Logger
 	eventBus events.EventBus
 	cache    *TypeCache
-	config   *ParserConfig
+	config   *Config
 	fileSet  *token.FileSet
 
 	// Concurrent processing
 	typeResolverPool *TypeResolverPool
 }
 
-// ParserConfig configures the parser behavior.
-type ParserConfig struct {
+// Config configures the parser behavior.
+type Config struct {
 	BuildTag                string
 	MaxConcurrentWorkers    int
 	TypeResolutionTimeout   time.Duration
@@ -51,7 +51,7 @@ type ParserConfig struct {
 }
 
 // NewASTParser creates a new event-driven AST parser.
-func NewASTParser(logger *zap.Logger, eventBus events.EventBus, config *ParserConfig) *ASTParser {
+func NewASTParser(logger *zap.Logger, eventBus events.EventBus, config *Config) *ASTParser {
 	validConfig := EnsureValidConfig(config)
 
 	cache := NewTypeCache(validConfig.CacheSize)

@@ -267,7 +267,7 @@ func TestComponentStatusString(t *testing.T) {
 
 func createTestConfig() *Config {
 	return &Config{
-		ParserConfig: &parser.ParserConfig{
+		ParserConfig: &parser.Config{
 			BuildTag:              "convergen",
 			MaxConcurrentWorkers:  4,
 			TypeResolutionTimeout: 30 * time.Second,

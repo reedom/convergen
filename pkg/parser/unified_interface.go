@@ -107,10 +107,10 @@ type ConvergenParser interface {
 	ParseSourceFiles(ctx context.Context, files []SourceFile) ([]*ParseResult, error)
 
 	// SetConfig updates the parser configuration
-	SetConfig(config *ParserConfig) error
+	SetConfig(config *Config) error
 
 	// GetConfig returns the current parser configuration
-	GetConfig() *ParserConfig
+	GetConfig() *Config
 
 	// GetMetrics returns current parsing metrics
 	GetMetrics() *ParseMetrics
@@ -136,11 +136,11 @@ type SourceFile struct {
 
 // ParserFactory creates parser instances based on strategy.
 type ParserFactory struct {
-	defaultConfig *ParserConfig
+	defaultConfig *Config
 }
 
 // NewParserFactory creates a new parser factory.
-func NewParserFactory(defaultConfig *ParserConfig) *ParserFactory {
+func NewParserFactory(defaultConfig *Config) *ParserFactory {
 	return &ParserFactory{
 		defaultConfig: EnsureValidConfig(defaultConfig),
 	}
@@ -161,7 +161,7 @@ func (pf *ParserFactory) CreateParser(strategy ParseStrategy) (ConvergenParser, 
 }
 
 // CreateParserWithConfig creates a parser with custom configuration.
-func (pf *ParserFactory) CreateParserWithConfig(strategy ParseStrategy, config *ParserConfig) (ConvergenParser, error) {
+func (pf *ParserFactory) CreateParserWithConfig(strategy ParseStrategy, config *Config) (ConvergenParser, error) {
 	switch strategy {
 	case StrategyLegacy:
 		return NewLegacyParser(config), nil
@@ -227,14 +227,14 @@ func (pw *ParseWarning) Error() string {
 
 // LegacyParser wraps the existing Parser for backward compatibility.
 type LegacyParser struct {
-	config   *ParserConfig
+	config   *Config
 	metrics  *ParseMetrics
 	parser   *Parser
 	strategy ParseStrategy
 }
 
 // NewLegacyParser creates a new legacy parser instance.
-func NewLegacyParser(config *ParserConfig) *LegacyParser {
+func NewLegacyParser(config *Config) *LegacyParser {
 	validConfig := EnsureValidConfig(config)
 	// Legacy parser should never have concurrency enabled
 	validConfig.EnableConcurrentLoading = false
@@ -331,7 +331,7 @@ func (lp *LegacyParser) ParseSourceFiles(ctx context.Context, files []SourceFile
 }
 
 // SetConfig implements ConvergenParser interface.
-func (lp *LegacyParser) SetConfig(config *ParserConfig) error {
+func (lp *LegacyParser) SetConfig(config *Config) error {
 	if config == nil {
 		return ErrConfigCannotBeNil
 	}
@@ -342,7 +342,7 @@ func (lp *LegacyParser) SetConfig(config *ParserConfig) error {
 }
 
 // GetConfig implements ConvergenParser interface.
-func (lp *LegacyParser) GetConfig() *ParserConfig {
+func (lp *LegacyParser) GetConfig() *Config {
 	return lp.config
 }
 
@@ -387,7 +387,7 @@ func (lp *LegacyParser) updateMetrics(interfaceCount, methodCount int, processin
 
 // ModernParser uses concurrent processing and enhanced features.
 type ModernParser struct {
-	config        *ParserConfig
+	config        *Config
 	metrics       *ParseMetrics
 	parser        *Parser
 	packageLoader *PackageLoader
@@ -395,7 +395,7 @@ type ModernParser struct {
 }
 
 // NewModernParser creates a new modern parser instance with concurrent capabilities.
-func NewModernParser(config *ParserConfig) *ModernParser {
+func NewModernParser(config *Config) *ModernParser {
 	validConfig := EnsureValidConfig(config)
 	// Modern parser should always have concurrency enabled
 	validConfig.EnableConcurrentLoading = true
@@ -541,7 +541,7 @@ func (mp *ModernParser) parseSourceFilesConcurrent(ctx context.Context, files []
 }
 
 // SetConfig implements ConvergenParser interface.
-func (mp *ModernParser) SetConfig(config *ParserConfig) error {
+func (mp *ModernParser) SetConfig(config *Config) error {
 	if config == nil {
 		return ErrConfigCannotBeNil
 	}
@@ -559,7 +559,7 @@ func (mp *ModernParser) SetConfig(config *ParserConfig) error {
 }
 
 // GetConfig implements ConvergenParser interface.
-func (mp *ModernParser) GetConfig() *ParserConfig {
+func (mp *ModernParser) GetConfig() *Config {
 	return mp.config
 }
 
@@ -640,7 +640,7 @@ func (mp *ModernParser) updateMetrics(interfaceCount, methodCount int, processin
 
 // AdaptiveParser dynamically chooses between legacy and modern strategies.
 type AdaptiveParser struct {
-	config           *ParserConfig
+	config           *Config
 	metrics          *ParseMetrics
 	currentParser    ConvergenParser
 	strategy         ParseStrategy
@@ -648,7 +648,7 @@ type AdaptiveParser struct {
 }
 
 // NewAdaptiveParser creates a new adaptive parser instance.
-func NewAdaptiveParser(config *ParserConfig) *AdaptiveParser {
+func NewAdaptiveParser(config *Config) *AdaptiveParser {
 	validConfig := EnsureValidConfig(config)
 	// Adaptive parser starts with concurrency disabled and enables it as needed
 	validConfig.EnableConcurrentLoading = false
@@ -721,7 +721,7 @@ func (ap *AdaptiveParser) ParseSourceFiles(ctx context.Context, files []SourceFi
 }
 
 // SetConfig implements ConvergenParser interface.
-func (ap *AdaptiveParser) SetConfig(config *ParserConfig) error {
+func (ap *AdaptiveParser) SetConfig(config *Config) error {
 	if config == nil {
 		return ErrConfigCannotBeNil
 	}
@@ -739,7 +739,7 @@ func (ap *AdaptiveParser) SetConfig(config *ParserConfig) error {
 }
 
 // GetConfig implements ConvergenParser interface.
-func (ap *AdaptiveParser) GetConfig() *ParserConfig {
+func (ap *AdaptiveParser) GetConfig() *Config {
 	return ap.config
 }
 

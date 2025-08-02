@@ -146,7 +146,7 @@ type RegularInterface interface {
 			err = eventBus.Subscribe("parse.completed", handler)
 			require.NoError(t, err)
 
-			parser := NewASTParser(logger, eventBus, &ParserConfig{
+			parser := NewASTParser(logger, eventBus, &Config{
 				BuildTag:              "convergen",
 				MaxConcurrentWorkers:  2,
 				TypeResolutionTimeout: 5 * time.Second,
@@ -216,7 +216,7 @@ type Dest struct {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	parser := NewASTParser(logger, eventBus, &ParserConfig{
+	parser := NewASTParser(logger, eventBus, &Config{
 		BuildTag:              "convergen",
 		MaxConcurrentWorkers:  4,
 		TypeResolutionTimeout: 5 * time.Second,
@@ -287,7 +287,7 @@ type ComplexType struct {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	parser := NewASTParser(logger, eventBus, &ParserConfig{
+	parser := NewASTParser(logger, eventBus, &Config{
 		BuildTag:              "convergen",
 		MaxConcurrentWorkers:  2,
 		TypeResolutionTimeout: 5 * time.Second,
@@ -498,7 +498,7 @@ type Dest struct {
 	eventBus := events.NewInMemoryEventBus(logger)
 	defer eventBus.Close()
 
-	parser := NewASTParser(logger, eventBus, &ParserConfig{
+	parser := NewASTParser(logger, eventBus, &Config{
 		BuildTag:              "convergen",
 		MaxConcurrentWorkers:  4,
 		TypeResolutionTimeout: 5 * time.Second,

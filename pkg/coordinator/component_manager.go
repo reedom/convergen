@@ -309,10 +309,10 @@ func (c *ConcreteComponentManager) UpdateComponentStatus(name string, status Com
 func (c *ConcreteComponentManager) registerDefaultFactories() {
 	// Parser factory
 	c.factories[ComponentParser] = func(config interface{}) (PipelineComponent, error) {
-		parserConfig, ok := config.(*parser.ParserConfig)
+		parserConfig, ok := config.(*parser.Config)
 		if !ok {
 			// Create default parser config since DefaultConfig doesn't exist
-			parserConfig = &parser.ParserConfig{
+			parserConfig = &parser.Config{
 				BuildTag:              "convergen",
 				MaxConcurrentWorkers:  4,
 				TypeResolutionTimeout: 30 * time.Second,
@@ -376,7 +376,7 @@ func (c *ConcreteComponentManager) registerDefaultFactories() {
 
 // ParserAdapter adapts parser.Parser to PipelineComponent.
 type ParserAdapter struct {
-	config *parser.ParserConfig
+	config *parser.Config
 	status ComponentStatus
 }
 
