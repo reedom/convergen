@@ -118,7 +118,7 @@ func TestBehaviorDrivenScenarios(t *testing.T) {
 		helpers.MapTemplatedArgumentsScenario().
 			WithBehaviorTests().
 			WithCodeChecks(
-				helpers.Contains("additionalInfo"), // Parameter in method signature
+				helpers.Contains("additionalInfo"),                 // Parameter in method signature
 				helpers.Contains("// no match: dst.FormattedInfo"), // Shows annotation was parsed but feature not implemented
 				helpers.CompilesSuccessfully(),
 			),
@@ -165,20 +165,20 @@ func TestAnnotationCoverage(t *testing.T) {
 
 	// Test each annotation individually for comprehensive coverage
 	annotationTests := map[string]helpers.TestScenario{
-		"match_name":           helpers.MatchAnnotationScenario("name").WithBehaviorTests(),
-		"match_none":           helpers.MatchAnnotationScenario("none").WithBehaviorTests(),
-		"style_return":         helpers.StyleAnnotationScenario("return").WithBehaviorTests(),
-		"style_arg":            helpers.StyleAnnotationScenario("arg").WithBehaviorTests(),
-		"conv_custom":          helpers.ConvertAnnotationScenario("HashPassword", "Password", "HashedPassword").WithBehaviorTests(),
-		"literal_string":       helpers.LiteralAnnotationScenario("Status", `"active"`).WithBehaviorTests(),
-		"skip_field":           helpers.SkipAnnotationScenario("Password").WithBehaviorTests(),
-		"typecast":             helpers.TypecastAnnotationScenario().WithBehaviorTests(),
-		"stringer":             helpers.StringerAnnotationScenario().WithBehaviorTests(),
-		"recv_var":             helpers.RecvAnnotationScenario("c").WithBehaviorTests(),
-		"map_basic":            helpers.MapAnnotationScenario("FirstName", "FullName").WithBehaviorTests(),
-		"map_templated":        helpers.MapTemplatedArgumentsScenario().WithBehaviorTests().WithCodeChecks(helpers.Contains("additionalInfo")),
-		"map_method_chain":     helpers.MapMethodChainScenario().WithBehaviorTests(),
-		"map_nested_fields":    helpers.MapNestedFieldScenario().WithBehaviorTests(),
+		"match_name":        helpers.MatchAnnotationScenario("name").WithBehaviorTests(),
+		"match_none":        helpers.MatchAnnotationScenario("none").WithBehaviorTests(),
+		"style_return":      helpers.StyleAnnotationScenario("return").WithBehaviorTests(),
+		"style_arg":         helpers.StyleAnnotationScenario("arg").WithBehaviorTests(),
+		"conv_custom":       helpers.ConvertAnnotationScenario("HashPassword", "Password", "HashedPassword").WithBehaviorTests(),
+		"literal_string":    helpers.LiteralAnnotationScenario("Status", `"active"`).WithBehaviorTests(),
+		"skip_field":        helpers.SkipAnnotationScenario("Password").WithBehaviorTests(),
+		"typecast":          helpers.TypecastAnnotationScenario().WithBehaviorTests(),
+		"stringer":          helpers.StringerAnnotationScenario().WithBehaviorTests(),
+		"recv_var":          helpers.RecvAnnotationScenario("c").WithBehaviorTests(),
+		"map_basic":         helpers.MapAnnotationScenario("FirstName", "FullName").WithBehaviorTests(),
+		"map_templated":     helpers.MapTemplatedArgumentsScenario().WithBehaviorTests().WithCodeChecks(helpers.Contains("additionalInfo")),
+		"map_method_chain":  helpers.MapMethodChainScenario().WithBehaviorTests(),
+		"map_nested_fields": helpers.MapNestedFieldScenario().WithBehaviorTests(),
 	}
 
 	for name, scenario := range annotationTests {
