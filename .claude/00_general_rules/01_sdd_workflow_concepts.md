@@ -174,8 +174,8 @@ By following this structured process, we ensure that all work is deliberate, wel
 ❌ **Never Include**: Requirements definitions, implementation steps, task schedules
 
 **tasks.md**:
-✅ **Include**: TASK-001 style steps, time estimates, "Done When" criteria, implementation order  
-❌ **Never Include**: Problem analysis, requirements, architectural explanations
+✅ **Include**: TASK-001 style numbered tasks, requirement codes (FR-001, NFR-002), checkbox progress tracking `[ ]`  
+❌ **Never Include**: Time estimates, problem analysis, requirements definitions, architectural explanations, verbose descriptions, methodology discussions
 
 ### Common Anti-Patterns to Avoid
 

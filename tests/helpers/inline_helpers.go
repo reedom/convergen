@@ -191,3 +191,164 @@ type Convergen interface {
 	Convert(*User) *UserModel
 }`, pattern))
 }
+
+// Error Scenario Builders
+
+// InvalidSyntaxScenario creates a scenario with invalid Go syntax
+func InvalidSyntaxScenario() InlineScenario {
+	return NewInlineScenario(
+		"InvalidSyntax", 
+		"Test error handling for invalid Go syntax",
+	).WithTypes(`
+type User struct {
+	Name string
+	Age  int
+}
+
+// Invalid interface syntax - missing method body
+type UserModel interface {
+	GetName() string
+	InvalidMethod(
+}
+
+type UserData struct {
+	Name string
+	Age  int
+}`).WithInterface(`
+type Convergen interface {
+	Convert(*User) *UserData
+}`)
+}
+
+// InvalidAnnotationScenario creates a scenario with invalid annotation
+func InvalidAnnotationScenario() InlineScenario {
+	return NewInlineScenario(
+		"InvalidAnnotation",
+		"Test error handling for invalid annotation syntax",
+	).WithTypes(`
+type User struct {
+	Name string
+}
+
+type UserModel struct {
+	Name string
+}`).WithInterface(`
+type Convergen interface {
+	// :invalid_annotation_name
+	Convert(*User) *UserModel
+}`)
+}
+
+// TypeMismatchScenario creates a scenario with incompatible types
+func TypeMismatchScenario() InlineScenario {
+	return NewInlineScenario(
+		"TypeMismatch",
+		"Test error handling for incompatible type conversion",
+	).WithTypes(`
+type User struct {
+	ID string // String type
+}
+
+type UserModel struct {
+	ID int64 // Incompatible int64 type
+}`).WithInterface(`
+type Convergen interface {
+	Convert(*User) *UserModel
+}`)
+}
+
+// MissingConverterFunctionScenario creates a scenario with missing converter function
+func MissingConverterFunctionScenario() InlineScenario {
+	return NewInlineScenario(
+		"MissingConverter",
+		"Test error handling for missing converter function",
+	).WithTypes(`
+type User struct {
+	Password string
+}
+
+type UserModel struct {
+	HashedPassword string
+}`).WithInterface(`
+type Convergen interface {
+	// :conv NonExistentFunction Password HashedPassword
+	Convert(*User) *UserModel
+}`)
+}
+
+// InvalidMapAnnotationScenario creates a scenario with invalid :map annotation
+func InvalidMapAnnotationScenario() InlineScenario {
+	return NewInlineScenario(
+		"InvalidMapAnnotation",
+		"Test error handling for invalid :map annotation",
+	).WithTypes(`
+type User struct {
+	Name string
+}
+
+type UserModel struct {
+	Name string
+}`).WithInterface(`
+type Convergen interface {
+	// :map NonExistentField Name
+	Convert(*User) *UserModel
+}`)
+}
+
+// CircularDependencyScenario creates a scenario with circular type dependency
+func CircularDependencyScenario() InlineScenario {
+	return NewInlineScenario(
+		"CircularDependency",
+		"Test error handling for circular type dependencies",
+	).WithTypes(`
+type UserA struct {
+	Friend *UserB
+}
+
+type UserB struct {
+	Friend *UserA
+}
+
+type ModelA struct {
+	Friend *ModelB
+}
+
+type ModelB struct {
+	Friend *ModelA
+}`).WithInterface(`
+type Convergen interface {
+	ConvertA(*UserA) *ModelA
+	ConvertB(*UserB) *ModelB
+}`)
+}
+
+// EmptyInterfaceScenario creates a scenario with empty interface
+func EmptyInterfaceScenario() InlineScenario {
+	return NewInlineScenario(
+		"EmptyInterface",
+		"Test error handling for empty converter interface",
+	).WithTypes(`
+type User struct {
+	Name string
+}
+
+type UserModel struct {
+	Name string
+}`).WithInterface(`
+type Convergen interface {
+}`)
+}
+
+// InvalidReturnTypeScenario creates a scenario with invalid return type
+func InvalidReturnTypeScenario() InlineScenario {
+	return NewInlineScenario(
+		"InvalidReturnType",
+		"Test error handling for invalid return type in interface",
+	).WithTypes(`
+type User struct {
+	Name string
+}`).WithInterface(`
+type Convergen interface {
+	Convert(*User) NonExistentType
+}`)
+}

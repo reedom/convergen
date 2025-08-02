@@ -264,3 +264,50 @@ func AssertHasGeneratedFunction() CodeAssertion {
 func AssertFunction(funcName string) CodeAssertion {
 	return Contains(fmt.Sprintf("func %s", funcName))
 }
+
+// Error-specific assertion helpers
+
+// AssertErrorContains creates an assertion for error message validation
+func AssertErrorContains(pattern string) CodeAssertion {
+	return CodeAssertion{
+		Type:    AssertionContains,
+		Pattern: pattern,
+		Message: fmt.Sprintf("Expected error message to contain: %s", pattern),
+	}
+}
+
+// AssertErrorType creates an assertion for specific error types
+func AssertErrorType(errorType string) CodeAssertion {
+	return CodeAssertion{
+		Type:    AssertionContains,
+		Pattern: errorType,
+		Message: fmt.Sprintf("Expected error of type: %s", errorType),
+	}
+}
+
+// AssertParseError checks for parsing-related errors
+func AssertParseError() CodeAssertion {
+	return CodeAssertion{
+		Type:    AssertionRegex,
+		Pattern: `(parse|syntax|expected|unexpected)`,
+		Message: "Expected parse or syntax error",
+	}
+}
+
+// AssertTypeError checks for type-related errors
+func AssertTypeError() CodeAssertion {
+	return CodeAssertion{
+		Type:    AssertionRegex,
+		Pattern: `(type|assignment|mismatch|incompatible)`,
+		Message: "Expected type-related error",
+	}
+}
+
+// AssertAnnotationError checks for annotation-related errors
+func AssertAnnotationError() CodeAssertion {
+	return CodeAssertion{
+		Type:    AssertionRegex,
+		Pattern: `(annotation|invalid|unknown)`,
+		Message: "Expected annotation-related error",
+	}
+}

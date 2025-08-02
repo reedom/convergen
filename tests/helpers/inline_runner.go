@@ -56,14 +56,23 @@ func (isr *InlineScenarioRunner) RunScenario(scenario TestScenario) {
 		t.Helper()
 
 		// Generate the source file with inline code
-		sourceFile, err := isr.createSourceFile(scenario)
-		require.NoError(t, err, "Failed to create source file")
+		sourceFile, sourceErr := isr.createSourceFile(scenario)
+		
+		// Generate code using Convergen (only if source file creation succeeded)
+		var generatedCode string
+		var codeErr error
+		if sourceErr == nil {
+			generatedCode, codeErr = isr.generateCode(sourceFile)
+		}
 
-		// Generate code using Convergen
-		generatedCode, err := isr.generateCode(sourceFile)
+		// Determine the primary error (source creation error takes precedence)
+		primaryError := sourceErr
+		if primaryError == nil {
+			primaryError = codeErr
+		}
 
 		if scenario.ShouldSucceed {
-			require.NoError(t, err, "Expected successful code generation")
+			require.NoError(t, primaryError, "Expected successful code generation")
 			require.NotEmpty(t, generatedCode, "Expected non-empty generated code")
 
 			// Run code assertions
@@ -74,10 +83,10 @@ func (isr *InlineScenarioRunner) RunScenario(scenario TestScenario) {
 				isr.runBehaviorTests(t, scenario, sourceFile, generatedCode)
 			}
 		} else {
-			require.Error(t, err, "Expected error for scenario: %s", scenario.Name)
+			require.Error(t, primaryError, "Expected error for scenario: %s", scenario.Name)
 
 			if scenario.ExpectedError != "" {
-				assert.Contains(t, err.Error(), scenario.ExpectedError,
+				assert.Contains(t, primaryError.Error(), scenario.ExpectedError,
 					"Error message should contain expected text")
 			}
 		}

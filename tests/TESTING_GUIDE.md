@@ -1,0 +1,140 @@
+# Convergen Testing Guide
+
+Quick reference guide for using the Convergen behavior-driven testing framework.
+
+## Quick Start
+
+### 1. Basic Test Setup
+
+```go
+func TestMyConversion(t *testing.T) {
+    runner := helpers.NewInlineScenarioRunner(t)
+    defer runner.Cleanup()
+
+    scenario := helpers.NewInlineScenario("TestName", "Description").
+        WithTypes(`/* Go types */`).
+        WithInterface(`/* Converter interface */`).
+        WithBehaviorTests().
+        WithCodeChecks(/* assertions */)
+
+    runner.RunScenario(scenario)
+}
+```
+
+### 2. Using Built-in Scenarios
+
+```go
+scenarios := []helpers.TestScenario{
+    helpers.StyleAnnotationScenario("return").WithBehaviorTests(),
+    helpers.MatchAnnotationScenario("name").WithBehaviorTests(),
+    helpers.ConvertAnnotationScenario("HashFunc", "src", "dst").WithBehaviorTests(),
+}
+runner.RunScenarios(scenarios)
+```
+
+### 3. Error Testing
+
+```go
+scenario := helpers.MissingConverterFunctionScenario().
+    WithBehaviorTests().
+    ShouldFail("function not found")
+```
+
+## Common Commands
+
+```bash
+# Run all tests
+go test ./tests -v
+
+# Run specific test categories
+go test ./tests -run TestAnnotationCoverage -v
+go test ./tests -run TestErrorScenarios -v
+
+# Run examples
+go test ./tests/examples -v
+
+# Run with parallelism
+go test ./tests -parallel 4 -v
+```
+
+## Built-in Scenario Builders
+
+| Builder | Purpose | Example |
+|---------|---------|---------|
+| `StyleAnnotationScenario(style)` | Test `:style` annotations | `StyleAnnotationScenario("return")` |
+| `MatchAnnotationScenario(algorithm)` | Test `:match` annotations | `MatchAnnotationScenario("name")` |
+| `ConvertAnnotationScenario(func, src, dst)` | Test `:conv` annotations | `ConvertAnnotationScenario("Hash", "Password", "Hashed")` |
+| `LiteralAnnotationScenario(field, value)` | Test `:literal` annotations | `LiteralAnnotationScenario("Status", `"active"`)` |
+| `SkipAnnotationScenario(pattern)` | Test `:skip` annotations | `SkipAnnotationScenario("Password")` |
+
+## Error Scenario Builders
+
+| Builder | Purpose |
+|---------|---------|
+| `InvalidSyntaxScenario()` | Test syntax error handling |
+| `TypeMismatchScenario()` | Test type compatibility errors |
+| `MissingConverterFunctionScenario()` | Test missing converter functions |
+| `EmptyInterfaceScenario()` | Test empty converter interfaces |
+| `InvalidReturnTypeScenario()` | Test undefined return types |
+
+## Common Assertions
+
+| Assertion | Purpose | Example |
+|-----------|---------|---------|
+| `helpers.AssertHasGeneratedFunction()` | Verify function was generated | Required for all scenarios |
+| `helpers.Contains("pattern")` | Check for specific text | `Contains("src.Name")` |
+| `helpers.NotContains("pattern")` | Verify text absence | `NotContains("Password")` |
+| `helpers.MatchesRegex("regex")` | Pattern matching | `MatchesRegex(`func\\s+\\w+`)` |
+| `helpers.CompilesSuccessfully()` | Verify compilation | Basic syntax validation |
+
+## Framework Benefits
+
+- **Zero Maintenance**: No static fixture files to maintain
+- **Behavior Focus**: Tests actual functionality, not code format
+- **Comprehensive Coverage**: Easy to achieve 100% annotation coverage
+- **Error Testing**: Robust error condition validation
+- **Performance**: Efficient parallel execution
+- **Documentation**: Self-documenting test scenarios
+
+## Documentation Links
+
+- **Framework Overview**: [`tests/README.md`](./README.md)
+- **Contributor Guide**: [`tests/CONTRIBUTING.md`](./CONTRIBUTING.md)
+- **Examples**: [`tests/examples/`](./examples/)
+- **Project Integration**: [`CLAUDE.md`](../CLAUDE.md)
+
+## Getting Help
+
+1. **Check Examples**: Look at [`tests/examples/`](./examples/) for patterns
+2. **Read Documentation**: Review [`tests/README.md`](./README.md) for details
+3. **Review Tests**: Examine existing tests in [`behavior_test.go`](./behavior_test.go)
+4. **Ask Questions**: Create issues for framework questions
+
+## Migration from Legacy Tests
+
+The new framework replaces file comparison with behavior-driven testing:
+
+### Before (Legacy)
+```go
+expected := readFixtureFile("path/to/expected.go")
+actual := generateCode(input)
+assert.Equal(t, expected, actual)
+```
+
+### After (Behavior-Driven)
+```go
+scenario := helpers.NewInlineScenario("Test", "Description").
+    WithTypes(inlineTypes).
+    WithInterface(inlineInterface).
+    WithBehaviorTests()
+runner.RunScenario(scenario)
+```
+
+## Best Practices
+
+1. **Use `t.Parallel()`** for independent tests
+2. **Always defer `runner.Cleanup()`** for resource management
+3. **Use specific assertions** rather than generic patterns
+4. **Include error scenarios** for comprehensive coverage
+5. **Group related tests** using batch execution
+6. **Follow naming conventions** for clarity and organization

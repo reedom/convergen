@@ -52,9 +52,18 @@ versions become available that support Go 1.24+.
 - `go test ./pkg/package-name/...` - Test specific package (REQUIRED after modifications)
 - `go test -v ./pkg/package-name/...` - Run tests with verbose output for debugging
 - `go test -run TestSpecificTest ./pkg/package-name/...` - Run specific test by name
-- `go test github.com/reedom/convergen/v8/tests` - Run integration tests
+- `go test github.com/reedom/convergen/v8/tests` - Run behavior-driven integration tests
 - `go test github.com/reedom/convergen/v8/pkg/...` - Run all package tests
 - **Package-specific linting**: `golangci-lint run ./pkg/package-name/...`
+
+### Behavior-Driven Testing Framework
+- **New Testing Approach**: Replaced file comparison with behavior-driven testing
+- `go test ./tests -v` - Run comprehensive behavior-driven tests
+- `go test ./tests -run TestAnnotationCoverage -v` - Test annotation coverage
+- `go test ./tests -run TestErrorScenarios -v` - Test error conditions
+- `go test ./tests/examples -v` - Run framework examples
+- **Framework Benefits**: Zero maintenance overhead, tests actual functionality
+- **Documentation**: See `tests/README.md` and `tests/CONTRIBUTING.md`
 
 ## Current Module Information
 

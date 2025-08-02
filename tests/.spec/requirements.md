@@ -1,47 +1,55 @@
-# Requirements: Practical Scenario Testing Framework
+# Requirements: Behavior-Driven Scenario Testing Framework
 
 ## Project Overview
 
-**Vision**: Create a practical, table-driven scenario testing framework that improves upon the current `usecases_test.go` approach while maintaining simplicity and effectiveness.
+**Vision**: Create a behavior-driven scenario testing framework that tests actual Convergen functionality through inline code generation and runtime execution, eliminating the brittleness of file comparison testing.
 
-**Mission**: Replace the limitations of current testing with a structured, maintainable framework that provides better coverage, clearer test definitions, and improved error reporting.
+**Mission**: Replace file comparison limitations with a robust, maintainable framework that focuses on testing actual conversion behavior, provides comprehensive annotation coverage, and requires zero maintenance of static fixture files.
 
 ## Functional Requirements
 
-### FR-001: Enhanced Table-Driven Tests
+### FR-001: Inline Code Generation
 **Priority**: CRITICAL  
-The system SHALL provide structured scenario definitions using enhanced table-driven test patterns with clear input/output specifications.
+The system SHALL support inline definition of source types and converter interfaces directly within test scenarios, eliminating dependency on external fixture files.
 
-### FR-002: Annotation Coverage Validation  
+### FR-002: Runtime Behavior Testing
+**Priority**: CRITICAL  
+The system SHALL compile and execute generated conversion functions to test actual behavior with real input/output validation.
+
+### FR-003: Comprehensive Annotation Coverage
 **Priority**: HIGH  
-The system SHALL validate test coverage for all Convergen annotations with positive and negative test cases.
+The system SHALL provide focused test scenarios for all Convergen annotations (:style, :match, :conv, :literal, :skip, :getter, :stringer, :typecast, etc.) with both positive and negative test cases.
 
-### FR-003: Generated Code Assertions
+### FR-004: Generated Code Assertions
 **Priority**: HIGH  
-The system SHALL provide assertions for validating generated code content, compilation success, and correctness.
+The system SHALL provide flexible assertions for validating generated code patterns, function signatures, compilation success, and code quality.
 
-### FR-004: Error Scenario Testing
+### FR-005: Error Scenario Testing
 **Priority**: MEDIUM  
-The system SHALL support testing error conditions with clear error message validation.
+The system SHALL support comprehensive error condition testing with clear error message validation and proper failure handling.
 
-### FR-005: Test Organization
+### FR-006: Temporary File Management
 **Priority**: MEDIUM  
-The system SHALL organize tests by categories (annotations, edge cases, performance) for better maintainability.
+The system SHALL automatically manage temporary test files with proper cleanup to prevent test pollution and resource leaks.
 
 ## Non-Functional Requirements
 
-### NFR-001: Simplicity
-The system SHALL maintain simple, Go-idiomatic patterns without excessive abstraction.
+### NFR-001: Zero Maintenance Overhead
+The system SHALL require no maintenance of static fixture files or expected output files, making it robust against code generation format changes.
 
-### NFR-002: Performance  
-The system SHALL execute tests efficiently without significant overhead compared to current approach.
+### NFR-002: Performance Efficiency
+The system SHALL execute tests efficiently with minimal overhead, using temporary directories and parallel execution where appropriate.
 
-### NFR-003: Maintainability
-The system SHALL be easy to understand, modify, and extend by project contributors.
+### NFR-003: Developer Experience
+The system SHALL provide intuitive APIs for creating test scenarios with clear error messages and debugging information.
+
+### NFR-004: Extensibility
+The system SHALL be easily extensible for new annotations and test patterns without framework modifications.
 
 ## Success Criteria
 
-- All existing test cases migrate successfully
-- Test coverage increases for missing annotation scenarios  
-- Test maintenance effort decreases
-- Test failure diagnostics improve
+- **Behavior Focus**: Tests validate actual conversion functionality, not generated code format
+- **Annotation Coverage**: 100% coverage of all Convergen annotations with focused scenarios
+- **Maintainability**: Zero static fixture maintenance required
+- **Robustness**: Tests remain stable across code generation format changes
+- **Developer Productivity**: Easy to add new test scenarios and annotations
