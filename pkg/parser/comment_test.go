@@ -2,6 +2,8 @@ package parser
 
 import (
 	"go/ast"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -88,10 +90,20 @@ func testCommonNotations(t *testing.T, validOpts map[string]struct{}) {
 		},
 	}
 
-	p, err := NewParser(
-		"../../tests/fixtures/usecase/getter/setup.go",
-		"../../tests/fixtures/usecase/getter/setup.gen.go",
-	)
+	// Create a temporary test file instead of relying on missing fixtures
+	testFile := createTempTestFile(t, `package test
+
+type TestStruct struct {
+	Name string
+}
+
+type Convergen interface {
+	Convert(src TestStruct) TestStruct
+}
+`)
+	defer testFile.cleanup()
+
+	p, err := NewParser(testFile.path, testFile.path+".gen.go")
 	require.Nil(t, err)
 
 	expected := option.NewOptions()
@@ -126,10 +138,21 @@ func testMethodNotations(t *testing.T) {
 		},
 	}
 
-	p, err := NewParser(
-		"../../tests/fixtures/usecase/getter/setup.go",
-		"../../tests/fixtures/usecase/getter/setup.gen.go",
-	)
+	// Create a temporary test file instead of relying on missing fixtures
+	testFile := createTempTestFile(t, `package test
+
+type TestStruct struct {
+	ID   int
+	Name string
+}
+
+type Convergen interface {
+	Convert(src TestStruct) TestStruct
+}
+`)
+	defer testFile.cleanup()
+
+	p, err := NewParser(testFile.path, testFile.path+".gen.go")
 	require.Nil(t, err)
 
 	for _, tt := range cases {
@@ -155,4 +178,28 @@ func assertOptionsEquals(t *testing.T, a, b option.Options, msg string) {
 		cmp.Diff(a, b, cmpOpts...),
 		msg,
 	)
+}
+
+// tempTestFile represents a temporary test file with cleanup capability.
+type tempTestFile struct {
+	path    string
+	cleanup func()
+}
+
+// createTempTestFile creates a temporary test file with the given content.
+func createTempTestFile(t *testing.T, content string) *tempTestFile {
+	t.Helper()
+	
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "test.go")
+	
+	err := os.WriteFile(filePath, []byte(content), 0644)
+	require.NoError(t, err)
+	
+	return &tempTestFile{
+		path:    filePath,
+		cleanup: func() {
+			// Cleanup is handled by t.TempDir()
+		},
+	}
 }

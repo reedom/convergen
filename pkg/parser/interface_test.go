@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,12 +10,28 @@ import (
 )
 
 func TestNoConvergenInterface(t *testing.T) {
-	c, err := NewParser(
-		"../../tests/fixtures/usecase/nointf/setup.go",
-		"../../tests/fixtures/usecase/nointf/setup.gen.go",
-	)
+	// Create a temporary test file with no convergen interface
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "setup.go")
+	
+	content := `package test
+
+type RegularStruct struct {
+	Name string
+}
+
+type RegularInterface interface {
+	DoSomething() string
+}
+`
+	
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	require.NoError(t, err)
+	
+	c, err := NewParser(testFile, testFile+".gen.go")
 	require.Nil(t, err)
+	
 	_, err = c.findConvergenEntries()
 	require.NotNil(t, err)
-	assert.ErrorContains(t, err, "nointf/setup.go:1:1: Convergen interface not found")
+	assert.ErrorContains(t, err, "Convergen interface not found")
 }
