@@ -1,17 +1,13 @@
 package builder
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
-	gmodel "github.com/reedom/convergen/v8/pkg/generator/model"
-	"github.com/reedom/convergen/v8/pkg/option"
 )
 
 // Static errors for err113 compliance.
@@ -26,9 +22,32 @@ var (
 	ErrGenericAssignmentFailed   = errors.New("generic assignment generation failed")
 )
 
+// FieldMapper defines the interface for basic field mapping operations.
+type FieldMapper interface {
+	MapFields(sourceType, destType domain.Type, options map[string]string) ([]*BasicFieldMapping, error)
+}
+
+// BasicFieldMapping represents a basic field mapping.
+type BasicFieldMapping struct {
+	SourceField string
+	DestField   string
+	SourceType  domain.Type
+	DestType    domain.Type
+}
+
+// basicFieldMapper provides a default implementation of FieldMapper.
+type basicFieldMapper struct{}
+
+// MapFields provides a basic field mapping implementation.
+func (bfm *basicFieldMapper) MapFields(sourceType, destType domain.Type, options map[string]string) ([]*BasicFieldMapping, error) {
+	// Simple implementation that returns empty mappings
+	// In a real implementation, this would analyze the types and create appropriate mappings
+	return []*BasicFieldMapping{}, nil
+}
+
 // GenericFieldMapper handles field mapping for generic types with type substitution support.
 type GenericFieldMapper struct {
-	baseMapper       *FieldMapper
+	baseMapper       FieldMapper
 	typeSubstitution *domain.TypeSubstitutionEngine
 	logger           *zap.Logger
 
@@ -126,13 +145,13 @@ type ErrorHandlingStrategy = domain.ErrorHandlingStrategy
 
 // NewGenericFieldMapper creates a new generic field mapper.
 func NewGenericFieldMapper(
-	baseMapper *FieldMapper,
+	baseMapper FieldMapper,
 	typeSubstitution *domain.TypeSubstitutionEngine,
 	logger *zap.Logger,
 	config *GenericFieldMapperConfig,
 ) *GenericFieldMapper {
 	if baseMapper == nil {
-		baseMapper = &FieldMapper{} // Create a basic field mapper if none provided
+		baseMapper = &basicFieldMapper{} // Create a basic field mapper if none provided
 	}
 
 	if typeSubstitution == nil {
@@ -253,7 +272,7 @@ func (gfm *GenericFieldMapper) substituteTypeIfNeeded(
 	for paramName, concreteType := range typeSubstitutions {
 		typeParam := domain.TypeParam{
 			Name:       paramName,
-			Constraint: "any", // Default constraint
+			Constraint: domain.NewBasicType("any", 0), // Default constraint as Type
 		}
 		typeParams = append(typeParams, typeParam)
 		typeArgs = append(typeArgs, concreteType)

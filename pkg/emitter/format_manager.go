@@ -561,7 +561,7 @@ func (p *DefaultGoImportsProcessor) Process(source string) (string, error) {
 }
 
 // ProcessWithOptions runs goimports with specific options.
-func (p *DefaultGoGofmtProcessor) ProcessWithOptions(source string, options *GoImportsOptions) (string, error) {
+func (p *DefaultGoImportsProcessor) ProcessWithOptions(source string, options *GoImportsOptions) (string, error) {
 	// This would integrate with the actual goimports tool
 	// For now, return the source as-is
 	return source, nil
