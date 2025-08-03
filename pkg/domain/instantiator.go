@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -21,6 +22,8 @@ var (
 	ErrInstantiationFailed       = errors.New("instantiation failed")
 	ErrCacheKeyGeneration        = errors.New("failed to generate cache key")
 	ErrCircularTypeDetected      = errors.New("circular type dependency detected")
+	ErrCrossPackageTypeLoader    = errors.New("cross-package type loader not configured")
+	ErrExternalTypeResolution    = errors.New("failed to resolve external type")
 )
 
 // InstantiatedInterface represents a concrete instantiation of a generic interface.
@@ -151,12 +154,27 @@ func NewGenericInterface(name string, typeParams []TypeParam, methods []*Method,
 	}, nil
 }
 
+// CrossPackageTypeLoader defines the interface for loading types from external packages.
+// This abstracts the cross-package type resolution to avoid circular dependencies.
+type CrossPackageTypeLoader interface {
+	// ResolveType resolves a qualified type name to a concrete Type.
+	// The qualifiedTypeName should be in the format "package.TypeName" or "TypeName" for local types.
+	ResolveType(ctx context.Context, qualifiedTypeName string) (Type, error)
+	
+	// ValidateTypeArguments validates that all type arguments can be resolved.
+	ValidateTypeArguments(ctx context.Context, typeArguments []string) error
+	
+	// GetImportPaths returns the import paths needed for the given type arguments.
+	GetImportPaths(typeArguments []string) []string
+}
+
 // TypeInstantiator is the core engine for converting generic types to concrete types.
 // It handles constraint validation, caching, and performance optimization.
 type TypeInstantiator struct {
-	typeBuilder *TypeBuilder
-	cache       map[string]*InstantiatedInterface
-	logger      *zap.Logger
+	typeBuilder           *TypeBuilder
+	cache                 map[string]*InstantiatedInterface
+	logger                *zap.Logger
+	crossPackageLoader    CrossPackageTypeLoader // For resolving external types
 
 	// Performance tracking
 	cacheHits           int64
@@ -171,10 +189,11 @@ type TypeInstantiator struct {
 
 // TypeInstantiatorConfig configures the behavior of TypeInstantiator.
 type TypeInstantiatorConfig struct {
-	MaxRecursionDepth      int  `json:"max_recursion_depth"`
-	EnableCaching          bool `json:"enable_caching"`
-	EnablePerformanceTrack bool `json:"enable_performance_tracking"`
-	CacheCapacity          int  `json:"cache_capacity"`
+	MaxRecursionDepth       int                    `json:"max_recursion_depth"`
+	EnableCaching           bool                   `json:"enable_caching"`
+	EnablePerformanceTrack  bool                   `json:"enable_performance_tracking"`
+	CacheCapacity           int                    `json:"cache_capacity"`
+	CrossPackageTypeLoader  CrossPackageTypeLoader `json:"-"` // Cannot serialize interfaces
 }
 
 // NewTypeInstantiatorConfig creates a default configuration.
@@ -184,6 +203,7 @@ func NewTypeInstantiatorConfig() *TypeInstantiatorConfig {
 		EnableCaching:          true,
 		EnablePerformanceTrack: true,
 		CacheCapacity:          1000,
+		CrossPackageTypeLoader: nil, // Must be set explicitly for cross-package support
 	}
 }
 
@@ -216,6 +236,7 @@ func NewTypeInstantiatorWithConfig(
 		typeBuilder:        typeBuilder,
 		cache:              cache,
 		logger:             logger,
+		crossPackageLoader: config.CrossPackageTypeLoader,
 		maxRecursionDepth:  config.MaxRecursionDepth,
 		instantiationStack: make([]string, 0),
 	}
@@ -224,6 +245,16 @@ func NewTypeInstantiatorWithConfig(
 // InstantiateInterface is the main entry point for type instantiation.
 // It converts a generic interface with concrete type arguments to a concrete interface.
 func (ti *TypeInstantiator) InstantiateInterface(
+	genericInterface *GenericInterface,
+	typeArgs []Type,
+) (*InstantiatedInterface, error) {
+	return ti.InstantiateInterfaceWithContext(context.Background(), genericInterface, typeArgs)
+}
+
+// InstantiateInterfaceWithContext is the main entry point for type instantiation with context support.
+// It converts a generic interface with concrete type arguments to a concrete interface.
+func (ti *TypeInstantiator) InstantiateInterfaceWithContext(
+	ctx context.Context,
 	genericInterface *GenericInterface,
 	typeArgs []Type,
 ) (*InstantiatedInterface, error) {
@@ -352,6 +383,152 @@ func (ti *TypeInstantiator) InstantiateInterface(
 		zap.Bool("valid", validationResult.Valid))
 
 	return instantiated, nil
+}
+
+// InstantiateInterfaceFromStrings instantiates a generic interface using string type arguments.
+// This method supports cross-package type resolution through the configured CrossPackageTypeLoader.
+func (ti *TypeInstantiator) InstantiateInterfaceFromStrings(
+	ctx context.Context,
+	genericInterface *GenericInterface,
+	typeArguments []string,
+) (*InstantiatedInterface, error) {
+	if ti.crossPackageLoader == nil && ti.hasExternalTypes(typeArguments) {
+		return nil, fmt.Errorf("%w: external types detected but no cross-package loader configured", ErrCrossPackageTypeLoader)
+	}
+
+	// Resolve string type arguments to concrete types
+	typeArgs, err := ti.resolveTypeArguments(ctx, typeArguments)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve type arguments: %w", err)
+	}
+
+	// Use the standard instantiation method with resolved types
+	return ti.InstantiateInterfaceWithContext(ctx, genericInterface, typeArgs)
+}
+
+// resolveTypeArguments resolves string type arguments to concrete Type objects.
+func (ti *TypeInstantiator) resolveTypeArguments(ctx context.Context, typeArguments []string) ([]Type, error) {
+	if len(typeArguments) == 0 {
+		return []Type{}, nil
+	}
+
+	resolvedTypes := make([]Type, len(typeArguments))
+
+	for i, typeArg := range typeArguments {
+		resolvedType, err := ti.resolveTypeArgument(ctx, typeArg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve type argument at index %d (%s): %w", i, typeArg, err)
+		}
+		resolvedTypes[i] = resolvedType
+	}
+
+	ti.logger.Debug("resolved all type arguments",
+		zap.Int("argument_count", len(typeArguments)),
+		zap.Strings("arguments", typeArguments))
+
+	return resolvedTypes, nil
+}
+
+// resolveTypeArgument resolves a single string type argument to a concrete Type.
+func (ti *TypeInstantiator) resolveTypeArgument(ctx context.Context, typeArgument string) (Type, error) {
+	typeArgument = strings.TrimSpace(typeArgument)
+	
+	if typeArgument == "" {
+		return nil, fmt.Errorf("empty type argument")
+	}
+
+	// Check if this is a qualified type (contains dot)
+	if strings.Contains(typeArgument, ".") {
+		// External type - use cross-package loader
+		if ti.crossPackageLoader == nil {
+			return nil, fmt.Errorf("%w: cannot resolve external type %s", ErrCrossPackageTypeLoader, typeArgument)
+		}
+
+		resolvedType, err := ti.crossPackageLoader.ResolveType(ctx, typeArgument)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s: %s", ErrExternalTypeResolution, typeArgument, err.Error())
+		}
+
+		ti.logger.Debug("resolved external type",
+			zap.String("type_argument", typeArgument),
+			zap.String("resolved_type", resolvedType.String()))
+
+		return resolvedType, nil
+	}
+
+	// Local type - create a basic type representation
+	// In a full implementation, this would resolve from the current package's scope
+	localType := NewBasicType(typeArgument, getReflectKindFromTypeName(typeArgument))
+
+	ti.logger.Debug("resolved local type",
+		zap.String("type_argument", typeArgument),
+		zap.String("resolved_type", localType.String()))
+
+	return localType, nil
+}
+
+// hasExternalTypes checks if any of the type arguments are external (qualified) types.
+func (ti *TypeInstantiator) hasExternalTypes(typeArguments []string) bool {
+	for _, typeArg := range typeArguments {
+		if strings.Contains(strings.TrimSpace(typeArg), ".") {
+			return true
+		}
+	}
+	return false
+}
+
+// getReflectKindFromTypeName returns a reflect.Kind value for common type names.
+func getReflectKindFromTypeName(typeName string) reflect.Kind {
+	switch strings.ToLower(typeName) {
+	case "bool":
+		return reflect.Bool
+	case "int":
+		return reflect.Int
+	case "int8":
+		return reflect.Int8
+	case "int16":
+		return reflect.Int16
+	case "int32":
+		return reflect.Int32
+	case "int64":
+		return reflect.Int64
+	case "uint":
+		return reflect.Uint
+	case "uint8":
+		return reflect.Uint8
+	case "uint16":
+		return reflect.Uint16
+	case "uint32":
+		return reflect.Uint32
+	case "uint64":
+		return reflect.Uint64
+	case "float32":
+		return reflect.Float32
+	case "float64":
+		return reflect.Float64
+	case "string":
+		return reflect.String
+	case "interface":
+		return reflect.Interface
+	default:
+		return reflect.Struct // Default for custom types
+	}
+}
+
+// SetCrossPackageLoader sets the cross-package type loader for external type resolution.
+func (ti *TypeInstantiator) SetCrossPackageLoader(loader CrossPackageTypeLoader) {
+	ti.crossPackageLoader = loader
+	ti.logger.Debug("cross-package type loader configured")
+}
+
+// GetCrossPackageLoader returns the configured cross-package type loader.
+func (ti *TypeInstantiator) GetCrossPackageLoader() CrossPackageTypeLoader {
+	return ti.crossPackageLoader
+}
+
+// HasCrossPackageSupport returns true if a cross-package type loader is configured.
+func (ti *TypeInstantiator) HasCrossPackageSupport() bool {
+	return ti.crossPackageLoader != nil
 }
 
 // checkRecursion validates that we're not in a recursive instantiation cycle.

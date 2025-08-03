@@ -36,20 +36,37 @@ var (
 // InstantiatedInterface represents a concrete instantiation of a generic interface.
 // Used for caching concrete types when generic interfaces are instantiated with specific types.
 type InstantiatedInterface struct {
-	TypeArgs     map[string]domain.Type `json:"type_args"`               // Map of type parameter names to concrete types
-	Methods      []types.Object         `json:"methods"`                 // Instantiated method signatures
-	ResolvedType *types.Interface       `json:"resolved_type,omitempty"` // Fully resolved interface type
-	CreatedAt    string                 `json:"created_at"`              // Timestamp of creation
-	Validated    bool                   `json:"validated"`               // Whether this instantiation has been validated
+	TypeArgs        map[string]domain.Type `json:"type_args"`               // Map of type parameter names to concrete types
+	Methods         []types.Object         `json:"methods"`                 // Instantiated method signatures
+	ResolvedType    *types.Interface       `json:"resolved_type,omitempty"` // Fully resolved interface type
+	CreatedAt       string                 `json:"created_at"`              // Timestamp of creation
+	Validated       bool                   `json:"validated"`               // Whether this instantiation has been validated
+	ExternalImports []string               `json:"external_imports"`        // Required imports for external types
 }
 
 // NewInstantiatedInterface creates a new instantiated interface with proper validation.
 func NewInstantiatedInterface(typeArgs map[string]domain.Type, methods []types.Object) *InstantiatedInterface {
 	return &InstantiatedInterface{
-		TypeArgs:  typeArgs,
-		Methods:   methods,
-		CreatedAt: "", // Will be set by time package in real usage
-		Validated: false,
+		TypeArgs:        typeArgs,
+		Methods:         methods,
+		CreatedAt:       "", // Will be set by time package in real usage
+		Validated:       false,
+		ExternalImports: make([]string, 0),
+	}
+}
+
+// NewInstantiatedInterfaceWithImports creates a new instantiated interface with external imports.
+func NewInstantiatedInterfaceWithImports(
+	typeArgs map[string]domain.Type,
+	methods []types.Object,
+	externalImports []string,
+) *InstantiatedInterface {
+	return &InstantiatedInterface{
+		TypeArgs:        typeArgs,
+		Methods:         methods,
+		CreatedAt:       "", // Will be set by time package in real usage
+		Validated:       false,
+		ExternalImports: append([]string(nil), externalImports...), // defensive copy
 	}
 }
 
@@ -361,6 +378,76 @@ func (inst *InstantiatedInterface) GetTypeArgumentNames() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+// External type support methods for InstantiatedInterface
+
+// HasExternalTypes returns true if the instantiated interface uses external types.
+func (inst *InstantiatedInterface) HasExternalTypes() bool {
+	return 0 < len(inst.ExternalImports)
+}
+
+// AddExternalImport adds an external import path if not already present.
+func (inst *InstantiatedInterface) AddExternalImport(importPath string) {
+	if importPath == "" {
+		return
+	}
+	
+	// Check if already present
+	for _, existing := range inst.ExternalImports {
+		if existing == importPath {
+			return
+		}
+	}
+	
+	inst.ExternalImports = append(inst.ExternalImports, importPath)
+}
+
+// GetExternalImports returns a copy of the external imports slice.
+func (inst *InstantiatedInterface) GetExternalImports() []string {
+	if inst.ExternalImports == nil {
+		return []string{}
+	}
+	return append([]string(nil), inst.ExternalImports...)
+}
+
+// ExtractExternalTypesFromArguments extracts external type information from type arguments.
+func (inst *InstantiatedInterface) ExtractExternalTypesFromArguments() map[string]string {
+	externalTypes := make(map[string]string)
+	
+	for paramName, typeArg := range inst.TypeArgs {
+		if typeArg == nil {
+			continue
+		}
+		
+		typeName := typeArg.Name()
+		// Check if this is a qualified type name (package.Type)
+		if strings.Contains(typeName, ".") {
+			parts := strings.Split(typeName, ".")
+			if len(parts) == 2 {
+				packageName := parts[0]
+				localTypeName := parts[1]
+				externalTypes[paramName] = packageName + "." + localTypeName
+			}
+		}
+	}
+	
+	return externalTypes
+}
+
+// ValidateExternalTypeConsistency validates that external imports match the type arguments.
+func (inst *InstantiatedInterface) ValidateExternalTypeConsistency() error {
+	if !inst.HasExternalTypes() {
+		return nil
+	}
+	
+	externalTypes := inst.ExtractExternalTypesFromArguments()
+	if len(externalTypes) == 0 && 0 < len(inst.ExternalImports) {
+		return fmt.Errorf("external imports specified but no external types found in type arguments")
+	}
+	
+	// This is a basic validation - could be enhanced with more thorough checking
+	return nil
 }
 
 // extractInterfaceAnnotations extracts all annotations from interface comments.

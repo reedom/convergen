@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 )
 
@@ -15,6 +16,12 @@ func Usage() {
 
 	sb.WriteString("\nUsage: convergen [flags] <input path>\n\n")
 	sb.WriteString("By default, the generated code is written to <input path>.gen.go\n\n")
+	sb.WriteString("Cross-Package Type Support:\n")
+	sb.WriteString("  -type TypeMapper[pkg.User,dto.UserDTO]  Specify generic interface with cross-package types\n")
+	sb.WriteString("  -imports pkg=./internal/pkg,dto=./dto   Import mappings for package aliases\n\n")
+	sb.WriteString("Examples:\n")
+	sb.WriteString("  convergen -type Converter[User,UserDTO] input.go\n")
+	sb.WriteString("  convergen -type TypeMapper[models.User,dto.UserDTO] -imports models=./internal/models,dto=./pkg/dto input.go\n\n")
 	sb.WriteString("Flags:\n")
 	_, _ = fmt.Fprint(os.Stderr, sb.String())
 
@@ -35,6 +42,12 @@ type Config struct {
 	DryRun bool
 	// Prints instructs convergen to print the generated code to stdout.
 	Prints bool
+
+	// Cross-package type support
+	// TypeSpec specifies the generic interface to instantiate (e.g., "TypeMapper[models.User,dto.UserDTO]")
+	TypeSpec string
+	// ImportMap maps package aliases to import paths (e.g., "models=./internal/models")
+	ImportMap map[string]string
 }
 
 // String returns the string representation of the config.
@@ -42,14 +55,40 @@ func (c *Config) String() string {
 	var sb strings.Builder
 
 	sb.WriteString("config.Config{\n\tInput: \"")
-
 	sb.WriteString(c.Input)
 	sb.WriteString("\"\n\tOutput: \"")
 	sb.WriteString(c.Output)
 	sb.WriteString("\"\n\tLog: \"")
 	sb.WriteString(c.Log)
-	sb.WriteString("\"\n}")
+	sb.WriteString("\"\n\tTypeSpec: \"")
+	sb.WriteString(c.TypeSpec)
+	sb.WriteString("\"\n\tImportMap: ")
+	sb.WriteString(formatImportMap(c.ImportMap))
+	sb.WriteString("\n}")
 
+	return sb.String()
+}
+
+// formatImportMap formats the import map for string representation.
+func formatImportMap(importMap map[string]string) string {
+	if len(importMap) == 0 {
+		return "{}"
+	}
+
+	var sb strings.Builder
+	sb.WriteString("{")
+	first := true
+	for alias, path := range importMap {
+		if !first {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(alias)
+		sb.WriteString(": \"")
+		sb.WriteString(path)
+		sb.WriteString("\"")
+		first = false
+	}
+	sb.WriteString("}")
 	return sb.String()
 }
 
@@ -59,6 +98,10 @@ func (c *Config) ParseArgs() error {
 	logs := flag.Bool("log", false, "Write log messages to <output path>.log.")
 	dryRun := flag.Bool("dry", false, "Perform a dry run without writing files.")
 	prints := flag.Bool("print", false, "Print the resulting code to STDOUT as well.")
+	
+	// Cross-package type support flags
+	typeSpec := flag.String("type", "", "Specify generic interface to instantiate (e.g., TypeMapper[models.User,dto.UserDTO])")
+	imports := flag.String("imports", "", "Package alias mappings (e.g., models=./internal/models,dto=./pkg/dto)")
 
 	flag.Usage = Usage
 	flag.Parse()
@@ -89,5 +132,186 @@ func (c *Config) ParseArgs() error {
 	c.DryRun = *dryRun
 	c.Prints = *prints
 
+	// Parse cross-package type configuration
+	c.TypeSpec = strings.TrimSpace(*typeSpec)
+	
+	importMap, err := c.parseImportMap(*imports)
+	if err != nil {
+		return fmt.Errorf("failed to parse import mappings: %w", err)
+	}
+	c.ImportMap = importMap
+
+	// Validate cross-package configuration consistency
+	if err := c.validateCrossPackageConfig(); err != nil {
+		return fmt.Errorf("invalid cross-package configuration: %w", err)
+	}
+
 	return nil
+}
+
+// parseImportMap parses import mappings from a string like "models=./internal/models,dto=./pkg/dto".
+func (c *Config) parseImportMap(importsStr string) (map[string]string, error) {
+	importMap := make(map[string]string)
+	
+	if importsStr == "" {
+		return importMap, nil
+	}
+	
+	// Split by comma to get individual mappings
+	mappings := strings.Split(importsStr, ",")
+	
+	for _, mapping := range mappings {
+		mapping = strings.TrimSpace(mapping)
+		if mapping == "" {
+			continue
+		}
+		
+		// Split by equals sign to get alias and path
+		parts := strings.Split(mapping, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid import mapping format '%s': expected alias=path", mapping)
+		}
+		
+		alias := strings.TrimSpace(parts[0])
+		importPath := strings.TrimSpace(parts[1])
+		
+		if alias == "" {
+			return nil, fmt.Errorf("empty package alias in mapping '%s'", mapping)
+		}
+		
+		if importPath == "" {
+			return nil, fmt.Errorf("empty import path in mapping '%s'", mapping)
+		}
+		
+		// Validate alias is a valid identifier
+		if err := c.validatePackageAlias(alias); err != nil {
+			return nil, fmt.Errorf("invalid package alias '%s': %w", alias, err)
+		}
+		
+		// Validate import path
+		if err := c.validateImportPath(importPath); err != nil {
+			return nil, fmt.Errorf("invalid import path '%s': %w", importPath, err)
+		}
+		
+		importMap[alias] = importPath
+	}
+	
+	return importMap, nil
+}
+
+// validatePackageAlias validates that a package alias is a valid Go identifier.
+func (c *Config) validatePackageAlias(alias string) error {
+	if alias == "" {
+		return fmt.Errorf("package alias cannot be empty")
+	}
+	
+	// Go identifier regex: starts with letter or underscore, followed by letters, digits, or underscores
+	identifierRegex := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+	if !identifierRegex.MatchString(alias) {
+		return fmt.Errorf("package alias must be a valid Go identifier")
+	}
+	
+	return nil
+}
+
+// validateImportPath validates that an import path is valid.
+func (c *Config) validateImportPath(importPath string) error {
+	if importPath == "" {
+		return fmt.Errorf("import path cannot be empty")
+	}
+	
+	// Basic validation - no spaces allowed
+	if strings.Contains(importPath, " ") {
+		return fmt.Errorf("import path cannot contain spaces")
+	}
+	
+	return nil
+}
+
+// validateCrossPackageConfig validates the consistency of cross-package configuration.
+func (c *Config) validateCrossPackageConfig() error {
+	// If TypeSpec is provided, validate it
+	if c.TypeSpec != "" {
+		if err := c.validateTypeSpec(); err != nil {
+			return fmt.Errorf("invalid type specification: %w", err)
+		}
+		
+		// Check if TypeSpec contains qualified types that require imports
+		if c.hasQualifiedTypes() && len(c.ImportMap) == 0 {
+			return fmt.Errorf("type specification contains qualified types but no import mappings provided")
+		}
+	}
+	
+	// If ImportMap is provided without TypeSpec, warn (not an error)
+	if len(c.ImportMap) > 0 && c.TypeSpec == "" {
+		// This is valid - imports might be for other purposes
+	}
+	
+	return nil
+}
+
+// validateTypeSpec validates the type specification format.
+func (c *Config) validateTypeSpec() error {
+	// Basic format validation - should contain interface name
+	if !c.isValidIdentifier(c.getInterfaceName()) {
+		return fmt.Errorf("invalid interface name in type specification")
+	}
+	
+	return nil
+}
+
+// hasQualifiedTypes checks if the TypeSpec contains qualified type names (pkg.Type).
+func (c *Config) hasQualifiedTypes() bool {
+	// Simple check for dot notation in type arguments
+	// This is a basic implementation - could be enhanced with full parsing
+	if strings.Contains(c.TypeSpec, "[") && strings.Contains(c.TypeSpec, ".") {
+		// Extract type arguments part
+		start := strings.Index(c.TypeSpec, "[")
+		end := strings.LastIndex(c.TypeSpec, "]")
+		if start != -1 && end != -1 && end > start {
+			typeArgs := c.TypeSpec[start+1 : end]
+			return strings.Contains(typeArgs, ".")
+		}
+	}
+	
+	return false
+}
+
+// getInterfaceName extracts the interface name from TypeSpec.
+func (c *Config) getInterfaceName() string {
+	if c.TypeSpec == "" {
+		return ""
+	}
+	
+	// Extract interface name (part before '[' if generic)
+	if idx := strings.Index(c.TypeSpec, "["); idx != -1 {
+		return strings.TrimSpace(c.TypeSpec[:idx])
+	}
+	
+	return strings.TrimSpace(c.TypeSpec)
+}
+
+// isValidIdentifier checks if a string is a valid Go identifier.
+func (c *Config) isValidIdentifier(id string) bool {
+	if id == "" {
+		return false
+	}
+	
+	identifierRegex := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+	return identifierRegex.MatchString(id)
+}
+
+// HasCrossPackageTypes returns true if the configuration specifies cross-package types.
+func (c *Config) HasCrossPackageTypes() bool {
+	return c.TypeSpec != "" && c.hasQualifiedTypes()
+}
+
+// GetPackageAlias returns the import path for a given package alias.
+func (c *Config) GetPackageAlias(alias string) (string, bool) {
+	if c.ImportMap == nil {
+		return "", false
+	}
+	
+	path, exists := c.ImportMap[alias]
+	return path, exists
 }
