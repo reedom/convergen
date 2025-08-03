@@ -172,6 +172,7 @@ type CrossPackageTypeLoader interface {
 // It handles constraint validation, caching, and performance optimization.
 type TypeInstantiator struct {
 	typeBuilder        *TypeBuilder
+	substitutionEngine *TypeSubstitutionEngine // Enhanced type substitution engine
 	cache              map[string]*InstantiatedInterface
 	logger             *zap.Logger
 	crossPackageLoader CrossPackageTypeLoader // For resolving external types
@@ -189,21 +190,23 @@ type TypeInstantiator struct {
 
 // TypeInstantiatorConfig configures the behavior of TypeInstantiator.
 type TypeInstantiatorConfig struct {
-	MaxRecursionDepth      int                    `json:"max_recursion_depth"`
-	EnableCaching          bool                   `json:"enable_caching"`
-	EnablePerformanceTrack bool                   `json:"enable_performance_tracking"`
-	CacheCapacity          int                    `json:"cache_capacity"`
-	CrossPackageTypeLoader CrossPackageTypeLoader `json:"-"` // Cannot serialize interfaces
+	MaxRecursionDepth        int                       `json:"max_recursion_depth"`
+	EnableCaching            bool                      `json:"enable_caching"`
+	EnablePerformanceTrack   bool                      `json:"enable_performance_tracking"`
+	CacheCapacity            int                       `json:"cache_capacity"`
+	CrossPackageTypeLoader   CrossPackageTypeLoader    `json:"-"` // Cannot serialize interfaces
+	SubstitutionEngineConfig *SubstitutionEngineConfig `json:"substitution_engine_config,omitempty"`
 }
 
 // NewTypeInstantiatorConfig creates a default configuration.
 func NewTypeInstantiatorConfig() *TypeInstantiatorConfig {
 	return &TypeInstantiatorConfig{
-		MaxRecursionDepth:      10,
-		EnableCaching:          true,
-		EnablePerformanceTrack: true,
-		CacheCapacity:          1000,
-		CrossPackageTypeLoader: nil, // Must be set explicitly for cross-package support
+		MaxRecursionDepth:        10,
+		EnableCaching:            true,
+		EnablePerformanceTrack:   true,
+		CacheCapacity:            1000,
+		CrossPackageTypeLoader:   nil, // Must be set explicitly for cross-package support
+		SubstitutionEngineConfig: NewSubstitutionEngineConfig(),
 	}
 }
 
@@ -232,8 +235,16 @@ func NewTypeInstantiatorWithConfig(
 		cache = make(map[string]*InstantiatedInterface, config.CacheCapacity)
 	}
 
+	// Initialize substitution engine with configuration
+	substitutionConfig := config.SubstitutionEngineConfig
+	if substitutionConfig == nil {
+		substitutionConfig = NewSubstitutionEngineConfig()
+	}
+	substitutionEngine := NewTypeSubstitutionEngineWithConfig(typeBuilder, substitutionConfig, logger)
+
 	return &TypeInstantiator{
 		typeBuilder:        typeBuilder,
+		substitutionEngine: substitutionEngine,
 		cache:              cache,
 		logger:             logger,
 		crossPackageLoader: config.CrossPackageTypeLoader,
@@ -641,24 +652,39 @@ func (ti *TypeInstantiator) generateConstraintViolationMessage(param *TypeParam,
 	}
 }
 
-// instantiateType performs the actual type instantiation logic.
+// instantiateType performs the actual type instantiation logic using the substitution engine.
 func (ti *TypeInstantiator) instantiateType(
 	genericInterface *GenericInterface,
 	typeArgs map[string]Type,
 ) (Type, error) {
-	// For now, create a basic concrete type representation
-	// In a full implementation; this would involve complex type substitution
-	concreteName := ti.generateConcreteTypeName(genericInterface, typeArgs)
+	// Create the generic interface type for substitution
+	genericInterfaceType := ti.createInterfaceType(genericInterface)
 
-	// Create a basic type as the concrete instantiation
-	// This is a simplified implementation - real type instantiation would be more complex
-	concreteType := NewBasicType(concreteName, reflect.Interface)
+	// Convert type arguments map to ordered slices for substitution engine
+	typeParams := genericInterface.TypeParams
+	orderedTypeArgs := make([]Type, len(typeParams))
+	for i, param := range typeParams {
+		orderedTypeArgs[i] = typeArgs[param.Name]
+	}
 
-	ti.logger.Debug("created concrete type",
+	// Perform type substitution using the substitution engine
+	substitutionResult, err := ti.substitutionEngine.SubstituteType(
+		genericInterfaceType,
+		typeParams,
+		orderedTypeArgs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("type substitution failed: %w", err)
+	}
+
+	ti.logger.Debug("performed type substitution",
 		zap.String("interface", genericInterface.Name),
-		zap.String("concrete_name", concreteName))
+		zap.String("original_type", substitutionResult.OriginalType.String()),
+		zap.String("substituted_type", substitutionResult.SubstitutedType.String()),
+		zap.Int64("substitution_time_ms", substitutionResult.SubstitutionTime),
+		zap.Bool("cache_hit", substitutionResult.CacheHit))
 
-	return concreteType, nil
+	return substitutionResult.SubstitutedType, nil
 }
 
 // generateConcreteTypeName creates a name for the concrete instantiated type.
@@ -775,4 +801,44 @@ func (ti *TypeInstantiator) GetCachedInstantiation(typeSignature string) (*Insta
 func (ti *TypeInstantiator) HasCachedInstantiation(typeSignature string) bool {
 	_, found := ti.GetCachedInstantiation(typeSignature)
 	return found
+}
+
+// SubstituteType is a convenience method that exposes the substitution engine directly.
+// This allows for standalone type substitution without full interface instantiation.
+func (ti *TypeInstantiator) SubstituteType(
+	genericType Type,
+	typeParams []TypeParam,
+	typeArgs []Type,
+) (*SubstitutionResult, error) {
+	return ti.substitutionEngine.SubstituteType(genericType, typeParams, typeArgs)
+}
+
+// SubstituteTypeWithContext performs type substitution with context support.
+func (ti *TypeInstantiator) SubstituteTypeWithContext(
+	ctx context.Context,
+	genericType Type,
+	typeParams []TypeParam,
+	typeArgs []Type,
+) (*SubstitutionResult, error) {
+	return ti.substitutionEngine.SubstituteTypeWithContext(ctx, genericType, typeParams, typeArgs)
+}
+
+// GetSubstitutionEngine returns the internal substitution engine for advanced usage.
+func (ti *TypeInstantiator) GetSubstitutionEngine() *TypeSubstitutionEngine {
+	return ti.substitutionEngine
+}
+
+// GetSubstitutionStats returns statistics from the substitution engine.
+func (ti *TypeInstantiator) GetSubstitutionStats() *SubstitutionStats {
+	return ti.substitutionEngine.GetSubstitutionStats()
+}
+
+// ClearSubstitutionCache clears the substitution engine's cache.
+func (ti *TypeInstantiator) ClearSubstitutionCache() {
+	ti.substitutionEngine.ClearCache()
+}
+
+// GetSubstitutionCacheSize returns the size of the substitution cache.
+func (ti *TypeInstantiator) GetSubstitutionCacheSize() int {
+	return ti.substitutionEngine.GetCacheSize()
 }
