@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -256,6 +257,281 @@ func TestTypeBuilder(t *testing.T) {
 		// Non-existent type
 		_, exists = builder.GetCachedType("other.com/pkg", "User")
 		assert.False(t, exists)
+	})
+}
+
+func TestEnhancedTypeParam(t *testing.T) {
+	t.Run("basic type parameter creation", func(t *testing.T) {
+		constraint := StringType
+		tp := NewTypeParam("T", constraint, 0)
+
+		assert.Equal(t, "T", tp.Name)
+		assert.Equal(t, constraint, tp.Constraint)
+		assert.Equal(t, 0, tp.Index)
+		assert.False(t, tp.IsAny)
+		assert.False(t, tp.IsComparable)
+		assert.Nil(t, tp.UnionTypes)
+		assert.Nil(t, tp.Underlying)
+		assert.True(t, tp.IsValid())
+		assert.Equal(t, "interface", tp.GetConstraintType())
+	})
+
+	t.Run("any type parameter", func(t *testing.T) {
+		tp := NewAnyTypeParam("T", 0)
+
+		assert.Equal(t, "T", tp.Name)
+		assert.Nil(t, tp.Constraint)
+		assert.Equal(t, 0, tp.Index)
+		assert.True(t, tp.IsAny)
+		assert.False(t, tp.IsComparable)
+		assert.Nil(t, tp.UnionTypes)
+		assert.Nil(t, tp.Underlying)
+		assert.True(t, tp.IsValid())
+		assert.Equal(t, "any", tp.GetConstraintType())
+		assert.Equal(t, "T any", tp.String())
+	})
+
+	t.Run("comparable type parameter", func(t *testing.T) {
+		tp := NewComparableTypeParam("T", 1)
+
+		assert.Equal(t, "T", tp.Name)
+		assert.Nil(t, tp.Constraint)
+		assert.Equal(t, 1, tp.Index)
+		assert.False(t, tp.IsAny)
+		assert.True(t, tp.IsComparable)
+		assert.Nil(t, tp.UnionTypes)
+		assert.Nil(t, tp.Underlying)
+		assert.True(t, tp.IsValid())
+		assert.Equal(t, "comparable", tp.GetConstraintType())
+		assert.Equal(t, "T comparable", tp.String())
+	})
+
+	t.Run("union type parameter", func(t *testing.T) {
+		unionTypes := []Type{IntType, StringType, Float64Type}
+		tp := NewUnionTypeParam("T", unionTypes, 2)
+
+		assert.Equal(t, "T", tp.Name)
+		assert.Nil(t, tp.Constraint)
+		assert.Equal(t, 2, tp.Index)
+		assert.False(t, tp.IsAny)
+		assert.False(t, tp.IsComparable)
+		assert.Len(t, tp.UnionTypes, 3)
+		assert.Equal(t, IntType, tp.UnionTypes[0])
+		assert.Equal(t, StringType, tp.UnionTypes[1])
+		assert.Equal(t, Float64Type, tp.UnionTypes[2])
+		assert.Nil(t, tp.Underlying)
+		assert.True(t, tp.IsValid())
+		assert.Equal(t, "union", tp.GetConstraintType())
+		assert.Equal(t, "T int | string | float64", tp.String())
+	})
+
+	t.Run("underlying type parameter", func(t *testing.T) {
+		underlyingConstraint := NewUnderlyingConstraint(StringType, "")
+		tp := NewUnderlyingTypeParam("T", underlyingConstraint, 3)
+
+		assert.Equal(t, "T", tp.Name)
+		assert.Equal(t, StringType, tp.Constraint)
+		assert.Equal(t, 3, tp.Index)
+		assert.False(t, tp.IsAny)
+		assert.False(t, tp.IsComparable)
+		assert.Nil(t, tp.UnionTypes)
+		assert.NotNil(t, tp.Underlying)
+		assert.Equal(t, StringType, tp.Underlying.Type)
+		assert.True(t, tp.IsValid())
+		assert.Equal(t, "underlying", tp.GetConstraintType())
+		assert.Equal(t, "T ~string", tp.String())
+	})
+
+	t.Run("constraint satisfaction - any constraint", func(t *testing.T) {
+		tp := NewAnyTypeParam("T", 0)
+
+		assert.True(t, tp.SatisfiesConstraint(StringType))
+		assert.True(t, tp.SatisfiesConstraint(IntType))
+		assert.True(t, tp.SatisfiesConstraint(BoolType))
+		assert.False(t, tp.SatisfiesConstraint(nil))
+	})
+
+	t.Run("constraint satisfaction - comparable constraint", func(t *testing.T) {
+		tp := NewComparableTypeParam("T", 0)
+
+		assert.True(t, tp.SatisfiesConstraint(StringType))
+		assert.True(t, tp.SatisfiesConstraint(IntType))
+		assert.False(t, tp.SatisfiesConstraint(NewSliceType(IntType, "")))
+		assert.False(t, tp.SatisfiesConstraint(nil))
+	})
+
+	t.Run("constraint satisfaction - union constraint", func(t *testing.T) {
+		unionTypes := []Type{IntType, StringType}
+		tp := NewUnionTypeParam("T", unionTypes, 0)
+
+		assert.True(t, tp.SatisfiesConstraint(IntType))
+		assert.True(t, tp.SatisfiesConstraint(StringType))
+		assert.False(t, tp.SatisfiesConstraint(BoolType))
+		assert.False(t, tp.SatisfiesConstraint(nil))
+	})
+
+	t.Run("constraint satisfaction - underlying constraint", func(t *testing.T) {
+		underlyingConstraint := NewUnderlyingConstraint(StringType, "")
+		tp := NewUnderlyingTypeParam("T", underlyingConstraint, 0)
+
+		assert.True(t, tp.SatisfiesConstraint(StringType))
+		assert.False(t, tp.SatisfiesConstraint(IntType))
+		assert.False(t, tp.SatisfiesConstraint(nil))
+	})
+
+	t.Run("validation - empty name", func(t *testing.T) {
+		tp := &TypeParam{Name: "", Constraint: StringType, Index: 0}
+		assert.False(t, tp.IsValid())
+	})
+
+	t.Run("validation - multiple constraints invalid", func(t *testing.T) {
+		tp := &TypeParam{
+			Name:         "T",
+			Constraint:   StringType,
+			Index:        0,
+			IsAny:        true, // This creates a conflict
+			IsComparable: false,
+		}
+		assert.False(t, tp.IsValid())
+	})
+
+	t.Run("validation - single constraint valid", func(t *testing.T) {
+		tp := &TypeParam{
+			Name:       "T",
+			Constraint: StringType,
+			Index:      0,
+		}
+		assert.True(t, tp.IsValid())
+	})
+
+	t.Run("no constraint type parameter", func(t *testing.T) {
+		tp := &TypeParam{Name: "T", Index: 0}
+		assert.Equal(t, "none", tp.GetConstraintType())
+		assert.Equal(t, "T", tp.String())
+		assert.True(t, tp.SatisfiesConstraint(StringType)) // no constraint accepts any type
+	})
+}
+
+func TestUnderlyingConstraint(t *testing.T) {
+	t.Run("creation and properties", func(t *testing.T) {
+		uc := NewUnderlyingConstraint(IntType, "math")
+
+		assert.Equal(t, IntType, uc.Type)
+		assert.Equal(t, "math", uc.Package)
+	})
+
+	t.Run("empty package", func(t *testing.T) {
+		uc := NewUnderlyingConstraint(StringType, "")
+
+		assert.Equal(t, StringType, uc.Type)
+		assert.Equal(t, "", uc.Package)
+	})
+}
+
+func TestTypeParamJSONSerialization(t *testing.T) {
+	t.Run("any type parameter JSON", func(t *testing.T) {
+		tp := NewAnyTypeParam("T", 0)
+
+		data, err := json.Marshal(tp)
+		require.NoError(t, err)
+
+		// Verify serialized fields that don't contain Type interface
+		assert.Contains(t, string(data), `"name":"T"`)
+		assert.Contains(t, string(data), `"any":true`)
+		assert.Contains(t, string(data), `"index":0`)
+
+		// Test roundtrip for fields that don't contain Type interface
+		var restored TypeParam
+		err = json.Unmarshal(data, &restored)
+		require.NoError(t, err)
+
+		assert.Equal(t, "T", restored.Name)
+		assert.True(t, restored.IsAny)
+		assert.Equal(t, 0, restored.Index)
+		assert.Equal(t, "any", restored.GetConstraintType())
+	})
+
+	t.Run("comparable type parameter JSON", func(t *testing.T) {
+		tp := NewComparableTypeParam("T", 1)
+
+		data, err := json.Marshal(tp)
+		require.NoError(t, err)
+
+		assert.Contains(t, string(data), `"name":"T"`)
+		assert.Contains(t, string(data), `"comparable":true`)
+		assert.Contains(t, string(data), `"index":1`)
+
+		var restored TypeParam
+		err = json.Unmarshal(data, &restored)
+		require.NoError(t, err)
+
+		assert.Equal(t, "T", restored.Name)
+		assert.True(t, restored.IsComparable)
+		assert.Equal(t, 1, restored.Index)
+		assert.Equal(t, "comparable", restored.GetConstraintType())
+	})
+
+	t.Run("serialization contains correct JSON tags", func(t *testing.T) {
+		// Test that new fields have correct JSON tags in the struct
+		tp := &TypeParam{
+			Name:         "T",
+			Index:        0,
+			IsAny:        true,
+			IsComparable: false,
+		}
+
+		data, err := json.Marshal(tp)
+		require.NoError(t, err)
+
+		// Verify JSON tag naming follows convention
+		assert.Contains(t, string(data), `"name":"T"`)
+		assert.Contains(t, string(data), `"index":0`)
+		assert.Contains(t, string(data), `"any":true`)
+		// comparable field should be omitted when false with omitempty tag
+		assert.NotContains(t, string(data), `"comparable"`)
+	})
+}
+
+func TestBackwardCompatibility(t *testing.T) {
+	t.Run("legacy TypeParam struct literal", func(t *testing.T) {
+		// Test that existing code using struct literals still works
+		tp := &TypeParam{
+			Name:       "T",
+			Constraint: StringType,
+			Index:      0,
+		}
+
+		assert.Equal(t, "T", tp.Name)
+		assert.Equal(t, StringType, tp.Constraint)
+		assert.Equal(t, 0, tp.Index)
+		assert.True(t, tp.IsValid())
+		assert.Equal(t, "interface", tp.GetConstraintType())
+		assert.Equal(t, "T string", tp.String())
+
+		// New fields should have zero values
+		assert.False(t, tp.IsAny)
+		assert.False(t, tp.IsComparable)
+		assert.Nil(t, tp.UnionTypes)
+		assert.Nil(t, tp.Underlying)
+	})
+
+	t.Run("legacy GenericType still works", func(t *testing.T) {
+		// Test that existing GenericType usage still works
+		constraint := StringType
+		genericType := NewGenericType("T", constraint, 0, "example.com/pkg")
+
+		assert.Equal(t, "T", genericType.Name())
+		assert.Equal(t, KindGeneric, genericType.Kind())
+		assert.True(t, genericType.Generic())
+
+		typeParams := genericType.TypeParams()
+		require.Len(t, typeParams, 1)
+		assert.Equal(t, "T", typeParams[0].Name)
+		assert.Equal(t, constraint, typeParams[0].Constraint)
+		assert.Equal(t, 0, typeParams[0].Index)
+
+		// Should work with the enhanced validation too
+		assert.True(t, typeParams[0].IsValid())
 	})
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // Static errors for err113 compliance.
@@ -87,11 +88,211 @@ type Type interface {
 	ImportPath() string
 }
 
-// TypeParam represents a generic type parameter.
+// UnderlyingConstraint represents underlying type constraints (~string, ~int).
+type UnderlyingConstraint struct {
+	Type    Type   `json:"type"`
+	Package string `json:"package,omitempty"`
+}
+
+// TypeParam represents a generic type parameter with enhanced constraint support.
 type TypeParam struct {
 	Name       string `json:"name"`
 	Constraint Type   `json:"constraint"`
 	Index      int    `json:"index"`
+
+	// Enhanced constraint support for Go generics
+	UnionTypes   []Type                `json:"union_types,omitempty"` // T ~int | ~string
+	IsComparable bool                  `json:"comparable,omitempty"`  // T comparable
+	Underlying   *UnderlyingConstraint `json:"underlying,omitempty"`  // T ~string
+	IsAny        bool                  `json:"any,omitempty"`         // T any
+}
+
+// NewTypeParam creates a basic type parameter with the given name, constraint and index.
+func NewTypeParam(name string, constraint Type, index int) *TypeParam {
+	return &TypeParam{
+		Name:       name,
+		Constraint: constraint,
+		Index:      index,
+	}
+}
+
+// NewUnderlyingConstraint creates a new underlying constraint (~T pattern).
+func NewUnderlyingConstraint(typ Type, pkg string) *UnderlyingConstraint {
+	return &UnderlyingConstraint{
+		Type:    typ,
+		Package: pkg,
+	}
+}
+
+// NewAnyTypeParam creates a type parameter with 'any' constraint.
+func NewAnyTypeParam(name string, index int) *TypeParam {
+	return &TypeParam{
+		Name:       name,
+		Constraint: nil, // any constraint represented as nil
+		Index:      index,
+		IsAny:      true,
+	}
+}
+
+// NewComparableTypeParam creates a type parameter with 'comparable' constraint.
+func NewComparableTypeParam(name string, index int) *TypeParam {
+	return &TypeParam{
+		Name:         name,
+		Constraint:   nil, // comparable constraint has special handling
+		Index:        index,
+		IsComparable: true,
+	}
+}
+
+// NewUnionTypeParam creates a type parameter with union constraints (T ~int | ~string).
+func NewUnionTypeParam(name string, unionTypes []Type, index int) *TypeParam {
+	return &TypeParam{
+		Name:       name,
+		Constraint: nil, // Union constraints stored in UnionTypes field
+		Index:      index,
+		UnionTypes: append([]Type(nil), unionTypes...), // defensive copy
+	}
+}
+
+// NewUnderlyingTypeParam creates a type parameter with underlying type constraint (~T).
+func NewUnderlyingTypeParam(name string, underlying *UnderlyingConstraint, index int) *TypeParam {
+	return &TypeParam{
+		Name:       name,
+		Constraint: underlying.Type,
+		Index:      index,
+		Underlying: underlying,
+	}
+}
+
+// Validation methods for TypeParam
+
+// IsValid checks if the type parameter has a valid configuration.
+func (tp *TypeParam) IsValid() bool {
+	if tp.Name == "" {
+		return false
+	}
+
+	// Check for mutually exclusive constraint types
+	constraintCount := 0
+
+	// Special constraints
+	if tp.IsAny {
+		constraintCount++
+		// IsAny should not coexist with other constraints (including Constraint field)
+		if tp.Constraint != nil || tp.IsComparable || 0 < len(tp.UnionTypes) || tp.Underlying != nil {
+			return false
+		}
+	}
+	if tp.IsComparable {
+		constraintCount++
+		// IsComparable should not coexist with other constraints (including Constraint field)
+		if tp.Constraint != nil || 0 < len(tp.UnionTypes) || tp.Underlying != nil {
+			return false
+		}
+	}
+	if 0 < len(tp.UnionTypes) {
+		constraintCount++
+		// Union types should not coexist with other constraints (including Constraint field)
+		if tp.Constraint != nil || tp.Underlying != nil {
+			return false
+		}
+	}
+	if tp.Underlying != nil {
+		constraintCount++
+		// Underlying constraint can coexist with Constraint field (which holds the underlying type)
+		// but not with other special constraints
+	}
+
+	// Generic Constraint field (for interface constraints or underlying type reference)
+	if constraintCount == 0 && tp.Constraint != nil {
+		constraintCount++
+	}
+
+	// Should have at most one constraint type
+	return constraintCount <= 1
+}
+
+// GetConstraintType returns the type of constraint this type parameter has.
+func (tp *TypeParam) GetConstraintType() string {
+	if tp.IsAny {
+		return "any"
+	}
+	if tp.IsComparable {
+		return "comparable"
+	}
+	if 0 < len(tp.UnionTypes) {
+		return "union"
+	}
+	if tp.Underlying != nil {
+		return "underlying"
+	}
+	if tp.Constraint != nil {
+		return "interface"
+	}
+	return "none"
+}
+
+// SatisfiesConstraint checks if a given type satisfies this type parameter's constraint.
+func (tp *TypeParam) SatisfiesConstraint(typ Type) bool {
+	if typ == nil {
+		return false
+	}
+
+	// any constraint accepts all types
+	if tp.IsAny {
+		return true
+	}
+
+	// comparable constraint requires type to be comparable
+	if tp.IsComparable {
+		return typ.Comparable()
+	}
+
+	// Union constraint checks if type matches any of the union types
+	if 0 < len(tp.UnionTypes) {
+		for _, unionType := range tp.UnionTypes {
+			if typ.AssignableTo(unionType) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Underlying constraint checks underlying type compatibility
+	if tp.Underlying != nil {
+		return typ.AssignableTo(tp.Underlying.Type)
+	}
+
+	// Interface constraint
+	if tp.Constraint != nil {
+		return typ.Implements(tp.Constraint) || typ.AssignableTo(tp.Constraint)
+	}
+
+	return true // no constraint means any type is acceptable
+}
+
+// String returns a string representation of the constraint.
+func (tp *TypeParam) String() string {
+	if tp.IsAny {
+		return tp.Name + " any"
+	}
+	if tp.IsComparable {
+		return tp.Name + " comparable"
+	}
+	if 0 < len(tp.UnionTypes) {
+		types := make([]string, len(tp.UnionTypes))
+		for i, t := range tp.UnionTypes {
+			types[i] = t.String()
+		}
+		return tp.Name + " " + strings.Join(types, " | ")
+	}
+	if tp.Underlying != nil {
+		return tp.Name + " ~" + tp.Underlying.Type.String()
+	}
+	if tp.Constraint != nil {
+		return tp.Name + " " + tp.Constraint.String()
+	}
+	return tp.Name
 }
 
 // BasicType represents primitive types (int, string, bool, etc.)
@@ -194,7 +395,7 @@ func (t *StructType) Kind() TypeKind { return KindStruct }
 func (t *StructType) String() string { return t.name }
 
 // Generic returns true if the struct type has type parameters.
-func (t *StructType) Generic() bool { return len(t.typeParams) > 0 }
+func (t *StructType) Generic() bool { return 0 < len(t.typeParams) }
 
 // TypeParams returns a copy of the type parameters.
 func (t *StructType) TypeParams() []TypeParam { return append([]TypeParam(nil), t.typeParams...) }
