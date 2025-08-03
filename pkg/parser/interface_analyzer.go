@@ -33,16 +33,68 @@ var (
 	ErrUnknownMatchRule                      = errors.New("unknown match rule")
 )
 
+// InstantiatedInterface represents a concrete instantiation of a generic interface.
+// Used for caching concrete types when generic interfaces are instantiated with specific types.
+type InstantiatedInterface struct {
+	TypeArgs     map[string]domain.Type `json:"type_args"`               // Map of type parameter names to concrete types
+	Methods      []types.Object         `json:"methods"`                 // Instantiated method signatures
+	ResolvedType *types.Interface       `json:"resolved_type,omitempty"` // Fully resolved interface type
+	CreatedAt    string                 `json:"created_at"`              // Timestamp of creation
+	Validated    bool                   `json:"validated"`               // Whether this instantiation has been validated
+}
+
+// NewInstantiatedInterface creates a new instantiated interface with proper validation.
+func NewInstantiatedInterface(typeArgs map[string]domain.Type, methods []types.Object) *InstantiatedInterface {
+	return &InstantiatedInterface{
+		TypeArgs:  typeArgs,
+		Methods:   methods,
+		CreatedAt: "", // Will be set by time package in real usage
+		Validated: false,
+	}
+}
+
+// NewInterfaceInfo creates a new InterfaceInfo with proper initialization following domain constructor patterns.
+func NewInterfaceInfo(
+	obj types.Object,
+	iface *types.Interface,
+	methods []types.Object,
+	options *domain.InterfaceOptions,
+	annotations []*Annotation,
+	marker string,
+	position token.Pos,
+	typeParams []domain.TypeParam,
+) *InterfaceInfo {
+	// Determine if this interface is generic
+	isGeneric := 0 < len(typeParams)
+
+	return &InterfaceInfo{
+		Object:         obj,
+		Interface:      iface,
+		Methods:        methods,
+		Options:        options,
+		Annotations:    annotations,
+		Marker:         marker,
+		Position:       position,
+		TypeParams:     typeParams,
+		IsGeneric:      isGeneric,
+		Instantiations: make(map[string]*InstantiatedInterface),
+	}
+}
+
 // InterfaceInfo contains comprehensive information about a convergen interface.
 type InterfaceInfo struct {
-	Object      types.Object
-	Interface   *types.Interface
-	Methods     []types.Object
-	Options     *domain.InterfaceOptions
-	Annotations []*Annotation
-	Marker      string
-	Position    token.Pos
-	TypeParams  []domain.TypeParam // Type parameters for generic interfaces
+	Object      types.Object             `json:"object"`
+	Interface   *types.Interface         `json:"interface"`
+	Methods     []types.Object           `json:"methods"`
+	Options     *domain.InterfaceOptions `json:"options"`
+	Annotations []*Annotation            `json:"annotations"`
+	Marker      string                   `json:"marker"`
+	Position    token.Pos                `json:"position"`
+	TypeParams  []domain.TypeParam       `json:"type_params"`
+
+	// New fields for generic support
+	IsGeneric      bool                              `json:"is_generic"`
+	Instantiations map[string]*InstantiatedInterface `json:"instantiations,omitempty"`
 }
 
 // Annotation represents a parsed annotation from interface or method comments.
@@ -119,16 +171,17 @@ func (p *ASTParser) analyzeInterface(ctx context.Context, _ *packages.Package, f
 		}
 	}
 
-	interfaceInfo := &InterfaceInfo{
-		Object:      obj,
-		Interface:   iface,
-		Methods:     methods,
-		Options:     options,
-		Annotations: annotations,
-		Marker:      marker,
-		Position:    obj.Pos(),
-		TypeParams:  typeParams,
-	}
+	// Create interface info using constructor
+	interfaceInfo := NewInterfaceInfo(
+		obj,
+		iface,
+		methods,
+		options,
+		annotations,
+		marker,
+		obj.Pos(),
+		typeParams,
+	)
 
 	p.logger.Debug("analyzed convergen interface",
 		zap.String("name", obj.Name()),
@@ -138,6 +191,176 @@ func (p *ASTParser) analyzeInterface(ctx context.Context, _ *packages.Package, f
 		zap.String("marker", marker))
 
 	return interfaceInfo, nil
+}
+
+// Helper and validation methods for InterfaceInfo
+
+// HasInstantiation checks if the interface has a cached instantiation for the given type signature.
+func (info *InterfaceInfo) HasInstantiation(typeSignature string) bool {
+	if info.Instantiations == nil {
+		return false
+	}
+	_, exists := info.Instantiations[typeSignature]
+	return exists
+}
+
+// GetInstantiation retrieves a cached instantiation by type signature.
+func (info *InterfaceInfo) GetInstantiation(typeSignature string) (*InstantiatedInterface, bool) {
+	if info.Instantiations == nil {
+		return nil, false
+	}
+	instantiation, exists := info.Instantiations[typeSignature]
+	return instantiation, exists
+}
+
+// AddInstantiation adds a new instantiation to the cache with proper validation.
+func (info *InterfaceInfo) AddInstantiation(typeSignature string, instantiation *InstantiatedInterface) error {
+	if info.Instantiations == nil {
+		info.Instantiations = make(map[string]*InstantiatedInterface)
+	}
+
+	if instantiation == nil {
+		return fmt.Errorf("instantiation cannot be nil")
+	}
+
+	// Validate that this is actually a generic interface
+	if !info.IsGeneric {
+		return fmt.Errorf("cannot add instantiation to non-generic interface %s", info.Object.Name())
+	}
+
+	// Validate type argument count matches type parameter count
+	if len(instantiation.TypeArgs) != len(info.TypeParams) {
+		return fmt.Errorf("type argument count (%d) does not match type parameter count (%d) for interface %s",
+			len(instantiation.TypeArgs), len(info.TypeParams), info.Object.Name())
+	}
+
+	info.Instantiations[typeSignature] = instantiation
+	return nil
+}
+
+// ValidateGenericConsistency validates that the interface's generic configuration is consistent.
+func (info *InterfaceInfo) ValidateGenericConsistency() error {
+	// Check IsGeneric flag consistency
+	hasTypeParams := 0 < len(info.TypeParams)
+	if info.IsGeneric != hasTypeParams {
+		return fmt.Errorf("IsGeneric flag (%v) inconsistent with TypeParams length (%d) for interface %s",
+			info.IsGeneric, len(info.TypeParams), info.Object.Name())
+	}
+
+	// Validate type parameters
+	for i, typeParam := range info.TypeParams {
+		if !typeParam.IsValid() {
+			return fmt.Errorf("invalid type parameter at index %d (%s) for interface %s: %s",
+				i, typeParam.Name, info.Object.Name(), typeParam.GetConstraintType())
+		}
+	}
+
+	// Validate instantiations
+	if info.IsGeneric && info.Instantiations != nil {
+		for signature, instantiation := range info.Instantiations {
+			if instantiation == nil {
+				return fmt.Errorf("nil instantiation found for signature %s in interface %s",
+					signature, info.Object.Name())
+			}
+
+			// Validate type argument count
+			if len(instantiation.TypeArgs) != len(info.TypeParams) {
+				return fmt.Errorf("instantiation %s has wrong type argument count (%d vs %d) for interface %s",
+					signature, len(instantiation.TypeArgs), len(info.TypeParams), info.Object.Name())
+			}
+		}
+	} else if !info.IsGeneric && info.Instantiations != nil && 0 < len(info.Instantiations) {
+		return fmt.Errorf("non-generic interface %s should not have instantiations", info.Object.Name())
+	}
+
+	return nil
+}
+
+// GetTypeParameterByName finds a type parameter by name.
+func (info *InterfaceInfo) GetTypeParameterByName(name string) (*domain.TypeParam, bool) {
+	for i := range info.TypeParams {
+		if info.TypeParams[i].Name == name {
+			return &info.TypeParams[i], true
+		}
+	}
+	return nil, false
+}
+
+// GetTypeParameterByIndex finds a type parameter by index.
+func (info *InterfaceInfo) GetTypeParameterByIndex(index int) (*domain.TypeParam, bool) {
+	if index < 0 || len(info.TypeParams) <= index {
+		return nil, false
+	}
+	return &info.TypeParams[index], true
+}
+
+// GetInstantiationCount returns the number of cached instantiations.
+func (info *InterfaceInfo) GetInstantiationCount() int {
+	if info.Instantiations == nil {
+		return 0
+	}
+	return len(info.Instantiations)
+}
+
+// ClearInstantiations removes all cached instantiations.
+func (info *InterfaceInfo) ClearInstantiations() {
+	if info.Instantiations != nil {
+		info.Instantiations = make(map[string]*InstantiatedInterface)
+	}
+}
+
+// GetTypeParameterNames returns the names of all type parameters.
+func (info *InterfaceInfo) GetTypeParameterNames() []string {
+	names := make([]string, len(info.TypeParams))
+	for i, param := range info.TypeParams {
+		names[i] = param.Name
+	}
+	return names
+}
+
+// Helper methods for InstantiatedInterface
+
+// IsValid checks if the instantiated interface is valid.
+func (inst *InstantiatedInterface) IsValid() bool {
+	if inst == nil {
+		return false
+	}
+
+	// Should have type arguments
+	if inst.TypeArgs == nil || len(inst.TypeArgs) == 0 {
+		return false
+	}
+
+	// Type arguments should not be nil
+	for name, typ := range inst.TypeArgs {
+		if name == "" || typ == nil {
+			return false
+		}
+	}
+
+	return true
+}
+
+// GetTypeArgument retrieves a type argument by parameter name.
+func (inst *InstantiatedInterface) GetTypeArgument(paramName string) (domain.Type, bool) {
+	if inst.TypeArgs == nil {
+		return nil, false
+	}
+	typ, exists := inst.TypeArgs[paramName]
+	return typ, exists
+}
+
+// GetTypeArgumentNames returns the names of all type arguments.
+func (inst *InstantiatedInterface) GetTypeArgumentNames() []string {
+	if inst.TypeArgs == nil {
+		return nil
+	}
+
+	names := make([]string, 0, len(inst.TypeArgs))
+	for name := range inst.TypeArgs {
+		names = append(names, name)
+	}
+	return names
 }
 
 // extractInterfaceAnnotations extracts all annotations from interface comments.

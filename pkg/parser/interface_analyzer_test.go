@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/tools/go/packages"
 
+	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
 
@@ -393,6 +394,429 @@ type ComplexProcessor[T comparable, U ~string | ~int] interface {
 			}
 		})
 	}
+}
+
+func TestNewInterfaceInfoConstructor(t *testing.T) {
+	// Test with different type parameter configurations
+	tests := []struct {
+		name              string
+		typeParams        []domain.TypeParam
+		expectedIsGeneric bool
+	}{
+		{
+			name:              "Non-generic interface",
+			typeParams:        []domain.TypeParam{},
+			expectedIsGeneric: false,
+		},
+		{
+			name: "Generic interface with one type parameter",
+			typeParams: []domain.TypeParam{
+				*domain.NewAnyTypeParam("T", 0),
+			},
+			expectedIsGeneric: true,
+		},
+		{
+			name: "Generic interface with multiple type parameters",
+			typeParams: []domain.TypeParam{
+				*domain.NewAnyTypeParam("T", 0),
+				*domain.NewComparableTypeParam("U", 1),
+			},
+			expectedIsGeneric: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test using real parsing to create a proper types.Object
+			sourceCode := `package test
+//go:convergen
+type TestInterface interface {
+	TestMethod(src string) string
+}`
+
+			// Parse the source code
+			fset := token.NewFileSet()
+			file, err := parser.ParseFile(fset, "test.go", sourceCode, parser.ParseComments)
+			require.NoError(t, err)
+
+			// Type check the file
+			config := &types.Config{}
+			pkg := types.NewPackage("test", "test")
+			checker := types.NewChecker(config, fset, pkg, nil)
+
+			err = checker.Files([]*ast.File{file})
+			require.NoError(t, err)
+
+			// Find the interface object
+			var interfaceObj types.Object
+			scope := pkg.Scope()
+			for _, name := range scope.Names() {
+				obj := scope.Lookup(name)
+				if obj.Name() == "TestInterface" {
+					interfaceObj = obj
+					break
+				}
+			}
+			require.NotNil(t, interfaceObj)
+
+			// Create InterfaceInfo using constructor
+			iface := &types.Interface{}
+			methods := []types.Object{}
+			options := &domain.InterfaceOptions{}
+			annotations := []*Annotation{}
+			marker := "test-marker"
+
+			info := NewInterfaceInfo(
+				interfaceObj,
+				iface,
+				methods,
+				options,
+				annotations,
+				marker,
+				interfaceObj.Pos(),
+				tt.typeParams,
+			)
+
+			// Verify constructor behavior
+			assert.NotNil(t, info)
+			assert.Equal(t, interfaceObj, info.Object)
+			assert.Equal(t, iface, info.Interface)
+			assert.Equal(t, methods, info.Methods)
+			assert.Equal(t, options, info.Options)
+			assert.Equal(t, annotations, info.Annotations)
+			assert.Equal(t, marker, info.Marker)
+			assert.Equal(t, interfaceObj.Pos(), info.Position)
+			assert.Equal(t, tt.typeParams, info.TypeParams)
+
+			// Verify new generic fields
+			assert.Equal(t, tt.expectedIsGeneric, info.IsGeneric)
+			assert.NotNil(t, info.Instantiations)
+			assert.Empty(t, info.Instantiations)
+
+			// Verify validation passes
+			assert.NoError(t, info.ValidateGenericConsistency())
+		})
+	}
+}
+
+func TestInstantiatedInterfaceCreation(t *testing.T) {
+	tests := []struct {
+		name        string
+		typeArgs    map[string]domain.Type
+		expectValid bool
+	}{
+		{
+			name: "Valid instantiation with type args",
+			typeArgs: map[string]domain.Type{
+				"T": domain.StringType,
+				"U": domain.IntType,
+			},
+			expectValid: true,
+		},
+		{
+			name:        "Invalid instantiation with nil type args",
+			typeArgs:    nil,
+			expectValid: false,
+		},
+		{
+			name:        "Invalid instantiation with empty type args",
+			typeArgs:    map[string]domain.Type{},
+			expectValid: false,
+		},
+		{
+			name: "Invalid instantiation with nil type",
+			typeArgs: map[string]domain.Type{
+				"T": nil,
+			},
+			expectValid: false,
+		},
+		{
+			name: "Invalid instantiation with empty name",
+			typeArgs: map[string]domain.Type{
+				"": domain.StringType,
+			},
+			expectValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			methods := []types.Object{} // Empty for this test
+			inst := NewInstantiatedInterface(tt.typeArgs, methods)
+
+			assert.NotNil(t, inst)
+			assert.Equal(t, tt.typeArgs, inst.TypeArgs)
+			assert.Equal(t, methods, inst.Methods)
+			assert.Equal(t, "", inst.CreatedAt)
+			assert.False(t, inst.Validated)
+
+			assert.Equal(t, tt.expectValid, inst.IsValid())
+		})
+	}
+}
+
+func TestInterfaceInfoInstantiationManagement(t *testing.T) {
+	// Create a generic interface
+	typeParams := []domain.TypeParam{
+		*domain.NewAnyTypeParam("T", 0),
+		*domain.NewComparableTypeParam("U", 1),
+	}
+
+	info := createTestInterfaceInfo(t, typeParams)
+
+	require.True(t, info.IsGeneric)
+	require.Equal(t, 0, info.GetInstantiationCount())
+
+	// Test adding valid instantiation
+	typeArgs := map[string]domain.Type{
+		"T": domain.StringType,
+		"U": domain.IntType,
+	}
+	instantiation := NewInstantiatedInterface(typeArgs, []types.Object{})
+	signature := "string,int"
+
+	err := info.AddInstantiation(signature, instantiation)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, info.GetInstantiationCount())
+	assert.True(t, info.HasInstantiation(signature))
+
+	// Test getting instantiation
+	retrieved, exists := info.GetInstantiation(signature)
+	assert.True(t, exists)
+	assert.Equal(t, instantiation, retrieved)
+
+	// Test adding instantiation with wrong type arg count
+	wrongTypeArgs := map[string]domain.Type{
+		"T": domain.StringType,
+		// Missing "U"
+	}
+	wrongInstantiation := NewInstantiatedInterface(wrongTypeArgs, []types.Object{})
+	err = info.AddInstantiation("string", wrongInstantiation)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "type argument count")
+
+	// Test adding nil instantiation
+	err = info.AddInstantiation("nil", nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "instantiation cannot be nil")
+
+	// Test clearing instantiations
+	info.ClearInstantiations()
+	assert.Equal(t, 0, info.GetInstantiationCount())
+	assert.False(t, info.HasInstantiation(signature))
+}
+
+func TestInterfaceInfoTypeParameterAccess(t *testing.T) {
+	typeParams := []domain.TypeParam{
+		*domain.NewAnyTypeParam("T", 0),
+		*domain.NewComparableTypeParam("U", 1),
+		*domain.NewUnderlyingTypeParam("V", domain.NewUnderlyingConstraint(domain.StringType, ""), 2),
+	}
+
+	info := createTestInterfaceInfo(t, typeParams)
+
+	// Test GetTypeParameterByName
+	param, found := info.GetTypeParameterByName("T")
+	assert.True(t, found)
+	assert.Equal(t, "T", param.Name)
+	assert.Equal(t, 0, param.Index)
+
+	param, found = info.GetTypeParameterByName("U")
+	assert.True(t, found)
+	assert.Equal(t, "U", param.Name)
+	assert.Equal(t, 1, param.Index)
+
+	param, found = info.GetTypeParameterByName("NonExistent")
+	assert.False(t, found)
+	assert.Nil(t, param)
+
+	// Test GetTypeParameterByIndex
+	param, found = info.GetTypeParameterByIndex(0)
+	assert.True(t, found)
+	assert.Equal(t, "T", param.Name)
+
+	param, found = info.GetTypeParameterByIndex(2)
+	assert.True(t, found)
+	assert.Equal(t, "V", param.Name)
+
+	param, found = info.GetTypeParameterByIndex(-1)
+	assert.False(t, found)
+	assert.Nil(t, param)
+
+	param, found = info.GetTypeParameterByIndex(10)
+	assert.False(t, found)
+	assert.Nil(t, param)
+
+	// Test GetTypeParameterNames
+	names := info.GetTypeParameterNames()
+	assert.Equal(t, []string{"T", "U", "V"}, names)
+}
+
+func TestInterfaceInfoValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		setup       func() *InterfaceInfo
+		expectError bool
+		errorText   string
+	}{
+		{
+			name: "Valid non-generic interface",
+			setup: func() *InterfaceInfo {
+				return createTestInterfaceInfo(t, []domain.TypeParam{})
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid generic interface",
+			setup: func() *InterfaceInfo {
+				return createTestInterfaceInfo(t, []domain.TypeParam{*domain.NewAnyTypeParam("T", 0)})
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid type parameter",
+			setup: func() *InterfaceInfo {
+				invalidParam := &domain.TypeParam{
+					Name:         "", // Invalid: empty name
+					Constraint:   nil,
+					Index:        0,
+					IsAny:        true,
+					IsComparable: true, // Invalid: both IsAny and IsComparable
+				}
+				return createTestInterfaceInfo(t, []domain.TypeParam{*invalidParam})
+			},
+			expectError: true,
+			errorText:   "invalid type parameter",
+		},
+		{
+			name: "Non-generic with instantiations",
+			setup: func() *InterfaceInfo {
+				info := createTestInterfaceInfo(t, []domain.TypeParam{})
+				// Manually add instantiation to non-generic interface (should be invalid)
+				info.Instantiations["test"] = NewInstantiatedInterface(
+					map[string]domain.Type{"T": domain.StringType},
+					[]types.Object{},
+				)
+				return info
+			},
+			expectError: true,
+			errorText:   "non-generic interface",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			info := tt.setup()
+			err := info.ValidateGenericConsistency()
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorText != "" {
+					assert.Contains(t, err.Error(), tt.errorText)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestNonGenericInterfaceInstantiationRestrictions(t *testing.T) {
+	// Create non-generic interface
+	info := createTestInterfaceInfo(t, []domain.TypeParam{})
+
+	require.False(t, info.IsGeneric)
+
+	// Try to add instantiation to non-generic interface
+	instantiation := NewInstantiatedInterface(
+		map[string]domain.Type{"T": domain.StringType},
+		[]types.Object{},
+	)
+
+	err := info.AddInstantiation("string", instantiation)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot add instantiation to non-generic interface")
+}
+
+func TestInstantiatedInterfaceHelperMethods(t *testing.T) {
+	typeArgs := map[string]domain.Type{
+		"T": domain.StringType,
+		"U": domain.IntType,
+		"V": domain.BoolType,
+	}
+
+	inst := NewInstantiatedInterface(typeArgs, []types.Object{})
+
+	// Test GetTypeArgument
+	typ, found := inst.GetTypeArgument("T")
+	assert.True(t, found)
+	assert.Equal(t, domain.StringType, typ)
+
+	typ, found = inst.GetTypeArgument("NonExistent")
+	assert.False(t, found)
+	assert.Nil(t, typ)
+
+	// Test GetTypeArgumentNames
+	names := inst.GetTypeArgumentNames()
+	assert.Len(t, names, 3)
+	assert.Contains(t, names, "T")
+	assert.Contains(t, names, "U")
+	assert.Contains(t, names, "V")
+
+	// Test with nil type args
+	emptyInst := NewInstantiatedInterface(nil, []types.Object{})
+	names = emptyInst.GetTypeArgumentNames()
+	assert.Nil(t, names)
+
+	typ, found = emptyInst.GetTypeArgument("T")
+	assert.False(t, found)
+	assert.Nil(t, typ)
+}
+
+// Helper function to create a test InterfaceInfo with real types.Object
+func createTestInterfaceInfo(t *testing.T, typeParams []domain.TypeParam) *InterfaceInfo {
+	// Use real parsing to create proper types.Object
+	sourceCode := `package test
+//go:convergen
+type TestInterface interface {
+	TestMethod(src string) string
+}`
+
+	// Parse the source code
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", sourceCode, parser.ParseComments)
+	require.NoError(t, err)
+
+	// Type check the file
+	config := &types.Config{}
+	pkg := types.NewPackage("test", "test")
+	checker := types.NewChecker(config, fset, pkg, nil)
+
+	err = checker.Files([]*ast.File{file})
+	require.NoError(t, err)
+
+	// Find the interface object
+	var interfaceObj types.Object
+	scope := pkg.Scope()
+	for _, name := range scope.Names() {
+		obj := scope.Lookup(name)
+		if obj.Name() == "TestInterface" {
+			interfaceObj = obj
+			break
+		}
+	}
+	require.NotNil(t, interfaceObj)
+
+	return NewInterfaceInfo(
+		interfaceObj,
+		&types.Interface{},
+		[]types.Object{},
+		&domain.InterfaceOptions{},
+		[]*Annotation{},
+		"test-marker",
+		interfaceObj.Pos(),
+		typeParams,
+	)
 }
 
 func TestBackwardCompatibilityNonGenericInterfaces(t *testing.T) {
