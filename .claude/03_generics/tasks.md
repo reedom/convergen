@@ -53,14 +53,14 @@ type TypeParam struct {
 **Description**: Create a constraint parser that can handle all Go generic constraint syntax including unions, underlying types, and interface constraints.
 
 **Acceptance Criteria**:
-- [ ] Parse `any` constraint correctly
-- [ ] Parse `comparable` constraint correctly  
-- [ ] Parse union constraints: `~int | ~string | ~float64`
-- [ ] Parse underlying type constraints: `~string`, `~int`
-- [ ] Parse interface constraints with embedded interfaces
-- [ ] Handle nested constraint expressions
-- [ ] Provide clear error messages for invalid constraints
-- [ ] Performance: Parse constraints in <1ms for typical cases
+- [x] Parse `any` constraint correctly
+- [x] Parse `comparable` constraint correctly  
+- [x] Parse union constraints: `~int | ~string | ~float64`
+- [x] Parse underlying type constraints: `~string`, `~int`
+- [x] Parse interface constraints with embedded interfaces
+- [x] Handle nested constraint expressions
+- [x] Provide clear error messages for invalid constraints
+- [x] Performance: Parse constraints in <1ms for typical cases
 
 **Implementation Details**:
 ```go

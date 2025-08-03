@@ -1,0 +1,442 @@
+package parser
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"go/types"
+	"strings"
+	"time"
+
+	"go.uber.org/zap"
+
+	"github.com/reedom/convergen/v8/pkg/domain"
+)
+
+// Static errors for err113 compliance.
+var (
+	ErrInvalidConstraint           = errors.New("invalid constraint")
+	ErrUnsupportedConstraintType   = errors.New("unsupported constraint type")
+	ErrEmptyUnionConstraint        = errors.New("union constraint cannot be empty")
+	ErrInvalidUnderlyingConstraint = errors.New("invalid underlying type constraint")
+	ErrCircularConstraint          = errors.New("circular constraint detected")
+)
+
+// ConstraintParser handles parsing of Go type constraints.
+// It supports parsing all Go generic constraint syntax including unions,
+// underlying types, and interface constraints.
+type ConstraintParser struct {
+	typeResolver *TypeResolver
+	logger       *zap.Logger
+}
+
+// ParsedConstraint represents a fully parsed type constraint.
+// It provides a structured representation of Go constraint syntax
+// that can be easily analyzed and validated.
+type ParsedConstraint struct {
+	// Core constraint information
+	Type         domain.Type `json:"type"`
+	IsAny        bool        `json:"is_any"`
+	IsComparable bool        `json:"is_comparable"`
+
+	// Union constraint support (~int | ~string | ~float64)
+	UnionTypes []domain.Type `json:"union_types,omitempty"`
+
+	// Underlying type constraint support (~string, ~int)
+	Underlying *domain.UnderlyingConstraint `json:"underlying,omitempty"`
+
+	// Interface constraint support
+	InterfaceType domain.Type `json:"interface_type,omitempty"`
+
+	// Parse metadata
+	ConstraintType string        `json:"constraint_type"`
+	ParseDuration  time.Duration `json:"parse_duration"`
+	Valid          bool          `json:"valid"`
+	ErrorMessage   string        `json:"error_message,omitempty"`
+}
+
+// NewConstraintParser creates a new constraint parser with the given type resolver and logger.
+func NewConstraintParser(typeResolver *TypeResolver, logger *zap.Logger) *ConstraintParser {
+	return &ConstraintParser{
+		typeResolver: typeResolver,
+		logger:       logger,
+	}
+}
+
+// ParseConstraint parses constraint expressions like "~int | ~string | comparable".
+// It returns a ParsedConstraint structure with detailed information about the constraint.
+//
+// Supported constraint types:
+// - any: unrestricted type parameter
+// - comparable: types that support == and != operators
+// - ~int | ~string: union of underlying types
+// - ~string: underlying type constraint
+// - Custom interfaces: interface{} constraints
+// - Nested expressions: complex constraint combinations
+func (cp *ConstraintParser) ParseConstraint(
+	ctx context.Context,
+	constraint types.Type,
+) (*ParsedConstraint, error) {
+	startTime := time.Now()
+
+	// Handle nil constraint (represents 'any')
+	if constraint == nil {
+		cp.logger.Debug("parsing nil constraint (any)")
+
+		return &ParsedConstraint{
+			Type:           nil,
+			IsAny:          true,
+			IsComparable:   false,
+			ConstraintType: "any",
+			ParseDuration:  time.Since(startTime),
+			Valid:          true,
+		}, nil
+	}
+
+	cp.logger.Debug("parsing constraint",
+		zap.String("constraint", constraint.String()),
+		zap.String("constraint_type", fmt.Sprintf("%T", constraint)))
+
+	result := &ParsedConstraint{
+		ParseDuration: 0, // Will be set at the end
+		Valid:         false,
+	}
+
+	// Parse based on constraint type
+	switch constraintType := constraint.(type) {
+	case *types.Interface:
+		err := cp.parseInterfaceConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse interface constraint", zap.Error(err))
+			result.ParseDuration = time.Since(startTime)
+			return result, fmt.Errorf("failed to parse interface constraint: %w", err)
+		}
+
+	case *types.Union:
+		err := cp.parseUnionConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse union constraint", zap.Error(err))
+			result.ParseDuration = time.Since(startTime)
+			return result, fmt.Errorf("failed to parse union constraint: %w", err)
+		}
+
+	case *types.Named:
+		err := cp.parseNamedConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse named constraint", zap.Error(err))
+			result.ParseDuration = time.Since(startTime)
+			return result, fmt.Errorf("failed to parse named constraint: %w", err)
+		}
+
+	case *types.Basic:
+		err := cp.parseBasicConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse basic constraint", zap.Error(err))
+			result.ParseDuration = time.Since(startTime)
+			return result, fmt.Errorf("failed to parse basic constraint: %w", err)
+		}
+
+	default:
+		err := fmt.Errorf("%w: %T", ErrUnsupportedConstraintType, constraint)
+		result.ErrorMessage = err.Error()
+		cp.logger.Error("unsupported constraint type",
+			zap.String("type", fmt.Sprintf("%T", constraint)),
+			zap.String("constraint", constraint.String()))
+		result.ParseDuration = time.Since(startTime)
+		return result, err
+	}
+
+	result.Valid = true
+	result.ParseDuration = time.Since(startTime)
+
+	cp.logger.Debug("constraint parsed successfully",
+		zap.String("constraint_type", result.ConstraintType),
+		zap.Duration("parse_duration", result.ParseDuration),
+		zap.Bool("valid", result.Valid))
+
+	return result, nil
+}
+
+// parseInterfaceConstraint handles interface constraints including 'comparable' and custom interfaces.
+func (cp *ConstraintParser) parseInterfaceConstraint(
+	ctx context.Context,
+	iface *types.Interface,
+	result *ParsedConstraint,
+) error {
+	// Check for 'comparable' constraint
+	if cp.isComparableInterface(iface) {
+		result.IsComparable = true
+		result.ConstraintType = "comparable"
+		cp.logger.Debug("detected comparable constraint")
+		return nil
+	}
+
+	// Check for empty interface (equivalent to 'any')
+	if iface.NumMethods() == 0 && iface.NumEmbeddeds() == 0 {
+		result.IsAny = true
+		result.ConstraintType = "any"
+		cp.logger.Debug("detected any constraint (empty interface)")
+		return nil
+	}
+
+	// Handle custom interface constraints
+	domainType, err := cp.typeResolver.ResolveType(ctx, iface)
+	if err != nil {
+		return fmt.Errorf("failed to resolve interface type: %w", err)
+	}
+
+	result.Type = domainType
+	result.InterfaceType = domainType
+	result.ConstraintType = "interface"
+
+	cp.logger.Debug("detected interface constraint",
+		zap.String("interface_name", domainType.String()),
+		zap.Int("num_methods", iface.NumMethods()),
+		zap.Int("num_embeddeds", iface.NumEmbeddeds()))
+
+	return nil
+}
+
+// parseUnionConstraint handles union constraints like ~int | ~string | ~float64.
+func (cp *ConstraintParser) parseUnionConstraint(
+	ctx context.Context,
+	union *types.Union,
+	result *ParsedConstraint,
+) error {
+	if union.Len() == 0 {
+		return ErrEmptyUnionConstraint
+	}
+
+	unionTypes := make([]domain.Type, 0, union.Len())
+	hasUnderlying := false
+
+	for i := 0; i < union.Len(); i++ {
+		term := union.Term(i)
+
+		cp.logger.Debug("parsing union term",
+			zap.Int("index", i),
+			zap.String("type", term.Type().String()),
+			zap.Bool("tilde", term.Tilde()))
+
+		// Check if this is an underlying type constraint (~T)
+		if term.Tilde() {
+			hasUnderlying = true
+		}
+
+		// Resolve the domain type
+		domainType, err := cp.typeResolver.ResolveType(ctx, term.Type())
+		if err != nil {
+			return fmt.Errorf("failed to resolve union term %d (%s): %w", i, term.Type().String(), err)
+		}
+
+		unionTypes = append(unionTypes, domainType)
+	}
+
+	result.UnionTypes = unionTypes
+	result.ConstraintType = "union"
+
+	if hasUnderlying {
+		result.ConstraintType = "union_underlying"
+		cp.logger.Debug("detected union constraint with underlying types")
+	} else {
+		cp.logger.Debug("detected union constraint")
+	}
+
+	cp.logger.Debug("parsed union constraint",
+		zap.Int("num_types", len(unionTypes)),
+		zap.Bool("has_underlying", hasUnderlying))
+
+	return nil
+}
+
+// parseNamedConstraint handles named type constraints.
+func (cp *ConstraintParser) parseNamedConstraint(
+	ctx context.Context,
+	named *types.Named,
+	result *ParsedConstraint,
+) error {
+	// Check for predefined constraint types
+	switch named.Obj().Name() {
+	case "any":
+		result.IsAny = true
+		result.ConstraintType = "any"
+		cp.logger.Debug("detected any constraint (named)")
+		return nil
+
+	case "comparable":
+		result.IsComparable = true
+		result.ConstraintType = "comparable"
+		cp.logger.Debug("detected comparable constraint (named)")
+		return nil
+	}
+
+	// Handle custom named constraints
+	domainType, err := cp.typeResolver.ResolveType(ctx, named)
+	if err != nil {
+		return fmt.Errorf("failed to resolve named constraint: %w", err)
+	}
+
+	result.Type = domainType
+	result.ConstraintType = "named"
+
+	cp.logger.Debug("detected named constraint",
+		zap.String("name", named.Obj().Name()),
+		zap.String("package", named.Obj().Pkg().Name()))
+
+	return nil
+}
+
+// parseBasicConstraint handles basic type constraints.
+func (cp *ConstraintParser) parseBasicConstraint(
+	ctx context.Context,
+	basic *types.Basic,
+	result *ParsedConstraint,
+) error {
+	domainType, err := cp.typeResolver.ResolveType(ctx, basic)
+	if err != nil {
+		return fmt.Errorf("failed to resolve basic constraint: %w", err)
+	}
+
+	result.Type = domainType
+	result.ConstraintType = "basic"
+
+	cp.logger.Debug("detected basic constraint",
+		zap.String("name", basic.Name()),
+		zap.String("kind", basic.String()))
+
+	return nil
+}
+
+// isComparableInterface checks if an interface represents the 'comparable' constraint.
+func (cp *ConstraintParser) isComparableInterface(iface *types.Interface) bool {
+	// Check if this is the built-in 'comparable' interface
+	// The comparable interface has specific characteristics in the Go type system
+	if iface.NumMethods() == 0 && 0 < iface.NumEmbeddeds() {
+		for i := 0; i < iface.NumEmbeddeds(); i++ {
+			embedded := iface.EmbeddedType(i)
+			if named, ok := embedded.(*types.Named); ok {
+				if named.Obj().Name() == "comparable" {
+					return true
+				}
+			}
+		}
+	}
+
+	// Check by string representation as fallback
+	return strings.Contains(iface.String(), "comparable")
+}
+
+// ValidateConstraint validates that a constraint is well-formed and supported.
+func (cp *ConstraintParser) ValidateConstraint(constraint *ParsedConstraint) error {
+	if constraint == nil {
+		return fmt.Errorf("%w: constraint is nil", ErrInvalidConstraint)
+	}
+
+	if !constraint.Valid {
+		return fmt.Errorf("%w: %s", ErrInvalidConstraint, constraint.ErrorMessage)
+	}
+
+	// Validate constraint type consistency
+	constraintCount := 0
+	if constraint.IsAny {
+		constraintCount++
+	}
+	if constraint.IsComparable {
+		constraintCount++
+	}
+	if 0 < len(constraint.UnionTypes) {
+		constraintCount++
+	}
+	if constraint.Underlying != nil {
+		constraintCount++
+	}
+	if constraint.InterfaceType != nil {
+		constraintCount++
+	}
+
+	if 1 < constraintCount {
+		return fmt.Errorf("%w: multiple constraint types detected", ErrInvalidConstraint)
+	}
+
+	if constraintCount == 0 && constraint.Type == nil {
+		return fmt.Errorf("%w: no constraint type detected", ErrInvalidConstraint)
+	}
+
+	return nil
+}
+
+// GetConstraintTypeString returns a human-readable string representation of the constraint type.
+func (cp *ConstraintParser) GetConstraintTypeString(constraint *ParsedConstraint) string {
+	if constraint == nil {
+		return "unknown"
+	}
+
+	if constraint.IsAny {
+		return "any"
+	}
+	if constraint.IsComparable {
+		return "comparable"
+	}
+	if 0 < len(constraint.UnionTypes) {
+		types := make([]string, len(constraint.UnionTypes))
+		for i, t := range constraint.UnionTypes {
+			types[i] = t.String()
+		}
+		return strings.Join(types, " | ")
+	}
+	if constraint.Underlying != nil {
+		return "~" + constraint.Underlying.Type.String()
+	}
+	if constraint.InterfaceType != nil {
+		return constraint.InterfaceType.String()
+	}
+	if constraint.Type != nil {
+		return constraint.Type.String()
+	}
+
+	return "unknown"
+}
+
+// ConvertToDomainTypeParam converts a ParsedConstraint to a domain.TypeParam.
+// This provides integration with the enhanced TypeParam structure from TASK-001.
+func (cp *ConstraintParser) ConvertToDomainTypeParam(
+	name string,
+	index int,
+	constraint *ParsedConstraint,
+) (*domain.TypeParam, error) {
+	if constraint == nil {
+		return nil, fmt.Errorf("%w: constraint is nil", ErrInvalidConstraint)
+	}
+
+	if err := cp.ValidateConstraint(constraint); err != nil {
+		return nil, fmt.Errorf("invalid constraint for type param conversion: %w", err)
+	}
+
+	// Create appropriate TypeParam based on constraint type
+	if constraint.IsAny {
+		return domain.NewAnyTypeParam(name, index), nil
+	}
+
+	if constraint.IsComparable {
+		return domain.NewComparableTypeParam(name, index), nil
+	}
+
+	if 0 < len(constraint.UnionTypes) {
+		return domain.NewUnionTypeParam(name, constraint.UnionTypes, index), nil
+	}
+
+	if constraint.Underlying != nil {
+		return domain.NewUnderlyingTypeParam(name, constraint.Underlying, index), nil
+	}
+
+	// Handle interface or basic constraints
+	if constraint.Type != nil {
+		return domain.NewTypeParam(name, constraint.Type, index), nil
+	}
+
+	return nil, fmt.Errorf("%w: no valid constraint found", ErrInvalidConstraint)
+}
