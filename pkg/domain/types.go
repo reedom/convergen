@@ -101,10 +101,11 @@ type TypeParam struct {
 	Index      int    `json:"index"`
 
 	// Enhanced constraint support for Go generics
-	UnionTypes   []Type                `json:"union_types,omitempty"` // T ~int | ~string
-	IsComparable bool                  `json:"comparable,omitempty"`  // T comparable
-	Underlying   *UnderlyingConstraint `json:"underlying,omitempty"`  // T ~string
-	IsAny        bool                  `json:"any,omitempty"`         // T any
+	UnionTypes      []Type                `json:"union_types,omitempty"`      // T ~int | ~string
+	IsComparable    bool                  `json:"comparable,omitempty"`       // T comparable
+	Underlying      *UnderlyingConstraint `json:"underlying,omitempty"`       // T ~string
+	IsAny           bool                  `json:"any,omitempty"`              // T any
+	UnionUnderlying bool                  `json:"union_underlying,omitempty"` // T ~int | ~string (indicates union types are underlying)
 }
 
 // NewTypeParam creates a basic type parameter with the given name, constraint and index.
@@ -144,13 +145,24 @@ func NewComparableTypeParam(name string, index int) *TypeParam {
 	}
 }
 
-// NewUnionTypeParam creates a type parameter with union constraints (T ~int | ~string).
+// NewUnionTypeParam creates a type parameter with union constraints (T int | string).
 func NewUnionTypeParam(name string, unionTypes []Type, index int) *TypeParam {
 	return &TypeParam{
 		Name:       name,
 		Constraint: nil, // Union constraints stored in UnionTypes field
 		Index:      index,
 		UnionTypes: append([]Type(nil), unionTypes...), // defensive copy
+	}
+}
+
+// NewUnionUnderlyingTypeParam creates a type parameter with union underlying constraints (T ~int | ~string).
+func NewUnionUnderlyingTypeParam(name string, unionTypes []Type, index int) *TypeParam {
+	return &TypeParam{
+		Name:            name,
+		Constraint:      nil, // Union constraints stored in UnionTypes field
+		Index:           index,
+		UnionTypes:      append([]Type(nil), unionTypes...), // defensive copy
+		UnionUnderlying: true,                               // Indicates union types are underlying
 	}
 }
 
@@ -196,6 +208,10 @@ func (tp *TypeParam) IsValid() bool {
 		if tp.Constraint != nil || tp.Underlying != nil {
 			return false
 		}
+		// UnionUnderlying should only be set when UnionTypes is present
+		if tp.UnionUnderlying && len(tp.UnionTypes) == 0 {
+			return false
+		}
 	}
 	if tp.Underlying != nil {
 		constraintCount++
@@ -206,6 +222,11 @@ func (tp *TypeParam) IsValid() bool {
 	// Generic Constraint field (for interface constraints or underlying type reference)
 	if constraintCount == 0 && tp.Constraint != nil {
 		constraintCount++
+	}
+
+	// UnionUnderlying should only be set with UnionTypes
+	if tp.UnionUnderlying && len(tp.UnionTypes) == 0 {
+		return false
 	}
 
 	// Should have at most one constraint type
@@ -221,6 +242,9 @@ func (tp *TypeParam) GetConstraintType() string {
 		return "comparable"
 	}
 	if 0 < len(tp.UnionTypes) {
+		if tp.UnionUnderlying {
+			return "union_underlying"
+		}
 		return "union"
 	}
 	if tp.Underlying != nil {
@@ -282,7 +306,11 @@ func (tp *TypeParam) String() string {
 	if 0 < len(tp.UnionTypes) {
 		types := make([]string, len(tp.UnionTypes))
 		for i, t := range tp.UnionTypes {
-			types[i] = t.String()
+			if tp.UnionUnderlying {
+				types[i] = "~" + t.String()
+			} else {
+				types[i] = t.String()
+			}
 		}
 		return tp.Name + " " + strings.Join(types, " | ")
 	}

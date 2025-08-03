@@ -82,22 +82,26 @@ func (cp *ConstraintParser) ParseConstraint(
 
 ---
 
-### TASK-003: Extract Interface Type Parameters
+### TASK-003: Extract Interface Type Parameters ✅ COMPLETED
 **Priority**: Critical  
 **Estimated Effort**: 3 days  
 **Dependencies**: TASK-001, TASK-002  
-**Assignee**: TBD
+**Assignee**: Claude
 
 **Description**: Enhance the `analyzeInterface` function to extract type parameters from generic interface declarations.
 
 **Acceptance Criteria**:
-- [ ] Extract type parameters from `type Converter[T any] interface { ... }`
-- [ ] Handle multiple type parameters: `type Mapper[T, U any] interface { ... }`
-- [ ] Parse complex constraints for each type parameter
-- [ ] Store type parameters in `InterfaceInfo` structure
-- [ ] Maintain backward compatibility with non-generic interfaces
-- [ ] Log detailed information about extracted type parameters
-- [ ] Handle edge cases like empty type parameter lists
+- [x] Extract type parameters from `type Converter[T any] interface { ... }`
+- [x] Handle multiple type parameters: `type Mapper[T, U any] interface { ... }`
+- [x] Parse complex constraints for each type parameter using the constraint parser from TASK-002
+- [x] Store type parameters in `InterfaceInfo` structure
+- [x] Maintain backward compatibility with non-generic interfaces
+- [x] Log detailed information about extracted type parameters
+- [x] Handle edge cases like empty type parameter lists
+- [x] Support union underlying constraints like `T ~string | ~int`
+- [x] Support single underlying constraints like `T ~string`
+- [x] Support comparable constraints like `T comparable`
+- [x] Support any constraints like `T any`
 
 **Implementation Details**:
 ```go

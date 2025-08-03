@@ -140,6 +140,15 @@ func (cp *ConstraintParser) ParseConstraint(
 			return result, fmt.Errorf("failed to parse basic constraint: %w", err)
 		}
 
+	case *types.Alias:
+		err := cp.parseAliasConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse alias constraint", zap.Error(err))
+			result.ParseDuration = time.Since(startTime)
+			return result, fmt.Errorf("failed to parse alias constraint: %w", err)
+		}
+
 	default:
 		err := fmt.Errorf("%w: %T", ErrUnsupportedConstraintType, constraint)
 		result.ErrorMessage = err.Error()
@@ -181,6 +190,11 @@ func (cp *ConstraintParser) parseInterfaceConstraint(
 		result.ConstraintType = "any"
 		cp.logger.Debug("detected any constraint (empty interface)")
 		return nil
+	}
+
+	// Check for union constraints represented as interfaces
+	if cp.isUnionInterface(iface) {
+		return cp.parseUnionInterfaceConstraint(ctx, iface, result)
 	}
 
 	// Handle custom interface constraints
@@ -311,6 +325,43 @@ func (cp *ConstraintParser) parseBasicConstraint(
 	return nil
 }
 
+// parseAliasConstraint handles alias type constraints (like 'any' in Go 1.18+).
+func (cp *ConstraintParser) parseAliasConstraint(
+	ctx context.Context,
+	alias *types.Alias,
+	result *ParsedConstraint,
+) error {
+	// Check for predefined constraint aliases
+	switch alias.Obj().Name() {
+	case "any":
+		result.IsAny = true
+		result.ConstraintType = "any"
+		cp.logger.Debug("detected any constraint (alias)")
+		return nil
+
+	case "comparable":
+		result.IsComparable = true
+		result.ConstraintType = "comparable"
+		cp.logger.Debug("detected comparable constraint (alias)")
+		return nil
+	}
+
+	// Handle custom alias constraints by resolving the underlying type
+	domainType, err := cp.typeResolver.ResolveType(ctx, alias)
+	if err != nil {
+		return fmt.Errorf("failed to resolve alias constraint: %w", err)
+	}
+
+	result.Type = domainType
+	result.ConstraintType = "alias"
+
+	cp.logger.Debug("detected alias constraint",
+		zap.String("name", alias.Obj().Name()),
+		zap.String("package", alias.Obj().Pkg().Name()))
+
+	return nil
+}
+
 // isComparableInterface checks if an interface represents the 'comparable' constraint.
 func (cp *ConstraintParser) isComparableInterface(iface *types.Interface) bool {
 	// Check if this is the built-in 'comparable' interface
@@ -328,6 +379,159 @@ func (cp *ConstraintParser) isComparableInterface(iface *types.Interface) bool {
 
 	// Check by string representation as fallback
 	return strings.Contains(iface.String(), "comparable")
+}
+
+// isUnionInterface checks if an interface represents a union constraint (~int | ~string).
+func (cp *ConstraintParser) isUnionInterface(iface *types.Interface) bool {
+	// Union constraints appear as interfaces with no methods but embedded types
+	if 0 < iface.NumMethods() {
+		return false
+	}
+
+	// Check if it has embedded types that look like union elements
+	if 0 < iface.NumEmbeddeds() {
+		// Look for union syntax in string representation
+		str := iface.String()
+		return strings.Contains(str, "|") || strings.Contains(str, "~")
+	}
+
+	return false
+}
+
+// parseUnionInterfaceConstraint handles union constraints represented as interfaces.
+func (cp *ConstraintParser) parseUnionInterfaceConstraint(
+	ctx context.Context,
+	iface *types.Interface,
+	result *ParsedConstraint,
+) error {
+	// For union constraints represented as interfaces, we can extract the underlying types
+	// by examining the embedded types or analyzing the string representation
+
+	str := iface.String()
+	cp.logger.Debug("parsing union interface constraint",
+		zap.String("interface_str", str),
+		zap.Int("num_embeddeds", iface.NumEmbeddeds()))
+
+	// Check if this is an underlying type constraint (~string)
+	if strings.Contains(str, "~") && !strings.Contains(str, "|") {
+		return cp.parseUnderlyingInterfaceConstraint(ctx, iface, result)
+	}
+
+	// For complex union constraints, we'll parse them as union types
+	unionTypes := make([]domain.Type, 0)
+	hasUnderlying := strings.Contains(str, "~")
+
+	// Create domain types based on embedded types if available
+	for i := 0; i < iface.NumEmbeddeds(); i++ {
+		embedded := iface.EmbeddedType(i)
+
+		// Handle union types specially
+		if union, ok := embedded.(*types.Union); ok {
+			// Parse the union constraint directly
+			unionResult := &ParsedConstraint{}
+			err := cp.parseUnionConstraint(ctx, union, unionResult)
+			if err != nil {
+				cp.logger.Warn("failed to parse embedded union type",
+					zap.Error(err),
+					zap.String("union_type", union.String()))
+				continue
+			}
+			// Add all union types to our result
+			unionTypes = append(unionTypes, unionResult.UnionTypes...)
+			if unionResult.ConstraintType == "union_underlying" {
+				hasUnderlying = true
+			}
+		} else {
+			// Regular type resolution for non-union types
+			domainType, err := cp.typeResolver.ResolveType(ctx, embedded)
+			if err != nil {
+				cp.logger.Warn("failed to resolve embedded type in union",
+					zap.Error(err),
+					zap.String("embedded_type", embedded.String()))
+				continue
+			}
+			unionTypes = append(unionTypes, domainType)
+		}
+	}
+
+	result.UnionTypes = unionTypes
+	if hasUnderlying {
+		result.ConstraintType = "union_underlying"
+	} else {
+		result.ConstraintType = "union"
+	}
+
+	cp.logger.Debug("parsed union interface constraint",
+		zap.Int("union_types", len(unionTypes)),
+		zap.Bool("has_underlying", hasUnderlying))
+
+	return nil
+}
+
+// parseUnderlyingInterfaceConstraint handles underlying type constraints represented as interfaces.
+func (cp *ConstraintParser) parseUnderlyingInterfaceConstraint(
+	ctx context.Context,
+	iface *types.Interface,
+	result *ParsedConstraint,
+) error {
+	// For ~string constraint, try to extract the underlying type
+	if 0 < iface.NumEmbeddeds() {
+		embedded := iface.EmbeddedType(0)
+
+		// Handle union types specially (e.g., for constraints like ~string)
+		if union, ok := embedded.(*types.Union); ok {
+			// For underlying constraints, we expect a single term with tilde
+			if union.Len() == 1 {
+				term := union.Term(0)
+				if term.Tilde() {
+					domainType, err := cp.typeResolver.ResolveType(ctx, term.Type())
+					if err != nil {
+						return fmt.Errorf("failed to resolve underlying type: %w", err)
+					}
+
+					result.Underlying = domain.NewUnderlyingConstraint(domainType, domainType.Package())
+					result.Type = domainType
+					result.ConstraintType = "underlying"
+
+					cp.logger.Debug("parsed underlying interface constraint from union",
+						zap.String("underlying_type", domainType.String()))
+
+					return nil
+				}
+			}
+			// If it's a multi-term union, treat as union constraint
+			return cp.parseUnionConstraint(ctx, union, result)
+		}
+
+		// Regular type resolution for non-union embedded types
+		domainType, err := cp.typeResolver.ResolveType(ctx, embedded)
+		if err != nil {
+			return fmt.Errorf("failed to resolve underlying type: %w", err)
+		}
+
+		result.Underlying = domain.NewUnderlyingConstraint(domainType, domainType.Package())
+		result.Type = domainType
+		result.ConstraintType = "underlying"
+
+		cp.logger.Debug("parsed underlying interface constraint",
+			zap.String("underlying_type", domainType.String()))
+
+		return nil
+	}
+
+	// Fallback: treat as regular interface constraint
+	domainType, err := cp.typeResolver.ResolveType(ctx, iface)
+	if err != nil {
+		return fmt.Errorf("failed to resolve interface constraint: %w", err)
+	}
+
+	result.Type = domainType
+	result.ConstraintType = "interface"
+
+	cp.logger.Debug("parsed interface constraint (underlying fallback)",
+		zap.String("interface_type", domainType.String()))
+
+	return nil
 }
 
 // ValidateConstraint validates that a constraint is well-formed and supported.
@@ -384,7 +588,11 @@ func (cp *ConstraintParser) GetConstraintTypeString(constraint *ParsedConstraint
 	if 0 < len(constraint.UnionTypes) {
 		types := make([]string, len(constraint.UnionTypes))
 		for i, t := range constraint.UnionTypes {
-			types[i] = t.String()
+			if constraint.ConstraintType == "union_underlying" {
+				types[i] = "~" + t.String()
+			} else {
+				types[i] = t.String()
+			}
 		}
 		return strings.Join(types, " | ")
 	}
@@ -426,6 +634,9 @@ func (cp *ConstraintParser) ConvertToDomainTypeParam(
 	}
 
 	if 0 < len(constraint.UnionTypes) {
+		if constraint.ConstraintType == "union_underlying" {
+			return domain.NewUnionUnderlyingTypeParam(name, constraint.UnionTypes, index), nil
+		}
 		return domain.NewUnionTypeParam(name, constraint.UnionTypes, index), nil
 	}
 

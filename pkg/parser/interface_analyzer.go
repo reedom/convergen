@@ -42,6 +42,7 @@ type InterfaceInfo struct {
 	Annotations []*Annotation
 	Marker      string
 	Position    token.Pos
+	TypeParams  []domain.TypeParam // Type parameters for generic interfaces
 }
 
 // Annotation represents a parsed annotation from interface or method comments.
@@ -86,7 +87,7 @@ func (p *ASTParser) isConvergenInterface(file *ast.File, obj types.Object) bool 
 }
 
 // analyzeInterface performs comprehensive analysis of a convergen interface.
-func (p *ASTParser) analyzeInterface(_ context.Context, _ *packages.Package, file *ast.File, obj types.Object, iface *types.Interface) (*InterfaceInfo, error) {
+func (p *ASTParser) analyzeInterface(ctx context.Context, _ *packages.Package, file *ast.File, obj types.Object, iface *types.Interface) (*InterfaceInfo, error) {
 	// Generate unique marker for this interface
 	marker, err := gonanoid.Nanoid()
 	if err != nil {
@@ -100,6 +101,12 @@ func (p *ASTParser) analyzeInterface(_ context.Context, _ *packages.Package, fil
 	options, err := p.parseInterfaceOptions(annotations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse interface options: %w", err)
+	}
+
+	// Extract type parameters from generic interface declarations
+	typeParams, err := p.extractInterfaceTypeParams(ctx, obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract interface type parameters: %w", err)
 	}
 
 	// Get all methods from the interface
@@ -120,12 +127,14 @@ func (p *ASTParser) analyzeInterface(_ context.Context, _ *packages.Package, fil
 		Annotations: annotations,
 		Marker:      marker,
 		Position:    obj.Pos(),
+		TypeParams:  typeParams,
 	}
 
 	p.logger.Debug("analyzed convergen interface",
 		zap.String("name", obj.Name()),
 		zap.Int("methods", len(methods)),
 		zap.Int("annotations", len(annotations)),
+		zap.Int("type_params", len(typeParams)),
 		zap.String("marker", marker))
 
 	return interfaceInfo, nil
@@ -159,7 +168,7 @@ func (p *ASTParser) parseAnnotation(comment *ast.Comment) *Annotation {
 	annotationType := matches[1]
 
 	argsString := ""
-	if len(matches) > 2 {
+	if 2 < len(matches) {
 		argsString = strings.TrimSpace(matches[2])
 	}
 
@@ -432,12 +441,101 @@ func (p *ASTParser) isValidIdentifier(id string) bool {
 
 // isValidFirstChar checks if a rune is valid as the first character of an identifier.
 func (p *ASTParser) isValidFirstChar(r rune) bool {
-	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_'
+	return ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z') || r == '_'
 }
 
 // isValidSubsequentChar checks if a rune is valid as a subsequent character of an identifier.
 func (p *ASTParser) isValidSubsequentChar(r rune) bool {
-	return p.isValidFirstChar(r) || (r >= '0' && r <= '9')
+	return p.isValidFirstChar(r) || ('0' <= r && r <= '9')
+}
+
+// extractInterfaceTypeParams extracts type parameters from generic interface declarations.
+// Handles interfaces like: type Converter[T any] interface { ... } and type Mapper[T, U any] interface { ... }
+func (p *ASTParser) extractInterfaceTypeParams(
+	ctx context.Context,
+	obj types.Object,
+) ([]domain.TypeParam, error) {
+	// Check if this is a named type with type parameters
+	named, ok := obj.Type().(*types.Named)
+	if !ok {
+		// Non-named types cannot have type parameters
+		p.logger.Debug("interface is not a named type, no type parameters",
+			zap.String("interface_name", obj.Name()))
+		return []domain.TypeParam{}, nil
+	}
+
+	// Check if it has type parameters
+	typeParams := named.TypeParams()
+	if typeParams == nil || typeParams.Len() == 0 {
+		p.logger.Debug("interface has no type parameters",
+			zap.String("interface_name", obj.Name()))
+		return []domain.TypeParam{}, nil
+	}
+
+	p.logger.Debug("extracting type parameters from interface",
+		zap.String("interface_name", obj.Name()),
+		zap.Int("type_param_count", typeParams.Len()))
+
+	// Create constraint parser for parsing type parameter constraints
+	typeResolver := NewTypeResolver(p.cache, p.logger)
+	constraintParser := NewConstraintParser(typeResolver, p.logger)
+
+	// Extract and parse each type parameter
+	domainTypeParams := make([]domain.TypeParam, 0, typeParams.Len())
+
+	for i := 0; i < typeParams.Len(); i++ {
+		typeParam := typeParams.At(i)
+		paramName := typeParam.Obj().Name()
+
+		p.logger.Debug("processing type parameter",
+			zap.String("interface_name", obj.Name()),
+			zap.Int("param_index", i),
+			zap.String("param_name", paramName),
+			zap.String("constraint", typeParam.Constraint().String()))
+
+		// Parse the constraint using the constraint parser from TASK-002
+		constraint, err := constraintParser.ParseConstraint(ctx, typeParam.Constraint())
+		if err != nil {
+			p.logger.Error("failed to parse type parameter constraint",
+				zap.String("interface_name", obj.Name()),
+				zap.String("param_name", paramName),
+				zap.Error(err))
+			return nil, fmt.Errorf("failed to parse constraint for type parameter %s: %w", paramName, err)
+		}
+
+		// Convert parsed constraint to domain type parameter
+		domainTypeParam, err := constraintParser.ConvertToDomainTypeParam(paramName, i, constraint)
+		if err != nil {
+			p.logger.Error("failed to convert constraint to domain type parameter",
+				zap.String("interface_name", obj.Name()),
+				zap.String("param_name", paramName),
+				zap.Error(err))
+			return nil, fmt.Errorf("failed to convert constraint for type parameter %s: %w", paramName, err)
+		}
+
+		// Validate the type parameter
+		if !domainTypeParam.IsValid() {
+			p.logger.Error("invalid type parameter configuration",
+				zap.String("interface_name", obj.Name()),
+				zap.String("param_name", paramName),
+				zap.String("constraint_type", domainTypeParam.GetConstraintType()))
+			return nil, fmt.Errorf("invalid type parameter %s with constraint type %s", paramName, domainTypeParam.GetConstraintType())
+		}
+
+		domainTypeParams = append(domainTypeParams, *domainTypeParam)
+
+		p.logger.Debug("successfully extracted type parameter",
+			zap.String("interface_name", obj.Name()),
+			zap.String("param_name", paramName),
+			zap.String("constraint_type", domainTypeParam.GetConstraintType()),
+			zap.String("constraint_string", domainTypeParam.String()))
+	}
+
+	p.logger.Info("extracted type parameters from interface",
+		zap.String("interface_name", obj.Name()),
+		zap.Int("type_param_count", len(domainTypeParams)))
+
+	return domainTypeParams, nil
 }
 
 // getDocComment retrieves the documentation comment for an object.
