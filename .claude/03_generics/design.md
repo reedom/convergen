@@ -366,6 +366,43 @@ Generated Implementation Code
 - **Type Substitution Failures**: Graceful handling of substitution edge cases
 - **Integration Errors**: Clear error propagation through the pipeline
 
+## Current Limitations and Design Constraints
+
+### Cross-Package Type Arguments
+
+**Problem**: The current type resolution system cannot handle type arguments from external packages.
+
+**Technical Analysis**:
+- CLI parsing expects bare type names without package qualifiers
+- Type resolver operates within single package scope
+- No import resolution mechanism for external type arguments
+- Package loading limited to current interface package
+
+**Current Behavior**:
+```bash
+//go:generate convergen -type TypeMapper[User,UserDTO]
+```
+Both `User` and `UserDTO` must be defined in the same package as `TypeMapper`.
+
+**Unsupported Scenarios**:
+```bash
+# These would fail - no import path resolution
+//go:generate convergen -type TypeMapper[models.User,dto.UserDTO]
+//go:generate convergen -type TypeMapper[github.com/pkg/models.User,api.UserDTO]
+```
+
+**Design Impact**:
+- Type instantiation engine assumes local type resolution
+- Parser interface analyzer expects co-located types
+- CLI argument parsing lacks import path syntax
+- Package loader cannot resolve external dependencies
+
+**Future Resolution** (Phase 2+):
+- Enhanced CLI syntax for qualified type names
+- Multi-package type resolution system
+- Import path management and validation
+- Cross-package dependency loading
+
 ## Performance Considerations
 
 ### 1. Compilation Performance

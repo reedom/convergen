@@ -174,6 +174,11 @@ func (conv *converter) Convert(src User) (User, error) {
 - **Signature Overlap**: Detect and resolve overlapping method signatures
 - **Interface Composition**: Generic interfaces embedding other interfaces
 
+### EC-4: Cross-Package Type Arguments
+- **External Types**: Type arguments must be defined in same package as interface
+- **Import Resolution**: No support for fully-qualified type names (e.g., `pkg.Type`)
+- **Package Loading**: Cannot load external packages for type argument resolution
+
 ## Success Criteria
 
 ### Definition of Done

@@ -152,49 +152,79 @@ func (p *ASTParser) extractInterfaceTypeParams(
 
 ## Phase 2: Type Instantiation (Weeks 3-4)
 
-### TASK-005: Implement Type Instantiator
+### TASK-005: Implement Type Instantiator (Local Package)
 **Priority**: Critical  
-**Estimated Effort**: 5 days  
+**Estimated Effort**: 4 days  
 **Dependencies**: TASK-001, TASK-002, TASK-004  
 **Assignee**: TBD
 
-**Description**: Create the core type instantiation engine that converts generic types to concrete types.
+**Description**: Create the core type instantiation engine that converts generic types to concrete types within the same package.
 
 **Acceptance Criteria**:
-- [ ] Instantiate generic interfaces with concrete type arguments
+- [ ] Instantiate generic interfaces with concrete type arguments from same package
 - [ ] Validate type arguments against constraints
 - [ ] Handle recursive generic types safely
 - [ ] Cache instantiated interfaces for performance
 - [ ] Support complex nested generic types (`[]T`, `map[K]V`, `*T`)
 - [ ] Provide detailed error messages for constraint violations
 - [ ] Performance: Instantiate typical interfaces in <5ms
+- [ ] Design foundation for cross-package extension
+
+---
+
+### TASK-005B: Cross-Package Type Arguments
+**Priority**: High  
+**Estimated Effort**: 3 days  
+**Dependencies**: TASK-005  
+**Assignee**: TBD
+
+**Description**: Extend type instantiation to support type arguments from external packages.
+
+**Acceptance Criteria**:
+- [ ] Enhanced CLI syntax: `convergen -type TypeMapper[pkg.User,dto.UserDTO]`
+- [ ] Import flag support: `convergen -imports pkg=path/to/pkg,dto=path/to/dto`
+- [ ] Multi-package type loading and validation
+- [ ] Cross-package dependency management
+- [ ] Qualified type name resolution (`pkg.Type`)
+- [ ] Import path validation and error handling
+- [ ] Maintain backward compatibility with local-only syntax
 
 **Implementation Details**:
 ```go
-// File: pkg/domain/instantiator.go
-type TypeInstantiator struct {
-    typeBuilder  *TypeBuilder
-    cache        map[string]*InstantiatedInterface
-    logger       *zap.Logger
+// File: pkg/parser/cross_package_resolver.go
+type CrossPackageResolver struct {
+    packageLoader *PackageLoader
+    importMap     map[string]string  // alias -> import path
+    cache         map[string]*types.Package
+    logger        *zap.Logger
 }
 
-func (ti *TypeInstantiator) InstantiateInterface(
-    genericInterface *InterfaceInfo,
-    typeArgs []Type,
-) (*InstantiatedInterface, error)
+// Enhanced CLI parsing
+// File: cmd/convergen/main.go
+func parseTypeArguments(typeSpec string, imports map[string]string) ([]QualifiedType, error)
+
+type QualifiedType struct {
+    PackageAlias string  // "pkg" in "pkg.User"
+    TypeName     string  // "User" in "pkg.User"
+    ImportPath   string  // resolved from imports map
+}
 ```
 
 **Files to Create**:
-- `pkg/domain/instantiator.go` - Core instantiation logic
-- `pkg/domain/instantiator_test.go` - Comprehensive test suite
-- `pkg/domain/instantiated_interface.go` - InstantiatedInterface type
+- `pkg/parser/cross_package_resolver.go` - Cross-package type resolution
+- `pkg/parser/cross_package_resolver_test.go` - Multi-package test scenarios
+- Enhanced CLI parsing in `cmd/convergen/main.go`
+
+**Files to Modify**:
+- `pkg/domain/instantiator.go` - Add cross-package type loading
+- `pkg/parser/interface_analyzer.go` - Support external type references
 
 ---
 
 ### TASK-006: Generic Method Processing
 **Priority**: High  
 **Estimated Effort**: 4 days  
-**Dependencies**: TASK-005  
+**Dependencies**: TASK-005B  
 **Assignee**: TBD
 
 **Description**: Enhance method processing to handle generic method signatures and type substitution.
@@ -465,6 +495,12 @@ type GenericCodeGenerator struct {
 - [ ] Proper handling of build flags and configuration
 - [ ] Documentation for build system configuration
 - [ ] Compatibility with common Go build tools
+- [ ] **LIMITATION**: Cross-package type arguments not supported in CLI syntax (EC-4)
+
+**Known Limitations**:
+- CLI parsing limited to local package types only
+- No support for qualified type names (`pkg.Type`)
+- Cannot specify import paths for external type arguments
 
 ---
 
@@ -509,19 +545,19 @@ type GenericCodeGenerator struct {
 
 ### Critical Path
 1. ✅ TASK-001 → ✅ TASK-002 → ✅ TASK-003 → ✅ TASK-004 (COMPLETED)
-2. TASK-005 → TASK-006 → TASK-007
+2. TASK-005 → TASK-005B → TASK-006 → TASK-007
 3. TASK-008 → TASK-009 → TASK-010
 4. TASK-013 (depends on all implementation tasks)
 
 ### Parallel Development Opportunities
 - TASK-002 and TASK-004 can be developed in parallel after TASK-001
-- TASK-006 and TASK-007 can be developed in parallel after TASK-005
+- TASK-006 and TASK-007 can be developed in parallel after TASK-005B
 - TASK-009 and TASK-010 can be developed in parallel after TASK-008
 - Documentation tasks can start early with draft content
 
 ### Quality Gates
 - **Phase 1 Gate**: ✅ Basic generic interface parsing works end-to-end (COMPLETED)
-- **Phase 2 Gate**: Type instantiation and method processing complete
+- **Phase 2 Gate**: Type instantiation (local + cross-package) and method processing complete
 - **Phase 3 Gate**: Code generation produces correct, compilable output
 - **Phase 4 Gate**: All tests pass, performance requirements met
 
