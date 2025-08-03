@@ -1,11 +1,13 @@
 # CLAUDE.md
 
-@include .claude/00_general_rules/01_sdd_workflow_concepts.md
-@include .claude/00_general_rules/02_coding_guidelines.md
-@include .claude/01_project/01_convergen_concept_requirements.md
-@include .claude/02_development_docs/01_architecture_design.md
-@include .claude/02_development_docs/02_test_strategy.md
-@include .claude/02_development_docs/03_logging_strategy.md
+## Quick Reference
+
+- **SDD Workflow**:     See `.claude/00_general_rules/01_sdd_workflow_concepts.md`
+- **Code Conventions**: See `.claude/00_general_rules/02_coding_guidelines.md`
+- **Project Overview**: See `.claude/01_project/01_convergen_concept_requirements.md`
+- **Architecture**:     See `.claude/02_development_docs/01_architecture_design.md`
+- **Test Strategy**:    See `.claude/02_development_docs/02_test_strategy.md`
+- **Logging Strategy**: See `.claude/02_development_docs/03_logging_strategy.md`
 
 ## Key Development Commands
 

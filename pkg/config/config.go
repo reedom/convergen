@@ -2,12 +2,25 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path"
 	"regexp"
 	"strings"
+)
+
+var (
+	ErrInvalidImportMappingFormat    = errors.New("invalid import mapping format")
+	ErrEmptyPackageAlias             = errors.New("empty package alias in mapping")
+	ErrEmptyImportPath               = errors.New("empty import path in mapping")
+	ErrPackageAliasCannotBeEmpty     = errors.New("package alias cannot be empty")
+	ErrPackageAliasInvalidIdentifier = errors.New("package alias must be a valid Go identifier")
+	ErrImportPathCannotBeEmpty       = errors.New("import path cannot be empty")
+	ErrImportPathCannotContainSpaces = errors.New("import path cannot contain spaces")
+	ErrTypeSpecWithQualifiedTypes    = errors.New("type specification contains qualified types but no import mappings provided")
+	ErrInvalidInterfaceName          = errors.New("invalid interface name in type specification")
 )
 
 // Usage prints the usage of the tool.
