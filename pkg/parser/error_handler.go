@@ -21,9 +21,13 @@ const (
 type ErrorSeverity int
 
 const (
+	// SeverityInfo represents an informational message.
 	SeverityInfo ErrorSeverity = iota
+	// SeverityWarning represents a warning.
 	SeverityWarning
+	// SeverityError represents a recoverable error.
 	SeverityError
+	// SeverityCritical represents a non-recoverable error.
 	SeverityCritical
 )
 
@@ -52,13 +56,21 @@ func (s ErrorSeverity) String() string {
 type ErrorCategory int
 
 const (
+	// CategoryGeneral represents a general error.
 	CategoryGeneral ErrorCategory = iota
+	// CategorySyntax represents a syntax error.
 	CategorySyntax
+	// CategoryType represents a type-related error.
 	CategoryType
+	// CategoryAnnotation represents an annotation-related error.
 	CategoryAnnotation
+	// CategoryGeneration represents a code generation error.
 	CategoryGeneration
+	// CategoryValidation represents a validation error.
 	CategoryValidation
+	// CategoryConcurrency represents a concurrency-related error.
 	CategoryConcurrency
+	// CategoryPerformance represents a performance-related error.
 	CategoryPerformance
 )
 

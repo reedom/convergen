@@ -11,6 +11,7 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
+// LookupFieldOpt provides options for looking up a field.
 type LookupFieldOpt struct {
 	ExactCase     bool
 	SupportsError bool

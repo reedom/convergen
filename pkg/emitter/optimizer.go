@@ -79,36 +79,42 @@ type OptimizerMetrics struct {
 
 // Optimization component interfaces
 
+// DeadCodeEliminator defines the interface for dead code elimination.
 type DeadCodeEliminator interface {
 	EliminateInCode(code string) (string, int, error)
 	FindUnusedVariables(code string) ([]string, error)
 	FindUnreachableCode(code string) ([]CodeBlock, error)
 }
 
+// VariableOptimizer defines the interface for variable optimization.
 type VariableOptimizer interface {
 	OptimizeNames(code string) (string, int, error)
 	DetectConflicts(code string) ([]VariableConflict, error)
 	ShortenNames(code string) (string, error)
 }
 
+// ExpressionSimplifier defines the interface for expression simplification.
 type ExpressionSimplifier interface {
 	SimplifyInCode(code string) (string, int, error)
 	SimplifyBooleanExpressions(code string) (string, error)
 	SimplifyArithmeticExpressions(code string) (string, error)
 }
 
+// RedundancyRemover defines the interface for redundancy removal.
 type RedundancyRemover interface {
 	RemoveInCode(code string) (string, int, error)
 	FindRedundantAssignments(code string) ([]Assignment, error)
 	FindDuplicateCode(code string) ([]CodeBlock, error)
 }
 
+// ASTAnalyzer defines the interface for AST analysis.
 type ASTAnalyzer interface {
 	ParseCode(code string) (*ast.File, *token.FileSet, error)
 	AnalyzeUsage(file *ast.File) (*UsageAnalysis, error)
 	FindDefinitions(file *ast.File) ([]Definition, error)
 }
 
+// ControlFlowAnalyzer defines the interface for control flow analysis.
 type ControlFlowAnalyzer interface {
 	AnalyzeControlFlow(file *ast.File) (*ControlFlowGraph, error)
 	FindUnreachableBlocks(cfg *ControlFlowGraph) ([]CodeBlock, error)
@@ -117,6 +123,7 @@ type ControlFlowAnalyzer interface {
 
 // Supporting types
 
+// CodeBlock represents a block of code.
 type CodeBlock struct {
 	StartLine int    `json:"start_line"`
 	EndLine   int    `json:"end_line"`
@@ -124,12 +131,14 @@ type CodeBlock struct {
 	Type      string `json:"type"`
 }
 
+// VariableConflict represents a variable naming conflict.
 type VariableConflict struct {
 	Name      string   `json:"name"`
 	Locations []string `json:"locations"`
 	Severity  string   `json:"severity"`
 }
 
+// Assignment represents a variable assignment.
 type Assignment struct {
 	Variable string `json:"variable"`
 	Value    string `json:"value"`
@@ -137,12 +146,14 @@ type Assignment struct {
 	Type     string `json:"type"`
 }
 
+// UsageAnalysis contains the results of a usage analysis.
 type UsageAnalysis struct {
 	Variables map[string]VariableInfo `json:"variables"`
 	Functions map[string]FunctionInfo `json:"functions"`
 	Imports   map[string]ImportInfo   `json:"imports"`
 }
 
+// VariableInfo contains information about a variable.
 type VariableInfo struct {
 	Name        string `json:"name"`
 	Type        string `json:"type"`
@@ -151,18 +162,21 @@ type VariableInfo struct {
 	Assignments int    `json:"assignments"`
 }
 
+// FunctionInfo contains information about a function.
 type FunctionInfo struct {
 	Name   string `json:"name"`
 	Called int    `json:"called"`
 	Params int    `json:"params"`
 }
 
+// ImportInfo contains information about an import.
 type ImportInfo struct {
 	Path  string `json:"path"`
 	Alias string `json:"alias"`
 	Used  int    `json:"used"`
 }
 
+// Definition represents a symbol definition.
 type Definition struct {
 	Name  string `json:"name"`
 	Type  string `json:"type"`
@@ -170,11 +184,13 @@ type Definition struct {
 	Scope string `json:"scope"`
 }
 
+// ControlFlowGraph represents the control flow of a program.
 type ControlFlowGraph struct {
 	Nodes []CFGNode `json:"nodes"`
 	Edges []CFGEdge `json:"edges"`
 }
 
+// CFGNode represents a node in the control flow graph.
 type CFGNode struct {
 	ID      int    `json:"id"`
 	Type    string `json:"type"`
@@ -182,6 +198,7 @@ type CFGNode struct {
 	Line    int    `json:"line"`
 }
 
+// CFGEdge represents an edge in the control flow graph.
 type CFGEdge struct {
 	From      int    `json:"from"`
 	To        int    `json:"to"`
@@ -583,14 +600,17 @@ func NewOptimizerMetrics() *OptimizerMetrics {
 
 // Default implementations for optimization components
 
+// DefaultDeadCodeEliminator provides a default implementation for DeadCodeEliminator.
 type DefaultDeadCodeEliminator struct {
 	logger *zap.Logger
 }
 
+// NewDeadCodeEliminator creates a new DefaultDeadCodeEliminator.
 func NewDeadCodeEliminator(logger *zap.Logger) DeadCodeEliminator {
 	return &DefaultDeadCodeEliminator{logger: logger}
 }
 
+// EliminateInCode removes dead code from the given source code.
 func (dce *DefaultDeadCodeEliminator) EliminateInCode(code string) (string, int, error) {
 	// Simplified dead code elimination
 	eliminated := 0
@@ -612,25 +632,30 @@ func (dce *DefaultDeadCodeEliminator) EliminateInCode(code string) (string, int,
 	return strings.Join(cleaned, "\n"), eliminated, nil
 }
 
+// FindUnusedVariables finds unused variables in the given source code.
 func (dce *DefaultDeadCodeEliminator) FindUnusedVariables(code string) ([]string, error) {
 	// Simplified unused variable detection
 	// This would be more sophisticated in a real implementation
 	return []string{}, nil
 }
 
+// FindUnreachableCode finds unreachable code in the given source code.
 func (dce *DefaultDeadCodeEliminator) FindUnreachableCode(code string) ([]CodeBlock, error) {
 	// Simplified unreachable code detection
 	return []CodeBlock{}, nil
 }
 
+// DefaultVariableOptimizer provides a default implementation for VariableOptimizer.
 type DefaultVariableOptimizer struct {
 	logger *zap.Logger
 }
 
+// NewVariableOptimizer creates a new DefaultVariableOptimizer.
 func NewVariableOptimizer(logger *zap.Logger) VariableOptimizer {
 	return &DefaultVariableOptimizer{logger: logger}
 }
 
+// OptimizeNames optimizes variable names in the given source code.
 func (vo *DefaultVariableOptimizer) OptimizeNames(code string) (string, int, error) {
 	optimizations := 0
 
@@ -653,22 +678,27 @@ func (vo *DefaultVariableOptimizer) OptimizeNames(code string) (string, int, err
 	return optimized, optimizations, nil
 }
 
+// DetectConflicts detects variable naming conflicts in the given source code.
 func (vo *DefaultVariableOptimizer) DetectConflicts(code string) ([]VariableConflict, error) {
 	return []VariableConflict{}, nil
 }
 
+// ShortenNames shortens variable names in the given source code.
 func (vo *DefaultVariableOptimizer) ShortenNames(code string) (string, error) {
 	return code, nil
 }
 
+// DefaultExpressionSimplifier provides a default implementation for ExpressionSimplifier.
 type DefaultExpressionSimplifier struct {
 	logger *zap.Logger
 }
 
+// NewExpressionSimplifier creates a new DefaultExpressionSimplifier.
 func NewExpressionSimplifier(logger *zap.Logger) ExpressionSimplifier {
 	return &DefaultExpressionSimplifier{logger: logger}
 }
 
+// SimplifyInCode simplifies expressions in the given source code.
 func (es *DefaultExpressionSimplifier) SimplifyInCode(code string) (string, int, error) {
 	simplifications := 0
 
@@ -685,22 +715,27 @@ func (es *DefaultExpressionSimplifier) SimplifyInCode(code string) (string, int,
 	return simplified, simplifications, nil
 }
 
+// SimplifyBooleanExpressions simplifies boolean expressions in the given source code.
 func (es *DefaultExpressionSimplifier) SimplifyBooleanExpressions(code string) (string, error) {
 	return code, nil
 }
 
+// SimplifyArithmeticExpressions simplifies arithmetic expressions in the given source code.
 func (es *DefaultExpressionSimplifier) SimplifyArithmeticExpressions(code string) (string, error) {
 	return code, nil
 }
 
+// DefaultRedundancyRemover provides a default implementation for RedundancyRemover.
 type DefaultRedundancyRemover struct {
 	logger *zap.Logger
 }
 
+// NewRedundancyRemover creates a new DefaultRedundancyRemover.
 func NewRedundancyRemover(logger *zap.Logger) RedundancyRemover {
 	return &DefaultRedundancyRemover{logger: logger}
 }
 
+// RemoveInCode removes redundant code from the given source code.
 func (rr *DefaultRedundancyRemover) RemoveInCode(code string) (string, int, error) {
 	removed := 0
 
@@ -716,22 +751,27 @@ func (rr *DefaultRedundancyRemover) RemoveInCode(code string) (string, int, erro
 	return optimized, removed, nil
 }
 
+// FindRedundantAssignments finds redundant assignments in the given source code.
 func (rr *DefaultRedundancyRemover) FindRedundantAssignments(code string) ([]Assignment, error) {
 	return []Assignment{}, nil
 }
 
+// FindDuplicateCode finds duplicate code in the given source code.
 func (rr *DefaultRedundancyRemover) FindDuplicateCode(code string) ([]CodeBlock, error) {
 	return []CodeBlock{}, nil
 }
 
+// DefaultASTAnalyzer provides a default implementation for ASTAnalyzer.
 type DefaultASTAnalyzer struct {
 	logger *zap.Logger
 }
 
+// NewASTAnalyzer creates a new DefaultASTAnalyzer.
 func NewASTAnalyzer(logger *zap.Logger) ASTAnalyzer {
 	return &DefaultASTAnalyzer{logger: logger}
 }
 
+// ParseCode parses the given source code into an AST.
 func (aa *DefaultASTAnalyzer) ParseCode(code string) (*ast.File, *token.FileSet, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "", code, parser.ParseComments)
@@ -743,37 +783,46 @@ func (aa *DefaultASTAnalyzer) ParseCode(code string) (*ast.File, *token.FileSet,
 	return file, fset, nil
 }
 
+// AnalyzeUsage analyzes symbol usage in the given AST.
 func (aa *DefaultASTAnalyzer) AnalyzeUsage(file *ast.File) (*UsageAnalysis, error) {
 	return &UsageAnalysis{
-		Variables: make(map[string]VariableInfo),
-		Functions: make(map[string]FunctionInfo),
-		Imports:   make(map[string]ImportInfo),
-	}, nil
+			Variables: make(map[string]VariableInfo),
+			Functions: make(map[string]FunctionInfo),
+			Imports:   make(map[string]ImportInfo),
+		},
+		nil
 }
 
+// FindDefinitions finds symbol definitions in the given AST.
 func (aa *DefaultASTAnalyzer) FindDefinitions(file *ast.File) ([]Definition, error) {
 	return []Definition{}, nil
 }
 
+// DefaultControlFlowAnalyzer provides a default implementation for ControlFlowAnalyzer.
 type DefaultControlFlowAnalyzer struct {
 	logger *zap.Logger
 }
 
+// NewControlFlowAnalyzer creates a new DefaultControlFlowAnalyzer.
 func NewControlFlowAnalyzer(logger *zap.Logger) ControlFlowAnalyzer {
 	return &DefaultControlFlowAnalyzer{logger: logger}
 }
 
+// AnalyzeControlFlow analyzes the control flow of the given AST.
 func (cfa *DefaultControlFlowAnalyzer) AnalyzeControlFlow(file *ast.File) (*ControlFlowGraph, error) {
 	return &ControlFlowGraph{
-		Nodes: []CFGNode{},
-		Edges: []CFGEdge{},
-	}, nil
+			Nodes: []CFGNode{},
+			Edges: []CFGEdge{},
+		},
+		nil
 }
 
+// FindUnreachableBlocks finds unreachable code blocks in the given control flow graph.
 func (cfa *DefaultControlFlowAnalyzer) FindUnreachableBlocks(cfg *ControlFlowGraph) ([]CodeBlock, error) {
 	return []CodeBlock{}, nil
 }
 
+// CalculateComplexity calculates the cyclomatic complexity of the given control flow graph.
 func (cfa *DefaultControlFlowAnalyzer) CalculateComplexity(cfg *ControlFlowGraph) (int, error) {
 	return 1, nil
 }

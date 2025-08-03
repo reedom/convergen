@@ -545,36 +545,44 @@ func (fm *ConcreteFormatManager) generateImportBlock(imports *ImportDeclaration)
 
 // Default implementations for processors
 
+// DefaultGoImportsProcessor provides a default implementation for GoImportsProcessor.
 type DefaultGoImportsProcessor struct {
 	logger *zap.Logger
 }
 
+// NewGoImportsProcessor creates a new DefaultGoImportsProcessor.
 func NewGoImportsProcessor(logger *zap.Logger) GoImportsProcessor {
 	return &DefaultGoImportsProcessor{logger: logger}
 }
 
+// Process runs goimports on the given source code.
 func (p *DefaultGoImportsProcessor) Process(source string) (string, error) {
 	return p.ProcessWithOptions(source, &GoImportsOptions{})
 }
 
-func (p *DefaultGoImportsProcessor) ProcessWithOptions(source string, options *GoImportsOptions) (string, error) {
+// ProcessWithOptions runs goimports with specific options.
+func (p *DefaultGoGofmtProcessor) ProcessWithOptions(source string, options *GoImportsOptions) (string, error) {
 	// This would integrate with the actual goimports tool
 	// For now, return the source as-is
 	return source, nil
 }
 
+// DefaultGoFmtProcessor provides a default implementation for GoFmtProcessor.
 type DefaultGoFmtProcessor struct {
 	logger *zap.Logger
 }
 
+// NewGoFmtProcessor creates a new DefaultGoFmtProcessor.
 func NewGoFmtProcessor(logger *zap.Logger) GoFmtProcessor {
 	return &DefaultGoFmtProcessor{logger: logger}
 }
 
+// Format runs gofmt on the given source code.
 func (p *DefaultGoFmtProcessor) Format(source string) (string, error) {
 	return p.FormatWithTabWidth(source, 4)
 }
 
+// FormatWithTabWidth runs gofmt with a specific tab width.
 func (p *DefaultGoFmtProcessor) FormatWithTabWidth(source string, tabWidth int) (string, error) {
 	// Use Go's format package
 	fset := token.NewFileSet()
@@ -592,18 +600,22 @@ func (p *DefaultGoFmtProcessor) FormatWithTabWidth(source string, tabWidth int) 
 	return buf.String(), nil
 }
 
+// DefaultCodeLinter provides a default implementation for CodeLinter.
 type DefaultCodeLinter struct {
 	logger *zap.Logger
 }
 
+// NewCodeLinter creates a new DefaultCodeLinter.
 func NewCodeLinter(logger *zap.Logger) CodeLinter {
 	return &DefaultCodeLinter{logger: logger}
 }
 
+// Lint performs basic linting on the given source code.
 func (l *DefaultCodeLinter) Lint(source string) (*LintResult, error) {
 	return l.LintWithRules(source, []string{"basic"})
 }
 
+// LintWithRules performs linting with a specific set of rules.
 func (l *DefaultCodeLinter) LintWithRules(source string, rules []string) (*LintResult, error) {
 	// Basic validation - ensure the code parses
 	fset := token.NewFileSet()

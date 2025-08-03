@@ -13,9 +13,13 @@ import (
 type OptimizationLevel int
 
 const (
+	// OptimizationNone disables all optimizations.
 	OptimizationNone OptimizationLevel = iota
+	// OptimizationBasic enables basic optimizations.
 	OptimizationBasic
+	// OptimizationAggressive enables aggressive optimizations.
 	OptimizationAggressive
+	// OptimizationMaximal enables all possible optimizations.
 	OptimizationMaximal
 )
 
@@ -38,9 +42,13 @@ func (ol OptimizationLevel) String() string {
 type ConstructionStrategy int
 
 const (
+	// StrategyCompositeLiteral uses composite literals for code generation.
 	StrategyCompositeLiteral ConstructionStrategy = iota
+	// StrategyAssignmentBlock uses assignment blocks for code generation.
 	StrategyAssignmentBlock
+	// StrategyMixedApproach uses a mix of composite literals and assignment blocks.
 	StrategyMixedApproach
+	// StrategyCustomTemplate uses a custom template for code generation.
 	StrategyCustomTemplate
 )
 
@@ -357,24 +365,29 @@ type CodeValidator interface {
 // SimpleTemplateSystem provides basic template functionality.
 type SimpleTemplateSystem struct{}
 
+// NewTemplateSystem creates a new SimpleTemplateSystem.
 func NewTemplateSystem() TemplateSystem {
 	return &SimpleTemplateSystem{}
 }
 
+// Execute executes a template with the given data.
 func (s *SimpleTemplateSystem) Execute(template string, data interface{}) (string, error) {
 	// Simple template execution - in practice this would use text/template
 	return template, nil
 }
 
+// HasTemplate checks if a template with the given name exists.
 func (s *SimpleTemplateSystem) HasTemplate(name string) bool {
 	return false
 }
 
+// RegisterTemplate registers a new template.
 func (s *SimpleTemplateSystem) RegisterTemplate(name, content string) error {
 	// Simple registration - in practice this would store templates
 	return nil
 }
 
+// NewCustomTemplate creates a new custom template.
 func NewCustomTemplate(name, content string) interface{} {
 	return content
 }

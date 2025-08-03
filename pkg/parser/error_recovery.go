@@ -17,9 +17,13 @@ var (
 type RecoveryStrategy int
 
 const (
+	// RecoveryRetry retries the operation.
 	RecoveryRetry RecoveryStrategy = iota
+	// RecoveryFallback executes a fallback operation.
 	RecoveryFallback
+	// RecoverySkip skips the operation.
 	RecoverySkip
+	// RecoveryAbort aborts the operation.
 	RecoveryAbort
 )
 
@@ -291,8 +295,11 @@ type CircuitBreaker struct {
 type CircuitBreakerState int
 
 const (
+	// StateClosed represents a closed circuit breaker.
 	StateClosed CircuitBreakerState = iota
+	// StateOpen represents an open circuit breaker.
 	StateOpen
+	// StateHalfOpen represents a half-open circuit breaker.
 	StateHalfOpen
 )
 

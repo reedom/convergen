@@ -449,7 +449,7 @@ func (e *EventAwareEmitter) GenerateMethod(ctx context.Context, method *domain.M
 	return methodCode, nil
 }
 
-// Delegate other methods to inner emitter.
+// OptimizeOutput delegates the output optimization to the inner emitter.
 func (e *EventAwareEmitter) OptimizeOutput(ctx context.Context, code *GeneratedCode) (*GeneratedCode, error) {
 	optimizedCode, err := e.inner.OptimizeOutput(ctx, code)
 	if err != nil {
@@ -459,10 +459,12 @@ func (e *EventAwareEmitter) OptimizeOutput(ctx context.Context, code *GeneratedC
 	return optimizedCode, nil
 }
 
+// GetMetrics returns the metrics from the inner emitter.
 func (e *EventAwareEmitter) GetMetrics() *Metrics {
 	return e.inner.GetMetrics()
 }
 
+// Shutdown gracefully shuts down the inner emitter.
 func (e *EventAwareEmitter) Shutdown(ctx context.Context) error {
 	if err := e.inner.Shutdown(ctx); err != nil {
 		return fmt.Errorf("emitter shutdown failed: %w", err)

@@ -450,19 +450,23 @@ func (fe *ConcreteFieldExecutor) emitRetryExhaustedEvent(ctx context.Context, fi
 // DirectAssignmentStrategy handles direct field assignments.
 type DirectAssignmentStrategy struct{}
 
+// NewDirectAssignmentStrategy creates a new DirectAssignmentStrategy.
 func NewDirectAssignmentStrategy() FieldMappingStrategy {
 	return &DirectAssignmentStrategy{}
 }
 
+// Execute performs the direct assignment.
 func (s *DirectAssignmentStrategy) Execute(ctx context.Context, mapping *domain.FieldMapping, execCtx *ExecutionContext) (interface{}, error) {
 	// Simplified direct assignment implementation
 	return execCtx.SourceValue, nil
 }
 
+// EstimateComplexity returns the complexity estimate for the direct assignment.
 func (s *DirectAssignmentStrategy) EstimateComplexity(mapping *domain.FieldMapping) int {
 	return 1 // Lowest complexity
 }
 
+// GetRequiredResources returns the resource requirements for the direct assignment.
 func (s *DirectAssignmentStrategy) GetRequiredResources(mapping *domain.FieldMapping) *ResourceRequirement {
 	return &ResourceRequirement{
 		MemoryMB:     1,
@@ -471,6 +475,7 @@ func (s *DirectAssignmentStrategy) GetRequiredResources(mapping *domain.FieldMap
 	}
 }
 
+// Validate checks if the direct assignment is valid.
 func (s *DirectAssignmentStrategy) Validate(mapping *domain.FieldMapping) error {
 	// For now, be permissive for testing - in production this would check type compatibility
 	if mapping.Source.Type == nil || mapping.Dest.Type == nil {
@@ -483,20 +488,24 @@ func (s *DirectAssignmentStrategy) Validate(mapping *domain.FieldMapping) error 
 // ConverterStrategy handles conversions between different types.
 type ConverterStrategy struct{}
 
+// NewConverterStrategy creates a new ConverterStrategy.
 func NewConverterStrategy() FieldMappingStrategy {
 	return &ConverterStrategy{}
 }
 
+// Execute performs the conversion.
 func (s *ConverterStrategy) Execute(ctx context.Context, mapping *domain.FieldMapping, execCtx *ExecutionContext) (interface{}, error) {
 	// Simplified converter implementation
 	// In practice, this would handle type conversions
 	return execCtx.SourceValue, nil
 }
 
+// EstimateComplexity returns the complexity estimate for the conversion.
 func (s *ConverterStrategy) EstimateComplexity(mapping *domain.FieldMapping) int {
 	return 3 // Medium complexity
 }
 
+// GetRequiredResources returns the resource requirements for the conversion.
 func (s *ConverterStrategy) GetRequiredResources(mapping *domain.FieldMapping) *ResourceRequirement {
 	return &ResourceRequirement{
 		MemoryMB:     2,
@@ -505,6 +514,7 @@ func (s *ConverterStrategy) GetRequiredResources(mapping *domain.FieldMapping) *
 	}
 }
 
+// Validate checks if the conversion is valid.
 func (s *ConverterStrategy) Validate(mapping *domain.FieldMapping) error {
 	// Validation logic for converter strategy
 	return nil
@@ -513,19 +523,23 @@ func (s *ConverterStrategy) Validate(mapping *domain.FieldMapping) error {
 // LiteralStrategy handles literal value assignments.
 type LiteralStrategy struct{}
 
+// NewLiteralStrategy creates a new LiteralStrategy.
 func NewLiteralStrategy() FieldMappingStrategy {
 	return &LiteralStrategy{}
 }
 
+// Execute performs the literal assignment.
 func (s *LiteralStrategy) Execute(ctx context.Context, mapping *domain.FieldMapping, execCtx *ExecutionContext) (interface{}, error) {
 	// Return the literal value specified in the mapping
 	return mapping.Source.Path[0], nil // Simplified - use first path element
 }
 
+// EstimateComplexity returns the complexity estimate for the literal assignment.
 func (s *LiteralStrategy) EstimateComplexity(mapping *domain.FieldMapping) int {
 	return 1 // Lowest complexity
 }
 
+// GetRequiredResources returns the resource requirements for the literal assignment.
 func (s *LiteralStrategy) GetRequiredResources(mapping *domain.FieldMapping) *ResourceRequirement {
 	return &ResourceRequirement{
 		MemoryMB:     1,
@@ -534,6 +548,7 @@ func (s *LiteralStrategy) GetRequiredResources(mapping *domain.FieldMapping) *Re
 	}
 }
 
+// Validate checks if the literal assignment is valid.
 func (s *LiteralStrategy) Validate(mapping *domain.FieldMapping) error {
 	return nil
 }
@@ -541,20 +556,24 @@ func (s *LiteralStrategy) Validate(mapping *domain.FieldMapping) error {
 // ExpressionStrategy handles expression evaluations.
 type ExpressionStrategy struct{}
 
+// NewExpressionStrategy creates a new ExpressionStrategy.
 func NewExpressionStrategy() FieldMappingStrategy {
 	return &ExpressionStrategy{}
 }
 
+// Execute performs the expression evaluation.
 func (s *ExpressionStrategy) Execute(ctx context.Context, mapping *domain.FieldMapping, execCtx *ExecutionContext) (interface{}, error) {
 	// Simplified expression evaluation
 	// In practice, this would evaluate complex expressions
 	return execCtx.SourceValue, nil
 }
 
+// EstimateComplexity returns the complexity estimate for the expression evaluation.
 func (s *ExpressionStrategy) EstimateComplexity(mapping *domain.FieldMapping) int {
 	return 5 // High complexity
 }
 
+// GetRequiredResources returns the resource requirements for the expression evaluation.
 func (s *ExpressionStrategy) GetRequiredResources(mapping *domain.FieldMapping) *ResourceRequirement {
 	return &ResourceRequirement{
 		MemoryMB:     3,
@@ -563,6 +582,7 @@ func (s *ExpressionStrategy) GetRequiredResources(mapping *domain.FieldMapping) 
 	}
 }
 
+// Validate checks if the expression evaluation is valid.
 func (s *ExpressionStrategy) Validate(mapping *domain.FieldMapping) error {
 	return nil
 }
@@ -570,19 +590,23 @@ func (s *ExpressionStrategy) Validate(mapping *domain.FieldMapping) error {
 // CustomStrategy handles custom transformation logic.
 type CustomStrategy struct{}
 
+// NewCustomStrategy creates a new CustomStrategy.
 func NewCustomStrategy() FieldMappingStrategy {
 	return &CustomStrategy{}
 }
 
+// Execute performs the custom transformation.
 func (s *CustomStrategy) Execute(ctx context.Context, mapping *domain.FieldMapping, execCtx *ExecutionContext) (interface{}, error) {
 	// Custom strategy implementation
 	return execCtx.SourceValue, nil
 }
 
+// EstimateComplexity returns the complexity estimate for the custom transformation.
 func (s *CustomStrategy) EstimateComplexity(mapping *domain.FieldMapping) int {
 	return 4 // Medium-high complexity
 }
 
+// GetRequiredResources returns the resource requirements for the custom transformation.
 func (s *CustomStrategy) GetRequiredResources(mapping *domain.FieldMapping) *ResourceRequirement {
 	return &ResourceRequirement{
 		MemoryMB:     2,
@@ -591,6 +615,7 @@ func (s *CustomStrategy) GetRequiredResources(mapping *domain.FieldMapping) *Res
 	}
 }
 
+// Validate checks if the custom transformation is valid.
 func (s *CustomStrategy) Validate(mapping *domain.FieldMapping) error {
 	return nil
 }

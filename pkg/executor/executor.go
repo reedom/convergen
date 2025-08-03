@@ -105,7 +105,9 @@ type ExecutionError struct {
 	Context   map[string]interface{} `json:"context,omitempty"`
 }
 
-// resource management and event-driven progress reporting.
+// Executor defines the interface for the execution engine, which is responsible for
+// running conversion tasks based on an execution plan, managing resources, and
+// reporting progress through events.
 type Executor interface {
 	// ExecutePlan executes a complete execution plan
 	ExecutePlan(ctx context.Context, plan *domain.ExecutionPlan) (*ExecutionResult, error)

@@ -85,11 +85,22 @@ func NewEvent(eventType string, data map[string]interface{}) Event {
 	}
 }
 
-func (e *BaseEvent) ID() string                       { return e.id }
-func (e *BaseEvent) Type() string                     { return e.eventType }
-func (e *BaseEvent) Data() map[string]interface{}     { return e.data }
-func (e *BaseEvent) Timestamp() time.Time             { return e.timestamp }
-func (e *BaseEvent) Context() context.Context         { return e.ctx }
+// ID returns the unique identifier of the event.
+func (e *BaseEvent) ID() string { return e.id }
+
+// Type returns the type of the event.
+func (e *BaseEvent) Type() string { return e.eventType }
+
+// Data returns the data associated with the event.
+func (e *BaseEvent) Data() map[string]interface{} { return e.data }
+
+// Timestamp returns the time the event was created.
+func (e *BaseEvent) Timestamp() time.Time { return e.timestamp }
+
+// Context returns the context associated with the event.
+func (e *BaseEvent) Context() context.Context { return e.ctx }
+
+// Metadata returns the metadata associated with the event.
 func (e *BaseEvent) Metadata() map[string]interface{} { return e.metadata }
 
 // WithMetadata adds metadata to the event.
@@ -416,10 +427,12 @@ func NewFuncEventHandler(eventType string, handler func(ctx context.Context, eve
 	}
 }
 
+// Handle processes an event.
 func (h *FuncEventHandler) Handle(ctx context.Context, event Event) error {
 	return h.handler(ctx, event)
 }
 
+// CanHandle returns true if the handler can process the event type.
 func (h *FuncEventHandler) CanHandle(eventType string) bool {
 	return h.eventType == eventType
 }
@@ -479,7 +492,7 @@ func (bus *MiddlewareEventBus) Publish(event Event) error {
 	return next(ctx, event)
 }
 
-// Delegate other methods to inner bus.
+// Subscribe delegates the subscription to the inner event bus.
 func (bus *MiddlewareEventBus) Subscribe(eventType string, handler EventHandler) error {
 	if err := bus.inner.Subscribe(eventType, handler); err != nil {
 		return fmt.Errorf("failed to subscribe to event %s: %w", eventType, err)
@@ -488,6 +501,7 @@ func (bus *MiddlewareEventBus) Subscribe(eventType string, handler EventHandler)
 	return nil
 }
 
+// Unsubscribe delegates the unsubscription to the inner event bus.
 func (bus *MiddlewareEventBus) Unsubscribe(eventType string, handler EventHandler) error {
 	if err := bus.inner.Unsubscribe(eventType, handler); err != nil {
 		return fmt.Errorf("failed to unsubscribe from event %s: %w", eventType, err)
@@ -496,6 +510,7 @@ func (bus *MiddlewareEventBus) Unsubscribe(eventType string, handler EventHandle
 	return nil
 }
 
+// Close delegates the closing to the inner event bus.
 func (bus *MiddlewareEventBus) Close() error {
 	if err := bus.inner.Close(); err != nil {
 		return fmt.Errorf("failed to close event bus: %w", err)
@@ -504,6 +519,7 @@ func (bus *MiddlewareEventBus) Close() error {
 	return nil
 }
 
+// Stats delegates the stats retrieval to the inner event bus.
 func (bus *MiddlewareEventBus) Stats() *BusStats {
 	return bus.inner.Stats()
 }
@@ -518,6 +534,7 @@ func NewLoggingMiddleware(logger *zap.Logger) *LoggingMiddleware {
 	return &LoggingMiddleware{logger: logger}
 }
 
+// Process processes an event through the middleware.
 func (m *LoggingMiddleware) Process(ctx context.Context, event Event, next func(ctx context.Context, event Event) error) error {
 	start := time.Now()
 
@@ -559,6 +576,7 @@ func NewTimeoutMiddleware(timeout time.Duration, logger *zap.Logger) *TimeoutMid
 	}
 }
 
+// Process processes an event through the middleware.
 func (m *TimeoutMiddleware) Process(ctx context.Context, event Event, next func(ctx context.Context, event Event) error) error {
 	ctx, cancel := context.WithTimeout(ctx, m.timeout)
 	defer cancel()

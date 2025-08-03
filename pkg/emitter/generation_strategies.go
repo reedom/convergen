@@ -55,10 +55,12 @@ func NewMixedApproachStrategy(config *Config, logger *zap.Logger) GenerationStra
 
 // CompositeLiteralStrategy implementation
 
+// Name returns the name of the strategy.
 func (cls *CompositeLiteralStrategy) Name() string {
 	return "composite_literal"
 }
 
+// CanHandle determines if this strategy can handle the given method.
 func (cls *CompositeLiteralStrategy) CanHandle(method *domain.MethodResult) bool {
 	if method == nil {
 		return false
@@ -81,6 +83,7 @@ func (cls *CompositeLiteralStrategy) CanHandle(method *domain.MethodResult) bool
 	return true
 }
 
+// GenerateCode generates code for the given method using this strategy.
 func (cls *CompositeLiteralStrategy) GenerateCode(ctx context.Context, method *domain.MethodResult, data *TemplateData) (string, error) {
 	cls.logger.Debug("generating composite literal code",
 		zap.String("method", method.Method.Name))
@@ -114,6 +117,7 @@ func (cls *CompositeLiteralStrategy) GenerateCode(ctx context.Context, method *d
 	return code.String(), nil
 }
 
+// GetComplexity returns the complexity metrics for this strategy.
 func (cls *CompositeLiteralStrategy) GetComplexity(method *domain.MethodResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
 	metrics.FieldCount = len(method.Metadata)
@@ -125,6 +129,7 @@ func (cls *CompositeLiteralStrategy) GetComplexity(method *domain.MethodResult) 
 	return metrics
 }
 
+// GetRequiredImports returns the imports required by this strategy.
 func (cls *CompositeLiteralStrategy) GetRequiredImports(method *domain.MethodResult) []*Import {
 	// Composite literals typically don't require additional imports
 	// beyond what's already available
@@ -147,15 +152,18 @@ func (cls *CompositeLiteralStrategy) generateFieldAssignment(fieldName string, f
 
 // AssignmentBlockStrategy implementation
 
+// Name returns the name of the strategy.
 func (abs *AssignmentBlockStrategy) Name() string {
 	return "assignment_block"
 }
 
+// CanHandle determines if this strategy can handle the given method.
 func (abs *AssignmentBlockStrategy) CanHandle(method *domain.MethodResult) bool {
 	// Assignment block strategy can handle any method
 	return method != nil
 }
 
+// GenerateCode generates code for the given method using this strategy.
 func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *domain.MethodResult, data *TemplateData) (string, error) {
 	abs.logger.Debug("generating assignment block code",
 		zap.String("method", method.Method.Name))
@@ -194,6 +202,7 @@ func (abs *AssignmentBlockStrategy) GenerateCode(ctx context.Context, method *do
 	return code.String(), nil
 }
 
+// GetComplexity returns the complexity metrics for this strategy.
 func (abs *AssignmentBlockStrategy) GetComplexity(method *domain.MethodResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
 	metrics.FieldCount = len(method.Metadata)
@@ -218,6 +227,7 @@ func (abs *AssignmentBlockStrategy) GetComplexity(method *domain.MethodResult) *
 	return metrics
 }
 
+// GetRequiredImports returns the imports required by this strategy.
 func (abs *AssignmentBlockStrategy) GetRequiredImports(method *domain.MethodResult) []*Import {
 	var imports []*Import
 
@@ -284,10 +294,12 @@ func (abs *AssignmentBlockStrategy) generateFieldAssignment(fieldName string, fi
 
 // MixedApproachStrategy implementation
 
+// Name returns the name of the strategy.
 func (mas *MixedApproachStrategy) Name() string {
 	return "mixed_approach"
 }
 
+// CanHandle determines if this strategy can handle the given method.
 func (mas *MixedApproachStrategy) CanHandle(method *domain.MethodResult) bool {
 	if method == nil {
 		return false
@@ -316,6 +328,7 @@ func (mas *MixedApproachStrategy) CanHandle(method *domain.MethodResult) bool {
 	return 0 < simpleFields && 0 < complexFields
 }
 
+// GenerateCode generates code for the given method using this strategy.
 func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *domain.MethodResult, data *TemplateData) (string, error) {
 	mas.logger.Debug("generating mixed approach code",
 		zap.String("method", method.Method.Name))
@@ -379,6 +392,7 @@ func (mas *MixedApproachStrategy) GenerateCode(ctx context.Context, method *doma
 	return code.String(), nil
 }
 
+// GetComplexity returns the complexity metrics for this strategy.
 func (mas *MixedApproachStrategy) GetComplexity(method *domain.MethodResult) *ComplexityMetrics {
 	metrics := NewComplexityMetrics()
 	metrics.FieldCount = len(method.Metadata)
@@ -410,6 +424,7 @@ func (mas *MixedApproachStrategy) GetComplexity(method *domain.MethodResult) *Co
 	return metrics
 }
 
+// GetRequiredImports returns the imports required by this strategy.
 func (mas *MixedApproachStrategy) GetRequiredImports(method *domain.MethodResult) []*Import {
 	var imports []*Import
 

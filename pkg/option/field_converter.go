@@ -1,3 +1,4 @@
+// Package option provides functionalities for handling options.
 package option
 
 import (

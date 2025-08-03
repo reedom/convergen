@@ -10,10 +10,14 @@ import (
 type State string
 
 const (
-	StateIdle         State = "idle"
-	StateExecuting    State = "executing"
+	// StateIdle represents the idle state.
+	StateIdle State = "idle"
+	// StateExecuting represents the executing state.
+	StateExecuting State = "executing"
+	// StateShuttingDown represents the shutting down state.
 	StateShuttingDown State = "shutting_down"
-	StateError        State = "error"
+	// StateError represents the error state.
+	StateError State = "error"
 )
 
 // Status provides comprehensive status information about the executor.
@@ -210,10 +214,14 @@ const (
 type WorkerState string
 
 const (
-	WorkerStateIdle     WorkerState = "idle"
-	WorkerStateActive   WorkerState = "active"
+	// WorkerStateIdle represents the idle state of a worker.
+	WorkerStateIdle WorkerState = "idle"
+	// WorkerStateActive represents the active state of a worker.
+	WorkerStateActive WorkerState = "active"
+	// WorkerStateShutdown represents the shutdown state of a worker.
 	WorkerStateShutdown WorkerState = "shutdown"
-	WorkerStateError    WorkerState = "error"
+	// WorkerStateError represents the error state of a worker.
+	WorkerStateError WorkerState = "error"
 )
 
 // Worker represents a worker in the resource pool.

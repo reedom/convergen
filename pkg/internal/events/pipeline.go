@@ -358,10 +358,12 @@ func NewPipelineEventHandler(eventTypes []string, handler func(ctx context.Conte
 	}
 }
 
+// Handle processes an event.
 func (h *PipelineEventHandler) Handle(ctx context.Context, event Event) error {
 	return h.handler(ctx, event)
 }
 
+// CanHandle returns true if the handler can process the event type.
 func (h *PipelineEventHandler) CanHandle(eventType string) bool {
 	for _, supported := range h.eventTypes {
 		if supported == eventType {

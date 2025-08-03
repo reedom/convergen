@@ -22,9 +22,12 @@ var (
 type ParseStrategy int
 
 const (
+	// StrategyLegacy represents the traditional synchronous parsing strategy.
 	StrategyLegacy ParseStrategy = iota // Traditional synchronous parsing
-	StrategyModern                      // Event-driven concurrent parsing
-	StrategyAuto                        // Automatically choose based on input complexity
+	// StrategyModern represents the event-driven concurrent parsing strategy.
+	StrategyModern // Event-driven concurrent parsing
+	// StrategyAuto automatically chooses the best parsing strategy.
+	StrategyAuto // Automatically choose based on input complexity
 )
 
 // ParseResult contains comprehensive parsing results.
@@ -89,13 +92,20 @@ type ParseWarning struct {
 type ProcessingPhase string
 
 const (
-	PhasePackageLoading       ProcessingPhase = "package_loading"
-	PhaseInterfaceDiscovery   ProcessingPhase = "interface_discovery"
-	PhaseMethodAnalysis       ProcessingPhase = "method_analysis"
-	PhaseTypeResolution       ProcessingPhase = "type_resolution"
+	// PhasePackageLoading represents the package loading phase.
+	PhasePackageLoading ProcessingPhase = "package_loading"
+	// PhaseInterfaceDiscovery represents the interface discovery phase.
+	PhaseInterfaceDiscovery ProcessingPhase = "interface_discovery"
+	// PhaseMethodAnalysis represents the method analysis phase.
+	PhaseMethodAnalysis ProcessingPhase = "method_analysis"
+	// PhaseTypeResolution represents the type resolution phase.
+	PhaseTypeResolution ProcessingPhase = "type_resolution"
+	// PhaseAnnotationProcessing represents the annotation processing phase.
 	PhaseAnnotationProcessing ProcessingPhase = "annotation_processing"
-	PhaseValidation           ProcessingPhase = "validation"
-	PhaseCodeGeneration       ProcessingPhase = "code_generation"
+	// PhaseValidation represents the validation phase.
+	PhaseValidation ProcessingPhase = "validation"
+	// PhaseCodeGeneration represents the code generation phase.
+	PhaseCodeGeneration ProcessingPhase = "code_generation"
 )
 
 // ConvergenParser defines the unified interface for all parser implementations.
