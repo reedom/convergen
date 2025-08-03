@@ -160,10 +160,10 @@ type CrossPackageTypeLoader interface {
 	// ResolveType resolves a qualified type name to a concrete Type.
 	// The qualifiedTypeName should be in the format "package.TypeName" or "TypeName" for local types.
 	ResolveType(ctx context.Context, qualifiedTypeName string) (Type, error)
-	
+
 	// ValidateTypeArguments validates that all type arguments can be resolved.
 	ValidateTypeArguments(ctx context.Context, typeArguments []string) error
-	
+
 	// GetImportPaths returns the import paths needed for the given type arguments.
 	GetImportPaths(typeArguments []string) []string
 }
@@ -171,10 +171,10 @@ type CrossPackageTypeLoader interface {
 // TypeInstantiator is the core engine for converting generic types to concrete types.
 // It handles constraint validation, caching, and performance optimization.
 type TypeInstantiator struct {
-	typeBuilder           *TypeBuilder
-	cache                 map[string]*InstantiatedInterface
-	logger                *zap.Logger
-	crossPackageLoader    CrossPackageTypeLoader // For resolving external types
+	typeBuilder        *TypeBuilder
+	cache              map[string]*InstantiatedInterface
+	logger             *zap.Logger
+	crossPackageLoader CrossPackageTypeLoader // For resolving external types
 
 	// Performance tracking
 	cacheHits           int64
@@ -189,11 +189,11 @@ type TypeInstantiator struct {
 
 // TypeInstantiatorConfig configures the behavior of TypeInstantiator.
 type TypeInstantiatorConfig struct {
-	MaxRecursionDepth       int                    `json:"max_recursion_depth"`
-	EnableCaching           bool                   `json:"enable_caching"`
-	EnablePerformanceTrack  bool                   `json:"enable_performance_tracking"`
-	CacheCapacity           int                    `json:"cache_capacity"`
-	CrossPackageTypeLoader  CrossPackageTypeLoader `json:"-"` // Cannot serialize interfaces
+	MaxRecursionDepth      int                    `json:"max_recursion_depth"`
+	EnableCaching          bool                   `json:"enable_caching"`
+	EnablePerformanceTrack bool                   `json:"enable_performance_tracking"`
+	CacheCapacity          int                    `json:"cache_capacity"`
+	CrossPackageTypeLoader CrossPackageTypeLoader `json:"-"` // Cannot serialize interfaces
 }
 
 // NewTypeInstantiatorConfig creates a default configuration.
@@ -432,7 +432,7 @@ func (ti *TypeInstantiator) resolveTypeArguments(ctx context.Context, typeArgume
 // resolveTypeArgument resolves a single string type argument to a concrete Type.
 func (ti *TypeInstantiator) resolveTypeArgument(ctx context.Context, typeArgument string) (Type, error) {
 	typeArgument = strings.TrimSpace(typeArgument)
-	
+
 	if typeArgument == "" {
 		return nil, fmt.Errorf("empty type argument")
 	}

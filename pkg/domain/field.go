@@ -511,9 +511,96 @@ func (s *LiteralStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode, e
 	}, nil
 }
 
+// MappingStrategy is an alias for ConversionStrategy for compatibility with TASK-006.
+type MappingStrategy = ConversionStrategy
+
+// GenericDirectAssignmentStrategy handles direct field assignments with generic type awareness.
+// This strategy is used for TASK-006 implementation to handle generic type parameter substitution.
+type GenericDirectAssignmentStrategy struct {
+	InterfaceTypeParams []TypeParam `json:"interface_type_params"`
+}
+
+// Name returns the strategy name.
+func (s *GenericDirectAssignmentStrategy) Name() string { return "generic_direct" }
+
+// Priority returns the strategy priority (higher than basic direct assignment).
+func (s *GenericDirectAssignmentStrategy) Priority() int { return 110 }
+
+// Dependencies returns strategy dependencies.
+func (s *GenericDirectAssignmentStrategy) Dependencies() []string { return nil }
+
+// CanHandle checks if the strategy can handle the conversion between generic types.
+func (s *GenericDirectAssignmentStrategy) CanHandle(source, dest Type) bool {
+	// Can handle direct assignments between types, including generic type parameter substitution
+	if source.Generic() || dest.Generic() {
+		// For generic types, check constraint compatibility
+		return s.areGenericTypesCompatible(source, dest)
+	}
+
+	// For concrete types, use standard assignability
+	return source.AssignableTo(dest)
+}
+
+// GenerateCode generates the conversion code with generic type handling.
+func (s *GenericDirectAssignmentStrategy) GenerateCode(mapping *FieldMapping) (*GeneratedCode, error) {
+	sourceAccess := strings.Join(mapping.Source.Path, ".")
+	destAccess := strings.Join(mapping.Dest.Path, ".")
+
+	// For generic types, we may need type casting or conversion
+	if mapping.Source.Type.Generic() || mapping.Dest.Type.Generic() {
+		// Generate code that handles type parameter substitution
+		// This will be enhanced when type instantiation is integrated
+		assignment := fmt.Sprintf("%s = %s // generic type assignment", destAccess, sourceAccess)
+		return &GeneratedCode{
+			Assignment: assignment,
+		}, nil
+	}
+
+	// Standard direct assignment for concrete types
+	assignment := fmt.Sprintf("%s = %s", destAccess, sourceAccess)
+	return &GeneratedCode{
+		Assignment: assignment,
+	}, nil
+}
+
+// areGenericTypesCompatible checks if two types are compatible in a generic context.
+func (s *GenericDirectAssignmentStrategy) areGenericTypesCompatible(source, dest Type) bool {
+	// If both types are generic, they should be compatible through type parameters
+	if source.Generic() && dest.Generic() {
+		// Check if they refer to the same type parameter
+		return source.String() == dest.String()
+	}
+
+	// If one is generic and one is concrete, check constraint satisfaction
+	if source.Generic() && !dest.Generic() {
+		return s.typeConstraintSatisfied(source, dest)
+	}
+
+	if !source.Generic() && dest.Generic() {
+		return s.typeConstraintSatisfied(dest, source)
+	}
+
+	// Both are concrete types, use regular assignability
+	return source.AssignableTo(dest)
+}
+
+// typeConstraintSatisfied checks if a concrete type satisfies a generic type's constraints.
+func (s *GenericDirectAssignmentStrategy) typeConstraintSatisfied(genericType, concreteType Type) bool {
+	// Find the type parameter for the generic type
+	for _, param := range s.InterfaceTypeParams {
+		if param.Name == genericType.Name() {
+			return param.SatisfiesConstraint(concreteType)
+		}
+	}
+
+	// If type parameter not found, default to allowing the assignment
+	return true
+}
+
 // DefaultConversionStrategies returns the built-in conversion strategies.
 func DefaultConversionStrategies() []ConversionStrategy {
 	return []ConversionStrategy{
+		&GenericDirectAssignmentStrategy{},
 		&DirectAssignmentStrategy{},
 		&TypeCastStrategy{},
 		&MethodCallStrategy{},

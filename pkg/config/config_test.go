@@ -10,11 +10,11 @@ import (
 
 func TestConfig_parseImportMap(t *testing.T) {
 	tests := []struct {
-		name        string
-		importsStr  string
-		expected    map[string]string
-		wantErr     bool
-		expectErr   string
+		name       string
+		importsStr string
+		expected   map[string]string
+		wantErr    bool
+		expectErr  string
 	}{
 		{
 			name:       "empty imports",
@@ -49,34 +49,34 @@ func TestConfig_parseImportMap(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:        "invalid format missing equals",
-			importsStr:  "models./internal/models",
-			wantErr:     true,
-			expectErr:   "expected alias=path",
+			name:       "invalid format missing equals",
+			importsStr: "models./internal/models",
+			wantErr:    true,
+			expectErr:  "expected alias=path",
 		},
 		{
-			name:        "empty alias",
-			importsStr:  "=./internal/models",
-			wantErr:     true,
-			expectErr:   "empty package alias",
+			name:       "empty alias",
+			importsStr: "=./internal/models",
+			wantErr:    true,
+			expectErr:  "empty package alias",
 		},
 		{
-			name:        "empty import path",
-			importsStr:  "models=",
-			wantErr:     true,
-			expectErr:   "empty import path",
+			name:       "empty import path",
+			importsStr: "models=",
+			wantErr:    true,
+			expectErr:  "empty import path",
 		},
 		{
-			name:        "invalid alias with numbers at start",
-			importsStr:  "1models=./internal/models",
-			wantErr:     true,
-			expectErr:   "valid Go identifier",
+			name:       "invalid alias with numbers at start",
+			importsStr: "1models=./internal/models",
+			wantErr:    true,
+			expectErr:  "valid Go identifier",
 		},
 		{
-			name:        "import path with spaces",
-			importsStr:  "models=./internal models",
-			wantErr:     true,
-			expectErr:   "cannot contain spaces",
+			name:       "import path with spaces",
+			importsStr: "models=./internal models",
+			wantErr:    true,
+			expectErr:  "cannot contain spaces",
 		},
 	}
 
@@ -192,10 +192,10 @@ func TestConfig_validateImportPath(t *testing.T) {
 			wantErr:    false,
 		},
 		{
-			name:      "empty path",
+			name:       "empty path",
 			importPath: "",
-			wantErr:   true,
-			expectErr: "cannot be empty",
+			wantErr:    true,
+			expectErr:  "cannot be empty",
 		},
 		{
 			name:       "path with spaces",

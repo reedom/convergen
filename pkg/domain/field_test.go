@@ -435,7 +435,7 @@ func TestLiteralStrategy(t *testing.T) {
 func TestDefaultConversionStrategies(t *testing.T) {
 	strategies := DefaultConversionStrategies()
 
-	assert.Len(t, strategies, 5)
+	assert.Len(t, strategies, 6)
 
 	// Check that all expected strategies are present
 	names := make(map[string]bool)
@@ -443,6 +443,7 @@ func TestDefaultConversionStrategies(t *testing.T) {
 		names[strategy.Name()] = true
 	}
 
+	assert.True(t, names["generic_direct"])
 	assert.True(t, names["direct"])
 	assert.True(t, names["typecast"])
 	assert.True(t, names["method"])

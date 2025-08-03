@@ -174,7 +174,7 @@ func TestNewCrossPackageResolver(t *testing.T) {
 	assert.NotNil(t, cpr.cache)
 	assert.Equal(t, logger, cpr.logger)
 	assert.Equal(t, len(importMap), len(cpr.importMap))
-	
+
 	// Verify import map was copied (not referenced)
 	assert.Equal(t, importMap["models"], cpr.importMap["models"])
 	assert.Equal(t, importMap["dto"], cpr.importMap["dto"])
@@ -278,7 +278,7 @@ func TestCrossPackageResolver_ParseTypeArguments(t *testing.T) {
 
 			for i, expected := range tt.expectTypes {
 				require.True(t, i < len(qualifiedTypes), "not enough qualified types returned")
-				
+
 				qt := qualifiedTypes[i]
 				assert.Equal(t, expected.packageAlias, qt.PackageAlias, "package alias mismatch at index %d", i)
 				assert.Equal(t, expected.typeName, qt.TypeName, "type name mismatch at index %d", i)
@@ -298,14 +298,14 @@ func TestCrossPackageResolver_parseQualifiedTypeName(t *testing.T) {
 	cpr := NewCrossPackageResolver(nil, importMap, logger)
 
 	tests := []struct {
-		name         string
-		typeName     string
-		expectLocal  bool
-		expectAlias  string
-		expectType   string
-		expectPath   string
-		wantErr      bool
-		expectErr    error
+		name        string
+		typeName    string
+		expectLocal bool
+		expectAlias string
+		expectType  string
+		expectPath  string
+		wantErr     bool
+		expectErr   error
 	}{
 		{
 			name:        "local type",
@@ -326,16 +326,16 @@ func TestCrossPackageResolver_parseQualifiedTypeName(t *testing.T) {
 			wantErr:     false,
 		},
 		{
-			name:        "unknown package alias",
-			typeName:    "unknown.Type",
-			wantErr:     true,
-			expectErr:   ErrPackageAliasNotFound,
+			name:      "unknown package alias",
+			typeName:  "unknown.Type",
+			wantErr:   true,
+			expectErr: ErrPackageAliasNotFound,
 		},
 		{
-			name:        "too many dots",
-			typeName:    "pkg.sub.Type",
-			wantErr:     true,
-			expectErr:   ErrInvalidQualifiedTypeName,
+			name:      "too many dots",
+			typeName:  "pkg.sub.Type",
+			wantErr:   true,
+			expectErr: ErrInvalidQualifiedTypeName,
 		},
 	}
 
@@ -366,9 +366,9 @@ func TestCrossPackageResolver_splitTypeArguments(t *testing.T) {
 	cpr := NewCrossPackageResolver(nil, nil, logger)
 
 	tests := []struct {
-		name         string
-		input        string
-		expected     []string
+		name     string
+		input    string
+		expected []string
 	}{
 		{
 			name:     "simple types",
@@ -446,10 +446,10 @@ func TestCrossPackageResolver_ValidateQualifiedTypes(t *testing.T) {
 	cpr := NewCrossPackageResolver(nil, importMap, logger)
 
 	tests := []struct {
-		name          string
+		name           string
 		qualifiedTypes []*QualifiedType
-		wantErr       bool
-		expectErr     error
+		wantErr        bool
+		expectErr      error
 	}{
 		{
 			name: "valid types",
@@ -638,7 +638,7 @@ func TestPackageLoadCache(t *testing.T) {
 	// Note: We can't create a real packages.Package in tests easily,
 	// so we'll test with nil for basic cache functionality
 	cache.Set("test", nil)
-	
+
 	result, exists := cache.Get("test")
 	assert.True(t, exists)
 	assert.Nil(t, result) // We stored nil for testing

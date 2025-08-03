@@ -19,13 +19,13 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrInvalidQualifiedTypeName = errors.New("invalid qualified type name")
-	ErrPackageAliasNotFound     = errors.New("package alias not found in import map")
-	ErrFailedToLoadPackage      = errors.New("failed to load package")
-	ErrTypeNotFoundInPackage    = errors.New("type not found in package")
-	ErrInvalidImportPath        = errors.New("invalid import path")
+	ErrInvalidQualifiedTypeName  = errors.New("invalid qualified type name")
+	ErrPackageAliasNotFound      = errors.New("package alias not found in import map")
+	ErrFailedToLoadPackage       = errors.New("failed to load package")
+	ErrTypeNotFoundInPackage     = errors.New("type not found in package")
+	ErrInvalidImportPath         = errors.New("invalid import path")
 	ErrCircularPackageDependency = errors.New("circular package dependency detected")
-	ErrPackageLoadTimeout       = errors.New("package load timeout")
+	ErrPackageLoadTimeout        = errors.New("package load timeout")
 )
 
 // QualifiedType represents a type reference that may come from an external package.
@@ -109,14 +109,14 @@ type CrossPackageResolver struct {
 	importMap     map[string]string // alias -> import path
 	cache         *PackageLoadCache
 	logger        *zap.Logger
-	
+
 	// Configuration
-	timeout       time.Duration
-	maxCacheSize  int
-	
+	timeout      time.Duration
+	maxCacheSize int
+
 	// Safety mechanisms
-	loadingStack  []string // Track loading chain for cycle detection
-	loadingMutex  sync.Mutex
+	loadingStack []string // Track loading chain for cycle detection
+	loadingMutex sync.Mutex
 }
 
 // CrossPackageResolverConfig configures the behavior of CrossPackageResolver.
@@ -184,7 +184,7 @@ func copyImportMap(importMap map[string]string) map[string]string {
 	if importMap == nil {
 		return make(map[string]string)
 	}
-	
+
 	cp := make(map[string]string, len(importMap))
 	for k, v := range importMap {
 		cp[k] = v
@@ -201,19 +201,19 @@ func (cpr *CrossPackageResolver) ParseTypeArguments(
 	// Regular expression to parse generic type syntax
 	// Matches: TypeName[Type1,Type2,pkg.Type3]
 	genericTypeRegex := regexp.MustCompile(`^(\w+)\[([^\]]+)\]$`)
-	
+
 	matches := genericTypeRegex.FindStringSubmatch(strings.TrimSpace(typeSpec))
 	if len(matches) != 3 {
 		// Not a generic type specification, treat as single type
 		return cpr.parseSimpleType(typeSpec)
 	}
-	
+
 	// Extract type arguments from the bracket expression
 	typeArgsStr := matches[2]
 	typeArgStrs := cpr.splitTypeArguments(typeArgsStr)
-	
+
 	qualifiedTypes := make([]*QualifiedType, 0, len(typeArgStrs))
-	
+
 	for _, typeArgStr := range typeArgStrs {
 		qualifiedType, err := cpr.parseQualifiedTypeName(strings.TrimSpace(typeArgStr))
 		if err != nil {
@@ -221,11 +221,11 @@ func (cpr *CrossPackageResolver) ParseTypeArguments(
 		}
 		qualifiedTypes = append(qualifiedTypes, qualifiedType)
 	}
-	
+
 	cpr.logger.Debug("parsed type arguments from type specification",
 		zap.String("type_spec", typeSpec),
 		zap.Int("type_arg_count", len(qualifiedTypes)))
-	
+
 	return qualifiedTypes, nil
 }
 
@@ -244,7 +244,7 @@ func (cpr *CrossPackageResolver) splitTypeArguments(typeArgsStr string) []string
 	var result []string
 	var current strings.Builder
 	depth := 0
-	
+
 	for _, char := range typeArgsStr {
 		switch char {
 		case '[':
@@ -264,12 +264,12 @@ func (cpr *CrossPackageResolver) splitTypeArguments(typeArgsStr string) []string
 			current.WriteRune(char)
 		}
 	}
-	
+
 	// Add the last argument
 	if current.Len() > 0 {
 		result = append(result, current.String())
 	}
-	
+
 	return result
 }
 
@@ -280,19 +280,19 @@ func (cpr *CrossPackageResolver) parseQualifiedTypeName(typeName string) (*Quali
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("%w: too many dots in type name '%s'", ErrInvalidQualifiedTypeName, typeName)
 		}
-		
+
 		packageAlias := parts[0]
 		typeNamePart := parts[1]
-		
+
 		// Resolve import path
 		importPath, exists := cpr.importMap[packageAlias]
 		if !exists {
 			return nil, fmt.Errorf("%w: '%s'", ErrPackageAliasNotFound, packageAlias)
 		}
-		
+
 		return NewQualifiedType(packageAlias, typeNamePart, importPath, false)
 	}
-	
+
 	// Local type (no package prefix)
 	return NewQualifiedType("", typeName, "", true)
 }
@@ -307,31 +307,31 @@ func (cpr *CrossPackageResolver) ResolveType(
 		// In a full implementation, this would resolve from the current package
 		return domain.NewBasicType(qualifiedType.TypeName, getReflectKind(qualifiedType.TypeName)), nil
 	}
-	
+
 	// Load the external package
 	pkg, err := cpr.loadPackage(ctx, qualifiedType.ImportPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load package '%s': %w", qualifiedType.ImportPath, err)
 	}
-	
+
 	// Find the type in the package
 	obj := pkg.Types.Scope().Lookup(qualifiedType.TypeName)
 	if obj == nil {
-		return nil, fmt.Errorf("%w: '%s' in package '%s'", 
+		return nil, fmt.Errorf("%w: '%s' in package '%s'",
 			ErrTypeNotFoundInPackage, qualifiedType.TypeName, qualifiedType.ImportPath)
 	}
-	
+
 	// Convert to domain type
 	domainType, err := cpr.convertTodomainType(obj, qualifiedType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert type '%s' to domain type: %w", qualifiedType.TypeName, err)
 	}
-	
+
 	cpr.logger.Debug("resolved cross-package type",
 		zap.String("qualified_name", qualifiedType.String()),
 		zap.String("import_path", qualifiedType.ImportPath),
 		zap.String("domain_type", domainType.String()))
-	
+
 	return domainType, nil
 }
 
@@ -342,17 +342,17 @@ func (cpr *CrossPackageResolver) loadPackage(ctx context.Context, importPath str
 		cpr.logger.Debug("package cache hit", zap.String("import_path", importPath))
 		return pkg, nil
 	}
-	
+
 	// Check for circular dependencies
 	if err := cpr.checkCircularDependency(importPath); err != nil {
 		return nil, err
 	}
-	
+
 	// Add to loading stack
 	cpr.loadingMutex.Lock()
 	cpr.loadingStack = append(cpr.loadingStack, importPath)
 	cpr.loadingMutex.Unlock()
-	
+
 	defer func() {
 		// Remove from loading stack
 		cpr.loadingMutex.Lock()
@@ -361,29 +361,29 @@ func (cpr *CrossPackageResolver) loadPackage(ctx context.Context, importPath str
 		}
 		cpr.loadingMutex.Unlock()
 	}()
-	
+
 	// Create timeout context
 	loadCtx, cancel := context.WithTimeout(ctx, cpr.timeout)
 	defer cancel()
-	
+
 	cpr.logger.Debug("loading package", zap.String("import_path", importPath))
-	
+
 	// Load package using packages.Load
 	config := &packages.Config{
 		Context: loadCtx,
 		Mode: packages.NeedName | packages.NeedImports | packages.NeedDeps |
 			packages.NeedTypes | packages.NeedTypesInfo,
 	}
-	
+
 	pkgs, err := packages.Load(config, importPath)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s: %s", ErrFailedToLoadPackage, importPath, err.Error())
 	}
-	
+
 	if len(pkgs) == 0 {
 		return nil, fmt.Errorf("%w: no packages found for path '%s'", ErrFailedToLoadPackage, importPath)
 	}
-	
+
 	pkg := pkgs[0]
 	if 0 < len(pkg.Errors) {
 		var errorMsgs []string
@@ -392,14 +392,14 @@ func (cpr *CrossPackageResolver) loadPackage(ctx context.Context, importPath str
 		}
 		return nil, fmt.Errorf("%w: %s: %s", ErrFailedToLoadPackage, importPath, strings.Join(errorMsgs, "; "))
 	}
-	
+
 	// Cache the loaded package
 	cpr.cache.Set(importPath, pkg)
-	
+
 	cpr.logger.Info("successfully loaded package",
 		zap.String("import_path", importPath),
 		zap.String("package_name", pkg.Name))
-	
+
 	return pkg, nil
 }
 
@@ -407,14 +407,14 @@ func (cpr *CrossPackageResolver) loadPackage(ctx context.Context, importPath str
 func (cpr *CrossPackageResolver) checkCircularDependency(importPath string) error {
 	cpr.loadingMutex.Lock()
 	defer cpr.loadingMutex.Unlock()
-	
+
 	for _, loading := range cpr.loadingStack {
 		if loading == importPath {
-			return fmt.Errorf("%w: %s -> %s", ErrCircularPackageDependency, 
+			return fmt.Errorf("%w: %s -> %s", ErrCircularPackageDependency,
 				strings.Join(cpr.loadingStack, " -> "), importPath)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -425,18 +425,18 @@ func (cpr *CrossPackageResolver) convertTodomainType(obj types.Object, qualified
 		// Handle named types (structs, interfaces, etc.)
 		underlying := t.Underlying()
 		kind := getReflectKindFromType(underlying)
-		
+
 		// Create a basic type with the qualified name
 		return domain.NewBasicType(qualifiedType.String(), kind), nil
-		
+
 	case *types.Interface:
 		// Handle interface types
 		return domain.NewBasicType(qualifiedType.String(), getReflectKind("interface")), nil
-		
+
 	case *types.Struct:
 		// Handle struct types
 		return domain.NewBasicType(qualifiedType.String(), getReflectKind("struct")), nil
-		
+
 	default:
 		// For other types, create a basic type
 		kind := getReflectKindFromType(t)
@@ -448,7 +448,7 @@ func (cpr *CrossPackageResolver) convertTodomainType(obj types.Object, qualified
 func (cpr *CrossPackageResolver) UpdateImportMap(newImports map[string]string) {
 	cpr.loadingMutex.Lock()
 	defer cpr.loadingMutex.Unlock()
-	
+
 	for alias, importPath := range newImports {
 		// Validate import path
 		if err := cpr.validateImportPath(importPath); err != nil {
@@ -458,7 +458,7 @@ func (cpr *CrossPackageResolver) UpdateImportMap(newImports map[string]string) {
 				zap.Error(err))
 			continue
 		}
-		
+
 		cpr.importMap[alias] = importPath
 		cpr.logger.Debug("updated import mapping",
 			zap.String("alias", alias),
@@ -471,12 +471,12 @@ func (cpr *CrossPackageResolver) validateImportPath(importPath string) error {
 	if importPath == "" {
 		return fmt.Errorf("%w: empty import path", ErrInvalidImportPath)
 	}
-	
+
 	// Basic validation - in a full implementation, this would be more thorough
 	if strings.Contains(importPath, " ") {
 		return fmt.Errorf("%w: import path contains spaces: '%s'", ErrInvalidImportPath, importPath)
 	}
-	
+
 	return nil
 }
 
@@ -575,27 +575,27 @@ func (cpr *CrossPackageResolver) ValidateQualifiedTypes(qualifiedTypes []*Qualif
 		if qt == nil {
 			return fmt.Errorf("qualified type at index %d is nil", i)
 		}
-		
+
 		if qt.TypeName == "" {
 			return fmt.Errorf("qualified type at index %d has empty type name", i)
 		}
-		
+
 		if !qt.IsLocal {
 			if qt.PackageAlias == "" {
 				return fmt.Errorf("qualified type at index %d has empty package alias for non-local type", i)
 			}
-			
+
 			if qt.ImportPath == "" {
 				return fmt.Errorf("qualified type at index %d has empty import path for non-local type", i)
 			}
-			
+
 			// Validate that the package alias exists in import map
 			if _, exists := cpr.importMap[qt.PackageAlias]; !exists {
 				return fmt.Errorf("%w: '%s' for type '%s'", ErrPackageAliasNotFound, qt.PackageAlias, qt.TypeName)
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -607,9 +607,9 @@ func (cpr *CrossPackageResolver) ResolveAllTypes(
 	if err := cpr.ValidateQualifiedTypes(qualifiedTypes); err != nil {
 		return nil, fmt.Errorf("qualified types validation failed: %w", err)
 	}
-	
+
 	domainTypes := make([]domain.Type, len(qualifiedTypes))
-	
+
 	for i, qt := range qualifiedTypes {
 		domainType, err := cpr.ResolveType(ctx, qt)
 		if err != nil {
@@ -617,10 +617,10 @@ func (cpr *CrossPackageResolver) ResolveAllTypes(
 		}
 		domainTypes[i] = domainType
 	}
-	
+
 	cpr.logger.Info("resolved all qualified types",
 		zap.Int("type_count", len(domainTypes)))
-	
+
 	return domainTypes, nil
 }
 
@@ -630,19 +630,19 @@ func (cpr *CrossPackageResolver) GetPackageByAlias(ctx context.Context, alias st
 	if !exists {
 		return nil, fmt.Errorf("%w: '%s'", ErrPackageAliasNotFound, alias)
 	}
-	
+
 	return cpr.loadPackage(ctx, importPath)
 }
 
 // ExtractPackageInfo extracts package information for debugging and validation.
 func (cpr *CrossPackageResolver) ExtractPackageInfo(pkg *packages.Package) map[string]interface{} {
 	info := map[string]interface{}{
-		"name":       pkg.Name,
-		"path":       pkg.PkgPath,
-		"types":      make([]string, 0),
-		"errors":     make([]string, 0),
+		"name":   pkg.Name,
+		"path":   pkg.PkgPath,
+		"types":  make([]string, 0),
+		"errors": make([]string, 0),
 	}
-	
+
 	// Extract type names
 	if pkg.Types != nil && pkg.Types.Scope() != nil {
 		for _, name := range pkg.Types.Scope().Names() {
@@ -653,12 +653,12 @@ func (cpr *CrossPackageResolver) ExtractPackageInfo(pkg *packages.Package) map[s
 			}
 		}
 	}
-	
+
 	// Extract errors
 	for _, err := range pkg.Errors {
 		errorMsgs := info["errors"].([]string)
 		info["errors"] = append(errorMsgs, err.Error())
 	}
-	
+
 	return info
 }

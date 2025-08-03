@@ -17,7 +17,7 @@ func TestNewCrossPackageTypeLoaderAdapter(t *testing.T) {
 		"models": "./internal/models",
 		"dto":    "./pkg/dto",
 	}
-	
+
 	resolver := NewCrossPackageResolver(nil, importMap, logger)
 	adapter := NewCrossPackageTypeLoaderAdapter(resolver, logger)
 
@@ -32,7 +32,7 @@ func TestCrossPackageTypeLoaderAdapter_ResolveType(t *testing.T) {
 		"models": "./internal/models",
 		"dto":    "./pkg/dto",
 	}
-	
+
 	resolver := NewCrossPackageResolver(nil, importMap, logger)
 	adapter := NewCrossPackageTypeLoaderAdapter(resolver, logger)
 	ctx := context.Background()
@@ -88,7 +88,7 @@ func TestCrossPackageTypeLoaderAdapter_ValidateTypeArguments(t *testing.T) {
 		"models": "./internal/models",
 		"dto":    "./pkg/dto",
 	}
-	
+
 	resolver := NewCrossPackageResolver(nil, importMap, logger)
 	adapter := NewCrossPackageTypeLoaderAdapter(resolver, logger)
 	ctx := context.Background()
@@ -149,7 +149,7 @@ func TestCrossPackageTypeLoaderAdapter_GetImportPaths(t *testing.T) {
 		"models": "./internal/models",
 		"dto":    "./pkg/dto",
 	}
-	
+
 	resolver := NewCrossPackageResolver(nil, importMap, logger)
 	adapter := NewCrossPackageTypeLoaderAdapter(resolver, logger)
 
@@ -208,7 +208,7 @@ func TestCrossPackageTypeLoaderAdapter_UpdateImportMap(t *testing.T) {
 	initialImports := map[string]string{
 		"models": "./internal/models",
 	}
-	
+
 	resolver := NewCrossPackageResolver(nil, initialImports, logger)
 	adapter := NewCrossPackageTypeLoaderAdapter(resolver, logger)
 
@@ -234,7 +234,7 @@ func TestCrossPackageTypeLoaderAdapter_ClearCache(t *testing.T) {
 	// This is mainly testing that the method doesn't panic
 	// and delegates to the underlying resolver
 	adapter.ClearCache()
-	
+
 	// If we got here without panicking, the test passes
 	assert.True(t, true)
 }
@@ -245,7 +245,7 @@ func TestCrossPackageTypeLoaderAdapter_GetCacheStats(t *testing.T) {
 	adapter := NewCrossPackageTypeLoaderAdapter(resolver, logger)
 
 	hits, misses := adapter.GetCacheStats()
-	
+
 	// Should return valid statistics (exact values depend on resolver implementation)
 	assert.GreaterOrEqual(t, hits, 0)
 	assert.GreaterOrEqual(t, misses, 0)
@@ -267,15 +267,15 @@ func TestCrossPackageTypeLoaderAdapter_Integration(t *testing.T) {
 		"models": "./internal/models",
 		"dto":    "./pkg/dto",
 	}
-	
+
 	// Create the full stack
 	resolver := NewCrossPackageResolver(nil, importMap, logger)
 	adapter := NewCrossPackageTypeLoaderAdapter(resolver, logger)
-	
+
 	// Create a type instantiator with cross-package support
 	config := domain.NewTypeInstantiatorConfig()
 	config.CrossPackageTypeLoader = adapter
-	
+
 	typeBuilder := domain.NewTypeBuilder()
 	instantiator := domain.NewTypeInstantiatorWithConfig(typeBuilder, logger, config)
 
@@ -286,7 +286,7 @@ func TestCrossPackageTypeLoaderAdapter_Integration(t *testing.T) {
 	// Test resolving type arguments through the instantiator
 	ctx := context.Background()
 	typeArguments := []string{"User", "models.Entity", "dto.UserDTO"}
-	
+
 	// This would typically be called by the instantiator internally
 	// We test the adapter directly here
 	// Note: This will fail because the test packages don't exist, which is expected
@@ -317,7 +317,7 @@ func TestCrossPackageTypeLoaderAdapter_EmptyTypeArguments(t *testing.T) {
 	// Test with empty and whitespace-only type arguments
 	typeArguments := []string{"", "  ", "\t", "\n"}
 	importPaths := adapter.GetImportPaths(typeArguments)
-	
+
 	assert.Equal(t, 0, len(importPaths))
 }
 
@@ -326,14 +326,14 @@ func TestCrossPackageTypeLoaderAdapter_InvalidTypeArguments(t *testing.T) {
 	importMap := map[string]string{
 		"models": "./internal/models",
 	}
-	
+
 	resolver := NewCrossPackageResolver(nil, importMap, logger)
 	adapter := NewCrossPackageTypeLoaderAdapter(resolver, logger)
 
 	// Test that invalid type arguments don't crash GetImportPaths
 	typeArguments := []string{"invalid..type", "pkg.sub.Type", ""}
 	importPaths := adapter.GetImportPaths(typeArguments)
-	
+
 	// Should return empty list for invalid arguments
 	assert.Equal(t, 0, len(importPaths))
 }

@@ -392,14 +392,14 @@ func (inst *InstantiatedInterface) AddExternalImport(importPath string) {
 	if importPath == "" {
 		return
 	}
-	
+
 	// Check if already present
 	for _, existing := range inst.ExternalImports {
 		if existing == importPath {
 			return
 		}
 	}
-	
+
 	inst.ExternalImports = append(inst.ExternalImports, importPath)
 }
 
@@ -414,12 +414,12 @@ func (inst *InstantiatedInterface) GetExternalImports() []string {
 // ExtractExternalTypesFromArguments extracts external type information from type arguments.
 func (inst *InstantiatedInterface) ExtractExternalTypesFromArguments() map[string]string {
 	externalTypes := make(map[string]string)
-	
+
 	for paramName, typeArg := range inst.TypeArgs {
 		if typeArg == nil {
 			continue
 		}
-		
+
 		typeName := typeArg.Name()
 		// Check if this is a qualified type name (package.Type)
 		if strings.Contains(typeName, ".") {
@@ -431,7 +431,7 @@ func (inst *InstantiatedInterface) ExtractExternalTypesFromArguments() map[strin
 			}
 		}
 	}
-	
+
 	return externalTypes
 }
 
@@ -440,12 +440,12 @@ func (inst *InstantiatedInterface) ValidateExternalTypeConsistency() error {
 	if !inst.HasExternalTypes() {
 		return nil
 	}
-	
+
 	externalTypes := inst.ExtractExternalTypesFromArguments()
 	if len(externalTypes) == 0 && 0 < len(inst.ExternalImports) {
 		return fmt.Errorf("external imports specified but no external types found in type arguments")
 	}
-	
+
 	// This is a basic validation - could be enhanced with more thorough checking
 	return nil
 }

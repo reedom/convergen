@@ -98,7 +98,7 @@ func (c *Config) ParseArgs() error {
 	logs := flag.Bool("log", false, "Write log messages to <output path>.log.")
 	dryRun := flag.Bool("dry", false, "Perform a dry run without writing files.")
 	prints := flag.Bool("print", false, "Print the resulting code to STDOUT as well.")
-	
+
 	// Cross-package type support flags
 	typeSpec := flag.String("type", "", "Specify generic interface to instantiate (e.g., TypeMapper[models.User,dto.UserDTO])")
 	imports := flag.String("imports", "", "Package alias mappings (e.g., models=./internal/models,dto=./pkg/dto)")
@@ -134,7 +134,7 @@ func (c *Config) ParseArgs() error {
 
 	// Parse cross-package type configuration
 	c.TypeSpec = strings.TrimSpace(*typeSpec)
-	
+
 	importMap, err := c.parseImportMap(*imports)
 	if err != nil {
 		return fmt.Errorf("failed to parse import mappings: %w", err)
@@ -152,50 +152,50 @@ func (c *Config) ParseArgs() error {
 // parseImportMap parses import mappings from a string like "models=./internal/models,dto=./pkg/dto".
 func (c *Config) parseImportMap(importsStr string) (map[string]string, error) {
 	importMap := make(map[string]string)
-	
+
 	if importsStr == "" {
 		return importMap, nil
 	}
-	
+
 	// Split by comma to get individual mappings
 	mappings := strings.Split(importsStr, ",")
-	
+
 	for _, mapping := range mappings {
 		mapping = strings.TrimSpace(mapping)
 		if mapping == "" {
 			continue
 		}
-		
+
 		// Split by equals sign to get alias and path
 		parts := strings.Split(mapping, "=")
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid import mapping format '%s': expected alias=path", mapping)
 		}
-		
+
 		alias := strings.TrimSpace(parts[0])
 		importPath := strings.TrimSpace(parts[1])
-		
+
 		if alias == "" {
 			return nil, fmt.Errorf("empty package alias in mapping '%s'", mapping)
 		}
-		
+
 		if importPath == "" {
 			return nil, fmt.Errorf("empty import path in mapping '%s'", mapping)
 		}
-		
+
 		// Validate alias is a valid identifier
 		if err := c.validatePackageAlias(alias); err != nil {
 			return nil, fmt.Errorf("invalid package alias '%s': %w", alias, err)
 		}
-		
+
 		// Validate import path
 		if err := c.validateImportPath(importPath); err != nil {
 			return nil, fmt.Errorf("invalid import path '%s': %w", importPath, err)
 		}
-		
+
 		importMap[alias] = importPath
 	}
-	
+
 	return importMap, nil
 }
 
@@ -204,13 +204,13 @@ func (c *Config) validatePackageAlias(alias string) error {
 	if alias == "" {
 		return fmt.Errorf("package alias cannot be empty")
 	}
-	
+
 	// Go identifier regex: starts with letter or underscore, followed by letters, digits, or underscores
 	identifierRegex := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 	if !identifierRegex.MatchString(alias) {
 		return fmt.Errorf("package alias must be a valid Go identifier")
 	}
-	
+
 	return nil
 }
 
@@ -219,12 +219,12 @@ func (c *Config) validateImportPath(importPath string) error {
 	if importPath == "" {
 		return fmt.Errorf("import path cannot be empty")
 	}
-	
+
 	// Basic validation - no spaces allowed
 	if strings.Contains(importPath, " ") {
 		return fmt.Errorf("import path cannot contain spaces")
 	}
-	
+
 	return nil
 }
 
@@ -235,18 +235,18 @@ func (c *Config) validateCrossPackageConfig() error {
 		if err := c.validateTypeSpec(); err != nil {
 			return fmt.Errorf("invalid type specification: %w", err)
 		}
-		
+
 		// Check if TypeSpec contains qualified types that require imports
 		if c.hasQualifiedTypes() && len(c.ImportMap) == 0 {
 			return fmt.Errorf("type specification contains qualified types but no import mappings provided")
 		}
 	}
-	
+
 	// If ImportMap is provided without TypeSpec, warn (not an error)
 	if len(c.ImportMap) > 0 && c.TypeSpec == "" {
 		// This is valid - imports might be for other purposes
 	}
-	
+
 	return nil
 }
 
@@ -256,7 +256,7 @@ func (c *Config) validateTypeSpec() error {
 	if !c.isValidIdentifier(c.getInterfaceName()) {
 		return fmt.Errorf("invalid interface name in type specification")
 	}
-	
+
 	return nil
 }
 
@@ -273,7 +273,7 @@ func (c *Config) hasQualifiedTypes() bool {
 			return strings.Contains(typeArgs, ".")
 		}
 	}
-	
+
 	return false
 }
 
@@ -282,12 +282,12 @@ func (c *Config) getInterfaceName() string {
 	if c.TypeSpec == "" {
 		return ""
 	}
-	
+
 	// Extract interface name (part before '[' if generic)
 	if idx := strings.Index(c.TypeSpec, "["); idx != -1 {
 		return strings.TrimSpace(c.TypeSpec[:idx])
 	}
-	
+
 	return strings.TrimSpace(c.TypeSpec)
 }
 
@@ -296,7 +296,7 @@ func (c *Config) isValidIdentifier(id string) bool {
 	if id == "" {
 		return false
 	}
-	
+
 	identifierRegex := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 	return identifierRegex.MatchString(id)
 }
@@ -311,7 +311,7 @@ func (c *Config) GetPackageAlias(alias string) (string, bool) {
 	if c.ImportMap == nil {
 		return "", false
 	}
-	
+
 	path, exists := c.ImportMap[alias]
 	return path, exists
 }
