@@ -1,0 +1,190 @@
+site_name: Convergen Documentation
+site_description: High-performance Go code generator for type-to-type copy functions
+site_url: https://reedom.github.io/convergen/
+repo_url: https://github.com/reedom/convergen
+repo_name: reedom/convergen
+edit_uri: edit/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2024 Convergen Project
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - toc.integrate
+    - search.highlight
+    - search.share
+    - search.suggest
+    - content.code.copy
+    - content.code.select
+    - content.code.annotate
+    - content.action.edit
+    - content.action.view
+
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+  logo: assets/logo.svg
+  favicon: assets/favicon.ico
+
+# Navigation
+nav:
+  - Home: index.md
+  - Getting Started:
+    - getting-started/index.md
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quick-start.md
+    - Basic Examples: getting-started/basic-examples.md
+  - User Guide:
+    - guide/index.md
+    - Annotations Reference: guide/annotations.md
+    - Advanced Usage: guide/advanced-usage.md
+    - Performance: guide/performance.md
+    - Best Practices: guide/best-practices.md
+  - API Reference:
+    - api/index.md
+    - CLI Commands: api/cli.md
+    - go:generate Integration: api/go-generate.md
+    - Configuration: api/configuration.md
+  - Examples:
+    - examples/index.md
+    - Real-World Usage: examples/real-world.md
+    - Generics Support: examples/generics.md
+    - Framework Integrations: examples/integrations.md
+  - Troubleshooting:
+    - troubleshooting/index.md
+    - Common Issues: troubleshooting/common-issues.md
+    - Debugging Guide: troubleshooting/debugging.md
+    - Migration Guide: troubleshooting/migration.md
+
+# Plugins
+plugins:
+  - search:
+      lang: en
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+      minify_js: true
+      htmlmin_opts:
+        remove_comments: true
+  - git-revision-date-localized:
+      type: datetime
+      timezone: UTC
+      locale: en
+      fallback_to_build_date: true
+  - awesome-pages:
+      collapse_single_pages: false
+      strict: false
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      title: On this page
+  - tables
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      use_pygments: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: reedom
+      repo: convergen
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Extra
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/reedom/convergen
+      name: GitHub Repository
+    - icon: fontawesome/solid/book
+      link: https://pkg.go.dev/github.com/reedom/convergen
+      name: Go Package Documentation
+  
+  version:
+    provider: mike
+    default: latest
+
+  generator: false
+
+# Custom CSS/JS
+extra_css:
+  - assets/extra.css
+
+extra_javascript:
+  - assets/extra.js
+
+# Validation
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: warn
+    unrecognized_links: warn

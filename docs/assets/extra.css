@@ -1,0 +1,201 @@
+/* Custom styles for Convergen documentation */
+
+/* Root variables for consistent theming */
+:root {
+  --convergen-primary: #1976d2;
+  --convergen-accent: #2196f3;
+  --convergen-surface: #f8f9fa;
+  --convergen-text: #333333;
+  --convergen-border: #e0e0e0;
+}
+
+/* Dark theme overrides */
+[data-md-color-scheme="slate"] {
+  --convergen-primary: #64b5f6;
+  --convergen-accent: #90caf9;
+  --convergen-surface: #1e1e1e;
+  --convergen-text: #ffffff;
+  --convergen-border: #333333;
+}
+
+/* Logo and branding */
+.md-header__title {
+  font-weight: 600;
+}
+
+/* Code blocks enhancements */
+.highlight pre {
+  border-radius: 8px;
+  border: 1px solid var(--convergen-border);
+}
+
+/* Annotation table styling */
+.md-typeset table:not([class]) {
+  font-size: 0.9rem;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--convergen-primary);
+  color: white;
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 16px;
+}
+
+.md-typeset table:not([class]) td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--convergen-border);
+}
+
+.md-typeset table:not([class]) tr:last-child td {
+  border-bottom: none;
+}
+
+/* Annotation syntax highlighting */
+.md-typeset code {
+  background-color: var(--convergen-surface);
+  color: var(--convergen-text);
+  border: 1px solid var(--convergen-border);
+  border-radius: 4px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.85em;
+}
+
+/* Performance badges */
+.performance-badge {
+  display: inline-block;
+  background: linear-gradient(45deg, #4caf50, #66bb6a);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin: 0 4px;
+}
+
+/* Feature cards on homepage */
+.grid.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.grid.cards > div {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--convergen-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.grid.cards > div:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  border-color: var(--convergen-primary);
+}
+
+/* Quick reference styling */
+.quick-ref {
+  background: var(--convergen-surface);
+  border-left: 4px solid var(--convergen-primary);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.quick-ref h4 {
+  margin-top: 0;
+  color: var(--convergen-primary);
+  font-weight: 600;
+}
+
+/* Example code blocks */
+.example-block {
+  border: 1px solid var(--convergen-border);
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  overflow: hidden;
+}
+
+.example-block .example-header {
+  background: var(--convergen-primary);
+  color: white;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.example-block .example-content {
+  padding: 1rem;
+}
+
+/* Navigation enhancements */
+.md-nav__item--active > .md-nav__link {
+  color: var(--convergen-primary);
+  font-weight: 600;
+}
+
+/* Footer customization */
+.md-footer {
+  border-top: 1px solid var(--convergen-border);
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .grid.cards {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .grid.cards > div {
+    padding: 1rem;
+  }
+  
+  .md-typeset table:not([class]) {
+    font-size: 0.8rem;
+  }
+  
+  .md-typeset table:not([class]) th,
+  .md-typeset table:not([class]) td {
+    padding: 8px 12px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .md-header,
+  .md-footer,
+  .md-sidebar,
+  .md-nav {
+    display: none !important;
+  }
+  
+  .md-content {
+    margin: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* Accessibility improvements */
+.md-nav__link:focus,
+.md-search__input:focus,
+.md-button:focus {
+  outline: 2px solid var(--convergen-primary);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .md-typeset code {
+    border-width: 2px;
+  }
+  
+  .grid.cards > div {
+    border-width: 2px;
+  }
+}

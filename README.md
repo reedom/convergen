@@ -4,9 +4,12 @@ Convergen
 [![Go Reference](https://pkg.go.dev/badge/github.com/reedom/convergen.svg)](https://pkg.go.dev/github.com/reedom/convergen) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/reedom/convergen)](https://goreportcard.com/report/github.com/reedom/convergen) 
 ![Coverage](https://img.shields.io/badge/Coverage-67.4%25-yellow)
+[![Documentation](https://img.shields.io/badge/docs-convergen-blue)](https://reedom.github.io/convergen/)
 
 Convergen is a **high-performance** code generator that creates functions for type-to-type copy.
 It generates functions that copy field to field between two types.
+
+**📚 [Complete Documentation](https://reedom.github.io/convergen/) • [Quick Start](https://reedom.github.io/convergen/getting-started/quick-start/) • [Examples](https://reedom.github.io/convergen/examples/) • [API Reference](https://reedom.github.io/convergen/api/)**
 
 ## ⚡ Performance Enhancement
 
@@ -1254,3 +1257,17 @@ For those who want to contribute, there are several ways to do it, including:
 
 By contributing to the project, you can help make it better and more useful for everyone.
 So, if you're interested, feel free to get involved!
+
+## Documentation
+
+For comprehensive documentation, examples, and guides, visit:
+
+**📚 [https://reedom.github.io/convergen/](https://reedom.github.io/convergen/)**
+
+The documentation includes:
+
+- 🚀 [Quick Start Guide](https://reedom.github.io/convergen/getting-started/quick-start/) - Get up and running in 5 minutes
+- 📝 [Complete Annotations Reference](https://reedom.github.io/convergen/guide/annotations/) - All annotations with examples
+- 🎨 [Real-World Examples](https://reedom.github.io/convergen/examples/real-world/) - Production patterns and use cases
+- 🛠️ [API Reference](https://reedom.github.io/convergen/api/) - CLI commands and configuration
+- 🔧 [Troubleshooting Guide](https://reedom.github.io/convergen/troubleshooting/) - Common issues and solutions
