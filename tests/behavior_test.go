@@ -151,6 +151,39 @@ type Convergen interface {
 			WithCodeChecks(
 				helpers.CompilesSuccessfully(),
 			),
+
+		// Basic generics tests
+		helpers.BasicGenericInterfaceScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("func Convert"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		helpers.GenericWithConstraintsScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("func Convert"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		helpers.MultipleTypeParametersScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("func Map"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		helpers.GenericWithAnnotationsScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("return"),
+				helpers.CompilesSuccessfully(),
+			),
 	}
 
 	// Run all scenarios
@@ -179,12 +212,148 @@ func TestAnnotationCoverage(t *testing.T) {
 		"map_templated":     helpers.MapTemplatedArgumentsScenario().WithBehaviorTests().WithCodeChecks(helpers.Contains("additionalInfo")),
 		"map_method_chain":  helpers.MapMethodChainScenario().WithBehaviorTests(),
 		"map_nested_fields": helpers.MapNestedFieldScenario().WithBehaviorTests(),
+		// Generics annotation coverage
+		"generic_basic":          helpers.BasicGenericInterfaceScenario().WithBehaviorTests(),
+		"generic_constraints":    helpers.GenericWithConstraintsScenario().WithBehaviorTests(),
+		"generic_multiple_types": helpers.MultipleTypeParametersScenario().WithBehaviorTests(),
+		"generic_annotations":    helpers.GenericWithAnnotationsScenario().WithBehaviorTests(),
 	}
 
 	for name, scenario := range annotationTests {
 		t.Run(name, func(t *testing.T) {
 			runner.RunScenario(scenario.WithCategory("annotations"))
 		})
+	}
+}
+
+func TestGenericsFeatures(t *testing.T) {
+	t.Parallel()
+
+	runner := helpers.NewInlineScenarioRunner(t)
+	defer runner.Cleanup()
+
+	// Test comprehensive generics functionality
+	genericsTests := map[string]helpers.TestScenario{
+		// Foundation tests (TASK-001-004)
+		"basic_generic_interface": helpers.BasicGenericInterfaceScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("func Convert"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		"generic_with_constraints": helpers.GenericWithConstraintsScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("func Convert"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		"multiple_type_parameters": helpers.MultipleTypeParametersScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("func Map"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		// Type Instantiation tests (TASK-005-007)
+		"generic_type_instantiation": helpers.GenericTypeInstantiationScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.CompilesSuccessfully(),
+			),
+
+		"generic_method_processing": helpers.GenericMethodProcessingScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("func Process"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		// Code Generation tests (TASK-008-009)
+		"generic_with_annotations": helpers.GenericWithAnnotationsScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("return"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		"generic_field_mapping": helpers.GenericFieldMappingScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("func MapFields"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		// Union type constraints (testing parsing, even if generation is limited)
+		"union_constraint_parsing": helpers.UnionConstraintParsingScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.CompilesSuccessfully(),
+			),
+
+		// Complex generic scenarios
+		"nested_generic_types": helpers.NestedGenericTypesScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.CompilesSuccessfully(),
+			),
+
+		"generic_with_interface_constraints": helpers.GenericWithInterfaceConstraintsScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.CompilesSuccessfully(),
+			),
+	}
+
+	for name, scenario := range genericsTests {
+		t.Run(name, func(t *testing.T) {
+			runner.RunScenario(scenario.WithCategory("generics"))
+		})
+	}
+}
+
+func TestGenericsErrorScenarios(t *testing.T) {
+	t.Parallel()
+
+	runner := helpers.NewInlineScenarioRunner(t)
+	defer runner.Cleanup()
+
+	errorScenarios := []helpers.TestScenario{
+		// Test invalid generic syntax
+		helpers.InvalidGenericSyntaxScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.CompilesSuccessfully(), // Should handle gracefully
+			),
+
+		// Test unsupported constraint combinations
+		helpers.UnsupportedConstraintScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.CompilesSuccessfully(), // Should handle gracefully
+			),
+
+		// Test circular type parameter constraints
+		helpers.CircularConstraintScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.CompilesSuccessfully(), // Should handle gracefully
+			),
+	}
+
+	for _, scenario := range errorScenarios {
+		runner.RunScenario(scenario.WithCategory("generics_errors"))
 	}
 }
 

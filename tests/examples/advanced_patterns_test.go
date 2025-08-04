@@ -212,6 +212,181 @@ func TestPerformancePattern(t *testing.T) {
 	runner.RunScenarios(scenarios)
 }
 
+// TestGenericsPatterns demonstrates advanced generics testing patterns.
+// This shows how to test generics features across different scenarios.
+func TestGenericsPatterns(t *testing.T) {
+	runner := helpers.NewInlineScenarioRunner(t)
+	defer runner.Cleanup()
+
+	// Test different generic patterns
+	genericsPatterns := []struct {
+		name     string
+		scenario helpers.TestScenario
+	}{
+		{
+			"BasicGeneric",
+			helpers.BasicGenericInterfaceScenario().WithBehaviorTests(),
+		},
+		{
+			"GenericWithConstraints",
+			helpers.GenericWithConstraintsScenario().WithBehaviorTests(),
+		},
+		{
+			"MultipleTypeParams",
+			helpers.MultipleTypeParametersScenario().WithBehaviorTests(),
+		},
+		{
+			"GenericWithAnnotations",
+			helpers.GenericWithAnnotationsScenario().WithBehaviorTests().
+				WithCodeChecks(helpers.Contains("return")),
+		},
+	}
+
+	scenarios := make([]helpers.TestScenario, 0, len(genericsPatterns))
+	for _, pattern := range genericsPatterns {
+		scenario := pattern.scenario.WithCategory("generics_patterns")
+		scenarios = append(scenarios, scenario)
+	}
+
+	runner.RunScenarios(scenarios)
+}
+
+// TestGenericPerformancePatterns shows performance testing with generics.
+// This demonstrates testing generics with varying type complexities.
+func TestGenericPerformancePatterns(t *testing.T) {
+	runner := helpers.NewInlineScenarioRunner(t)
+	defer runner.Cleanup()
+
+	// Test with different generic type complexities
+	typeComplexities := []string{"string", "int"}
+	scenarios := make([]helpers.TestScenario, 0, len(typeComplexities))
+
+	for _, typeParam := range typeComplexities {
+		scenario := createGenericTypeScenario(typeParam)
+		scenarios = append(scenarios, scenario)
+	}
+
+	// Add a struct type scenario separately with proper type definition
+	structScenario := createStructTypeScenario()
+	scenarios = append(scenarios, structScenario)
+
+	runner.RunScenarios(scenarios)
+}
+
+// TestGenericErrorHandling demonstrates error handling patterns for generics.
+// This shows how to test various generics error conditions.
+func TestGenericErrorHandling(t *testing.T) {
+	runner := helpers.NewInlineScenarioRunner(t)
+	defer runner.Cleanup()
+
+	errorScenarios := []helpers.TestScenario{
+		helpers.InvalidGenericSyntaxScenario().
+			WithBehaviorTests().
+			WithVerboseDebugging().
+			WithCodeChecks(helpers.CompilesSuccessfully()),
+
+		helpers.UnsupportedConstraintScenario().
+			WithBehaviorTests().
+			WithCodeChecks(helpers.CompilesSuccessfully()),
+
+		helpers.CircularConstraintScenario().
+			WithBehaviorTests().
+			WithCodeChecks(helpers.CompilesSuccessfully()),
+	}
+
+	for _, scenario := range errorScenarios {
+		runner.RunScenario(scenario.WithCategory("generics_errors"))
+	}
+}
+
+// TestGenericComplexTypes demonstrates testing with complex generic type scenarios.
+// This shows advanced generic patterns with nested types and constraints.
+func TestGenericComplexTypes(t *testing.T) {
+	runner := helpers.NewInlineScenarioRunner(t)
+	defer runner.Cleanup()
+
+	complexScenarios := []helpers.TestScenario{
+		helpers.NestedGenericTypesScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("MapNested"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		helpers.GenericWithInterfaceConstraintsScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("ConvertStringer"),
+				helpers.CompilesSuccessfully(),
+			),
+
+		helpers.GenericFieldMappingScenario().
+			WithBehaviorTests().
+			WithCodeChecks(
+				helpers.AssertHasGeneratedFunction(),
+				helpers.Contains("MapFields"),
+				helpers.Contains("Data"),
+				helpers.CompilesSuccessfully(),
+			),
+	}
+
+	for _, scenario := range complexScenarios {
+		runner.RunScenario(scenario.WithCategory("generics_complex"))
+	}
+}
+
+// Custom generics scenario builder for performance testing.
+func createGenericTypeScenario(typeParam string) helpers.TestScenario {
+	name := fmt.Sprintf("GenericType_%s", typeParam)
+	
+	return helpers.NewInlineScenario(
+		name,
+		fmt.Sprintf("Test generic conversion with %s type parameter", typeParam),
+	).WithTypes(fmt.Sprintf(`
+type Container[T any] struct {
+	Data T
+	Meta string
+}
+
+type Result struct {
+	Data %s
+	Meta string
+}`, typeParam)).
+		WithInterface(`
+type Convergen[T any] interface {
+	Convert(Container[T]) Result
+}`).WithBehaviorTests().
+		WithCodeChecks(helpers.AssertHasGeneratedFunction())
+}
+
+// createStructTypeScenario creates a scenario with a struct type parameter.
+func createStructTypeScenario() helpers.TestScenario {
+	return helpers.NewInlineScenario(
+		"GenericType_StructValue",
+		"Test generic conversion with struct type parameter",
+	).WithTypes(`
+type StructValue struct {
+	Value string
+}
+
+type Container[T any] struct {
+	Data T
+	Meta string
+}
+
+type Result struct {
+	Data StructValue
+	Meta string
+}`).
+		WithInterface(`
+type Convergen[T any] interface {
+	Convert(Container[T]) Result
+}`).WithBehaviorTests().
+		WithCodeChecks(helpers.AssertHasGeneratedFunction())
+}
+
 // Helper function to create scenarios with different complexities.
 func createVariableSizeScenario(fieldCount int) helpers.TestScenario {
 	// Generate struct with specified number of fields

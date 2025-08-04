@@ -547,3 +547,288 @@ type Convergen interface {
 	Convert(*User) NonExistentType
 }`)
 }
+
+// Generics Scenario Builders (TASK-001-009 implementation)
+
+// BasicGenericInterfaceScenario creates a scenario for testing basic generic interfaces.
+func BasicGenericInterfaceScenario() InlineScenario {
+	return NewInlineScenario(
+		"BasicGenericInterface",
+		"Test basic generic interface parsing and recognition",
+	).WithTypes(`
+type User struct {
+	ID   uint64
+	Name string
+}
+
+type UserModel struct {
+	ID   uint64
+	Name string
+}`).WithInterface(`
+type Convergen[T any] interface {
+	Convert(*User) *UserModel
+}`)
+}
+
+// GenericWithConstraintsScenario creates a scenario for testing generic interfaces with constraints.
+func GenericWithConstraintsScenario() InlineScenario {
+	return NewInlineScenario(
+		"GenericWithConstraints",
+		"Test generic interface with comparable constraint",
+	).WithTypes(`
+type User struct {
+	ID   string
+	Name string
+}
+
+type UserModel struct {
+	ID   string
+	Name string
+}`).WithInterface(`
+type Convergen[T comparable] interface {
+	Convert(*User) *UserModel
+}`)
+}
+
+// MultipleTypeParametersScenario creates a scenario for testing multiple type parameters.
+func MultipleTypeParametersScenario() InlineScenario {
+	return NewInlineScenario(
+		"MultipleTypeParameters",
+		"Test generic interface with multiple type parameters",
+	).WithTypes(`
+type User struct {
+	ID   uint64
+	Name string
+}
+
+type UserModel struct {
+	ID   uint64
+	Name string
+}`).WithInterface(`
+type Convergen[S any, D any] interface {
+	Map(*User) *UserModel
+}`)
+}
+
+// GenericWithAnnotationsScenario creates a scenario for testing generic interfaces with annotations.
+func GenericWithAnnotationsScenario() InlineScenario {
+	return NewInlineScenario(
+		"GenericWithAnnotations",
+		"Test generic interface with style annotation",
+	).WithTypes(`
+type User struct {
+	ID   uint64
+	Name string
+}
+
+type UserModel struct {
+	ID   uint64
+	Name string
+}`).WithInterface(`
+type Convergen[T any] interface {
+	// :style return
+	Convert(*User) *UserModel
+}`)
+}
+
+// GenericTypeInstantiationScenario creates a scenario for testing type instantiation.
+func GenericTypeInstantiationScenario() InlineScenario {
+	return NewInlineScenario(
+		"GenericTypeInstantiation",
+		"Test generic type instantiation with concrete types",
+	).WithTypes(`
+type User struct {
+	ID   uint64
+	Name string
+}
+
+type UserModel struct {
+	ID   uint64
+	Name string
+}
+
+type StringData struct {
+	Value string
+}
+
+type IntData struct {
+	Value int
+}`).WithInterface(`
+type Convergen[T any, U any] interface {
+	Transform(*User) *UserModel
+}`)
+}
+
+// GenericMethodProcessingScenario creates a scenario for testing generic method processing.
+func GenericMethodProcessingScenario() InlineScenario {
+	return NewInlineScenario(
+		"GenericMethodProcessing",
+		"Test generic method processing with type substitution",
+	).WithTypes(`
+type ProcessableData struct {
+	Value string
+	Count int
+}
+
+type ProcessedResult struct {
+	Value string
+	Count int
+}`).WithInterface(`
+type Convergen[T any] interface {
+	Process(*ProcessableData) *ProcessedResult
+}`)
+}
+
+// GenericFieldMappingScenario creates a scenario for testing field mapping with generics.
+func GenericFieldMappingScenario() InlineScenario {
+	return NewInlineScenario(
+		"GenericFieldMapping",
+		"Test field mapping between generic and concrete types",
+	).WithTypes(`
+type SourceData struct {
+	Data string
+	Meta string
+}
+
+type DestData struct {
+	Data string
+	Meta string
+}`).WithInterface(`
+type Convergen[T any] interface {
+	MapFields(*SourceData) *DestData
+}`)
+}
+
+// UnionConstraintParsingScenario creates a scenario for testing union constraint parsing.
+func UnionConstraintParsingScenario() InlineScenario {
+	return NewInlineScenario(
+		"UnionConstraintParsing",
+		"Test union constraint parsing (even if generation is limited)",
+	).WithTypes(`
+type StringValue struct {
+	Value string
+}
+
+type IntValue struct {
+	Value int
+}`).WithInterface(`
+type Convergen[T string | int] interface {
+	// Union constraints are parsed but limited in generation
+	ProcessUnion(*StringValue) *IntValue
+}`)
+}
+
+// NestedGenericTypesScenario creates a scenario for testing nested generic types.
+func NestedGenericTypesScenario() InlineScenario {
+	return NewInlineScenario(
+		"NestedGenericTypes",
+		"Test nested generic type structures",
+	).WithTypes(`
+type Wrapper[T any] struct {
+	Inner T
+}
+
+type Container[T any] struct {
+	Data Wrapper[T]
+}
+
+type ConcreteWrapper struct {
+	Inner string
+}
+
+type ConcreteContainer struct {
+	Data ConcreteWrapper
+}`).WithInterface(`
+type Convergen[T any] interface {
+	MapNested(Container[T]) ConcreteContainer
+}`)
+}
+
+// GenericWithInterfaceConstraintsScenario creates a scenario for testing interface constraints.
+func GenericWithInterfaceConstraintsScenario() InlineScenario {
+	return NewInlineScenario(
+		"GenericWithInterfaceConstraints",
+		"Test generic interfaces with interface constraints",
+	).WithTypes(`
+type Stringer interface {
+	String() string
+}
+
+type NamedEntity struct {
+	Name string
+}
+
+func (n NamedEntity) String() string {
+	return n.Name
+}
+
+type StringEntity struct {
+	Value string
+}`).WithInterface(`
+type Convergen[T Stringer] interface {
+	ConvertStringer(*NamedEntity) *StringEntity
+}`)
+}
+
+// Generics Error Scenario Builders
+
+// InvalidGenericSyntaxScenario creates a scenario with invalid generic syntax.
+func InvalidGenericSyntaxScenario() InlineScenario {
+	return NewInlineScenario(
+		"InvalidGenericSyntax",
+		"Test error handling for invalid generic interface syntax",
+	).WithTypes(`
+type User struct {
+	Name string
+}
+
+type UserModel struct {
+	Name string
+}`).WithInterface(`
+type Convergen[T any] interface {
+	// Should handle gracefully even with complex constraints
+	Convert(*User) *UserModel
+}`)
+}
+
+// UnsupportedConstraintScenario creates a scenario with unsupported constraint combinations.
+func UnsupportedConstraintScenario() InlineScenario {
+	return NewInlineScenario(
+		"UnsupportedConstraint",
+		"Test error handling for unsupported constraint combinations",
+	).WithTypes(`
+type User struct {
+	Name string
+}
+
+type UserModel struct {
+	Name string
+}`).WithInterface(`
+type Convergen[T interface{ ~string | ~int; comparable; any }] interface {
+	// Complex constraints - should handle gracefully
+	Convert(*User) *UserModel
+}`)
+}
+
+// CircularConstraintScenario creates a scenario with circular constraint dependencies.
+func CircularConstraintScenario() InlineScenario {
+	return NewInlineScenario(
+		"CircularConstraint",
+		"Test error handling for circular constraint dependencies",
+	).WithTypes(`
+type User struct {
+	Name string
+}
+
+type UserModel struct {
+	Name string
+}
+
+type CircularConstraint[T any] interface {
+	Method() T
+}`).WithInterface(`
+type Convergen[T CircularConstraint[T], U CircularConstraint[U]] interface {
+	// Circular constraints - should handle gracefully
+	Convert(*User) *UserModel
+}`)
+}

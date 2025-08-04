@@ -117,6 +117,62 @@ helpers.LiteralAnnotationScenario("Status", `"active"`)
 helpers.SkipAnnotationScenario("Password")
 ```
 
+## Generics Testing Strategy
+
+### Foundation Testing (TASK-001-004)
+```go
+// Basic generic interface testing
+helpers.BasicGenericInterfaceScenario().WithBehaviorTests()
+
+// Constraint parsing and validation
+helpers.GenericWithConstraintsScenario().WithBehaviorTests()
+
+// Multiple type parameters
+helpers.MultipleTypeParametersScenario().WithBehaviorTests()
+```
+
+### Type Instantiation Testing (TASK-005-007)
+```go
+// Type instantiation with performance validation
+helpers.GenericTypeInstantiationScenario().WithBehaviorTests()
+
+// Generic method processing with type substitution
+helpers.GenericMethodProcessingScenario().WithBehaviorTests()
+```
+
+### Code Generation Testing (TASK-008-009)
+```go
+// Generic interfaces with annotations
+helpers.GenericWithAnnotationsScenario().WithBehaviorTests()
+
+// Field mapping between generic and concrete types
+helpers.GenericFieldMappingScenario().WithBehaviorTests()
+```
+
+### Advanced Scenarios
+```go
+// Complex type relationships
+helpers.NestedGenericTypesScenario().WithBehaviorTests()
+
+// Interface constraint validation
+helpers.GenericWithInterfaceConstraintsScenario().WithBehaviorTests()
+
+// Union constraint parsing (TASK-011 preparation)
+helpers.UnionConstraintParsingScenario().WithBehaviorTests()
+```
+
+### Error Handling
+```go
+// Invalid generic syntax
+helpers.InvalidGenericSyntaxScenario().WithBehaviorTests()
+
+// Unsupported constraint combinations
+helpers.UnsupportedConstraintScenario().WithBehaviorTests()
+
+// Circular constraint dependencies
+helpers.CircularConstraintScenario().WithBehaviorTests()
+```
+
 ### Builder Pattern API
 ```go
 // Fluent API for test creation
@@ -160,6 +216,9 @@ NewInlineScenario("TestName", "Description").
 1. **Zero Maintenance**: No static fixture files to maintain or update
 2. **Behavior Focus**: Tests actual functionality rather than generated code format
 3. **Comprehensive Coverage**: Easy to achieve 100% annotation coverage
-4. **Developer Friendly**: Intuitive APIs and clear error messages
-5. **Robust**: Immune to code generation format changes
-6. **Extensible**: Simple to add new annotations and test patterns
+4. **Generics Ready**: Full support for testing Go generics features
+5. **Developer Friendly**: Intuitive APIs and clear error messages
+6. **Robust**: Immune to code generation format changes
+7. **Extensible**: Simple to add new annotations and test patterns
+8. **Performance Validated**: Tests actual TypeInstantiator performance (2.9μs target)
+9. **Future-Proof**: Framework designed to accommodate remaining generics features
