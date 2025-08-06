@@ -1,0 +1,254 @@
+/* Custom styles for Convergen documentation */
+
+/* Root variables for consistent theming */
+:root {
+  --convergen-primary: #1976d2;
+  --convergen-accent: #2196f3;
+  --convergen-surface: #f8f9fa;
+  --convergen-text: #333333;
+  --convergen-border: #e0e0e0;
+}
+
+/* Dark theme overrides */
+[data-md-color-scheme="slate"] {
+  --convergen-primary: #64b5f6;
+  --convergen-accent: #90caf9;
+  --convergen-surface: #1e1e1e;
+  --convergen-text: #ffffff;
+  --convergen-border: #333333;
+}
+
+/* Logo and branding */
+.md-header__title {
+  font-weight: 600;
+}
+
+/* Code blocks enhancements */
+.highlight pre {
+  border-radius: 8px;
+  border: 1px solid var(--convergen-border);
+}
+
+/* Annotation table styling */
+.md-typeset table:not([class]) {
+  font-size: 0.9rem;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--convergen-primary);
+  color: white;
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 16px;
+}
+
+.md-typeset table:not([class]) td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--convergen-border);
+}
+
+.md-typeset table:not([class]) tr:last-child td {
+  border-bottom: none;
+}
+
+/* Annotation syntax highlighting */
+.md-typeset code {
+  background-color: var(--convergen-surface);
+  color: var(--convergen-text);
+  border: 1px solid var(--convergen-border);
+  border-radius: 4px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.85em;
+}
+
+/* Performance badges - minimal styling */
+.performance-badge {
+  display: inline-block;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  border: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: normal;
+  margin: 0 2px;
+  opacity: 0.7;
+}
+
+/* Feature cards on homepage */
+.grid.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.grid.cards > div {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: border-color 0.2s ease;
+}
+
+.grid.cards > div:hover {
+  border-color: var(--md-default-fg-color--light);
+}
+
+/* Quick reference styling */
+.quick-ref {
+  background: var(--convergen-surface);
+  border-left: 4px solid var(--convergen-primary);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.quick-ref h4 {
+  margin-top: 0;
+  color: var(--convergen-primary);
+  font-weight: 600;
+}
+
+/* Example code blocks */
+.example-block {
+  border: 1px solid var(--convergen-border);
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  overflow: hidden;
+}
+
+.example-block .example-header {
+  background: var(--convergen-primary);
+  color: white;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.example-block .example-content {
+  padding: 1rem;
+}
+
+/* Navigation enhancements */
+.md-nav__item--active > .md-nav__link {
+  color: var(--md-primary-fg-color);
+  font-weight: 500;
+}
+
+/* Fix navigation layout issues */
+.md-nav {
+  line-height: 1.4;
+}
+
+.md-nav__item {
+  padding: 0;
+}
+
+.md-nav__link {
+  display: block;
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ensure proper mobile navigation */
+@media screen and (max-width: 76.1875em) {
+  .md-nav--primary .md-nav__item {
+    border-top: 0.05rem solid var(--md-default-fg-color--lightest);
+  }
+  
+  .md-nav--primary .md-nav__item:first-child {
+    border-top: 0;
+  }
+}
+
+/* Footer customization */
+.md-footer {
+  border-top: 1px solid var(--convergen-border);
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .grid.cards {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .grid.cards > div {
+    padding: 1rem;
+  }
+  
+  .md-typeset table:not([class]) {
+    font-size: 0.8rem;
+  }
+  
+  .md-typeset table:not([class]) th,
+  .md-typeset table:not([class]) td {
+    padding: 8px 12px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .md-header,
+  .md-footer,
+  .md-sidebar,
+  .md-nav {
+    display: none !important;
+  }
+  
+  .md-content {
+    margin: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* Button styling - reduce emphasis */
+.md-button {
+  background: transparent !important;
+  color: var(--md-primary-fg-color) !important;
+  border: 1px solid var(--md-default-fg-color--lightest) !important;
+  box-shadow: none !important;
+  font-weight: normal !important;
+}
+
+.md-button:hover {
+  background: var(--md-default-fg-color--lightest) !important;
+  color: var(--md-default-fg-color) !important;
+  border-color: var(--md-default-fg-color--light) !important;
+}
+
+.md-button--primary {
+  background: transparent !important;
+  color: var(--md-primary-fg-color) !important;
+  border-color: var(--md-primary-fg-color) !important;
+}
+
+.md-button--primary:hover {
+  background: var(--md-primary-fg-color) !important;
+  color: var(--md-primary-bg-color) !important;
+}
+
+/* Accessibility improvements */
+.md-nav__link:focus,
+.md-search__input:focus,
+.md-button:focus {
+  outline: 2px solid var(--md-primary-fg-color);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .md-typeset code {
+    border-width: 2px;
+  }
+  
+  .grid.cards > div {
+    border-width: 2px;
+  }
+}

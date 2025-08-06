@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#1976d2"/>
+  
+  <!-- Arrow indicating conversion -->
+  <path d="M16 28 L32 28 L28 24 M32 28 L28 32" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Arrow indicating conversion -->
+  <path d="M32 36 L48 36 L44 32 M48 36 L44 40" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Code brackets to represent types -->
+  <path d="M12 20 L8 24 L12 28" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M52 36 L56 40 L52 44" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Letter C for Convergen -->
+  <text x="32" y="52" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">C</text>
+</svg>
