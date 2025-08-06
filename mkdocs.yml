@@ -100,6 +100,12 @@ plugins:
       minify_js: true
       htmlmin_opts:
         remove_comments: true
+        remove_empty_space: false
+        remove_all_empty_space: false
+        reduce_empty_attributes: false
+        reduce_boolean_attributes: false
+        remove_optional_attribute_quotes: false
+        keep_pre: true
   - git-revision-date-localized:
       type: datetime
       timezone: UTC

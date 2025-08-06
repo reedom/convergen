@@ -64,16 +64,18 @@
   font-size: 0.85em;
 }
 
-/* Performance badges */
+/* Performance badges - minimal styling */
 .performance-badge {
   display: inline-block;
-  background: linear-gradient(45deg, #4caf50, #66bb6a);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin: 0 4px;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  border: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: normal;
+  margin: 0 2px;
+  opacity: 0.7;
 }
 
 /* Feature cards on homepage */
@@ -86,17 +88,14 @@
 
 .grid.cards > div {
   background: var(--md-default-bg-color);
-  border: 1px solid var(--convergen-border);
-  border-radius: 12px;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
   padding: 1.5rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: border-color 0.2s ease;
 }
 
 .grid.cards > div:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  border-color: var(--convergen-primary);
+  border-color: var(--md-default-fg-color--light);
 }
 
 /* Quick reference styling */
@@ -136,8 +135,36 @@
 
 /* Navigation enhancements */
 .md-nav__item--active > .md-nav__link {
-  color: var(--convergen-primary);
-  font-weight: 600;
+  color: var(--md-primary-fg-color);
+  font-weight: 500;
+}
+
+/* Fix navigation layout issues */
+.md-nav {
+  line-height: 1.4;
+}
+
+.md-nav__item {
+  padding: 0;
+}
+
+.md-nav__link {
+  display: block;
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ensure proper mobile navigation */
+@media screen and (max-width: 76.1875em) {
+  .md-nav--primary .md-nav__item {
+    border-top: 0.05rem solid var(--md-default-fg-color--lightest);
+  }
+  
+  .md-nav--primary .md-nav__item:first-child {
+    border-top: 0;
+  }
 }
 
 /* Footer customization */
@@ -181,11 +208,37 @@
   }
 }
 
+/* Button styling - reduce emphasis */
+.md-button {
+  background: transparent !important;
+  color: var(--md-primary-fg-color) !important;
+  border: 1px solid var(--md-default-fg-color--lightest) !important;
+  box-shadow: none !important;
+  font-weight: normal !important;
+}
+
+.md-button:hover {
+  background: var(--md-default-fg-color--lightest) !important;
+  color: var(--md-default-fg-color) !important;
+  border-color: var(--md-default-fg-color--light) !important;
+}
+
+.md-button--primary {
+  background: transparent !important;
+  color: var(--md-primary-fg-color) !important;
+  border-color: var(--md-primary-fg-color) !important;
+}
+
+.md-button--primary:hover {
+  background: var(--md-primary-fg-color) !important;
+  color: var(--md-primary-bg-color) !important;
+}
+
 /* Accessibility improvements */
 .md-nav__link:focus,
 .md-search__input:focus,
 .md-button:focus {
-  outline: 2px solid var(--convergen-primary);
+  outline: 2px solid var(--md-primary-fg-color);
   outline-offset: 2px;
 }
 

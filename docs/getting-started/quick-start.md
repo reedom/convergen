@@ -65,11 +65,12 @@ func (s UserStatus) String() string {
 
 // API response - what clients receive
 type UserResponse struct {
-    ID        int    `json:"id"`
-    FullName  string `json:"full_name"`
-    Email     string `json:"email"`
-    Status    string `json:"status"`
-    CreatedAt string `json:"created_at"`
+    ID          int    `json:"id"`
+    FirstName   string `json:"first_name"`
+    LastName    string `json:"last_name"`
+    Email       string `json:"email"`
+    Status      string `json:"status"`
+    CreatedDate string `json:"created_date"`
 }
 ```
 
@@ -86,9 +87,8 @@ package main
 type Convergen interface {
     // Convert User to UserResponse
     // :skip Password                           # Don't copy sensitive field
-    // :map FirstName + " " + LastName FullName # Combine names  
     // :stringer                                # Use String() method for Status
-    // :map CreatedAt.Format("2006-01-02T15:04:05Z07:00") CreatedAt # Format timestamp
+    // :conv formatTimestamp CreatedAt CreatedDate # Use converter for timestamp formatting
     UserToResponse(*User) *UserResponse
 }
 ```
@@ -112,11 +112,17 @@ package main
 func UserToResponse(src *User) (dst *UserResponse) {
     dst = &UserResponse{}
     dst.ID = src.ID
-    dst.FullName = src.FirstName + " " + src.LastName
+    dst.FirstName = src.FirstName
+    dst.LastName = src.LastName
     dst.Email = src.Email
     dst.Status = src.Status.String()
-    dst.CreatedAt = src.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
+    dst.CreatedDate = formatTimestamp(src.CreatedAt)
     return
+}
+
+// Custom converter function (you need to define this)
+func formatTimestamp(t time.Time) string {
+    return t.Format("2006-01-02T15:04:05Z07:00")
 }
 ```
 
@@ -170,16 +176,17 @@ go run .
 User converted to API response:
 {
   "id": 1,
-  "full_name": "John Doe",
+  "first_name": "John",
+  "last_name": "Doe",
   "email": "john.doe@example.com",
   "status": "active",
-  "created_at": "2024-01-15T10:30:00Z"
+  "created_date": "2024-01-15T10:30:00Z07:00"
 }
 ```
 
 Notice how:
 - ✅ **Password field was skipped** (security)
-- ✅ **Names were combined** into FullName
+- ✅ **Names mapped directly** (FirstName, LastName)
 - ✅ **Status enum was converted** to string
 - ✅ **Timestamp was formatted** for JSON
 - ✅ **No boilerplate code** was written manually
@@ -191,9 +198,8 @@ Notice how:
 | Annotation | Purpose | Result |
 |------------|---------|--------|
 | `:skip Password` | Exclude sensitive field | Password not copied |
-| `:map FirstName + " " + LastName FullName` | Combine fields | FullName = "John Doe" |
 | `:stringer` | Use String() method | Status becomes "active" |
-| `:map CreatedAt.Format(...) CreatedAt` | Transform field | ISO 8601 timestamp |
+| `:conv formatTimestamp CreatedAt CreatedDate` | Custom converter for timestamp | ISO 8601 timestamp |
 
 ### 2. **Generated Function Features**
 

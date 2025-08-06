@@ -103,15 +103,15 @@ type User struct {
 }
 
 type UserResponse struct {
-    UserID   int    // Different name
-    FullName string // Combined field
-    Email    string
+    UserID    int    // Different name
+    FirstName string // Direct mapping
+    LastName  string // Direct mapping
+    Email     string
 }
 
 type Convergen interface {
     // Map different field names
     // :map ID UserID
-    // :map FirstName + " " + LastName FullName
     UserToResponse(*User) *UserResponse
 }
 ```
@@ -122,7 +122,8 @@ type Convergen interface {
 func UserToResponse(src *User) (dst *UserResponse) {
     dst = &UserResponse{}
     dst.UserID = src.ID
-    dst.FullName = src.FirstName + " " + src.LastName
+    dst.FirstName = src.FirstName
+    dst.LastName = src.LastName
     dst.Email = src.Email
     return
 }
@@ -130,7 +131,7 @@ func UserToResponse(src *User) (dst *UserResponse) {
 
 **Key Points:**
 - ✅ **Flexible field mapping** with `:map` annotation
-- ✅ **Expression support** for combining fields
+- ✅ **Direct field name mapping** for different field names
 - ✅ **Explicit control** over field assignments
 
 ## Example 4: Type Conversion
@@ -351,8 +352,8 @@ type Convergen interface {
     // :typecast
     // :stringer
     // :skip Password
-    // :map FirstName + " " + LastName FullName
-    // :map CreatedAt.Format("2006-01-02") CreatedDate
+    // :conv combineNames FirstName FullName     # Custom converter for name combination
+    // :conv formatDate CreatedAt CreatedDate    # Custom converter for date formatting
     // :literal Version "1.0"
     // :conv stringifyMetadata Metadata
     // :preprocess validateUser
@@ -395,10 +396,10 @@ func UserToAPI(src *User) (dst *UserAPIResponse, err error) {
     
     // Field assignments
     dst.ID = src.ID
-    dst.FullName = src.FirstName + " " + src.LastName
+    dst.FullName = combineNames(src.FirstName)
     dst.Email = src.Email
     dst.Status = src.Status.String()
-    dst.CreatedDate = src.CreatedAt.Format("2006-01-02")
+    dst.CreatedDate = formatDate(src.CreatedAt)
     dst.Version = "1.0"
     dst.Metadata = stringifyMetadata(src.Metadata)
     // Password is skipped

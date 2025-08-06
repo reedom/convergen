@@ -410,12 +410,21 @@ Explicitly maps source to destination fields.
     Convert(*User) *UserDTO
     ```
 
-=== "Complex Expression"
+=== "Method with Arguments (Use :conv instead)"
     
     ```go
-    // :map FirstName + " " + LastName FullName
-    // :map CreatedAt.Format("2006-01-02") CreatedDate
+    // For complex expressions, use :conv annotation instead:
+    // :conv formatFullName FirstName FullName  
+    // :conv formatDate CreatedAt CreatedDate
     Convert(*User) *UserDTO
+    
+    func formatFullName(firstName string) string {
+        return firstName + " " + lastName // You'll need both fields
+    }
+    
+    func formatDate(createdAt time.Time) string {
+        return createdAt.Format("2006-01-02")
+    }
     ```
 
 === "Template Arguments"
@@ -435,8 +444,6 @@ func Convert(src *User, arg0 string, arg1 int) (dst *UserDTO) {
     dst.StreetAddress = src.Address.Street
     dst.FullName = src.Name()
     dst.StatusText = src.Status.String()
-    dst.FullName = src.FirstName + " " + src.LastName
-    dst.CreatedDate = src.CreatedAt.Format("2006-01-02")
     dst.ExtraField = arg0
     dst.AnotherField = arg1
     return
@@ -659,7 +666,7 @@ type Convergen interface {
     // :stringer                                   # Use String() methods
     // :skip Password                              # Skip sensitive data
     // :skip /^internal/                           # Skip internal fields
-    // :map FirstName + " " + LastName FullName    # Combine fields
+    // :map ID UserID    # Field mapping
     // :conv hashEmail Email HashedEmail           # Custom conversion
     // :literal CreatedAt time.Now()               # Set creation time
     // :preprocess validateUser                    # Validate before conversion

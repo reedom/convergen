@@ -6,17 +6,6 @@
 
 Convergen generates functions that copy field to field between two types, eliminating boilerplate code and reducing errors in type conversions.
 
-## ⚡ Performance Enhancement
-
-**New in v8**: The parser engine has been completely rewritten with concurrent processing capabilities:
-
-- 🚀 **40-70% faster** parsing with concurrent package loading and method processing
-- 🏗️ **Smart strategy selection** - automatically chooses optimal parsing approach  
-- 🛡️ **Enterprise reliability** - circuit breaker pattern, error recovery, and comprehensive error handling
-- 🔧 **Production ready** - extensive testing, performance metrics, and comprehensive documentation
-
-For complex projects with multiple interfaces and files, Convergen now processes significantly faster while maintaining full backward compatibility.
-
 ## Quick Example
 
 Write an annotated interface:
@@ -77,16 +66,18 @@ Comprehensive annotation system for fine-grained control over conversions:
 - **Flexible styles**: `:style return|arg` - Control function signatures
 
 ### 🚀 **High Performance**
-- Concurrent parsing with smart strategy selection
-- Generates optimized, allocation-efficient code
+- **New in v8**: 40-70% faster parsing with concurrent processing
+- Smart strategy selection - automatically chooses optimal parsing approach  
+- Enterprise reliability with circuit breaker pattern and error recovery
 - Zero runtime dependencies - pure generated code
-- Circuit breaker pattern for reliability
+- Production ready with extensive testing and performance metrics
 
 ### 🔧 **Developer Experience**
 - Two usage modes: CLI tool or `go:generate` integration
+- Outputs to `.gen.go` files by default
 - Comprehensive error messages with suggestions
-- Rich debugging capabilities
-- Extensive test coverage and documentation
+- Rich debugging capabilities with behavior-driven testing
+- Extensive test coverage (67%+) and comprehensive documentation
 
 ### 🌟 **Advanced Features**
 - **Generics support** - Full Go generics compatibility
@@ -103,7 +94,7 @@ Choose your preferred installation method:
 
     Add to your Go file:
     ```go
-    //go:generate go run github.com/reedom/convergen@latest
+    //go:generate go run github.com/reedom/convergen@v8.0.3
     ```
     
     Then run:
@@ -122,15 +113,17 @@ Choose your preferred installation method:
     ```bash
     convergen your-file.go
     ```
+    
+    By default, generates: `your-file.gen.go`
 
 === "Go Module"
 
     Add to your project:
     ```bash
-    go get github.com/reedom/convergen@latest
+    go get -u github.com/reedom/convergen@latest
     ```
 
-[Get started with our Quick Start guide →](getting-started/quick-start.md){ .md-button .md-button--primary }
+[Get started with our Quick Start guide →](getting-started/quick-start.md)
 
 ## Use Cases
 
@@ -180,37 +173,37 @@ type Convergen interface {
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch:{ .lg .middle } **Getting Started**
+-   🚀 **Getting Started**
 
     ---
 
     Install Convergen and create your first conversion function in minutes.
 
-    [:octicons-arrow-right-24: Quick Start](getting-started/quick-start.md)
+    [Quick Start →](getting-started/quick-start.md)
 
--   :material-book-open-page-variant:{ .lg .middle } **User Guide**
+-   📚 **User Guide**
 
     ---
 
     Deep dive into annotations, advanced patterns, and best practices.
 
-    [:octicons-arrow-right-24: User Guide](guide/index.md)
+    [User Guide →](guide/index.md)
 
--   :material-code-braces:{ .lg .middle } **API Reference**
+-   💻 **API Reference**
 
     ---
 
     Complete reference for CLI commands, configuration, and integration.
 
-    [:octicons-arrow-right-24: API Reference](api/index.md)
+    [API Reference →](api/index.md)
 
--   :material-application-cog:{ .lg .middle } **Examples**
+-   ⚙️ **Examples**
 
     ---
 
     Real-world examples, generics usage, and framework integrations.
 
-    [:octicons-arrow-right-24: Examples](examples/index.md)
+    [Examples →](examples/index.md)
 
 </div>
 
