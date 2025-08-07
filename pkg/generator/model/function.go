@@ -8,15 +8,18 @@ type FunctionsBlock struct {
 
 // Function represents a function.
 type Function struct {
-	Comments       []string     // Comments is the list of comment lines before the function definition.
-	Name           string       // Name is the function name.
-	Receiver       string       // Receiver is the receiver type name, if any.
-	Src            Var          // Src is the source variable.
-	Dst            Var          // Dst is the destination variable.
-	AdditionalArgs []Var        // AdditionalArgs is the additional arguments variables.
-	RetError       bool         // RetError indicates whether the function returns an error.
-	DstVarStyle    DstVarStyle  // DstVarStyle is the style of the destination variable declaration.
-	Assignments    []Assignment // Assignments is the list of assignments in the function body.
-	PreProcess     *Manipulator // PreProcess is the function that is applied before the assignments.
-	PostProcess    *Manipulator // PostProcess is the function that is applied after the assignments.
+	Comments        []string     // Comments is the list of comment lines before the function definition.
+	Name            string       // Name is the function name.
+	Receiver        string       // Receiver is the receiver type name, if any.
+	Src             Var          // Src is the source variable.
+	Dst             Var          // Dst is the destination variable.
+	AdditionalArgs  []Var        // AdditionalArgs is the additional arguments variables.
+	RetError        bool         // RetError indicates whether the function returns an error.
+	DstVarStyle     DstVarStyle  // DstVarStyle is the style of the destination variable declaration.
+	Assignments     []Assignment // Assignments is the list of assignments in the function body.
+	PreProcess      *Manipulator // PreProcess is the function that is applied before the assignments.
+	PostProcess     *Manipulator // PostProcess is the function that is applied after the assignments.
+	OutputStyle     OutputStyle  // OutputStyle is the determined output style for code generation.
+	FallbackReason  string       // FallbackReason explains why struct literal couldn't be used (if applicable).
+	CanUseStructLit bool         // CanUseStructLit indicates whether struct literal output is compatible.
 }
