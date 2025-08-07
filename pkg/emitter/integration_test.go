@@ -200,7 +200,7 @@ func TestEmitterIntegration_EventPipeline(t *testing.T) {
 		Metadata:  map[string]interface{}{"test": true},
 	}
 
-	executorEvent := events.NewBaseEvent("executor.completed", context.Background())
+	executorEvent := events.NewBaseEvent(context.Background(), "executor.completed")
 	executorEvent.WithMetadata("execution_results", results)
 
 	// Publish executor completed event

@@ -58,7 +58,7 @@ type BaseEvent struct {
 }
 
 // NewBaseEvent creates a new base event.
-func NewBaseEvent(eventType string, ctx context.Context) *BaseEvent {
+func NewBaseEvent(ctx context.Context, eventType string) *BaseEvent {
 	id, _ := gonanoid.Nanoid()
 
 	return &BaseEvent{
@@ -296,6 +296,12 @@ func copyStringInt64Map(original map[string]int64) map[string]int64 {
 
 // Emit emits an event with context (alias for Publish for compatibility).
 func (bus *InMemoryEventBus) Emit(ctx context.Context, event Event) error {
+	// If the event doesn't have a context, use the one from the call.
+	if event.Context() == nil || event.Context() == context.Background() {
+		if baseEvent, ok := event.(*BaseEvent); ok {
+			baseEvent.ctx = ctx
+		}
+	}
 	return bus.Publish(event)
 }
 

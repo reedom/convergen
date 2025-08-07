@@ -31,7 +31,7 @@ type ParseStartedEvent struct {
 // NewParseStartedEvent creates a new parse started event.
 func NewParseStartedEvent(ctx context.Context, sourcePath string) *ParseStartedEvent {
 	return &ParseStartedEvent{
-		BaseEvent:  NewBaseEvent(EventTypeParseStarted, ctx),
+		BaseEvent:  NewBaseEvent(ctx, EventTypeParseStarted),
 		SourcePath: sourcePath,
 	}
 }
@@ -47,7 +47,7 @@ type ParsedEvent struct {
 // NewParsedEvent creates a new parsed event.
 func NewParsedEvent(ctx context.Context, methods []*domain.Method, baseCode string) *ParsedEvent {
 	return &ParsedEvent{
-		BaseEvent: NewBaseEvent(EventTypeParsed, ctx),
+		BaseEvent: NewBaseEvent(ctx, EventTypeParsed),
 		Methods:   methods,
 		BaseCode:  baseCode,
 		Metrics:   &ParseMetrics{},
@@ -73,7 +73,7 @@ type PlanStartedEvent struct {
 // NewPlanStartedEvent creates a new plan started event.
 func NewPlanStartedEvent(ctx context.Context, methods []*domain.Method) *PlanStartedEvent {
 	return &PlanStartedEvent{
-		BaseEvent: NewBaseEvent(EventTypePlanStarted, ctx),
+		BaseEvent: NewBaseEvent(ctx, EventTypePlanStarted),
 		Methods:   methods,
 	}
 }
@@ -88,7 +88,7 @@ type PlannedEvent struct {
 // NewPlannedEvent creates a new planned event.
 func NewPlannedEvent(ctx context.Context, plan *domain.ExecutionPlan) *PlannedEvent {
 	return &PlannedEvent{
-		BaseEvent: NewBaseEvent(EventTypePlanned, ctx),
+		BaseEvent: NewBaseEvent(ctx, EventTypePlanned),
 		Plan:      plan,
 		Metrics:   &PlanMetrics{}, // Create new metrics for event
 	}
@@ -113,7 +113,7 @@ type ExecuteStartedEvent struct {
 // NewExecuteStartedEvent creates a new execute started event.
 func NewExecuteStartedEvent(ctx context.Context, plan *domain.ExecutionPlan) *ExecuteStartedEvent {
 	return &ExecuteStartedEvent{
-		BaseEvent: NewBaseEvent(EventTypeExecuteStarted, ctx),
+		BaseEvent: NewBaseEvent(ctx, EventTypeExecuteStarted),
 		Plan:      plan,
 	}
 }
@@ -129,7 +129,7 @@ type ExecutedEvent struct {
 // NewExecutedEvent creates a new executed event.
 func NewExecutedEvent(ctx context.Context, results []*domain.FieldResult, errors []*domain.GenerationError) *ExecutedEvent {
 	return &ExecutedEvent{
-		BaseEvent: NewBaseEvent(EventTypeExecuted, ctx),
+		BaseEvent: NewBaseEvent(ctx, EventTypeExecuted),
 		Results:   results,
 		Errors:    errors,
 		Metrics:   &ExecutionMetrics{},
@@ -155,7 +155,7 @@ type EmitStartedEvent struct {
 // NewEmitStartedEvent creates a new emit started event.
 func NewEmitStartedEvent(ctx context.Context, results []*domain.FieldResult) *EmitStartedEvent {
 	return &EmitStartedEvent{
-		BaseEvent: NewBaseEvent(EventTypeEmitStarted, ctx),
+		BaseEvent: NewBaseEvent(ctx, EventTypeEmitStarted),
 		Results:   results,
 	}
 }
@@ -170,7 +170,7 @@ type EmittedEvent struct {
 // NewEmittedEvent creates a new emitted event.
 func NewEmittedEvent(ctx context.Context, generated *domain.GeneratedFunction) *EmittedEvent {
 	return &EmittedEvent{
-		BaseEvent: NewBaseEvent(EventTypeEmitted, ctx),
+		BaseEvent: NewBaseEvent(ctx, EventTypeEmitted),
 		Generated: generated,
 		Metrics:   &EmissionMetrics{},
 	}
@@ -205,7 +205,7 @@ func NewProgressEvent(ctx context.Context, phase domain.ProcessingPhase, current
 	}
 
 	return &ProgressEvent{
-		BaseEvent:   NewBaseEvent(EventTypeProgress, ctx),
+		BaseEvent:   NewBaseEvent(ctx, EventTypeProgress),
 		Phase:       phase,
 		Progress:    progress,
 		Message:     message,
@@ -236,7 +236,7 @@ type ErrorEvent struct {
 // NewErrorEvent creates a new error event.
 func NewErrorEvent(ctx context.Context, err *domain.GenerationError, recoverable bool) *ErrorEvent {
 	return &ErrorEvent{
-		BaseEvent:   NewBaseEvent(EventTypeError, ctx),
+		BaseEvent:   NewBaseEvent(ctx, EventTypeError),
 		Error:       err,
 		Phase:       err.Phase,
 		Recoverable: recoverable,

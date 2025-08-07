@@ -20,10 +20,10 @@ func TestNewMethodProcessor(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	typeResolver := NewTypeResolver(astParser.cache, logger)
 
@@ -39,10 +39,10 @@ func TestMethodProcessor_Integration_WithASTParser(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	typeResolver := NewTypeResolver(astParser.cache, logger)
 	processor := NewMethodProcessor(astParser, typeResolver, logger)
@@ -89,10 +89,10 @@ func TestMethodProcessor_ErrorTypeIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	typeResolver := NewTypeResolver(astParser.cache, logger)
 	processor := NewMethodProcessor(astParser, typeResolver, logger)
@@ -106,10 +106,10 @@ func TestMethodProcessor_StringMapIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	typeResolver := NewTypeResolver(astParser.cache, logger)
 	processor := NewMethodProcessor(astParser, typeResolver, logger)
@@ -123,10 +123,10 @@ func TestMethodProcessor_DocCommentIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	typeResolver := NewTypeResolver(astParser.cache, logger)
 	processor := NewMethodProcessor(astParser, typeResolver, logger)
@@ -139,10 +139,10 @@ func TestMethodProcessor_ParameterAnalysisIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	typeResolver := NewTypeResolver(astParser.cache, logger)
 	processor := NewMethodProcessor(astParser, typeResolver, logger)
@@ -157,10 +157,10 @@ func TestMethodProcessor_Integration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	typeResolver := NewTypeResolver(astParser.cache, logger)
 	processor := NewMethodProcessor(astParser, typeResolver, logger)
@@ -176,10 +176,10 @@ func BenchmarkMethodProcessor_Creation(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	typeResolver := NewTypeResolver(astParser.cache, logger)
 

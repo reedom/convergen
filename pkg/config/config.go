@@ -12,8 +12,11 @@ import (
 )
 
 var (
-	ErrInvalidImportMappingFormat    = errors.New("invalid import mapping format")
-	ErrEmptyPackageAlias             = errors.New("empty package alias in mapping")
+	// ErrInvalidImportMappingFormat is returned when the import mapping format is invalid.
+	ErrInvalidImportMappingFormat = errors.New("invalid import mapping format")
+	// ErrEmptyPackageAlias is returned when a package alias is empty in mapping.
+	ErrEmptyPackageAlias = errors.New("empty package alias in mapping")
+	// ErrEmptyImportPath is returned when an import path is empty in mapping.
 	ErrEmptyImportPath               = errors.New("empty import path in mapping")
 	ErrPackageAliasCannotBeEmpty     = errors.New("package alias cannot be empty")
 	ErrPackageAliasInvalidIdentifier = errors.New("package alias must be a valid Go identifier")
@@ -182,18 +185,18 @@ func (c *Config) parseImportMap(importsStr string) (map[string]string, error) {
 		// Split by equals sign to get alias and path
 		parts := strings.Split(mapping, "=")
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid import mapping format '%s': expected alias=path", mapping)
+			return nil, ErrInvalidImportMappingFormat
 		}
 
 		alias := strings.TrimSpace(parts[0])
 		importPath := strings.TrimSpace(parts[1])
 
 		if alias == "" {
-			return nil, fmt.Errorf("empty package alias in mapping '%s'", mapping)
+			return nil, ErrEmptyPackageAlias
 		}
 
 		if importPath == "" {
-			return nil, fmt.Errorf("empty import path in mapping '%s'", mapping)
+			return nil, ErrEmptyImportPath
 		}
 
 		// Validate alias is a valid identifier
@@ -215,13 +218,13 @@ func (c *Config) parseImportMap(importsStr string) (map[string]string, error) {
 // validatePackageAlias validates that a package alias is a valid Go identifier.
 func (c *Config) validatePackageAlias(alias string) error {
 	if alias == "" {
-		return fmt.Errorf("package alias cannot be empty")
+		return ErrPackageAliasCannotBeEmpty
 	}
 
 	// Go identifier regex: starts with letter or underscore, followed by letters, digits, or underscores
 	identifierRegex := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 	if !identifierRegex.MatchString(alias) {
-		return fmt.Errorf("package alias must be a valid Go identifier")
+		return ErrPackageAliasInvalidIdentifier
 	}
 
 	return nil
@@ -230,12 +233,12 @@ func (c *Config) validatePackageAlias(alias string) error {
 // validateImportPath validates that an import path is valid.
 func (c *Config) validateImportPath(importPath string) error {
 	if importPath == "" {
-		return fmt.Errorf("import path cannot be empty")
+		return ErrImportPathCannotBeEmpty
 	}
 
 	// Basic validation - no spaces allowed
 	if strings.Contains(importPath, " ") {
-		return fmt.Errorf("import path cannot contain spaces")
+		return ErrImportPathCannotContainSpaces
 	}
 
 	return nil
@@ -251,7 +254,7 @@ func (c *Config) validateCrossPackageConfig() error {
 
 		// Check if TypeSpec contains qualified types that require imports
 		if c.hasQualifiedTypes() && len(c.ImportMap) == 0 {
-			return fmt.Errorf("type specification contains qualified types but no import mappings provided")
+			return ErrTypeSpecWithQualifiedTypes
 		}
 	}
 
@@ -267,7 +270,7 @@ func (c *Config) validateCrossPackageConfig() error {
 func (c *Config) validateTypeSpec() error {
 	// Basic format validation - should contain interface name
 	if !c.isValidIdentifier(c.getInterfaceName()) {
-		return fmt.Errorf("invalid interface name in type specification")
+		return ErrInvalidInterfaceName
 	}
 
 	return nil

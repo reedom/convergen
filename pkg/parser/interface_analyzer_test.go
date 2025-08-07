@@ -146,7 +146,7 @@ type MixedProcessor[T comparable, U ~string, V any] interface {
 
 			// Create parser instance
 			eventBus := events.NewInMemoryEventBus(logger)
-			defer eventBus.Close()
+			defer func() { _ = eventBus.Close() }()
 
 			parserConfig := &Config{
 				MaxConcurrentWorkers: 1,
@@ -245,7 +245,7 @@ type StringProcessor[T ~string] interface {
 
 			// Create parser instance
 			eventBus := events.NewInMemoryEventBus(logger)
-			defer eventBus.Close()
+			defer func() { _ = eventBus.Close() }()
 
 			parserConfig := &Config{
 				MaxConcurrentWorkers: 1,
@@ -363,7 +363,7 @@ type ComplexProcessor[T comparable, U ~string | ~int] interface {
 
 			// Create parser instance
 			eventBus := events.NewInMemoryEventBus(logger)
-			defer eventBus.Close()
+			defer func() { _ = eventBus.Close() }()
 
 			parserConfig := &Config{
 				MaxConcurrentWorkers: 1,
@@ -773,7 +773,7 @@ func TestInstantiatedInterfaceHelperMethods(t *testing.T) {
 	assert.Nil(t, typ)
 }
 
-// Helper function to create a test InterfaceInfo with real types.Object
+// Helper function to create a test InterfaceInfo with real types.Object.
 func createTestInterfaceInfo(t *testing.T, typeParams []domain.TypeParam) *InterfaceInfo {
 	// Use real parsing to create proper types.Object
 	sourceCode := `package test
@@ -872,7 +872,7 @@ type AnotherConverter interface {
 
 	// Create parser instance
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 	parserConfig := &Config{
 		MaxConcurrentWorkers: 1,
 		CacheSize:            100,

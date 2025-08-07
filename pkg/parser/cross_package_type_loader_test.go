@@ -260,7 +260,7 @@ func TestCrossPackageTypeLoaderAdapter_GetResolver(t *testing.T) {
 	assert.Equal(t, resolver, result)
 }
 
-// Integration test with domain.TypeInstantiator
+// Integration test with domain.TypeInstantiator.
 func TestCrossPackageTypeLoaderAdapter_Integration(t *testing.T) {
 	logger := zap.NewNop()
 	importMap := map[string]string{

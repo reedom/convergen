@@ -759,8 +759,7 @@ func (p *ASTParser) isValidSubsequentChar(r rune) bool {
 	return p.isValidFirstChar(r) || ('0' <= r && r <= '9')
 }
 
-// extractInterfaceTypeParams extracts type parameters from generic interface declarations.
-// Handles interfaces like: type Converter[T any] interface { ... } and type Mapper[T, U any] interface { ... }
+// Handles interfaces like: type Converter[T any] interface { ... } and type Mapper[T, U any] interface { ... }.
 func (p *ASTParser) extractInterfaceTypeParams(
 	ctx context.Context,
 	obj types.Object,

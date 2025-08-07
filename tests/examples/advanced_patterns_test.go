@@ -340,7 +340,7 @@ func TestGenericComplexTypes(t *testing.T) {
 // Custom generics scenario builder for performance testing.
 func createGenericTypeScenario(typeParam string) helpers.TestScenario {
 	name := fmt.Sprintf("GenericType_%s", typeParam)
-	
+
 	return helpers.NewInlineScenario(
 		name,
 		fmt.Sprintf("Test generic conversion with %s type parameter", typeParam),

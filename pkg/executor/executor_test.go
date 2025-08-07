@@ -19,7 +19,7 @@ func TestNewExecutor(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	executor := NewExecutor(logger, eventBus, nil)
 	assert.NotNil(t, executor)
@@ -67,7 +67,7 @@ func TestExecutor_ExecutePlan(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 
 			eventBus := events.NewInMemoryEventBus(logger)
-			defer eventBus.Close()
+			defer func() { _ = eventBus.Close() }()
 
 			config := DefaultConfig()
 			config.ExecutionTimeout = 10 * time.Second
@@ -108,7 +108,7 @@ func TestExecutor_ExecuteBatch(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	executor := NewExecutor(logger, eventBus, DefaultConfig())
 	defer func() {
@@ -136,7 +136,7 @@ func TestExecutor_ExecuteField(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	executor := NewExecutor(logger, eventBus, DefaultConfig())
 	defer func() {
@@ -164,7 +164,7 @@ func TestExecutor_GetMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	config := DefaultConfig()
 	config.EnableMetrics = true
@@ -189,7 +189,7 @@ func TestExecutor_GetStatus(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	executor := NewExecutor(logger, eventBus, DefaultConfig())
 	defer func() {
@@ -213,7 +213,7 @@ func TestExecutor_ConcurrentExecution(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	config := DefaultConfig()
 	config.MaxWorkers = 8
@@ -282,7 +282,7 @@ func TestExecutor_ResourceLimits(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	config := DefaultConfig()
 	config.MaxWorkers = 2        // Low worker limit
@@ -318,7 +318,7 @@ func TestExecutor_Shutdown(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	executor := NewExecutor(logger, eventBus, DefaultConfig())
 
@@ -345,7 +345,7 @@ func BenchmarkExecutor_ExecutePlan(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	config := DefaultConfig()
 	config.EnableMetrics = false // Disable for accurate benchmarking

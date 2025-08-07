@@ -13,6 +13,11 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
+var (
+	// ErrInstantiatedInterfaceNil is returned when an instantiated interface is nil.
+	ErrInstantiatedInterfaceNil = errors.New("instantiated interface cannot be nil")
+)
+
 // GenericTemplateEngine interface for template execution.
 type GenericTemplateEngine interface {
 	Execute(templateName string, data interface{}) (string, error)
@@ -99,7 +104,7 @@ func (gee *GenericEmitterExtension) GenerateGenericMethod(
 	instantiatedInterface *domain.InstantiatedInterface,
 ) (*GeneratedCode, error) {
 	if instantiatedInterface == nil {
-		return nil, errors.New("instantiated interface cannot be nil")
+		return nil, ErrInstantiatedInterfaceNil
 	}
 
 	gee.logger.Info("starting generic method generation",
@@ -160,7 +165,10 @@ func (gee *GenericEmitterExtension) GetGenericMetrics() *GenericGenerationMetric
 // Shutdown gracefully shuts down the generic extension.
 func (gee *GenericEmitterExtension) Shutdown(ctx context.Context) error {
 	if gee.genericCodeGen != nil {
-		return gee.genericCodeGen.Shutdown(ctx)
+		err := gee.genericCodeGen.Shutdown(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to shutdown generic code generator: %w", err)
+		}
 	}
 	return nil
 }
@@ -239,7 +247,7 @@ func (sgcg *SimpleGenericCodeGenerator) GenerateGenericImplementation(
 	instantiatedInterface *domain.InstantiatedInterface,
 ) (string, error) {
 	if instantiatedInterface == nil {
-		return "", errors.New("instantiated interface cannot be nil")
+		return "", ErrInstantiatedInterfaceNil
 	}
 
 	sgcg.metrics.TotalGenerations++

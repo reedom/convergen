@@ -1,3 +1,4 @@
+// Package model provides the data structures used to represent the generated code.
 package model
 
 // DstVarStyle represents the style of destination variable in a function signature.

@@ -2,6 +2,7 @@ package generator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -9,6 +10,14 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/reedom/convergen/v8/pkg/domain"
+)
+
+var (
+	// ErrMappingCannotBeNil is returned when a mapping is nil.
+	ErrMappingCannotBeNil = errors.New("mapping cannot be nil")
+	// ErrSourceFieldCannotBeEmpty is returned when a source field is empty.
+	ErrSourceFieldCannotBeEmpty      = errors.New("source field cannot be empty")
+	ErrDestinationFieldCannotBeEmpty = errors.New("destination field cannot be empty")
 )
 
 // ExampleUsage demonstrates how to use the generic template system.
@@ -465,15 +474,15 @@ func (efm *ExampleFieldMapper) MapFields(
 // ValidateMapping validates a field mapping.
 func (efm *ExampleFieldMapper) ValidateMapping(mapping *FieldMapping) error {
 	if mapping == nil {
-		return fmt.Errorf("mapping cannot be nil")
+		return ErrMappingCannotBeNil
 	}
 
 	if mapping.SourceField == "" {
-		return fmt.Errorf("source field cannot be empty")
+		return ErrSourceFieldCannotBeEmpty
 	}
 
 	if mapping.DestField == "" {
-		return fmt.Errorf("destination field cannot be empty")
+		return ErrDestinationFieldCannotBeEmpty
 	}
 
 	return nil

@@ -63,16 +63,7 @@ func NewConstraintParser(typeResolver *TypeResolver, logger *zap.Logger) *Constr
 	}
 }
 
-// ParseConstraint parses constraint expressions like "~int | ~string | comparable".
-// It returns a ParsedConstraint structure with detailed information about the constraint.
-//
-// Supported constraint types:
-// - any: unrestricted type parameter
-// - comparable: types that support == and != operators
-// - ~int | ~string: union of underlying types
-// - ~string: underlying type constraint
-// - Custom interfaces: interface{} constraints
-// - Nested expressions: complex constraint combinations
+// - Nested expressions: complex constraint combinations.
 func (cp *ConstraintParser) ParseConstraint(
 	ctx context.Context,
 	constraint types.Type,

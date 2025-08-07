@@ -13,17 +13,20 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrGenericInterfaceNil       = errors.New("generic interface cannot be nil")
-	ErrTypeArgumentsNil          = errors.New("type arguments cannot be nil")
-	ErrTypeArgumentCountMismatch = errors.New("type argument count does not match type parameter count")
-	ErrInvalidTypeArgument       = errors.New("invalid type argument")
-	ErrConstraintViolation       = errors.New("type argument violates constraint")
-	ErrRecursiveInstantiation    = errors.New("recursive instantiation detected")
-	ErrInstantiationFailed       = errors.New("instantiation failed")
-	ErrCacheKeyGeneration        = errors.New("failed to generate cache key")
-	ErrCircularTypeDetected      = errors.New("circular type dependency detected")
-	ErrCrossPackageTypeLoader    = errors.New("cross-package type loader not configured")
-	ErrExternalTypeResolution    = errors.New("failed to resolve external type")
+	ErrGenericInterfaceNil                    = errors.New("generic interface cannot be nil")
+	ErrTypeArgumentsNil                       = errors.New("type arguments cannot be nil")
+	ErrTypeArgumentCountMismatch              = errors.New("type argument count does not match type parameter count")
+	ErrInvalidTypeArgument                    = errors.New("invalid type argument")
+	ErrConstraintViolation                    = errors.New("type argument violates constraint")
+	ErrRecursiveInstantiation                 = errors.New("recursive instantiation detected")
+	ErrInstantiationFailed                    = errors.New("instantiation failed")
+	ErrCacheKeyGeneration                     = errors.New("failed to generate cache key")
+	ErrCircularTypeDetected                   = errors.New("circular type dependency detected")
+	ErrCrossPackageTypeLoader                 = errors.New("cross-package type loader not configured")
+	ErrExternalTypeResolution                 = errors.New("failed to resolve external type")
+	ErrInterfaceNameCannotBeEmpty             = errors.New("interface name cannot be empty")
+	ErrGenericInterfaceMustHaveTypeParameters = errors.New("generic interface must have type parameters")
+	ErrEmptyTypeArgument                      = errors.New("empty type argument")
 )
 
 // InstantiatedInterface represents a concrete instantiation of a generic interface.
@@ -132,17 +135,17 @@ type GenericInterface struct {
 // NewGenericInterface creates a new generic interface with validation.
 func NewGenericInterface(name string, typeParams []TypeParam, methods []*Method, pkg string) (*GenericInterface, error) {
 	if name == "" {
-		return nil, errors.New("interface name cannot be empty")
+		return nil, ErrInterfaceNameCannotBeEmpty
 	}
 
 	if len(typeParams) == 0 {
-		return nil, errors.New("generic interface must have type parameters")
+		return nil, ErrGenericInterfaceMustHaveTypeParameters
 	}
 
 	// Validate type parameters
 	for i, param := range typeParams {
 		if !param.IsValid() {
-			return nil, fmt.Errorf("invalid type parameter at index %d: %s", i, param.Name)
+			return nil, fmt.Errorf("%w at index %d: %s", ErrInvalidTypeArgument, i, param.Name)
 		}
 	}
 
@@ -445,7 +448,7 @@ func (ti *TypeInstantiator) resolveTypeArgument(ctx context.Context, typeArgumen
 	typeArgument = strings.TrimSpace(typeArgument)
 
 	if typeArgument == "" {
-		return nil, fmt.Errorf("empty type argument")
+		return nil, ErrEmptyTypeArgument
 	}
 
 	// Check if this is a qualified type (contains dot)
@@ -488,6 +491,10 @@ func (ti *TypeInstantiator) hasExternalTypes(typeArguments []string) bool {
 	return false
 }
 
+const (
+	interfaceKeyword = "interface"
+)
+
 // getReflectKindFromTypeName returns a reflect.Kind value for common type names.
 func getReflectKindFromTypeName(typeName string) reflect.Kind {
 	switch strings.ToLower(typeName) {
@@ -519,7 +526,7 @@ func getReflectKindFromTypeName(typeName string) reflect.Kind {
 		return reflect.Float64
 	case "string":
 		return reflect.String
-	case "interface":
+	case interfaceKeyword:
 		return reflect.Interface
 	default:
 		return reflect.Struct // Default for custom types
@@ -571,7 +578,8 @@ func (ti *TypeInstantiator) validateConstraints(
 		Details:             make(map[string]ValidationDetail),
 	}
 
-	for _, param := range typeParams {
+	for _, p := range typeParams {
+		param := p
 		typeArg, exists := typeArgs[param.Name]
 		if !exists {
 			result.Valid = false

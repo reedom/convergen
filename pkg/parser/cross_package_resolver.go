@@ -192,8 +192,7 @@ func copyImportMap(importMap map[string]string) map[string]string {
 	return cp
 }
 
-// ParseTypeArguments parses a type specification string with potential cross-package references.
-// Supports syntax like: "TypeMapper[pkg.User,dto.UserDTO]" and "Converter[User,UserDTO]"
+// Supports syntax like: "TypeMapper[pkg.User,dto.UserDTO]" and "Converter[User,UserDTO]".
 func (cpr *CrossPackageResolver) ParseTypeArguments(
 	ctx context.Context,
 	typeSpec string,
@@ -238,8 +237,7 @@ func (cpr *CrossPackageResolver) parseSimpleType(typeSpec string) ([]*QualifiedT
 	return []*QualifiedType{qualifiedType}, nil
 }
 
-// splitTypeArguments splits type arguments while respecting nested generics.
-// Handles cases like: "User,pkg.Type,Generic[T,U]"
+// Handles cases like: "User,pkg.Type,Generic[T,U]".
 func (cpr *CrossPackageResolver) splitTypeArguments(typeArgsStr string) []string {
 	var result []string
 	var current strings.Builder

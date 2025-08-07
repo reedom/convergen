@@ -1,3 +1,4 @@
+// Package model provides the data structures used to represent the generated code.
 package model
 
 // Code represents the generated code.

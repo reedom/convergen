@@ -28,10 +28,10 @@ func TestBaseCodeGenerator_CopyASTFile(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	// Test AST copying functionality
 	source := `package test
@@ -70,10 +70,10 @@ func TestBaseCodeGenerator_RemoveConvergenComments(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	tests := []struct {
 		name             string
@@ -166,10 +166,10 @@ func TestBaseCodeGenerator_FilterComments(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	tests := []struct {
 		name     string
@@ -241,10 +241,10 @@ func TestBaseCodeGenerator_CopyDecls(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	source := `package test
 
@@ -286,10 +286,10 @@ func TestBaseCodeGenerator_CopySpecs(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	source := `package test
 
@@ -348,10 +348,10 @@ func TestBaseCodeGenerator_InsertMarkerComments(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	source := `package test
 
@@ -394,10 +394,10 @@ func TestBaseCodeGenerator_Integration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	source := `package test
 
@@ -442,10 +442,10 @@ func BenchmarkCopyASTFile(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	source := `package test
 
@@ -487,10 +487,10 @@ func BenchmarkRemoveConvergenComments(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	astParser := NewASTParser(logger, eventBus, nil)
-	defer astParser.Close()
+	defer func() { _ = astParser.Close() }()
 
 	source := `package test
 

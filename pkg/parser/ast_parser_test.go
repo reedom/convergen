@@ -19,7 +19,7 @@ func TestASTParser_NewASTParser(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, nil)
 	assert.NotNil(t, parser)
@@ -134,7 +134,7 @@ type RegularInterface interface {
 			logger := zaptest.NewLogger(t)
 
 			eventBus := events.NewInMemoryEventBus(logger)
-			defer eventBus.Close()
+			defer func() { _ = eventBus.Close() }()
 
 			// Subscribe to events for testing
 			var receivedEvents []events.Event
@@ -153,7 +153,7 @@ type RegularInterface interface {
 				CacheSize:             100,
 				EnableProgress:        false, // Disable for testing
 			})
-			defer parser.Close()
+			defer func() { _ = parser.Close() }()
 
 			// Parse source file
 			ctx := context.Background()
@@ -214,7 +214,7 @@ type Dest struct {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, &Config{
 		BuildTag:              "convergen",
@@ -223,7 +223,7 @@ type Dest struct {
 		CacheSize:             100,
 		EnableProgress:        false,
 	})
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	// Parse multiple times concurrently
 	ctx := context.Background()
@@ -285,7 +285,7 @@ type ComplexType struct {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, &Config{
 		BuildTag:              "convergen",
@@ -294,7 +294,7 @@ type ComplexType struct {
 		CacheSize:             100,
 		EnableProgress:        false,
 	})
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	ctx := context.Background()
 
@@ -387,10 +387,10 @@ type Source struct {
 			logger := zaptest.NewLogger(t)
 
 			eventBus := events.NewInMemoryEventBus(logger)
-			defer eventBus.Close()
+			defer func() { _ = eventBus.Close() }()
 
 			parser := NewASTParser(logger, eventBus, nil)
-			defer parser.Close()
+			defer func() { _ = parser.Close() }()
 
 			// Parse source file
 			ctx := context.Background()
@@ -430,10 +430,10 @@ type GenericType[T any] struct {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, nil)
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	// Parse source file
 	ctx := context.Background()
@@ -496,7 +496,7 @@ type Dest struct {
 	logger := zaptest.NewLogger(b)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, &Config{
 		BuildTag:              "convergen",
@@ -505,7 +505,7 @@ type Dest struct {
 		CacheSize:             1000,
 		EnableProgress:        false,
 	})
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	ctx := context.Background()
 

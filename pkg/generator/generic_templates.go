@@ -8,6 +8,14 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
+var (
+	// ErrTemplateNameCannotBeEmpty is returned when a template name is empty.
+	ErrTemplateNameCannotBeEmpty    = errors.New("template name cannot be empty")
+	ErrTemplateContentCannotBeEmpty = errors.New("template content cannot be empty")
+	ErrFunctionNameCannotBeEmpty    = errors.New("function name cannot be empty")
+	ErrFunctionCannotBeNil          = errors.New("function cannot be nil")
+)
+
 // BaseTemplateData provides basic template data without emitter dependency.
 type BaseTemplateData struct {
 	Package         string                 `json:"package"`
@@ -296,11 +304,11 @@ func (tr *TemplateRegistry) registerDefaultTemplates() {
 // RegisterTemplate registers a new template.
 func (tr *TemplateRegistry) RegisterTemplate(name, content string) error {
 	if name == "" {
-		return errors.New("template name cannot be empty")
+		return ErrTemplateNameCannotBeEmpty
 	}
 
 	if content == "" {
-		return errors.New("template content cannot be empty")
+		return ErrTemplateContentCannotBeEmpty
 	}
 
 	tr.templates[name] = content
@@ -331,11 +339,11 @@ func (tr *TemplateRegistry) ListTemplates() []string {
 // RegisterFunction registers a template function.
 func (tr *TemplateRegistry) RegisterFunction(name string, fn interface{}) error {
 	if name == "" {
-		return errors.New("function name cannot be empty")
+		return ErrFunctionNameCannotBeEmpty
 	}
 
 	if fn == nil {
-		return errors.New("function cannot be nil")
+		return ErrFunctionCannotBeNil
 	}
 
 	tr.functions[name] = fn

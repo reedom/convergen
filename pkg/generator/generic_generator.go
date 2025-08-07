@@ -29,6 +29,7 @@ var (
 	ErrGenericCodeGenerationFailed = errors.New("generic code generation failed")
 	ErrTypeSubstitutionFailed      = errors.New("type substitution failed in template")
 	ErrTemplateExecutionFailed     = errors.New("template execution failed")
+	ErrTypeCannotBeNil             = errors.New("type cannot be nil")
 )
 
 // GenericCodeGenerator handles code generation for generic interfaces.
@@ -206,7 +207,7 @@ func (gcg *GenericCodeGenerator) GenerateGenericImplementation(
 
 	// Apply optimizations if enabled
 	if gcg.config.EnableOptimization {
-		optimizedCode, err := gcg.optimizeGeneratedCode(finalCode, templateData)
+		optimizedCode, err := gcg.optimizeGeneratedCode(finalCode)
 		if err != nil {
 			gcg.logger.Warn("optimization failed, using unoptimized code", zap.Error(err))
 		} else {
@@ -302,7 +303,7 @@ func (gcg *GenericCodeGenerator) createGenericTemplateData(
 
 // generateGenericMethod generates code for a single generic method.
 func (gcg *GenericCodeGenerator) generateGenericMethod(
-	ctx context.Context,
+	_ context.Context,
 	method *MethodData,
 	templateData *GenericTemplateData,
 ) (string, error) {
@@ -387,7 +388,7 @@ func (gcg *GenericCodeGenerator) substituteTypeInContext(
 	substitutions map[string]TypeSubstitution,
 ) (domain.Type, error) {
 	if typ == nil {
-		return nil, errors.New("type cannot be nil")
+		return nil, ErrTypeCannotBeNil
 	}
 
 	// Check if this type needs substitution
@@ -532,7 +533,6 @@ func (gcg *GenericCodeGenerator) extractRequiredImports(
 // optimizeGeneratedCode applies optimizations to generated code.
 func (gcg *GenericCodeGenerator) optimizeGeneratedCode(
 	code string,
-	templateData *GenericTemplateData,
 ) (string, error) {
 	if !gcg.config.EnableOptimization {
 		return code, nil

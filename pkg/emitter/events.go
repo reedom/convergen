@@ -225,7 +225,7 @@ func (e *StartedEvent) Type() string {
 
 // NewStartedEvent creates a new emitter started event.
 func NewStartedEvent(ctx context.Context, packageName string, methodCount int) *StartedEvent {
-	base := events.NewBaseEvent(EventEmitterStarted, ctx)
+	base := events.NewBaseEvent(ctx, EventEmitterStarted)
 
 	return &StartedEvent{
 		BaseEvent:   *base,
@@ -248,7 +248,7 @@ func (e *CompletedEvent) Type() string {
 
 // NewCompletedEvent creates a new emitter completed event.
 func NewCompletedEvent(ctx context.Context, code *GeneratedCode, metrics *Metrics) *CompletedEvent {
-	base := events.NewBaseEvent(EventEmitterCompleted, ctx)
+	base := events.NewBaseEvent(ctx, EventEmitterCompleted)
 	base.WithMetadata("package_name", code.PackageName)
 	base.WithMetadata("methods_generated", len(code.Methods))
 	base.WithMetadata("lines_generated", metrics.TotalLines)
@@ -274,7 +274,7 @@ func (e *FailedEvent) Type() string {
 
 // NewFailedEvent creates a new emitter failed event.
 func NewFailedEvent(ctx context.Context, err error, partialCode *GeneratedCode) *FailedEvent {
-	base := events.NewBaseEvent(EventEmitterFailed, ctx)
+	base := events.NewBaseEvent(ctx, EventEmitterFailed)
 	base.WithMetadata("error_message", err.Error())
 
 	if partialCode != nil {
@@ -302,7 +302,7 @@ func (e *CodeGenerationStartedEvent) Type() string {
 
 // NewCodeGenerationStartedEvent creates a new code generation started event.
 func NewCodeGenerationStartedEvent(ctx context.Context, methodName string, strategy ConstructionStrategy) *CodeGenerationStartedEvent {
-	base := events.NewBaseEvent(EventCodeGenerationStarted, ctx)
+	base := events.NewBaseEvent(ctx, EventCodeGenerationStarted)
 	base.WithMetadata("method_name", methodName)
 	base.WithMetadata("strategy", strategy.String())
 
@@ -327,7 +327,7 @@ func (e *MethodGeneratedEvent) Type() string {
 
 // NewMethodGeneratedEvent creates a new method generated event.
 func NewMethodGeneratedEvent(ctx context.Context, method *MethodCode, duration time.Duration) *MethodGeneratedEvent {
-	base := events.NewBaseEvent(EventMethodGenerated, ctx)
+	base := events.NewBaseEvent(ctx, EventMethodGenerated)
 	base.WithMetadata("method_name", method.Name)
 	base.WithMetadata("lines_generated", len(method.Body))
 	base.WithMetadata("generation_duration_ms", duration.Milliseconds())
@@ -354,7 +354,7 @@ func (e *StrategySelectedEvent) Type() string {
 
 // NewStrategySelectedEvent creates a new strategy selected event.
 func NewStrategySelectedEvent(ctx context.Context, methodName string, strategy ConstructionStrategy, reason string) *StrategySelectedEvent {
-	base := events.NewBaseEvent(EventStrategySelected, ctx)
+	base := events.NewBaseEvent(ctx, EventStrategySelected)
 	base.WithMetadata("method_name", methodName)
 	base.WithMetadata("strategy", strategy.String())
 	base.WithMetadata("selection_reason", reason)

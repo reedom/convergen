@@ -687,7 +687,7 @@ func BenchmarkConstraintParser_ParseUnionConstraint(b *testing.B) {
 	}
 }
 
-// Additional test to fix the createTestConstraintParser function for benchmarks
+// Additional test to fix the createTestConstraintParser function for benchmarks.
 func createTestConstraintParserForBench() *ConstraintParser {
 	cache := NewTypeCache(100)
 	logger := zap.NewNop()

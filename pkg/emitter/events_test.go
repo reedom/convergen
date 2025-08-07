@@ -130,7 +130,7 @@ func TestEmitterEventHandler_HandleExecutorCompleted(t *testing.T) {
 		},
 	}
 
-	event := events.NewBaseEvent("executor.completed", ctx)
+	event := events.NewBaseEvent(ctx, "executor.completed")
 	event.WithMetadata("execution_results", results)
 
 	err := handler.Handle(ctx, event)
@@ -151,7 +151,7 @@ func TestEmitterEventHandler_HandleMethodPlanned(t *testing.T) {
 	ctx := context.Background()
 
 	// Create method planned event
-	event := events.NewBaseEvent("planner.method_planned", ctx)
+	event := events.NewBaseEvent(ctx, "planner.method_planned")
 	event.WithMetadata("method_name", "TestMethod")
 
 	err := handler.Handle(ctx, event)
@@ -374,7 +374,7 @@ func TestEmitterEventHandler_ErrorHandling(t *testing.T) {
 	ctx := context.Background()
 
 	// Test handling event with missing metadata
-	event := events.NewBaseEvent("executor.completed", ctx)
+	event := events.NewBaseEvent(ctx, "executor.completed")
 	// No execution_results metadata
 
 	err := handler.Handle(ctx, event)
@@ -383,7 +383,7 @@ func TestEmitterEventHandler_ErrorHandling(t *testing.T) {
 	}
 
 	// Test handling unknown event type
-	unknownEvent := events.NewBaseEvent("unknown.event", ctx)
+	unknownEvent := events.NewBaseEvent(ctx, "unknown.event")
 
 	err = handler.Handle(ctx, unknownEvent)
 	if err != nil {

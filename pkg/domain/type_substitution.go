@@ -22,6 +22,10 @@ var (
 	ErrSubstitutionFailed             = errors.New("type substitution failed")
 	ErrSubstitutionCacheKeyGeneration = errors.New("failed to generate substitution cache key")
 	ErrSubstitutionUnsupportedType    = errors.New("unsupported type for substitution")
+	ErrTypeArgumentNil                = errors.New("type argument is nil")
+	ErrExpectedSliceType              = errors.New("expected SliceType")
+	ErrExpectedPointerType            = errors.New("expected PointerType")
+	ErrExpectedStructType             = errors.New("expected StructType")
 )
 
 // Constants for substitution configuration.
@@ -274,7 +278,7 @@ func (tse *TypeSubstitutionEngine) SubstituteTypeWithContext(
 
 	// Update statistics
 	if tse.enableDetailedStats {
-		tse.updateSubstitutionStats(result)
+		tse.updateSubstitutionStats()
 	}
 
 	// Cache the result if enabled
@@ -320,7 +324,7 @@ func (tse *TypeSubstitutionEngine) validateSubstitutionInputs(
 	// Validate type arguments are not nil
 	for i, typeArg := range typeArgs {
 		if typeArg == nil {
-			return fmt.Errorf("type argument at index %d is nil", i)
+			return fmt.Errorf("%w: at index %d", ErrTypeArgumentNil, i)
 		}
 	}
 
@@ -489,7 +493,7 @@ func (tse *TypeSubstitutionEngine) substituteByKind(
 ) (Type, error) {
 	switch typ.Kind() {
 	case KindGeneric:
-		return tse.substituteGenericType(typ, typeMapping, depth)
+		return tse.substituteGenericType(typ, typeMapping)
 	case KindSlice:
 		return tse.substituteSliceType(typ, typeMapping, depth)
 	case KindPointer:
@@ -497,15 +501,15 @@ func (tse *TypeSubstitutionEngine) substituteByKind(
 	case KindStruct:
 		return tse.substituteStructType(typ, typeMapping, depth)
 	case KindMap:
-		return tse.substituteMapType(typ, typeMapping, depth)
+		return tse.substituteMapType(typ)
 	case KindInterface:
-		return tse.substituteInterfaceType(typ, typeMapping, depth)
+		return tse.substituteInterfaceType(typ)
 	case KindFunction:
-		return tse.substituteFunctionType(typ, typeMapping, depth)
+		return tse.substituteFunctionType(typ)
 	case KindNamed:
 		return tse.substituteNamedType(typ, typeMapping, depth)
 	case KindBasic:
-		return tse.substituteBasicType(typ, typeMapping, depth)
+		return tse.substituteBasicType(typ)
 	default:
 		return nil, fmt.Errorf("%w: unsupported type kind %s", ErrSubstitutionUnsupportedType, typ.Kind().String())
 	}
@@ -515,7 +519,6 @@ func (tse *TypeSubstitutionEngine) substituteByKind(
 func (tse *TypeSubstitutionEngine) substituteGenericType(
 	typ Type,
 	typeMapping map[string]Type,
-	depth int,
 ) (Type, error) {
 	if tse.enableDetailedStats {
 		tse.substitutionStats.GenericTypeSubstitutions++
@@ -548,7 +551,7 @@ func (tse *TypeSubstitutionEngine) substituteSliceType(
 
 	sliceType, ok := typ.(*SliceType)
 	if !ok {
-		return nil, fmt.Errorf("expected SliceType, got %T", typ)
+		return nil, fmt.Errorf("%w, got %T", ErrExpectedSliceType, typ)
 	}
 
 	// Substitute the element type
@@ -578,7 +581,7 @@ func (tse *TypeSubstitutionEngine) substitutePointerType(
 
 	pointerType, ok := typ.(*PointerType)
 	if !ok {
-		return nil, fmt.Errorf("expected PointerType, got %T", typ)
+		return nil, fmt.Errorf("%w, got %T", ErrExpectedPointerType, typ)
 	}
 
 	// Substitute the element type
@@ -608,7 +611,7 @@ func (tse *TypeSubstitutionEngine) substituteStructType(
 
 	structType, ok := typ.(*StructType)
 	if !ok {
-		return nil, fmt.Errorf("expected StructType, got %T", typ)
+		return nil, fmt.Errorf("%w, got %T", ErrExpectedStructType, typ)
 	}
 
 	// Get original fields
@@ -642,8 +645,6 @@ func (tse *TypeSubstitutionEngine) substituteStructType(
 // substituteMapType substitutes key and value types of a map.
 func (tse *TypeSubstitutionEngine) substituteMapType(
 	typ Type,
-	typeMapping map[string]Type,
-	depth int,
 ) (Type, error) {
 	if tse.enableDetailedStats {
 		tse.substitutionStats.MapTypeSubstitutions++
@@ -657,8 +658,6 @@ func (tse *TypeSubstitutionEngine) substituteMapType(
 // substituteInterfaceType substitutes type parameters in interface methods.
 func (tse *TypeSubstitutionEngine) substituteInterfaceType(
 	typ Type,
-	typeMapping map[string]Type,
-	depth int,
 ) (Type, error) {
 	if tse.enableDetailedStats {
 		tse.substitutionStats.InterfaceTypeSubstitutions++
@@ -672,8 +671,6 @@ func (tse *TypeSubstitutionEngine) substituteInterfaceType(
 // substituteFunctionType substitutes type parameters in function signatures.
 func (tse *TypeSubstitutionEngine) substituteFunctionType(
 	typ Type,
-	typeMapping map[string]Type,
-	depth int,
 ) (Type, error) {
 	if tse.enableDetailedStats {
 		tse.substitutionStats.FunctionTypeSubstitutions++
@@ -705,8 +702,6 @@ func (tse *TypeSubstitutionEngine) substituteNamedType(
 // substituteBasicType handles basic types (no substitution needed).
 func (tse *TypeSubstitutionEngine) substituteBasicType(
 	typ Type,
-	typeMapping map[string]Type,
-	depth int,
 ) (Type, error) {
 	if tse.enableDetailedStats {
 		tse.substitutionStats.BasicTypeSubstitutions++
@@ -717,7 +712,7 @@ func (tse *TypeSubstitutionEngine) substituteBasicType(
 }
 
 // updateSubstitutionStats updates the performance statistics.
-func (tse *TypeSubstitutionEngine) updateSubstitutionStats(result *SubstitutionResult) {
+func (tse *TypeSubstitutionEngine) updateSubstitutionStats() {
 	// Update optimization flag
 	tse.substitutionStats.OptimizationApplied = tse.optimizePerformance
 

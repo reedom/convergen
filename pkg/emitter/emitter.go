@@ -440,7 +440,7 @@ func (e *ConcreteEmitter) emitEvent(ctx context.Context, eventType string, data 
 		return nil // No event bus configured
 	}
 
-	event := events.NewBaseEvent(eventType, ctx)
+	event := events.NewBaseEvent(ctx, eventType)
 	for key, value := range data {
 		event.WithMetadata(key, value)
 	}

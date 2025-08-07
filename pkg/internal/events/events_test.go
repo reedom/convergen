@@ -14,7 +14,7 @@ import (
 func TestBaseEvent(t *testing.T) {
 	t.Run("creation and properties", func(t *testing.T) {
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		assert.NotEmpty(t, event.ID())
 		assert.Equal(t, "test.event", event.Type())
@@ -26,7 +26,7 @@ func TestBaseEvent(t *testing.T) {
 
 	t.Run("metadata management", func(t *testing.T) {
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		event.WithMetadata("key1", "value1")
 		event.WithMetadata("key2", 42)
@@ -48,7 +48,7 @@ func TestInMemoryEventBus(t *testing.T) {
 
 	t.Run("subscription and unsubscription", func(t *testing.T) {
 		bus := NewInMemoryEventBus(logger)
-		defer bus.Close()
+		defer func() { _ = bus.Close() }()
 
 		handler := NewFuncEventHandler("test.event", func(ctx context.Context, event Event) error {
 			return nil
@@ -67,10 +67,10 @@ func TestInMemoryEventBus(t *testing.T) {
 
 	t.Run("publish to no handlers", func(t *testing.T) {
 		bus := NewInMemoryEventBus(logger)
-		defer bus.Close()
+		defer func() { _ = bus.Close() }()
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err := bus.Publish(event)
 		assert.NoError(t, err)
@@ -79,7 +79,7 @@ func TestInMemoryEventBus(t *testing.T) {
 
 	t.Run("publish to handlers", func(t *testing.T) {
 		bus := NewInMemoryEventBus(logger)
-		defer bus.Close()
+		defer func() { _ = bus.Close() }()
 
 		var handledEvents []Event
 
@@ -98,7 +98,7 @@ func TestInMemoryEventBus(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err = bus.Publish(event)
 		assert.NoError(t, err)
@@ -118,7 +118,7 @@ func TestInMemoryEventBus(t *testing.T) {
 
 	t.Run("handler error", func(t *testing.T) {
 		bus := NewInMemoryEventBus(logger)
-		defer bus.Close()
+		defer func() { _ = bus.Close() }()
 
 		handler := NewFuncEventHandler("test.event", func(ctx context.Context, event Event) error {
 			return assert.AnError
@@ -128,7 +128,7 @@ func TestInMemoryEventBus(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err = bus.Publish(event)
 		assert.Error(t, err)
@@ -140,7 +140,7 @@ func TestInMemoryEventBus(t *testing.T) {
 
 	t.Run("multiple handlers", func(t *testing.T) {
 		bus := NewInMemoryEventBus(logger)
-		defer bus.Close()
+		defer func() { _ = bus.Close() }()
 
 		var handledCount int32
 
@@ -168,7 +168,7 @@ func TestInMemoryEventBus(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err = bus.Publish(event)
 		assert.NoError(t, err)
@@ -203,7 +203,7 @@ func TestInMemoryEventBus(t *testing.T) {
 		assert.Contains(t, err.Error(), "event bus is closed")
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 		err = bus.Publish(event)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "event bus is closed")
@@ -211,7 +211,7 @@ func TestInMemoryEventBus(t *testing.T) {
 
 	t.Run("subscription validation", func(t *testing.T) {
 		bus := NewInMemoryEventBus(logger)
-		defer bus.Close()
+		defer func() { _ = bus.Close() }()
 
 		// Handler that can't handle the event type
 		handler := NewFuncEventHandler("other.event", func(ctx context.Context, event Event) error {
@@ -225,7 +225,7 @@ func TestInMemoryEventBus(t *testing.T) {
 
 	t.Run("unsubscribe non-existent", func(t *testing.T) {
 		bus := NewInMemoryEventBus(logger)
-		defer bus.Close()
+		defer func() { _ = bus.Close() }()
 
 		handler := NewFuncEventHandler("test.event", func(ctx context.Context, event Event) error {
 			return nil
@@ -262,7 +262,7 @@ func TestFuncEventHandler(t *testing.T) {
 		assert.False(t, handler.CanHandle("other.event"))
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err := handler.Handle(ctx, event)
 		assert.NoError(t, err)
@@ -275,7 +275,7 @@ func TestMiddlewareEventBus(t *testing.T) {
 	innerBus := NewInMemoryEventBus(logger)
 
 	bus := NewMiddlewareEventBus(innerBus, logger)
-	defer bus.Close()
+	defer func() { _ = bus.Close() }()
 
 	t.Run("delegation without middleware", func(t *testing.T) {
 		handler := NewFuncEventHandler("test.event", func(ctx context.Context, event Event) error {
@@ -286,7 +286,7 @@ func TestMiddlewareEventBus(t *testing.T) {
 		assert.NoError(t, err)
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err = bus.Publish(event)
 		assert.NoError(t, err)
@@ -318,7 +318,7 @@ func TestMiddlewareEventBus(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err = bus.Publish(event)
 		assert.NoError(t, err)
@@ -351,7 +351,7 @@ func TestLoggingMiddleware(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err := middleware.Process(ctx, event, next)
 		assert.NoError(t, err)
@@ -364,7 +364,7 @@ func TestLoggingMiddleware(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err := middleware.Process(ctx, event, next)
 		assert.Error(t, err)
@@ -385,7 +385,7 @@ func TestTimeoutMiddleware(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err := middleware.Process(ctx, event, next)
 		assert.NoError(t, err)
@@ -401,7 +401,7 @@ func TestTimeoutMiddleware(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		event := NewBaseEvent("test.event", ctx)
+		event := NewBaseEvent(ctx, "test.event")
 
 		err := middleware.Process(ctx, event, next)
 		assert.Error(t, err)
