@@ -124,6 +124,8 @@ type InterfaceOptions struct {
 	UseTypecast         bool              `json:"use_typecast"`
 	ReceiverName        string            `json:"receiver_name"`
 	AllowReverse        bool              `json:"allow_reverse"`
+	NoStructLiteral     bool              `json:"no_struct_literal"`
+	ForceStructLit      bool              `json:"force_struct_literal"`
 	SkipFields          []string          `json:"skip_fields"`
 	FieldMappings       map[string]string `json:"field_mappings"`
 	TypeConverters      map[string]string `json:"type_converters"`
@@ -141,6 +143,8 @@ type MethodOptions struct {
 	UseStringer         bool              `json:"use_stringer"`
 	UseTypecast         bool              `json:"use_typecast"`
 	AllowReverse        bool              `json:"allow_reverse"`
+	NoStructLiteral     bool              `json:"no_struct_literal"`
+	ForceStructLit      bool              `json:"force_struct_literal"`
 	SkipFields          []string          `json:"skip_fields"`
 	FieldMappings       map[string]string `json:"field_mappings"`
 	TypeConverters      map[string]string `json:"type_converters"`

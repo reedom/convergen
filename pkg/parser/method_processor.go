@@ -171,6 +171,8 @@ func (p *ASTParser) parseMethodOptions(annotations []*Annotation, interfaceOpts 
 		UseStringer:         interfaceOpts.UseStringer,
 		UseTypecast:         interfaceOpts.UseTypecast,
 		AllowReverse:        interfaceOpts.AllowReverse,
+		NoStructLiteral:     interfaceOpts.NoStructLiteral,
+		ForceStructLit:      interfaceOpts.ForceStructLit,
 		SkipFields:          append([]string{}, interfaceOpts.SkipFields...),
 		FieldMappings:       p.copyStringMap(interfaceOpts.FieldMappings),
 		TypeConverters:      p.copyStringMap(interfaceOpts.TypeConverters),
@@ -197,7 +199,7 @@ func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotat
 	switch annotation.Type {
 	case "style", "match", "case", "case:off", "getter", "getter:off",
 		"stringer", "stringer:off", "typecast", "typecast:off", "reverse",
-		"skip", "map", "conv", "literal", "preprocess", "postprocess":
+		"no-struct-literal", "skip", "map", "conv", "literal", "preprocess", "postprocess":
 		// These are handled the same way as interface annotations
 		return p.applyInterfaceAnnotationToMethod(options, annotation)
 
@@ -315,6 +317,8 @@ func (p *ASTParser) applyInterfaceAnnotationToMethod(options *domain.MethodOptio
 		UseStringer:         options.UseStringer,
 		UseTypecast:         options.UseTypecast,
 		AllowReverse:        options.AllowReverse,
+		NoStructLiteral:     options.NoStructLiteral,
+		ForceStructLit:      options.ForceStructLit,
 		SkipFields:          options.SkipFields,
 		FieldMappings:       options.FieldMappings,
 		TypeConverters:      options.TypeConverters,
@@ -336,6 +340,8 @@ func (p *ASTParser) applyInterfaceAnnotationToMethod(options *domain.MethodOptio
 	options.UseStringer = interfaceOpts.UseStringer
 	options.UseTypecast = interfaceOpts.UseTypecast
 	options.AllowReverse = interfaceOpts.AllowReverse
+	options.NoStructLiteral = interfaceOpts.NoStructLiteral
+	options.ForceStructLit = interfaceOpts.ForceStructLit
 	options.SkipFields = interfaceOpts.SkipFields
 	options.FieldMappings = interfaceOpts.FieldMappings
 	options.TypeConverters = interfaceOpts.TypeConverters

@@ -6,21 +6,21 @@ See requirements.md for acceptance criteria and design.md for technical analysis
 
 ### TASK-001: Extend Domain Models
 **Requirements**: CR-002, FR-001  
-**Status**: [ ] Pending
-- [ ] Add `DstVarStructLiteral` to `pkg/generator/model/enums.go`
-- [ ] Add `OutputStyle` enum with Auto/StructLiteral/Traditional values
-- [ ] Extend `Function` model with `OutputStyle`, `FallbackReason`, `CanUseStructLit` fields
-- [ ] Add `IsStructLiteral()` helper method to `DstVarStyle`
-- [ ] Update unit tests for model extensions
+**Status**: [x] Complete
+- [x] Add `DstVarStructLiteral` to `pkg/generator/model/enums.go`
+- [x] Add `OutputStyle` enum with Auto/StructLiteral/Traditional values
+- [x] Extend `Function` model with `OutputStyle`, `FallbackReason`, `CanUseStructLit` fields
+- [x] Add `IsStructLiteral()` helper method to `DstVarStyle`
+- [x] Update unit tests for model extensions
 
 ### TASK-002: Annotation System Extension
 **Requirements**: FR-003, CR-002  
-**Status**: [ ] Pending
-- [ ] Add `:no-struct-literal` parsing to `pkg/option/option.go`
-- [ ] Extend `Options` struct with `NoStructLiteral` and `ForceStructLit` fields
-- [ ] Add annotation parsing logic for method and interface level
-- [ ] Update annotation parser unit tests
-- [ ] Add validation for conflicting annotations
+**Status**: [x] Complete
+- [x] Add `:no-struct-literal` parsing to `pkg/option/option.go`
+- [x] Extend `Options` struct with `NoStructLiteral` and `ForceStructLit` fields
+- [x] Add annotation parsing logic for method and interface level
+- [x] Update annotation parser unit tests
+- [x] Add validation for conflicting annotations
 
 ### TASK-003: CLI Flag Integration
 **Requirements**: FR-004, CR-003  

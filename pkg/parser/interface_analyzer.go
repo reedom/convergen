@@ -566,6 +566,9 @@ func (p *ASTParser) applyInterfaceBooleanFlags(options *domain.InterfaceOptions,
 	case "reverse":
 		options.AllowReverse = true
 		return true
+	case "no-struct-literal":
+		options.NoStructLiteral = true
+		return true
 	default:
 		return false
 	}

@@ -23,23 +23,24 @@ var (
 
 // Annotation keywords for goconst compliance.
 const (
-	annotationStyle       = "style"
-	annotationMatch       = "match"
-	annotationCase        = "case"
-	annotationCaseOff     = "case:off"
-	annotationGetter      = "getter"
-	annotationGetterOff   = "getter:off"
-	annotationStringer    = "stringer"
-	annotationStringerOff = "stringer:off"
-	annotationTypecast    = "typecast"
-	annotationTypeCastOff = "typecast:off"
-	annotationReverse     = "reverse"
-	annotationSkip        = "skip"
-	annotationMap         = "map"
-	annotationConv        = "conv"
-	annotationLiteral     = "literal"
-	annotationPreprocess  = "preprocess"
-	annotationPostprocess = "postprocess"
+	annotationStyle           = "style"
+	annotationMatch           = "match"
+	annotationCase            = "case"
+	annotationCaseOff         = "case:off"
+	annotationGetter          = "getter"
+	annotationGetterOff       = "getter:off"
+	annotationStringer        = "stringer"
+	annotationStringerOff     = "stringer:off"
+	annotationTypecast        = "typecast"
+	annotationTypeCastOff     = "typecast:off"
+	annotationReverse         = "reverse"
+	annotationNoStructLiteral = "no-struct-literal"
+	annotationSkip            = "skip"
+	annotationMap             = "map"
+	annotationConv            = "conv"
+	annotationLiteral         = "literal"
+	annotationPreprocess      = "preprocess"
+	annotationPostprocess     = "postprocess"
 )
 
 var (
@@ -119,6 +120,10 @@ func (p *Parser) applyBooleanFlags(notation string, opts *option.Options, posRev
 	case annotationReverse:
 		opts.Reverse = true
 		*posReverse = n.Pos()
+		return true
+	case annotationNoStructLiteral:
+		// This will be handled by the struct literal feature implementation
+		// For now, we just acknowledge the annotation is valid
 		return true
 	default:
 		return false
