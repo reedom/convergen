@@ -16,7 +16,8 @@ var (
 	// ErrMappingCannotBeNil is returned when a mapping is nil.
 	ErrMappingCannotBeNil = errors.New("mapping cannot be nil")
 	// ErrSourceFieldCannotBeEmpty is returned when a source field is empty.
-	ErrSourceFieldCannotBeEmpty      = errors.New("source field cannot be empty")
+	ErrSourceFieldCannotBeEmpty = errors.New("source field cannot be empty")
+	// ErrDestinationFieldCannotBeEmpty is returned when a destination field is empty.
 	ErrDestinationFieldCannotBeEmpty = errors.New("destination field cannot be empty")
 )
 

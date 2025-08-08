@@ -274,20 +274,21 @@ func (eh *ErrorHandler) WrapWithContext(ctx context.Context, err error, message 
 
 	// Extract context information if available
 	if ctx != nil {
-		if value := ctx.Value(methodKey); value != nil {
-			if method, ok := value.(string); ok {
-				opts.Method = method
-			}
-		}
-
-		if value := ctx.Value(interfaceKey); value != nil {
-			if intf, ok := value.(string); ok {
-				opts.Interface = intf
-			}
-		}
+		opts.Method = extractStringFromContext(ctx, methodKey)
+		opts.Interface = extractStringFromContext(ctx, interfaceKey)
 	}
 
 	return eh.CreateError(opts)
+}
+
+// extractStringFromContext safely extracts a string value from context.
+func extractStringFromContext(ctx context.Context, key contextKey) string {
+	if value := ctx.Value(key); value != nil {
+		if str, ok := value.(string); ok {
+			return str
+		}
+	}
+	return ""
 }
 
 // Chain creates a chain of related errors.
@@ -401,7 +402,13 @@ func (eh *ErrorHandler) ShouldRetry(err error, attempt int, maxAttempts int) boo
 // GetRetryDelay calculates the delay before retrying an operation.
 func (eh *ErrorHandler) GetRetryDelay(attempt int) time.Duration {
 	// Exponential backoff with jitter
-	base := time.Duration(100<<uint(attempt)) * time.Millisecond
+	var shiftAmount uint
+	if attempt >= 0 && attempt < 32 { // Ensure safe shift amount
+		shiftAmount = uint(attempt)
+	} else {
+		shiftAmount = 31 // Cap to prevent overflow
+	}
+	base := time.Duration(100<<shiftAmount) * time.Millisecond
 	jitter := time.Duration(attempt*50) * time.Millisecond
 
 	return base + jitter

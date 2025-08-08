@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"runtime"
 	"sync"
 	"time"
@@ -144,7 +145,7 @@ func (rp *ResourcePool) GetMetrics() *ResourceMetrics {
 		WorkersActive:     activeWorkers,
 		WorkersIdle:       availableWorkers,
 		WorkersTotal:      totalWorkers,
-		MemoryUsedMB:      int(m.Alloc / 1024 / 1024),
+		MemoryUsedMB:      safeUint64ToInt(m.Alloc / 1024 / 1024),
 		MemoryAvailableMB: rp.memoryLimitMB - rp.memoryUsedMB,
 		MemoryPressure:    memoryPressure,
 		QueuedJobs:        len(rp.workerQueue),
@@ -311,7 +312,7 @@ func (rp *ResourcePool) executeJob(worker *Worker, job *FieldExecution) {
 	worker.Metrics.LastTaskTime = time.Now()
 	worker.Metrics.AverageTaskTime = worker.Metrics.TotalActiveTime / time.Duration(worker.TasksHandled)
 
-	memUsedMB := int((endMem.Alloc - startMem.Alloc) / 1024 / 1024)
+	memUsedMB := safeUint64ToInt((endMem.Alloc - startMem.Alloc) / 1024 / 1024)
 	worker.Metrics.CurrentMemoryMB = memUsedMB
 
 	if worker.Metrics.PeakMemoryMB < memUsedMB {
@@ -503,7 +504,7 @@ func (rp *ResourcePool) checkResourceLimits() error {
 	var m runtime.MemStats
 
 	runtime.ReadMemStats(&m)
-	currentMemoryMB := int(m.Alloc / 1024 / 1024)
+	currentMemoryMB := safeUint64ToInt(m.Alloc / 1024 / 1024)
 
 	if rp.memoryLimitMB <= currentMemoryMB {
 		return fmt.Errorf("%w: %dMB", ErrMemoryLimitReached, currentMemoryMB)
@@ -519,4 +520,12 @@ func maxInt(a, b int) int {
 	}
 
 	return b
+}
+
+// safeUint64ToInt safely converts uint64 to int, capping at MaxInt to prevent overflow.
+func safeUint64ToInt(val uint64) int {
+	if val > math.MaxInt {
+		return math.MaxInt
+	}
+	return int(val)
 }

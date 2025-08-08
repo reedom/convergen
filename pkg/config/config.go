@@ -17,13 +17,19 @@ var (
 	// ErrEmptyPackageAlias is returned when a package alias is empty in mapping.
 	ErrEmptyPackageAlias = errors.New("empty package alias in mapping")
 	// ErrEmptyImportPath is returned when an import path is empty in mapping.
-	ErrEmptyImportPath               = errors.New("empty import path in mapping")
-	ErrPackageAliasCannotBeEmpty     = errors.New("package alias cannot be empty")
+	ErrEmptyImportPath = errors.New("empty import path in mapping")
+	// ErrPackageAliasCannotBeEmpty is returned when a package alias is empty.
+	ErrPackageAliasCannotBeEmpty = errors.New("package alias cannot be empty")
+	// ErrPackageAliasInvalidIdentifier is returned when a package alias is not a valid Go identifier.
 	ErrPackageAliasInvalidIdentifier = errors.New("package alias must be a valid Go identifier")
-	ErrImportPathCannotBeEmpty       = errors.New("import path cannot be empty")
+	// ErrImportPathCannotBeEmpty is returned when an import path is empty.
+	ErrImportPathCannotBeEmpty = errors.New("import path cannot be empty")
+	// ErrImportPathCannotContainSpaces is returned when an import path contains spaces.
 	ErrImportPathCannotContainSpaces = errors.New("import path cannot contain spaces")
-	ErrTypeSpecWithQualifiedTypes    = errors.New("type specification contains qualified types but no import mappings provided")
-	ErrInvalidInterfaceName          = errors.New("invalid interface name in type specification")
+	// ErrTypeSpecWithQualifiedTypes is returned when type specification contains qualified types but no import mappings provided.
+	ErrTypeSpecWithQualifiedTypes = errors.New("type specification contains qualified types but no import mappings provided")
+	// ErrInvalidInterfaceName is returned when interface name in type specification is invalid.
+	ErrInvalidInterfaceName = errors.New("invalid interface name in type specification")
 )
 
 // Usage prints the usage of the tool.
@@ -258,10 +264,7 @@ func (c *Config) validateCrossPackageConfig() error {
 		}
 	}
 
-	// If ImportMap is provided without TypeSpec, warn (not an error)
-	if len(c.ImportMap) > 0 && c.TypeSpec == "" {
-		// This is valid - imports might be for other purposes
-	}
+	// If ImportMap is provided without TypeSpec, that's valid - imports might be for other purposes
 
 	return nil
 }

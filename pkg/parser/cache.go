@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"math"
 	"runtime"
 	"sync"
 	"time"
@@ -245,8 +246,14 @@ func (tc *TypeCache) checkMemoryPressure() {
 
 	runtime.ReadMemStats(&memStats)
 
-	// Convert to MB
-	allocMB := int64(memStats.Alloc / 1024 / 1024)
+	// Convert to MB safely
+	allocBytes := memStats.Alloc / 1024 / 1024
+	var allocMB int64
+	if allocBytes <= math.MaxInt64 {
+		allocMB = int64(allocBytes)
+	} else {
+		allocMB = math.MaxInt64 // Cap at max value if overflow would occur
+	}
 
 	if tc.memoryThresholdMB < allocMB {
 		// Under memory pressure - remove 25% of entries (oldest first)

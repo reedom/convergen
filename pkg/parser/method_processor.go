@@ -41,7 +41,7 @@ func NewMethodProcessor(parser *ASTParser, typeResolver *TypeResolver, logger *z
 }
 
 // processMethod analyzes a single method and converts it to domain.Method.
-func (p *ASTParser) processMethod(ctx context.Context, pkg *packages.Package, file *ast.File, methodObj types.Object, interfaceOpts *domain.InterfaceOptions) (*domain.Method, error) {
+func (p *ASTParser) processMethod(ctx context.Context, _ *packages.Package, file *ast.File, methodObj types.Object, interfaceOpts *domain.InterfaceOptions) (*domain.Method, error) {
 	signature, ok := methodObj.Type().(*types.Signature)
 	if !ok {
 		return nil, fmt.Errorf("%w, got %T", ErrExpectedMethodSignature, methodObj.Type())
@@ -61,28 +61,10 @@ func (p *ASTParser) processMethod(ctx context.Context, pkg *packages.Package, fi
 		return nil, fmt.Errorf("failed to parse method options: %w", err)
 	}
 
-	// Check if this is a generic method by examining the interface context
-	// Note: In Go, methods cannot have their own type parameters, only the receiver type can be generic
-	var interfaceTypeParams []domain.TypeParam
-	if signature.Recv() != nil {
-		if namedRecv, ok := signature.Recv().Type().(*types.Named); ok {
-			// Extract type parameters from the receiver's interface type
-			if receiverTypeParams := namedRecv.TypeParams(); receiverTypeParams != nil {
-				for i := 0; i < receiverTypeParams.Len(); i++ {
-					typeParam := receiverTypeParams.At(i)
-					// Convert to domain TypeParam
-					domainParam, convertErr := p.convertGoTypeParamToDomainTypeParam(ctx, typeParam)
-					if convertErr != nil {
-						p.logger.Warn("failed to convert type parameter",
-							zap.String("method", methodObj.Name()),
-							zap.String("type_param", typeParam.String()),
-							zap.Error(convertErr))
-						continue
-					}
-					interfaceTypeParams = append(interfaceTypeParams, *domainParam)
-				}
-			}
-		}
+	// Extract type parameters from the receiver's interface type for generic methods
+	interfaceTypeParams, err := p.extractInterfaceTypeParams(ctx, methodObj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract interface type parameters: %w", err)
 	}
 
 	// Analyze method parameters with generic context
@@ -259,76 +241,6 @@ func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotat
 	return nil
 }
 
-// analyzeMethodParameters analyzes all parameters of a method.
-func (p *ASTParser) analyzeMethodParameters(ctx context.Context, params *types.Tuple) ([]*domain.Parameter, error) {
-	parameters := make([]*domain.Parameter, params.Len())
-
-	for i := 0; i < params.Len(); i++ {
-		param := params.At(i)
-
-		// Resolve type with generics support
-		resolvedType, err := p.typeResolverPool.Get().ResolveType(ctx, param.Type())
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve parameter type: %w", err)
-		}
-
-		// Analyze type structure for field mapping
-		typeInfo, err := p.analyzeTypeStructure(ctx, resolvedType)
-		if err != nil {
-			return nil, fmt.Errorf("failed to analyze type structure: %w", err)
-		}
-
-		parameters[i] = &domain.Parameter{
-			Name:     param.Name(),
-			Type:     resolvedType,
-			TypeInfo: typeInfo,
-			Position: i,
-		}
-	}
-
-	return parameters, nil
-}
-
-// analyzeMethodReturns analyzes return types of a method.
-func (p *ASTParser) analyzeMethodReturns(ctx context.Context, results *types.Tuple) ([]*domain.ReturnValue, error) {
-	returns := make([]*domain.ReturnValue, results.Len())
-
-	for i := 0; i < results.Len(); i++ {
-		result := results.At(i)
-
-		// Resolve type with generics support
-		resolvedType, err := p.typeResolverPool.Get().ResolveType(ctx, result.Type())
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve return type: %w", err)
-		}
-
-		// Check if this is an error type
-		isError := p.isErrorType(resolvedType)
-
-		// Analyze type structure for non-error types
-		var typeInfo *domain.TypeInfo
-
-		if !isError {
-			info, err := p.analyzeTypeStructure(ctx, resolvedType)
-			if err != nil {
-				return nil, fmt.Errorf("failed to analyze return type structure: %w", err)
-			}
-
-			typeInfo = info
-		}
-
-		returns[i] = &domain.ReturnValue{
-			Name:     result.Name(),
-			Type:     resolvedType,
-			TypeInfo: typeInfo,
-			Position: i,
-			IsError:  isError,
-		}
-	}
-
-	return returns, nil
-}
-
 // analyzeReceiver analyzes method receiver.
 func (p *ASTParser) analyzeReceiver(ctx context.Context, recv *types.Var) (*domain.Parameter, error) {
 	resolvedType, err := p.typeResolverPool.Get().ResolveType(ctx, recv.Type())
@@ -347,67 +259,6 @@ func (p *ASTParser) analyzeReceiver(ctx context.Context, recv *types.Var) (*doma
 		TypeInfo: typeInfo,
 		Position: -1, // Receiver has special position
 	}, nil
-}
-
-// createFieldMappings creates field mappings between source and destination types.
-func (p *ASTParser) createFieldMappings(_ context.Context, params []*domain.Parameter, returns []*domain.ReturnValue, options *domain.MethodOptions) ([]*domain.FieldMapping, error) {
-	var mappings []*domain.FieldMapping
-
-	// For now, we'll create basic mappings between the first parameter and first return
-	// In a full implementation, this would be much more sophisticated
-	if len(params) > 0 && len(returns) > 0 && !returns[0].IsError {
-		sourceParam := params[0]
-		destReturn := returns[0]
-
-		if sourceParam.TypeInfo != nil && destReturn.TypeInfo != nil {
-			fieldMappings, err := p.matchFields(sourceParam.TypeInfo, destReturn.TypeInfo, options)
-			if err != nil {
-				return nil, err
-			}
-
-			mappings = append(mappings, fieldMappings...)
-		}
-	}
-
-	return mappings, nil
-}
-
-// matchFields matches fields between source and destination types.
-func (p *ASTParser) matchFields(source, dest *domain.TypeInfo, options *domain.MethodOptions) ([]*domain.FieldMapping, error) {
-	var mappings []*domain.FieldMapping
-
-	// Simple field matching based on name
-	for i, sourceField := range source.Fields {
-		for j, destField := range dest.Fields {
-			if p.fieldsMatch(sourceField, destField, options) {
-				// Create field specs
-				sourceSpec, err := domain.NewFieldSpec([]string{sourceField.Name}, sourceField.Type)
-				if err != nil {
-					return nil, fmt.Errorf("failed to create source field spec: %w", err)
-				}
-
-				destSpec, err := domain.NewFieldSpec([]string{destField.Name}, destField.Type)
-				if err != nil {
-					return nil, fmt.Errorf("failed to create dest field spec: %w", err)
-				}
-
-				// Create mapping with direct assignment strategy
-				strategy := &domain.DirectAssignmentStrategy{}
-				mappingID := fmt.Sprintf("field_%d_%d", i, j)
-
-				mapping, err := domain.NewFieldMapping(mappingID, sourceSpec, destSpec, strategy)
-				if err != nil {
-					return nil, fmt.Errorf("failed to create field mapping: %w", err)
-				}
-
-				mappings = append(mappings, mapping)
-
-				break
-			}
-		}
-	}
-
-	return mappings, nil
 }
 
 // fieldsMatch determines if two fields match based on options.
@@ -452,141 +303,6 @@ func (p *ASTParser) copyStringMap(original map[string]string) map[string]string 
 	}
 
 	return copy
-}
-
-// processGenericMethod processes a method within a generic interface context.
-// This method handles the interface-level type parameters and delegates to processMethod.
-func (p *ASTParser) processGenericMethod(ctx context.Context, pkg *packages.Package, file *ast.File, methodObj types.Object, interfaceTypeParams []domain.TypeParam, options *domain.InterfaceOptions) (*domain.Method, error) {
-	// Extract the method signature
-	signature, ok := methodObj.Type().(*types.Signature)
-	if !ok {
-		return nil, fmt.Errorf("%w, got %T", ErrExpectedMethodSignature, methodObj.Type())
-	}
-
-	// Validate method signature with generic context
-	if err := p.validateGenericMethodSignature(signature, methodObj, interfaceTypeParams); err != nil {
-		return nil, fmt.Errorf("invalid generic method signature: %w", err)
-	}
-
-	// Extract method annotations
-	annotations := p.extractMethodAnnotations(file, methodObj)
-
-	// Parse method-specific options from interface options
-	methodOpts, err := p.parseMethodOptions(annotations, options)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse method options: %w", err)
-	}
-
-	// Analyze method parameters with generic context
-	parameters, err := p.analyzeGenericMethodParameters(ctx, signature.Params(), interfaceTypeParams)
-	if err != nil {
-		return nil, fmt.Errorf("failed to analyze parameters: %w", err)
-	}
-
-	// Analyze return types with generic context
-	returns, err := p.analyzeGenericMethodReturns(ctx, signature.Results(), interfaceTypeParams)
-	if err != nil {
-		return nil, fmt.Errorf("failed to analyze return types: %w", err)
-	}
-
-	// Create field mappings with generic type awareness
-	fieldMappings, err := p.createGenericFieldMappings(ctx, parameters, returns, methodOpts, interfaceTypeParams)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create field mappings: %w", err)
-	}
-
-	// Create the domain method using the correct constructor
-	method, err := domain.NewMethod(methodObj.Name(), parameters[0].Type, returns[0].Type)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create method: %w", err)
-	}
-
-	// Set method parameters and returns
-	method.SetSourceParams(parameters)
-	method.SetDestinationReturns(returns)
-
-	// Add field mappings to the method
-	for _, mapping := range fieldMappings {
-		if err := method.AddMapping(mapping); err != nil {
-			return nil, fmt.Errorf("failed to add mapping: %w", err)
-		}
-	}
-
-	p.logger.Debug("processed generic method",
-		zap.String("name", methodObj.Name()),
-		zap.Int("parameters", len(parameters)),
-		zap.Int("returns", len(returns)),
-		zap.Int("field_mappings", len(fieldMappings)),
-		zap.Int("interface_type_params", len(interfaceTypeParams)))
-
-	return method, nil
-}
-
-// validateGenericMethodSignature validates a method signature within a generic interface.
-func (p *ASTParser) validateGenericMethodSignature(signature *types.Signature, methodObj types.Object, interfaceTypeParams []domain.TypeParam) error {
-	// First perform basic signature validation
-	if err := p.validateMethodSignature(signature, methodObj); err != nil {
-		return err
-	}
-
-	// Additional validation for generic context
-	// Check that any type parameters used in the signature are valid
-	if err := p.validateTypeParametersInSignature(signature, interfaceTypeParams); err != nil {
-		return fmt.Errorf("invalid type parameters in method %s: %w", methodObj.Name(), err)
-	}
-
-	return nil
-}
-
-// validateTypeParametersInSignature validates that type parameters in method signature are defined.
-func (p *ASTParser) validateTypeParametersInSignature(signature *types.Signature, interfaceTypeParams []domain.TypeParam) error {
-	// Check parameters
-	for i := 0; i < signature.Params().Len(); i++ {
-		param := signature.Params().At(i)
-		if err := p.validateTypeParameterUsage(param.Type(), interfaceTypeParams); err != nil {
-			return fmt.Errorf("parameter %d: %w", i, err)
-		}
-	}
-
-	// Check return types
-	for i := 0; i < signature.Results().Len(); i++ {
-		result := signature.Results().At(i)
-		if err := p.validateTypeParameterUsage(result.Type(), interfaceTypeParams); err != nil {
-			return fmt.Errorf("return %d: %w", i, err)
-		}
-	}
-
-	return nil
-}
-
-// validateTypeParameterUsage validates that a type uses only defined type parameters.
-func (p *ASTParser) validateTypeParameterUsage(goType types.Type, interfaceTypeParams []domain.TypeParam) error {
-	// Check if this is a type parameter
-	if typeParam, ok := goType.(*types.TypeParam); ok {
-		// Verify it's defined in the interface
-		typeParamName := typeParam.String()
-		for _, interfaceParam := range interfaceTypeParams {
-			if interfaceParam.Name == typeParamName {
-				return nil // Found, it's valid
-			}
-		}
-		return fmt.Errorf("undefined type parameter: %s", typeParamName)
-	}
-
-	// Recursively check composite types
-	switch t := goType.(type) {
-	case *types.Slice:
-		return p.validateTypeParameterUsage(t.Elem(), interfaceTypeParams)
-	case *types.Pointer:
-		return p.validateTypeParameterUsage(t.Elem(), interfaceTypeParams)
-	case *types.Map:
-		if err := p.validateTypeParameterUsage(t.Key(), interfaceTypeParams); err != nil {
-			return err
-		}
-		return p.validateTypeParameterUsage(t.Elem(), interfaceTypeParams)
-	}
-
-	return nil // Other types are valid
 }
 
 func (p *ASTParser) applyInterfaceAnnotationToMethod(options *domain.MethodOptions, annotation *Annotation) error {
@@ -642,84 +358,6 @@ func isGoErrorType(t types.Type) bool {
 // ===========================================
 // TASK-006: Generic Method Processing Functions
 // ===========================================
-
-// convertGoTypeParamToDomainTypeParam converts a Go types.TypeParam to domain.TypeParam.
-func (p *ASTParser) convertGoTypeParamToDomainTypeParam(ctx context.Context, goTypeParam *types.TypeParam) (*domain.TypeParam, error) {
-	constraint := goTypeParam.Constraint()
-	name := goTypeParam.String()
-	index := goTypeParam.Index()
-
-	// Parse the constraint to determine its type
-	if constraint != nil {
-		// Use constraint parser if available, or fallback to basic parsing
-		if constraintParser := p.getConstraintParser(); constraintParser != nil {
-			parsedConstraint, err := constraintParser.ParseConstraint(ctx, constraint)
-			if err != nil {
-				p.logger.Warn("failed to parse constraint, using basic parsing",
-					zap.String("type_param", name),
-					zap.Error(err))
-				return p.parseBasicConstraint(name, constraint, index)
-			}
-			return p.convertParsedConstraintToDomainTypeParam(name, index, parsedConstraint)
-		}
-	}
-
-	// Fallback to basic constraint parsing
-	return p.parseBasicConstraint(name, constraint, index)
-}
-
-// parseBasicConstraint handles basic constraint parsing when advanced parser is not available.
-func (p *ASTParser) parseBasicConstraint(name string, constraint types.Type, index int) (*domain.TypeParam, error) {
-	if constraint == nil {
-		// No constraint specified, default to 'any'
-		return domain.NewAnyTypeParam(name, index), nil
-	}
-
-	// Check for basic constraint types
-	constraintStr := constraint.String()
-	switch constraintStr {
-	case "any", "interface{}":
-		return domain.NewAnyTypeParam(name, index), nil
-	case "comparable":
-		return domain.NewComparableTypeParam(name, index), nil
-	default:
-		// For other constraints, resolve the constraint type and create a basic type param
-		constraintType, err := p.typeResolverPool.Get().ResolveType(context.Background(), constraint)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve constraint type: %w", err)
-		}
-		return domain.NewTypeParam(name, constraintType, index), nil
-	}
-}
-
-// getConstraintParser returns the constraint parser if available.
-func (p *ASTParser) getConstraintParser() *ConstraintParser {
-	// This would be injected or configured based on available parsers
-	// For now, return nil to use fallback parsing
-	return nil
-}
-
-// convertParsedConstraintToDomainTypeParam converts a parsed constraint to domain.TypeParam.
-func (p *ASTParser) convertParsedConstraintToDomainTypeParam(name string, index int, parsed *ParsedConstraint) (*domain.TypeParam, error) {
-	if parsed.IsAny {
-		return domain.NewAnyTypeParam(name, index), nil
-	}
-	if parsed.IsComparable {
-		return domain.NewComparableTypeParam(name, index), nil
-	}
-	if len(parsed.UnionTypes) > 0 {
-		return domain.NewUnionTypeParam(name, parsed.UnionTypes, index), nil
-	}
-	if parsed.Underlying != nil {
-		return domain.NewUnderlyingTypeParam(name, parsed.Underlying, index), nil
-	}
-	if parsed.Type != nil {
-		return domain.NewTypeParam(name, parsed.Type, index), nil
-	}
-
-	// Default to any constraint
-	return domain.NewAnyTypeParam(name, index), nil
-}
 
 // analyzeGenericMethodParameters analyzes method parameters with generic type context.
 func (p *ASTParser) analyzeGenericMethodParameters(ctx context.Context, params *types.Tuple, interfaceTypeParams []domain.TypeParam) ([]*domain.Parameter, error) {
@@ -856,7 +494,7 @@ func (p *ASTParser) resolveGenericType(ctx context.Context, goType types.Type, i
 }
 
 // createGenericFieldMappings creates field mappings with generic type awareness.
-func (p *ASTParser) createGenericFieldMappings(ctx context.Context, params []*domain.Parameter, returns []*domain.ReturnValue, options *domain.MethodOptions, interfaceTypeParams []domain.TypeParam) ([]*domain.FieldMapping, error) {
+func (p *ASTParser) createGenericFieldMappings(_ context.Context, params []*domain.Parameter, returns []*domain.ReturnValue, options *domain.MethodOptions, interfaceTypeParams []domain.TypeParam) ([]*domain.FieldMapping, error) {
 	var mappings []*domain.FieldMapping
 
 	// For now, we'll create basic mappings between the first parameter and first return

@@ -343,13 +343,7 @@ func (ti *TypeInstantiator) InstantiateInterfaceWithContext(
 	}()
 
 	// Validate constraints
-	validationResult, err := ti.validateConstraints(genericInterface.TypeParams, typeArgMap)
-	if err != nil {
-		ti.logger.Error("constraint validation failed",
-			zap.String("interface", genericInterface.Name),
-			zap.Error(err))
-		return nil, fmt.Errorf("%w: %s", ErrConstraintViolation, err.Error())
-	}
+	validationResult := ti.validateConstraints(genericInterface.TypeParams, typeArgMap)
 
 	if !validationResult.Valid {
 		ti.logger.Error("constraint violations detected",
@@ -569,7 +563,7 @@ func (ti *TypeInstantiator) checkRecursion(typeSignature string) error {
 func (ti *TypeInstantiator) validateConstraints(
 	typeParams []TypeParam,
 	typeArgs map[string]Type,
-) (*ValidationResult, error) {
+) *ValidationResult {
 	startTime := time.Now()
 
 	result := &ValidationResult{
@@ -624,7 +618,7 @@ func (ti *TypeInstantiator) validateConstraints(
 		zap.Int("violations", len(result.ViolatedConstraints)),
 		zap.Int64("duration_ms", result.ValidationDurationMS))
 
-	return result, nil
+	return result
 }
 
 // generateConstraintViolationMessage creates a detailed error message for constraint violations.
@@ -651,7 +645,7 @@ func (ti *TypeInstantiator) generateConstraintViolationMessage(param *TypeParam,
 	case "underlying":
 		return fmt.Sprintf("type %s is not assignable to underlying type ~%s",
 			typeArg.String(), param.Underlying.Type.String())
-	case "interface":
+	case interfaceKeyword:
 		return fmt.Sprintf("type %s does not implement interface %s",
 			typeArg.String(), param.Constraint.String())
 	default:
@@ -704,7 +698,6 @@ func (ti *TypeInstantiator) generateConcreteTypeName(
 	builder.WriteString(genericInterface.Name)
 	builder.WriteString("[")
 
-	typeArgNames := make([]string, 0, len(typeArgs))
 	for i, param := range genericInterface.TypeParams {
 		if 0 < i {
 			builder.WriteString(", ")
@@ -712,7 +705,6 @@ func (ti *TypeInstantiator) generateConcreteTypeName(
 		typeArg := typeArgs[param.Name]
 		typeArgName := typeArg.Name()
 		builder.WriteString(typeArgName)
-		typeArgNames = append(typeArgNames, typeArgName)
 	}
 
 	builder.WriteString("]")

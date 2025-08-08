@@ -71,20 +71,30 @@ func sanitizeIdentifier(name string) string {
 	result := make([]rune, 0, len(name))
 
 	for i, r := range name {
+		var validChar rune
 		if i == 0 {
-			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_' {
-				result = append(result, r)
-			} else {
-				result = append(result, '_')
-			}
+			validChar = validFirstChar(r)
 		} else {
-			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
-				result = append(result, r)
-			} else {
-				result = append(result, '_')
-			}
+			validChar = validSubsequentChar(r)
 		}
+		result = append(result, validChar)
 	}
 
 	return string(result)
+}
+
+// validFirstChar returns the rune if it's valid for a first character, otherwise returns '_'.
+func validFirstChar(r rune) rune {
+	if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_' {
+		return r
+	}
+	return '_'
+}
+
+// validSubsequentChar returns the rune if it's valid for a subsequent character, otherwise returns '_'.
+func validSubsequentChar(r rune) rune {
+	if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+		return r
+	}
+	return '_'
 }

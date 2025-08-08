@@ -192,7 +192,7 @@ func (p *ASTParser) discoverInterfacesConcurrently(ctx context.Context, pkg *pac
 	var progressDone chan struct{}
 	if p.config.EnableProgress {
 		progressDone = make(chan struct{})
-		go p.trackProgress(ctx, domain.PhaseParsing, len(names), "Discovering interfaces", progressDone)
+		go p.trackProgress(ctx, len(names), "Discovering interfaces", progressDone)
 	}
 
 	processed := 0
@@ -281,7 +281,7 @@ func (p *ASTParser) processMethodsConcurrently(ctx context.Context, pkg *package
 	var progressDone chan struct{}
 	if p.config.EnableProgress {
 		progressDone = make(chan struct{})
-		go p.trackProgress(ctx, domain.PhaseParsing, totalMethods, "Processing methods", progressDone)
+		go p.trackProgress(ctx, totalMethods, "Processing methods", progressDone)
 	}
 
 	for _, iface := range interfaces {
@@ -326,7 +326,7 @@ func (p *ASTParser) processMethodsConcurrently(ctx context.Context, pkg *package
 }
 
 // trackProgress emits progress events during processing with adaptive frequency.
-func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPhase, total int, message string, done <-chan struct{}) {
+func (p *ASTParser) trackProgress(ctx context.Context, total int, message string, done <-chan struct{}) {
 	// Adaptive reporting frequency based on operation complexity
 	interval := p.calculateProgressInterval(total)
 
@@ -343,7 +343,7 @@ func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPh
 		case <-done:
 			// Operation completed, emit final progress event
 			if 0 < reportCount { // Only emit final if we've been reporting
-				finalEvent := events.NewProgressEvent(ctx, phase, total, total, message+" (completed)")
+				finalEvent := events.NewProgressEvent(ctx, domain.PhaseParsing, total, total, message+" (completed)")
 				if err := p.eventBus.Publish(finalEvent); err != nil {
 					p.logger.Debug("failed to publish final progress event", zap.Error(err))
 				}
@@ -353,7 +353,7 @@ func (p *ASTParser) trackProgress(ctx context.Context, phase domain.ProcessingPh
 		case <-ticker.C:
 			// Adaptive progress reporting with throttling
 			if p.shouldReportProgress(lastProgressTime, reportCount, total) {
-				progressEvent := events.NewProgressEvent(ctx, phase, 0, total, message)
+				progressEvent := events.NewProgressEvent(ctx, domain.PhaseParsing, 0, total, message)
 				if err := p.eventBus.Publish(progressEvent); err != nil {
 					// Demote to debug level to reduce noise
 					p.logger.Debug("failed to publish progress event", zap.Error(err))

@@ -293,7 +293,7 @@ func TestTypeResolverPool(t *testing.T) {
 	cache := NewTypeCache(100)
 
 	pool := NewTypeResolverPool(3, cache, logger)
-	defer pool.Close()
+	defer func() { _ = pool.Close() }()
 
 	// Test getting resolvers in round-robin fashion
 	resolver1 := pool.Get()

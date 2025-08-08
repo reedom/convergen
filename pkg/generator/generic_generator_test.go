@@ -122,23 +122,9 @@ func TestGenerateGenericImplementation(t *testing.T) {
 			result, err := generator.GenerateGenericImplementation(ctx, tt.instantiatedInterface)
 
 			if tt.expectError {
-				if err == nil {
-					t.Error("expected error, got nil")
-				}
-				if tt.expectedErrorType != nil && err != tt.expectedErrorType {
-					t.Errorf("expected error type %v, got %v", tt.expectedErrorType, err)
-				}
+				checkExpectedError(t, err, tt.expectedErrorType)
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if tt.expectedMethodsContains != "" && result != "" {
-					// For now, just check that result is not empty
-					// In a real implementation, we'd check for specific method content
-					if len(result) == 0 {
-						t.Error("expected non-empty result")
-					}
-				}
+				checkSuccessResult(t, err, result, tt.expectedMethodsContains)
 			}
 		})
 	}
@@ -148,10 +134,7 @@ func TestCreateGenericTemplateData(t *testing.T) {
 	generator := createTestGenericCodeGenerator()
 	instantiatedInterface := createTestInstantiatedInterface()
 
-	templateData, err := generator.createGenericTemplateData(instantiatedInterface)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	templateData := generator.createGenericTemplateData(instantiatedInterface)
 
 	if templateData == nil {
 		t.Fatal("expected non-nil template data")
@@ -680,6 +663,7 @@ func TestGenericTemplateSystemIntegration(t *testing.T) {
 	metrics := generator.GetMetrics()
 	if metrics == nil {
 		t.Error("metrics are nil")
+		return
 	}
 
 	if metrics.TotalGenerations == 0 {
@@ -689,4 +673,28 @@ func TestGenericTemplateSystemIntegration(t *testing.T) {
 	// Success
 	t.Logf("Integration test passed: code_length=%d, total_generations=%d, successful_generations=%d",
 		len(generatedCode), metrics.TotalGenerations, metrics.SuccessfulGenerations)
+}
+
+// checkExpectedError validates that an expected error occurred.
+func checkExpectedError(t *testing.T, err error, expectedErrorType error) {
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if expectedErrorType != nil && err != expectedErrorType {
+		t.Errorf("expected error type %v, got %v", expectedErrorType, err)
+	}
+}
+
+// checkSuccessResult validates a successful result.
+func checkSuccessResult(t *testing.T, err error, result, expectedMethodsContains string) {
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if expectedMethodsContains != "" && result != "" {
+		// For now, just check that result is not empty
+		// In a real implementation, we'd check for specific method content
+		if len(result) == 0 {
+			t.Error("expected non-empty result")
+		}
+	}
 }

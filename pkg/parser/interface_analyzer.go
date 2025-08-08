@@ -19,18 +19,28 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrStyleAnnotationRequiresArgument       = errors.New("style annotation requires an argument")
-	ErrMatchAnnotationRequiresArgument       = errors.New("match annotation requires an argument")
-	ErrRecvAnnotationRequiresReceiverName    = errors.New("recv annotation requires a receiver name")
-	ErrInvalidReceiverName                   = errors.New("invalid receiver name")
-	ErrSkipAnnotationRequiresFieldPattern    = errors.New("skip annotation requires a field pattern")
-	ErrMapAnnotationRequiresArguments        = errors.New("map annotation requires source and destination arguments")
-	ErrConvAnnotationRequiresArguments       = errors.New("conv annotation requires converter and type arguments")
-	ErrLiteralAnnotationRequiresArguments    = errors.New("literal annotation requires field and value arguments")
-	ErrPreprocessAnnotationRequiresFunction  = errors.New("preprocess annotation requires a function name")
-	ErrPostprocessAnnotationRequiresFunction = errors.New("postprocess annotation requires a function name")
-	ErrUnknownStyle                          = errors.New("unknown style")
-	ErrUnknownMatchRule                      = errors.New("unknown match rule")
+	ErrStyleAnnotationRequiresArgument        = errors.New("style annotation requires an argument")
+	ErrMatchAnnotationRequiresArgument        = errors.New("match annotation requires an argument")
+	ErrRecvAnnotationRequiresReceiverName     = errors.New("recv annotation requires a receiver name")
+	ErrInvalidReceiverName                    = errors.New("invalid receiver name")
+	ErrSkipAnnotationRequiresFieldPattern     = errors.New("skip annotation requires a field pattern")
+	ErrMapAnnotationRequiresArguments         = errors.New("map annotation requires source and destination arguments")
+	ErrConvAnnotationRequiresArguments        = errors.New("conv annotation requires converter and type arguments")
+	ErrLiteralAnnotationRequiresArguments     = errors.New("literal annotation requires field and value arguments")
+	ErrPreprocessAnnotationRequiresFunction   = errors.New("preprocess annotation requires a function name")
+	ErrPostprocessAnnotationRequiresFunction  = errors.New("postprocess annotation requires a function name")
+	ErrUnknownStyle                           = errors.New("unknown style")
+	ErrUnknownMatchRule                       = errors.New("unknown match rule")
+	ErrInstantiationCannotBeNil               = errors.New("instantiation cannot be nil")
+	ErrCannotAddInstantiationToNonGeneric     = errors.New("cannot add instantiation to non-generic interface")
+	ErrTypeArgumentCountMismatch              = errors.New("type argument count does not match type parameter count")
+	ErrIsGenericFlagInconsistent              = errors.New("IsGeneric flag inconsistent with TypeParams length")
+	ErrInvalidTypeParameterForInterface       = errors.New("invalid type parameter for interface")
+	ErrNilInstantiationFound                  = errors.New("nil instantiation found")
+	ErrInstantiationWrongTypeArgumentCount    = errors.New("instantiation has wrong type argument count")
+	ErrNonGenericInterfaceHasInstantiations   = errors.New("non-generic interface should not have instantiations")
+	ErrExternalImportsWithoutExternalTypes    = errors.New("external imports specified but no external types found in type arguments")
+	ErrInvalidTypeParameterWithConstraintType = errors.New("invalid type parameter with constraint type")
 )
 
 // InstantiatedInterface represents a concrete instantiation of a generic interface.
@@ -237,17 +247,17 @@ func (info *InterfaceInfo) AddInstantiation(typeSignature string, instantiation 
 	}
 
 	if instantiation == nil {
-		return fmt.Errorf("instantiation cannot be nil")
+		return ErrInstantiationCannotBeNil
 	}
 
 	// Validate that this is actually a generic interface
 	if !info.IsGeneric {
-		return fmt.Errorf("cannot add instantiation to non-generic interface %s", info.Object.Name())
+		return fmt.Errorf("%w: %s", ErrCannotAddInstantiationToNonGeneric, info.Object.Name())
 	}
 
 	// Validate type argument count matches type parameter count
 	if len(instantiation.TypeArgs) != len(info.TypeParams) {
-		return fmt.Errorf("type argument count (%d) does not match type parameter count (%d) for interface %s",
+		return fmt.Errorf("%w: %d vs %d for interface %s", ErrTypeArgumentCountMismatch,
 			len(instantiation.TypeArgs), len(info.TypeParams), info.Object.Name())
 	}
 
@@ -260,14 +270,14 @@ func (info *InterfaceInfo) ValidateGenericConsistency() error {
 	// Check IsGeneric flag consistency
 	hasTypeParams := 0 < len(info.TypeParams)
 	if info.IsGeneric != hasTypeParams {
-		return fmt.Errorf("IsGeneric flag (%v) inconsistent with TypeParams length (%d) for interface %s",
+		return fmt.Errorf("%w: %v vs length %d for interface %s", ErrIsGenericFlagInconsistent,
 			info.IsGeneric, len(info.TypeParams), info.Object.Name())
 	}
 
 	// Validate type parameters
 	for i, typeParam := range info.TypeParams {
 		if !typeParam.IsValid() {
-			return fmt.Errorf("invalid type parameter at index %d (%s) for interface %s: %s",
+			return fmt.Errorf("%w at index %d (%s) for interface %s: %s", ErrInvalidTypeParameterForInterface,
 				i, typeParam.Name, info.Object.Name(), typeParam.GetConstraintType())
 		}
 	}
@@ -276,18 +286,18 @@ func (info *InterfaceInfo) ValidateGenericConsistency() error {
 	if info.IsGeneric && info.Instantiations != nil {
 		for signature, instantiation := range info.Instantiations {
 			if instantiation == nil {
-				return fmt.Errorf("nil instantiation found for signature %s in interface %s",
-					signature, info.Object.Name())
+				return fmt.Errorf("%w for signature %s in interface %s",
+					ErrNilInstantiationFound, signature, info.Object.Name())
 			}
 
 			// Validate type argument count
 			if len(instantiation.TypeArgs) != len(info.TypeParams) {
-				return fmt.Errorf("instantiation %s has wrong type argument count (%d vs %d) for interface %s",
-					signature, len(instantiation.TypeArgs), len(info.TypeParams), info.Object.Name())
+				return fmt.Errorf("%w: instantiation %s (%d vs %d) for interface %s",
+					ErrInstantiationWrongTypeArgumentCount, signature, len(instantiation.TypeArgs), len(info.TypeParams), info.Object.Name())
 			}
 		}
 	} else if !info.IsGeneric && info.Instantiations != nil && 0 < len(info.Instantiations) {
-		return fmt.Errorf("non-generic interface %s should not have instantiations", info.Object.Name())
+		return fmt.Errorf("%w: %s", ErrNonGenericInterfaceHasInstantiations, info.Object.Name())
 	}
 
 	return nil
@@ -344,7 +354,7 @@ func (inst *InstantiatedInterface) IsValid() bool {
 	}
 
 	// Should have type arguments
-	if inst.TypeArgs == nil || len(inst.TypeArgs) == 0 {
+	if len(inst.TypeArgs) == 0 {
 		return false
 	}
 
@@ -443,7 +453,7 @@ func (inst *InstantiatedInterface) ValidateExternalTypeConsistency() error {
 
 	externalTypes := inst.ExtractExternalTypesFromArguments()
 	if len(externalTypes) == 0 && 0 < len(inst.ExternalImports) {
-		return fmt.Errorf("external imports specified but no external types found in type arguments")
+		return ErrExternalImportsWithoutExternalTypes
 	}
 
 	// This is a basic validation - could be enhanced with more thorough checking
@@ -541,17 +551,17 @@ func (p *ASTParser) applyInterfaceBooleanFlags(options *domain.InterfaceOptions,
 	case "convergen":
 		// Base annotation, no action needed
 		return true
-	case "case", "case:off":
-		options.CaseSensitive = annotation.Type == "case"
+	case annotationCase, annotationCaseOff:
+		options.CaseSensitive = annotation.Type == annotationCase
 		return true
-	case "getter", "getter:off":
-		options.UseGetter = annotation.Type == "getter"
+	case annotationGetter, annotationGetterOff:
+		options.UseGetter = annotation.Type == annotationGetter
 		return true
-	case "stringer", "stringer:off":
-		options.UseStringer = annotation.Type == "stringer"
+	case annotationStringer, annotationStringerOff:
+		options.UseStringer = annotation.Type == annotationStringer
 		return true
-	case "typecast", "typecast:off":
-		options.UseTypecast = annotation.Type == "typecast"
+	case annotationTypecast, annotationTypeCastOff:
+		options.UseTypecast = annotation.Type == annotationTypecast
 		return true
 	case "reverse":
 		options.AllowReverse = true
@@ -828,7 +838,7 @@ func (p *ASTParser) extractInterfaceTypeParams(
 				zap.String("interface_name", obj.Name()),
 				zap.String("param_name", paramName),
 				zap.String("constraint_type", domainTypeParam.GetConstraintType()))
-			return nil, fmt.Errorf("invalid type parameter %s with constraint type %s", paramName, domainTypeParam.GetConstraintType())
+			return nil, fmt.Errorf("%w: %s with constraint type %s", ErrInvalidTypeParameterWithConstraintType, paramName, domainTypeParam.GetConstraintType())
 		}
 
 		domainTypeParams = append(domainTypeParams, *domainTypeParam)
@@ -852,21 +862,34 @@ func (p *ASTParser) getDocComment(file *ast.File, obj types.Object) *ast.Comment
 	// Find the AST node corresponding to the object
 	for _, decl := range file.Decls {
 		if genDecl, ok := decl.(*ast.GenDecl); ok {
-			for _, spec := range genDecl.Specs {
-				if typeSpec, ok := spec.(*ast.TypeSpec); ok {
-					if typeSpec.Name.Name == obj.Name() {
-						if genDecl.Doc != nil {
-							return genDecl.Doc
-						}
-
-						if typeSpec.Doc != nil {
-							return typeSpec.Doc
-						}
-					}
-				}
+			if doc := findDocCommentInGenDecl(genDecl, obj.Name()); doc != nil {
+				return doc
 			}
 		}
 	}
 
+	return nil
+}
+
+// findDocCommentInGenDecl finds documentation comment for a named type in a general declaration.
+func findDocCommentInGenDecl(genDecl *ast.GenDecl, targetName string) *ast.CommentGroup {
+	for _, spec := range genDecl.Specs {
+		if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+			if typeSpec.Name.Name == targetName {
+				return getDocFromMatchingType(genDecl, typeSpec)
+			}
+		}
+	}
+	return nil
+}
+
+// getDocFromMatchingType gets documentation from a matching type specification.
+func getDocFromMatchingType(genDecl *ast.GenDecl, typeSpec *ast.TypeSpec) *ast.CommentGroup {
+	if genDecl.Doc != nil {
+		return genDecl.Doc
+	}
+	if typeSpec.Doc != nil {
+		return typeSpec.Doc
+	}
 	return nil
 }

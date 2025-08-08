@@ -121,7 +121,7 @@ func (pl *PackageLoader) LoadPackagesConcurrent(ctx context.Context, paths []str
 }
 
 // loadPackageInfo performs the actual package loading.
-func (pl *PackageLoader) loadPackageInfo(ctx context.Context, sourcePath, destPath string, result *PackageLoadResult) error {
+func (pl *PackageLoader) loadPackageInfo(ctx context.Context, sourcePath, _ string, result *PackageLoadResult) error {
 	// Check file stats for optimization decisions
 	srcStat, err := os.Stat(sourcePath)
 	if err != nil {

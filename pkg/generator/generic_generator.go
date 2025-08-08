@@ -175,15 +175,10 @@ func (gcg *GenericCodeGenerator) GenerateGenericImplementation(
 	defer cancel()
 
 	// Create template data with generic-specific information
-	templateData, err := gcg.createGenericTemplateData(instantiatedInterface)
-	if err != nil {
-		gcg.metrics.FailedGenerations++
-		gcg.metrics.ErrorsEncountered++
-		return "", fmt.Errorf("failed to create template data: %w", err)
-	}
+	templateData := gcg.createGenericTemplateData(instantiatedInterface)
 
 	// Generate method implementations for each method in the interface
-	var generatedMethods []string
+	generatedMethods := make([]string, 0, len(templateData.Methods))
 	for _, method := range templateData.Methods {
 		methodCode, err := gcg.generateGenericMethod(genCtx, method, templateData)
 		if err != nil {
@@ -207,13 +202,8 @@ func (gcg *GenericCodeGenerator) GenerateGenericImplementation(
 
 	// Apply optimizations if enabled
 	if gcg.config.EnableOptimization {
-		optimizedCode, err := gcg.optimizeGeneratedCode(finalCode)
-		if err != nil {
-			gcg.logger.Warn("optimization failed, using unoptimized code", zap.Error(err))
-		} else {
-			finalCode = optimizedCode
-			gcg.metrics.PerformanceOptimizations++
-		}
+		finalCode = gcg.optimizeGeneratedCode(finalCode)
+		gcg.metrics.PerformanceOptimizations++
 	}
 
 	// Update metrics
@@ -234,15 +224,12 @@ func (gcg *GenericCodeGenerator) GenerateGenericImplementation(
 // createGenericTemplateData creates template data with generic-specific information.
 func (gcg *GenericCodeGenerator) createGenericTemplateData(
 	instantiatedInterface *domain.InstantiatedInterface,
-) (*GenericTemplateData, error) {
+) *GenericTemplateData {
 	gcg.logger.Debug("creating generic template data",
 		zap.String("type_signature", instantiatedInterface.TypeSignature))
 
 	// Extract methods from the concrete type
-	methods, err := gcg.extractMethodsFromType(instantiatedInterface.ConcreteType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract methods: %w", err)
-	}
+	methods := gcg.extractMethodsFromType(instantiatedInterface.ConcreteType)
 
 	// Build type parameter mapping
 	typeParams := make([]TypeParam, 0, len(instantiatedInterface.TypeArguments))
@@ -298,7 +285,7 @@ func (gcg *GenericCodeGenerator) createGenericTemplateData(
 	templateData.Metadata["validation_result"] = instantiatedInterface.ValidationResult
 	templateData.Metadata["cache_hit"] = instantiatedInterface.CacheHit
 
-	return templateData, nil
+	return templateData
 }
 
 // generateGenericMethod generates code for a single generic method.
@@ -342,10 +329,7 @@ func (gcg *GenericCodeGenerator) generateGenericMethod(
 	}
 
 	// Apply type substitutions in the generated code
-	substitutedCode, err := gcg.applyTypeSubstitutions(generatedCode, templateData.TypeSubstitutions)
-	if err != nil {
-		return "", fmt.Errorf("%w: %s", ErrTypeSubstitutionFailed, err.Error())
-	}
+	substitutedCode := gcg.applyTypeSubstitutions(generatedCode, templateData.TypeSubstitutions)
 
 	return substitutedCode, nil
 }
@@ -465,7 +449,7 @@ func (gcg *GenericCodeGenerator) isComplexConversion(method *MethodData, templat
 func (gcg *GenericCodeGenerator) applyTypeSubstitutions(
 	code string,
 	substitutions map[string]TypeSubstitution,
-) (string, error) {
+) string {
 	result := code
 
 	for paramName, substitution := range substitutions {
@@ -484,11 +468,11 @@ func (gcg *GenericCodeGenerator) applyTypeSubstitutions(
 		result = strings.ReplaceAll(result, paramName, concreteTypeName)
 	}
 
-	return result, nil
+	return result
 }
 
 // extractMethodsFromType extracts method information from a type.
-func (gcg *GenericCodeGenerator) extractMethodsFromType(typ domain.Type) ([]*MethodData, error) {
+func (gcg *GenericCodeGenerator) extractMethodsFromType(typ domain.Type) []*MethodData {
 	// For interface types, extract method signatures
 	// This is a simplified implementation - in practice would analyze the AST
 	methods := []*MethodData{
@@ -506,7 +490,7 @@ func (gcg *GenericCodeGenerator) extractMethodsFromType(typ domain.Type) ([]*Met
 		},
 	}
 
-	return methods, nil
+	return methods
 }
 
 // extractRequiredImports extracts required imports from the instantiated interface.
@@ -533,9 +517,9 @@ func (gcg *GenericCodeGenerator) extractRequiredImports(
 // optimizeGeneratedCode applies optimizations to generated code.
 func (gcg *GenericCodeGenerator) optimizeGeneratedCode(
 	code string,
-) (string, error) {
+) string {
 	if !gcg.config.EnableOptimization {
-		return code, nil
+		return code
 	}
 
 	optimized := code
@@ -555,7 +539,7 @@ func (gcg *GenericCodeGenerator) optimizeGeneratedCode(
 		zap.Int("original_length", len(code)),
 		zap.Int("optimized_length", len(optimized)))
 
-	return optimized, nil
+	return optimized
 }
 
 // removeRedundantConversions removes redundant type conversions.

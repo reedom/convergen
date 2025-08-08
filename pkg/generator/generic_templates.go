@@ -10,10 +10,13 @@ import (
 
 var (
 	// ErrTemplateNameCannotBeEmpty is returned when a template name is empty.
-	ErrTemplateNameCannotBeEmpty    = errors.New("template name cannot be empty")
+	ErrTemplateNameCannotBeEmpty = errors.New("template name cannot be empty")
+	// ErrTemplateContentCannotBeEmpty is returned when template content is empty.
 	ErrTemplateContentCannotBeEmpty = errors.New("template content cannot be empty")
-	ErrFunctionNameCannotBeEmpty    = errors.New("function name cannot be empty")
-	ErrFunctionCannotBeNil          = errors.New("function cannot be nil")
+	// ErrFunctionNameCannotBeEmpty is returned when a function name is empty.
+	ErrFunctionNameCannotBeEmpty = errors.New("function name cannot be empty")
+	// ErrFunctionCannotBeNil is returned when a function is nil.
+	ErrFunctionCannotBeNil = errors.New("function cannot be nil")
 )
 
 // BaseTemplateData provides basic template data without emitter dependency.

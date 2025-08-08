@@ -8,18 +8,30 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
 	"github.com/reedom/convergen/v8/pkg/internal/events"
 )
+
+// checkForFinalEvent checks if any of the published events is a final event (contains "completed").
+func checkForFinalEvent(publishedEvents []events.Event) bool {
+	for _, event := range publishedEvents {
+		if progressEvent, ok := event.(*events.ProgressEvent); ok {
+			if len(progressEvent.Message) > 0 &&
+				len(progressEvent.Message) > 10 { // "completed" would make message longer
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func TestASTParser_CalculateProgressInterval(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, nil)
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	tests := []struct {
 		name     string
@@ -95,10 +107,10 @@ func TestASTParser_ShouldReportProgress(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, nil)
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	now := time.Now()
 
@@ -209,7 +221,7 @@ func TestASTParser_TrackProgress(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	// Track events published
 	var publishedEvents []events.Event
@@ -224,7 +236,7 @@ func TestASTParser_TrackProgress(t *testing.T) {
 	parser := NewASTParser(logger, eventBus, &Config{
 		EnableProgress: true,
 	})
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	tests := []struct {
 		name             string
@@ -260,7 +272,7 @@ func TestASTParser_TrackProgress(t *testing.T) {
 			done := make(chan struct{})
 
 			// Start progress tracking
-			go parser.trackProgress(ctx, domain.PhaseParsing, tt.total, "Test operation", done)
+			go parser.trackProgress(ctx, tt.total, "Test operation", done)
 
 			// Wait for the specified duration
 			time.Sleep(tt.duration)
@@ -275,19 +287,7 @@ func TestASTParser_TrackProgress(t *testing.T) {
 				assert.Greater(t, len(publishedEvents), 0, "Should have published progress events")
 
 				if tt.expectFinalEvent {
-					// Check if we have a final event (contains "completed")
-					finalEventFound := false
-
-					for _, event := range publishedEvents {
-						if progressEvent, ok := event.(*events.ProgressEvent); ok {
-							if len(progressEvent.Message) > 0 &&
-								len(progressEvent.Message) > 10 { // "completed" would make message longer
-								finalEventFound = true
-								break
-							}
-						}
-					}
-
+					finalEventFound := checkForFinalEvent(publishedEvents)
 					assert.True(t, finalEventFound, "Should have published final progress event")
 				}
 			} else {
@@ -301,12 +301,12 @@ func TestASTParser_TrackProgress_ContextCancellation(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, &Config{
 		EnableProgress: true,
 	})
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -314,7 +314,7 @@ func TestASTParser_TrackProgress_ContextCancellation(t *testing.T) {
 	// Start progress tracking
 	finished := make(chan struct{})
 	go func() {
-		parser.trackProgress(ctx, domain.PhaseParsing, 100, "Test operation", done)
+		parser.trackProgress(ctx, 100, "Test operation", done)
 		close(finished)
 	}()
 
@@ -338,7 +338,7 @@ func TestASTParser_TrackProgress_AdaptiveFrequency(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	// Track events with timestamps
 	var publishedEvents []struct {
@@ -360,7 +360,7 @@ func TestASTParser_TrackProgress_AdaptiveFrequency(t *testing.T) {
 	parser := NewASTParser(logger, eventBus, &Config{
 		EnableProgress: true,
 	})
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -368,7 +368,7 @@ func TestASTParser_TrackProgress_AdaptiveFrequency(t *testing.T) {
 	done := make(chan struct{})
 
 	// Start progress tracking for a large operation
-	go parser.trackProgress(ctx, domain.PhaseParsing, 1000, "Large operation", done)
+	go parser.trackProgress(ctx, 1000, "Large operation", done)
 
 	// Let it run for a while to generate multiple events and potentially trigger adaptive behavior
 	time.Sleep(1500 * time.Millisecond)
@@ -396,10 +396,10 @@ func BenchmarkCalculateProgressInterval(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, nil)
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	testTotals := []int{1, 10, 50, 200, 1000}
 
@@ -416,10 +416,10 @@ func BenchmarkShouldReportProgress(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	parser := NewASTParser(logger, eventBus, nil)
-	defer parser.Close()
+	defer func() { _ = parser.Close() }()
 
 	now := time.Now()
 	lastReport := now.Add(-200 * time.Millisecond)

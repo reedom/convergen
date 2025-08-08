@@ -25,7 +25,7 @@ type RegularInterface interface {
 }
 `
 
-	err := os.WriteFile(testFile, []byte(content), 0644)
+	err := os.WriteFile(testFile, []byte(content), 0600)
 	require.NoError(t, err)
 
 	c, err := NewParser(testFile, testFile+".gen.go")

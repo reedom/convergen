@@ -9,6 +9,12 @@ import (
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
+const (
+	anyConstraint = "any"
+	returnPrefix  = "return "
+	nilValue      = "nil"
+)
+
 // Generic template functions that can be used in templates for type-aware code generation.
 
 // substituteTypeInTemplate substitutes a type parameter with its concrete type in templates.
@@ -69,7 +75,7 @@ func (gcg *GenericCodeGenerator) isGenericTypeInTemplate(typ domain.Type, typePa
 
 // formatTypeParamInTemplate formats a type parameter for display in generated code.
 func (gcg *GenericCodeGenerator) formatTypeParamInTemplate(param TypeParam) string {
-	if param.Constraint != "" && param.Constraint != "any" {
+	if param.Constraint != "" && param.Constraint != anyConstraint {
 		return fmt.Sprintf("%s %s", param.Name, param.Constraint)
 	}
 	return param.Name
@@ -169,7 +175,7 @@ func (gcg *GenericCodeGenerator) generateErrorHandlingInTemplate(
 
 	builder.WriteString("\tif err != nil {\n")
 
-	returnStmt := "return "
+	returnStmt := returnPrefix
 	if returnType != nil {
 		// Zero value for the return type
 		returnStmt += gcg.generateZeroValueInTemplate(returnType) + ", "
@@ -185,7 +191,7 @@ func (gcg *GenericCodeGenerator) generateErrorHandlingInTemplate(
 // generateZeroValueInTemplate generates the zero value for a type.
 func (gcg *GenericCodeGenerator) generateZeroValueInTemplate(typ domain.Type) string {
 	if typ == nil {
-		return "nil"
+		return nilValue
 	}
 
 	switch typ.Kind() {
@@ -203,13 +209,13 @@ func (gcg *GenericCodeGenerator) generateZeroValueInTemplate(typ domain.Type) st
 			return fmt.Sprintf("%s{}", typ.Name())
 		}
 	case domain.KindPointer:
-		return "nil"
+		return nilValue
 	case domain.KindSlice:
-		return "nil"
+		return nilValue
 	case domain.KindMap:
-		return "nil"
+		return nilValue
 	case domain.KindInterface:
-		return "nil"
+		return nilValue
 	default:
 		// For struct and other types, use composite literal
 		typeName := typ.Name()
@@ -297,37 +303,42 @@ func (gcg *GenericCodeGenerator) generateMethodSignatureInTemplate(method *Metho
 
 	// Add return type
 	if method.ReturnType != nil || method.ReturnsError {
-		builder.WriteString(" ")
-
-		hasReturnType := method.ReturnType != nil
-		hasError := method.ReturnsError
-
-		if hasReturnType && hasError {
-			builder.WriteString("(")
-		}
-
-		if hasReturnType {
-			returnType := method.ReturnType.Name()
-			if method.ReturnType.Package() != "" {
-				returnType = method.ReturnType.Package() + "." + returnType
-			}
-			builder.WriteString(returnType)
-		}
-
-		if hasReturnType && hasError {
-			builder.WriteString(", ")
-		}
-
-		if hasError {
-			builder.WriteString("error")
-		}
-
-		if hasReturnType && hasError {
-			builder.WriteString(")")
-		}
+		buildReturnTypeSignature(&builder, method)
 	}
 
 	return builder.String()
+}
+
+// buildReturnTypeSignature builds the return type part of method signature.
+func buildReturnTypeSignature(builder *strings.Builder, method *MethodData) {
+	builder.WriteString(" ")
+
+	hasReturnType := method.ReturnType != nil
+	hasError := method.ReturnsError
+
+	if hasReturnType && hasError {
+		builder.WriteString("(")
+	}
+
+	if hasReturnType {
+		returnType := method.ReturnType.Name()
+		if method.ReturnType.Package() != "" {
+			returnType = method.ReturnType.Package() + "." + returnType
+		}
+		builder.WriteString(returnType)
+	}
+
+	if hasReturnType && hasError {
+		builder.WriteString(", ")
+	}
+
+	if hasError {
+		builder.WriteString("error")
+	}
+
+	if hasReturnType && hasError {
+		builder.WriteString(")")
+	}
 }
 
 // generateValidationInTemplate generates validation code for a field.
@@ -343,7 +354,7 @@ func (gcg *GenericCodeGenerator) generateValidationInTemplate(
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf("\tif %s {\n", validation))
 
-	returnStmt := "return "
+	returnStmt := returnPrefix
 	if returnType != nil {
 		returnStmt += gcg.generateZeroValueInTemplate(returnType) + ", "
 	}
@@ -372,7 +383,7 @@ func (gcg *GenericCodeGenerator) generateConversionInTemplate(
 	builder.WriteString(fmt.Sprintf("\tconverted%s, err := %s(src.%s)\n", destField, converter, sourceField))
 	builder.WriteString("\tif err != nil {\n")
 
-	returnStmt := "return "
+	returnStmt := returnPrefix
 	if returnType != nil {
 		returnStmt += gcg.generateZeroValueInTemplate(returnType) + ", "
 	}
@@ -404,12 +415,12 @@ func (gcg *GenericCodeGenerator) generateCommentInTemplate(comments []string, pr
 // formatTypeConstraintInTemplate formats type constraints for display.
 func (gcg *GenericCodeGenerator) formatTypeConstraintInTemplate(constraint string) string {
 	switch constraint {
-	case "any":
-		return "any"
+	case anyConstraint:
+		return anyConstraint
 	case "comparable":
 		return "comparable"
 	case "":
-		return "any"
+		return anyConstraint
 	default:
 		return constraint
 	}
@@ -441,7 +452,7 @@ func (gcg *GenericCodeGenerator) generateSliceConversionInTemplate(
 		builder.WriteString(fmt.Sprintf("\t\tconverted, err := %s(item)\n", elementConverter))
 		builder.WriteString("\t\tif err != nil {\n")
 
-		returnStmt := "return "
+		returnStmt := returnPrefix
 		if returnType != nil {
 			returnStmt += gcg.generateZeroValueInTemplate(returnType) + ", "
 		}

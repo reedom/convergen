@@ -127,7 +127,7 @@ type RegularInterface interface {
 			sourceFile := filepath.Join(tempDir, "source.go")
 			destFile := filepath.Join(tempDir, "dest.go")
 
-			err := os.WriteFile(sourceFile, []byte(tt.sourceContent), 0644)
+			err := os.WriteFile(sourceFile, []byte(tt.sourceContent), 0600)
 			require.NoError(t, err)
 
 			// Create parser
@@ -207,7 +207,7 @@ type Dest struct {
 	sourceFile := filepath.Join(tempDir, "source.go")
 	destFile := filepath.Join(tempDir, "dest.go")
 
-	err := os.WriteFile(sourceFile, []byte(sourceContent), 0644)
+	err := os.WriteFile(sourceFile, []byte(sourceContent), 0600)
 	require.NoError(t, err)
 
 	// Create parser with high concurrency
@@ -278,7 +278,7 @@ type ComplexType struct {
 	sourceFile := filepath.Join(tempDir, "source.go")
 	destFile := filepath.Join(tempDir, "dest.go")
 
-	err := os.WriteFile(sourceFile, []byte(sourceContent), 0644)
+	err := os.WriteFile(sourceFile, []byte(sourceContent), 0600)
 	require.NoError(t, err)
 
 	// Create parser
@@ -380,7 +380,7 @@ type Source struct {
 			sourceFile := filepath.Join(tempDir, "source.go")
 			destFile := filepath.Join(tempDir, "dest.go")
 
-			err := os.WriteFile(sourceFile, []byte(tt.sourceContent), 0644)
+			err := os.WriteFile(sourceFile, []byte(tt.sourceContent), 0600)
 			require.NoError(t, err)
 
 			// Create parser
@@ -423,7 +423,7 @@ type GenericType[T any] struct {
 	sourceFile := filepath.Join(tempDir, "source.go")
 	destFile := filepath.Join(tempDir, "dest.go")
 
-	err := os.WriteFile(sourceFile, []byte(sourceContent), 0644)
+	err := os.WriteFile(sourceFile, []byte(sourceContent), 0600)
 	require.NoError(t, err)
 
 	// Create parser
@@ -489,7 +489,7 @@ type Dest struct {
 	sourceFile := filepath.Join(tempDir, "source.go")
 	destFile := filepath.Join(tempDir, "dest.go")
 
-	err := os.WriteFile(sourceFile, []byte(sourceContent), 0644)
+	err := os.WriteFile(sourceFile, []byte(sourceContent), 0600)
 	require.NoError(b, err)
 
 	// Create parser

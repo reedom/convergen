@@ -19,7 +19,7 @@ func TestExecutionPlanner_NewExecutionPlanner(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	planner := NewExecutionPlanner(logger, eventBus, nil)
 	assert.NotNil(t, planner)
@@ -61,7 +61,7 @@ func TestExecutionPlanner_CreateExecutionPlan(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 
 			eventBus := events.NewInMemoryEventBus(logger)
-			defer eventBus.Close()
+			defer func() { _ = eventBus.Close() }()
 
 			// Subscribe to events for testing
 			var receivedEvents []events.Event
@@ -121,7 +121,7 @@ func TestExecutionPlanner_DependencyHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	planner := NewExecutionPlanner(logger, eventBus, DefaultConfig())
 
@@ -150,7 +150,7 @@ func TestExecutionPlanner_ConcurrentProcessing(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	config := &Config{
 		MaxConcurrentWorkers: 8,
@@ -199,7 +199,7 @@ func TestExecutionPlanner_OptimizationLevels(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	methods := createTestMethods(5, 8)
 	ctx := context.Background()
@@ -230,7 +230,7 @@ func TestExecutionPlanner_ErrorHandling(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	tests := []struct {
 		name          string
@@ -273,7 +273,7 @@ func TestExecutionPlanner_ResourceLimits(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	config := &Config{
 		MaxConcurrentWorkers: 2,
@@ -314,7 +314,7 @@ func BenchmarkExecutionPlanner_CreatePlan(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	config := DefaultConfig()
 	config.EnableMetrics = false // Disable for more accurate benchmarking
@@ -335,7 +335,7 @@ func BenchmarkExecutionPlanner_LargeScale(b *testing.B) {
 	logger := zaptest.NewLogger(b)
 
 	eventBus := events.NewInMemoryEventBus(logger)
-	defer eventBus.Close()
+	defer func() { _ = eventBus.Close() }()
 
 	config := DefaultConfig()
 	config.EnableMetrics = false

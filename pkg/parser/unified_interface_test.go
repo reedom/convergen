@@ -218,7 +218,7 @@ func TestAdaptiveParser_Basic(t *testing.T) {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 
-	defer os.Remove(tempFile.Name())
+	defer func() { _ = os.Remove(tempFile.Name()) }()
 	defer func() {
 		if err := tempFile.Close(); err != nil {
 			t.Logf("Failed to close temp file: %v", err)

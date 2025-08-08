@@ -3,6 +3,7 @@ package parser
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -21,6 +22,12 @@ import (
 )
 
 const buildTag = "convergen"
+
+// Static errors for err113 compliance.
+var (
+	ErrParseError                 = errors.New("parse error")
+	ErrInterfacePositionsNotFound = errors.New("interface positions not found")
+)
 
 // Parser represents a parser for Go source files that contain convergen interface annotations.
 // It provides functionality to parse source code, extract convergen interfaces and their methods,
@@ -250,11 +257,11 @@ func loadPackageWithLegacyParsing(cfg *packages.Config, srcPath string, parseCon
 	}
 
 	if len(pkgs) == 0 {
-		return nil, nil, fmt.Errorf("%v: failed to load package information", srcPath)
+		return nil, nil, fmt.Errorf("%v: %w", srcPath, ErrFailedToLoadPackageInformation)
 	}
 
 	if parseContext.sourceFile == nil && parseContext.parseErr != nil {
-		return nil, nil, fmt.Errorf("%v: %v", srcPath, parseContext.parseErr)
+		return nil, nil, fmt.Errorf("%v: %w: %v", srcPath, ErrParseError, parseContext.parseErr)
 	}
 
 	return pkgs[0], parseContext.sourceFile, nil
@@ -426,17 +433,7 @@ func (p *Parser) findInterfacePositions(entry *intfEntry) (minPos, maxPos token.
 				}
 
 				if f, ok := node.(*ast.FieldList); ok {
-					if minPos == 0 {
-						minPos = f.Pos()
-						maxPos = f.Closing
-					} else {
-						if f.Pos() < minPos {
-							minPos = f.Pos()
-						}
-						if maxPos < f.Closing {
-							maxPos = f.Closing
-						}
-					}
+					minPos, maxPos = updatePositionRange(minPos, maxPos, f.Pos(), f.Closing)
 				}
 
 				return true
@@ -445,10 +442,24 @@ func (p *Parser) findInterfacePositions(entry *intfEntry) (minPos, maxPos token.
 	}
 
 	if minPos == 0 {
-		return 0, 0, fmt.Errorf("interface positions not found")
+		return 0, 0, ErrInterfacePositionsNotFound
 	}
 
 	return minPos, maxPos, nil
+}
+
+// updatePositionRange updates the min and max position range.
+func updatePositionRange(minPos, maxPos, newStart, newEnd token.Pos) (token.Pos, token.Pos) {
+	if minPos == 0 {
+		return newStart, newEnd
+	}
+	if newStart < minPos {
+		minPos = newStart
+	}
+	if maxPos < newEnd {
+		maxPos = newEnd
+	}
+	return minPos, maxPos
 }
 
 // renderASTToCode converts the modified AST back to Go source code.

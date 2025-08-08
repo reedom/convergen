@@ -182,7 +182,7 @@ func TestEmitter_OptimizeOutput(t *testing.T) {
 			{
 				Name:      "TestMethod",
 				Signature: "func TestMethod(src *Source) (*Dest, error)",
-				Body: "	var dest Dest\n	dest.Field = src.Field\n	return &dest, nil\n",
+				Body:      "\tvar dest Dest\n\tdest.Field = src.Field\n\treturn &dest, nil\n",
 			},
 		},
 		Metadata: &GenerationMetadata{},

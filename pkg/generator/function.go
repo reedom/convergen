@@ -74,28 +74,10 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	sb.WriteString(") ")
 
 	if f.DstVarStyle == model.DstVarReturn {
-		// "func Name(src *SrcModel) (dst *DstModel"
-		sb.WriteString("(")
-		sb.WriteString(f.Dst.Name)
-		sb.WriteString(" ")
-		sb.WriteString(f.Dst.FullType())
-
-		if f.RetError {
-			// "func Name(src *SrcModel) (dst *DstModel, err error"
-			sb.WriteString(", err error")
-		}
-
-		// "func Name(src *SrcModel) (dst *DstModel) {"
-		sb.WriteString(") {\n")
+		writeReturnSignature(f, &sb)
 
 		if f.Dst.Pointer {
-			// "dst = &DstModel{}"
-			sb.WriteString(f.Dst.Name)
-			sb.WriteString(" = ")
-
-			if f.Dst.Pointer {
-				sb.WriteString("&")
-			}
+			writePointerInitialization(f, &sb)
 
 			sb.WriteString(f.Dst.PtrLessFullType())
 			sb.WriteString("{}\n")
@@ -129,4 +111,32 @@ func (g *Generator) FuncToString(f *model.Function) string {
 	sb.WriteString("}\n\n")
 
 	return sb.String()
+}
+
+// writeReturnSignature writes the return signature part of the function.
+func writeReturnSignature(f *model.Function, sb *strings.Builder) {
+	// "func Name(src *SrcModel) (dst *DstModel"
+	sb.WriteString("(")
+	sb.WriteString(f.Dst.Name)
+	sb.WriteString(" ")
+	sb.WriteString(f.Dst.FullType())
+
+	if f.RetError {
+		// "func Name(src *SrcModel) (dst *DstModel, err error"
+		sb.WriteString(", err error")
+	}
+
+	// "func Name(src *SrcModel) (dst *DstModel) {"
+	sb.WriteString(") {\n")
+}
+
+// writePointerInitialization writes the pointer initialization part.
+func writePointerInitialization(f *model.Function, sb *strings.Builder) {
+	// "dst = &DstModel{}"
+	sb.WriteString(f.Dst.Name)
+	sb.WriteString(" = ")
+
+	if f.Dst.Pointer {
+		sb.WriteString("&")
+	}
 }

@@ -26,6 +26,10 @@ var (
 	ErrInvalidImportPath         = errors.New("invalid import path")
 	ErrCircularPackageDependency = errors.New("circular package dependency detected")
 	ErrPackageLoadTimeout        = errors.New("package load timeout")
+	ErrQualifiedTypeIsNil        = errors.New("qualified type is nil")
+	ErrQualifiedTypeEmptyName    = errors.New("qualified type has empty type name")
+	ErrEmptyPackageAlias         = errors.New("qualified type has empty package alias for non-local type")
+	ErrEmptyImportPath           = errors.New("qualified type has empty import path for non-local type")
 )
 
 // QualifiedType represents a type reference that may come from an external package.
@@ -192,7 +196,7 @@ func copyImportMap(importMap map[string]string) map[string]string {
 	return cp
 }
 
-// Supports syntax like: "TypeMapper[pkg.User,dto.UserDTO]" and "Converter[User,UserDTO]".
+// ParseTypeArguments supports syntax like: "TypeMapper[pkg.User,dto.UserDTO]" and "Converter[User,UserDTO]".
 func (cpr *CrossPackageResolver) ParseTypeArguments(
 	ctx context.Context,
 	typeSpec string,
@@ -320,10 +324,7 @@ func (cpr *CrossPackageResolver) ResolveType(
 	}
 
 	// Convert to domain type
-	domainType, err := cpr.convertTodomainType(obj, qualifiedType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert type '%s' to domain type: %w", qualifiedType.TypeName, err)
-	}
+	domainType := cpr.convertTodomainType(obj, qualifiedType)
 
 	cpr.logger.Debug("resolved cross-package type",
 		zap.String("qualified_name", qualifiedType.String()),
@@ -417,7 +418,7 @@ func (cpr *CrossPackageResolver) checkCircularDependency(importPath string) erro
 }
 
 // convertTodomainType converts a types.Object to a domain.Type.
-func (cpr *CrossPackageResolver) convertTodomainType(obj types.Object, qualifiedType *QualifiedType) (domain.Type, error) {
+func (cpr *CrossPackageResolver) convertTodomainType(obj types.Object, qualifiedType *QualifiedType) domain.Type {
 	switch t := obj.Type().(type) {
 	case *types.Named:
 		// Handle named types (structs, interfaces, etc.)
@@ -425,20 +426,20 @@ func (cpr *CrossPackageResolver) convertTodomainType(obj types.Object, qualified
 		kind := getReflectKindFromType(underlying)
 
 		// Create a basic type with the qualified name
-		return domain.NewBasicType(qualifiedType.String(), kind), nil
+		return domain.NewBasicType(qualifiedType.String(), kind)
 
 	case *types.Interface:
 		// Handle interface types
-		return domain.NewBasicType(qualifiedType.String(), getReflectKind("interface")), nil
+		return domain.NewBasicType(qualifiedType.String(), getReflectKind("interface"))
 
 	case *types.Struct:
 		// Handle struct types
-		return domain.NewBasicType(qualifiedType.String(), getReflectKind("struct")), nil
+		return domain.NewBasicType(qualifiedType.String(), getReflectKind("struct"))
 
 	default:
 		// For other types, create a basic type
 		kind := getReflectKindFromType(t)
-		return domain.NewBasicType(qualifiedType.String(), kind), nil
+		return domain.NewBasicType(qualifiedType.String(), kind)
 	}
 }
 
@@ -571,20 +572,20 @@ func getReflectKindFromType(t types.Type) reflect.Kind {
 func (cpr *CrossPackageResolver) ValidateQualifiedTypes(qualifiedTypes []*QualifiedType) error {
 	for i, qt := range qualifiedTypes {
 		if qt == nil {
-			return fmt.Errorf("qualified type at index %d is nil", i)
+			return fmt.Errorf("%w at index %d", ErrQualifiedTypeIsNil, i)
 		}
 
 		if qt.TypeName == "" {
-			return fmt.Errorf("qualified type at index %d has empty type name", i)
+			return fmt.Errorf("%w at index %d", ErrQualifiedTypeEmptyName, i)
 		}
 
 		if !qt.IsLocal {
 			if qt.PackageAlias == "" {
-				return fmt.Errorf("qualified type at index %d has empty package alias for non-local type", i)
+				return fmt.Errorf("%w at index %d", ErrEmptyPackageAlias, i)
 			}
 
 			if qt.ImportPath == "" {
-				return fmt.Errorf("qualified type at index %d has empty import path for non-local type", i)
+				return fmt.Errorf("%w at index %d", ErrEmptyImportPath, i)
 			}
 
 			// Validate that the package alias exists in import map

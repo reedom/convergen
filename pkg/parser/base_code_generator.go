@@ -23,6 +23,7 @@ var (
 	ErrSourceTypeNotAssignableToConverter = errors.New("source type not assignable to converter input")
 	ErrConverterOutputNotAssignableToDest = errors.New("converter output not assignable to destination type")
 	ErrSecondReturnMustBeError            = errors.New("second return value must be error type")
+	ErrInterfaceNotFoundInDeclaration     = errors.New("interface not found in declaration")
 )
 
 // Type name constants for goconst compliance.
@@ -273,29 +274,41 @@ func (p *ASTParser) processInterfaceForBaseCode(file *ast.File, interfaceInfo *I
 	// Find the interface declaration in the AST
 	for _, decl := range file.Decls {
 		if genDecl, ok := decl.(*ast.GenDecl); ok {
-			for _, spec := range genDecl.Specs {
-				if typeSpec, ok := spec.(*ast.TypeSpec); ok {
-					if typeSpec.Name.Name == interfaceInfo.Object.Name() {
-						// Remove doc comments from the interface
-						if genDecl.Doc != nil {
-							genDecl.Doc = nil
-						}
-
-						if typeSpec.Doc != nil {
-							typeSpec.Doc = nil
-						}
-
-						// Insert marker comments
-						p.insertMarkerComments(file, typeSpec, interfaceInfo.Marker)
-
-						return nil
-					}
-				}
+			if err := p.processGenDecl(genDecl, file, interfaceInfo); err == nil {
+				return nil
 			}
 		}
 	}
 
 	return fmt.Errorf("%w: %s", ErrInterfaceNotFoundInAST, interfaceInfo.Object.Name())
+}
+
+// processGenDecl processes a general declaration looking for the target interface.
+func (p *ASTParser) processGenDecl(genDecl *ast.GenDecl, file *ast.File, interfaceInfo *InterfaceInfo) error {
+	for _, spec := range genDecl.Specs {
+		if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+			if typeSpec.Name.Name == interfaceInfo.Object.Name() {
+				processMatchingInterface(genDecl, typeSpec, file, interfaceInfo, p)
+				return nil
+			}
+		}
+	}
+	return ErrInterfaceNotFoundInDeclaration
+}
+
+// processMatchingInterface processes a matched interface type spec.
+func processMatchingInterface(genDecl *ast.GenDecl, typeSpec *ast.TypeSpec, file *ast.File, interfaceInfo *InterfaceInfo, p *ASTParser) {
+	// Remove doc comments from the interface
+	if genDecl.Doc != nil {
+		genDecl.Doc = nil
+	}
+
+	if typeSpec.Doc != nil {
+		typeSpec.Doc = nil
+	}
+
+	// Insert marker comments
+	p.insertMarkerComments(file, typeSpec, interfaceInfo.Marker)
 }
 
 // insertMarkerComments inserts marker comments around the interface.

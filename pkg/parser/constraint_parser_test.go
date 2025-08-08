@@ -632,7 +632,7 @@ func TestConstraintParser_ConcurrentAccess(t *testing.T) {
 
 // Helper functions
 
-func createTestConstraintParser(t *testing.T) *ConstraintParser {
+func createTestConstraintParser(_ *testing.T) *ConstraintParser {
 	cache := NewTypeCache(100)
 	logger := zap.NewNop()
 	typeResolver := NewTypeResolver(cache, logger)

@@ -52,7 +52,7 @@ func TestConfig_parseImportMap(t *testing.T) {
 			name:       "invalid format missing equals",
 			importsStr: "models./internal/models",
 			wantErr:    true,
-			expectErr:  "expected alias=path",
+			expectErr:  "invalid import mapping format",
 		},
 		{
 			name:       "empty alias",

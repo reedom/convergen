@@ -144,20 +144,20 @@ type SourceFile struct {
 	Timeout    time.Duration `json:"timeout,omitempty"`
 }
 
-// ParserFactory creates parser instances based on strategy.
-type ParserFactory struct {
+// Factory creates parser instances based on strategy.
+type Factory struct {
 	defaultConfig *Config
 }
 
 // NewParserFactory creates a new parser factory.
-func NewParserFactory(defaultConfig *Config) *ParserFactory {
-	return &ParserFactory{
+func NewParserFactory(defaultConfig *Config) *Factory {
+	return &Factory{
 		defaultConfig: EnsureValidConfig(defaultConfig),
 	}
 }
 
 // CreateParser creates a parser instance using the specified strategy.
-func (pf *ParserFactory) CreateParser(strategy ParseStrategy) (ConvergenParser, error) {
+func (pf *Factory) CreateParser(strategy ParseStrategy) (ConvergenParser, error) {
 	switch strategy {
 	case StrategyLegacy:
 		return NewLegacyParser(pf.defaultConfig), nil
@@ -171,7 +171,7 @@ func (pf *ParserFactory) CreateParser(strategy ParseStrategy) (ConvergenParser, 
 }
 
 // CreateParserWithConfig creates a parser with custom configuration.
-func (pf *ParserFactory) CreateParserWithConfig(strategy ParseStrategy, config *Config) (ConvergenParser, error) {
+func (pf *Factory) CreateParserWithConfig(strategy ParseStrategy, config *Config) (ConvergenParser, error) {
 	switch strategy {
 	case StrategyLegacy:
 		return NewLegacyParser(config), nil
@@ -185,7 +185,7 @@ func (pf *ParserFactory) CreateParserWithConfig(strategy ParseStrategy, config *
 }
 
 // GetSupportedStrategies returns all supported parsing strategies.
-func (pf *ParserFactory) GetSupportedStrategies() []ParseStrategy {
+func (pf *Factory) GetSupportedStrategies() []ParseStrategy {
 	return []ParseStrategy{StrategyLegacy, StrategyModern, StrategyAuto}
 }
 
@@ -777,7 +777,7 @@ func (ap *AdaptiveParser) GetMetrics() *ParseMetrics {
 func (ap *AdaptiveParser) Validate(ctx context.Context, sourcePath string) ([]ParseError, []ParseWarning, error) {
 	// Use modern parser for validation as it has more comprehensive validation
 	modernParser := NewModernParser(ap.config)
-	defer modernParser.Close()
+	defer func() { _ = modernParser.Close() }()
 
 	return modernParser.Validate(ctx, sourcePath)
 }

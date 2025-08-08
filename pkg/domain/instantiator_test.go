@@ -224,7 +224,7 @@ func TestNewGenericInterface(t *testing.T) {
 		result, err := NewGenericInterface("TestInterface", []TypeParam{*invalidParam}, nil, "testpkg")
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid type parameter")
+		assert.Contains(t, err.Error(), "invalid type argument at index 0: T")
 		assert.Nil(t, result)
 	})
 }
@@ -317,7 +317,7 @@ func TestInstantiateInterface(t *testing.T) {
 		// Test with invalid type (float)
 		typeArgs = []Type{Float64Type}
 
-		result, err = instantiator.InstantiateInterface(genericInterface, typeArgs)
+		_, err = instantiator.InstantiateInterface(genericInterface, typeArgs)
 
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, ErrConstraintViolation)
@@ -460,9 +460,7 @@ func TestConstraintValidation(t *testing.T) {
 		typeParams := []TypeParam{*NewAnyTypeParam("T", 0)}
 		typeArgs := map[string]Type{"T": StringType}
 
-		result, err := instantiator.validateConstraints(typeParams, typeArgs)
-
-		require.NoError(t, err)
+		result := instantiator.validateConstraints(typeParams, typeArgs)
 		assert.True(t, result.Valid)
 		assert.Equal(t, 0, len(result.ViolatedConstraints))
 		assert.Equal(t, 1, len(result.Details))
@@ -473,9 +471,7 @@ func TestConstraintValidation(t *testing.T) {
 		typeParams := []TypeParam{*NewComparableTypeParam("T", 0)}
 		typeArgs := map[string]Type{"T": StringType}
 
-		result, err := instantiator.validateConstraints(typeParams, typeArgs)
-
-		require.NoError(t, err)
+		result := instantiator.validateConstraints(typeParams, typeArgs)
 		assert.True(t, result.Valid)
 		assert.Equal(t, 0, len(result.ViolatedConstraints))
 	})
@@ -485,9 +481,7 @@ func TestConstraintValidation(t *testing.T) {
 		sliceType := NewSliceType(StringType, "")
 		typeArgs := map[string]Type{"T": sliceType}
 
-		result, err := instantiator.validateConstraints(typeParams, typeArgs)
-
-		require.NoError(t, err)
+		result := instantiator.validateConstraints(typeParams, typeArgs)
 		assert.False(t, result.Valid)
 		assert.Equal(t, 1, len(result.ViolatedConstraints))
 
@@ -501,9 +495,7 @@ func TestConstraintValidation(t *testing.T) {
 		typeParams := []TypeParam{*NewAnyTypeParam("T", 0)}
 		typeArgs := map[string]Type{} // Missing T
 
-		result, err := instantiator.validateConstraints(typeParams, typeArgs)
-
-		require.NoError(t, err)
+		result := instantiator.validateConstraints(typeParams, typeArgs)
 		assert.False(t, result.Valid)
 		assert.Equal(t, 1, len(result.ViolatedConstraints))
 
@@ -519,14 +511,12 @@ func TestConstraintValidation(t *testing.T) {
 
 		// Valid case - string matches union
 		typeArgs := map[string]Type{"T": StringType}
-		result, err := instantiator.validateConstraints(typeParams, typeArgs)
-		require.NoError(t, err)
+		result := instantiator.validateConstraints(typeParams, typeArgs)
 		assert.True(t, result.Valid)
 
 		// Invalid case - float doesn't match union
 		typeArgs = map[string]Type{"T": Float64Type}
-		result, err = instantiator.validateConstraints(typeParams, typeArgs)
-		require.NoError(t, err)
+		result = instantiator.validateConstraints(typeParams, typeArgs)
 		assert.False(t, result.Valid)
 		assert.Equal(t, 1, len(result.ViolatedConstraints))
 		assert.Contains(t, result.ViolatedConstraints[0].ViolationMessage, "union types")
