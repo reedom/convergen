@@ -9,18 +9,29 @@ import (
 
 	"golang.org/x/tools/imports"
 
+	"github.com/reedom/convergen/v8/pkg/config"
 	"github.com/reedom/convergen/v8/pkg/generator/model"
 )
 
 // Generator represents a code generator.
 type Generator struct {
-	code model.Code // the code to generate
+	code   model.Code    // the code to generate
+	config config.Config // the configuration options
 }
 
 // NewGenerator creates a new generator with the given code.
 func NewGenerator(code model.Code) *Generator {
 	return &Generator{
-		code: code,
+		code:   code,
+		config: config.Config{}, // Use default config
+	}
+}
+
+// NewGeneratorWithConfig creates a new generator with the given code and configuration.
+func NewGeneratorWithConfig(code model.Code, cfg config.Config) *Generator {
+	return &Generator{
+		code:   code,
+		config: cfg,
 	}
 }
 

@@ -594,3 +594,200 @@ func TestFormatImportMap(t *testing.T) {
 		})
 	}
 }
+
+// Test struct literal configuration validation.
+func TestConfig_validateStructLiteralConfig(t *testing.T) {
+	tests := []struct {
+		name      string
+		config    Config
+		wantErr   bool
+		expectErr string
+	}{
+		{
+			name:    "no flags set",
+			config:  Config{},
+			wantErr: false,
+		},
+		{
+			name: "only no-struct-literal set",
+			config: Config{
+				NoStructLiteral: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "only struct-literal set",
+			config: Config{
+				StructLiteral: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "both flags set - conflict",
+			config: Config{
+				NoStructLiteral: true,
+				StructLiteral:   true,
+			},
+			wantErr:   true,
+			expectErr: "cannot specify both",
+		},
+		{
+			name: "verbose with no-struct-literal",
+			config: Config{
+				NoStructLiteral: true,
+				Verbose:         true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "verbose with struct-literal",
+			config: Config{
+				StructLiteral: true,
+				Verbose:       true,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.validateStructLiteralConfig()
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.expectErr != "" {
+					assert.Contains(t, err.Error(), tt.expectErr)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Test struct literal helper methods.
+func TestConfig_StructLiteralHelpers(t *testing.T) {
+	tests := []struct {
+		name                    string
+		config                  Config
+		expectDisabled          bool
+		expectExplicitlyEnabled bool
+		expectVerbose           bool
+	}{
+		{
+			name:                    "default config",
+			config:                  Config{},
+			expectDisabled:          false,
+			expectExplicitlyEnabled: false,
+			expectVerbose:           false,
+		},
+		{
+			name: "no-struct-literal enabled",
+			config: Config{
+				NoStructLiteral: true,
+			},
+			expectDisabled:          true,
+			expectExplicitlyEnabled: false,
+			expectVerbose:           false,
+		},
+		{
+			name: "struct-literal enabled",
+			config: Config{
+				StructLiteral: true,
+			},
+			expectDisabled:          false,
+			expectExplicitlyEnabled: true,
+			expectVerbose:           false,
+		},
+		{
+			name: "verbose enabled",
+			config: Config{
+				Verbose: true,
+			},
+			expectDisabled:          false,
+			expectExplicitlyEnabled: false,
+			expectVerbose:           true,
+		},
+		{
+			name: "all flags set",
+			config: Config{
+				NoStructLiteral: true,
+				StructLiteral:   false, // This should be false to avoid conflict
+				Verbose:         true,
+			},
+			expectDisabled:          true,
+			expectExplicitlyEnabled: false,
+			expectVerbose:           true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectDisabled, tt.config.IsStructLiteralDisabled())
+			assert.Equal(t, tt.expectExplicitlyEnabled, tt.config.IsStructLiteralExplicitlyEnabled())
+			assert.Equal(t, tt.expectVerbose, tt.config.IsVerboseMode())
+		})
+	}
+}
+
+// Test string representation includes new fields.
+func TestConfig_StringWithStructLiteralFields(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   Config
+		contains []string
+	}{
+		{
+			name:     "default config",
+			config:   Config{Input: "test.go", Output: "test.gen.go"},
+			contains: []string{"Input: \"test.go\"", "Output: \"test.gen.go\""},
+		},
+		{
+			name: "with no-struct-literal",
+			config: Config{
+				Input:           "test.go",
+				Output:          "test.gen.go",
+				NoStructLiteral: true,
+			},
+			contains: []string{"Input: \"test.go\"", "NoStructLiteral: true"},
+		},
+		{
+			name: "with struct-literal",
+			config: Config{
+				Input:         "test.go",
+				Output:        "test.gen.go",
+				StructLiteral: true,
+			},
+			contains: []string{"Input: \"test.go\"", "StructLiteral: true"},
+		},
+		{
+			name: "with verbose",
+			config: Config{
+				Input:   "test.go",
+				Output:  "test.gen.go",
+				Verbose: true,
+			},
+			contains: []string{"Input: \"test.go\"", "Verbose: true"},
+		},
+		{
+			name: "with all struct literal flags",
+			config: Config{
+				Input:           "test.go",
+				Output:          "test.gen.go",
+				NoStructLiteral: false, // Only one should be true to avoid conflict
+				StructLiteral:   true,
+				Verbose:         true,
+			},
+			contains: []string{"Input: \"test.go\"", "StructLiteral: true", "Verbose: true"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.String()
+			for _, expected := range tt.contains {
+				assert.Contains(t, result, expected)
+			}
+		})
+	}
+}

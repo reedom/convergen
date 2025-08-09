@@ -66,7 +66,7 @@ func Run(conf config.Config) error {
 		FunctionBlocks: funcBlocks,
 	}
 
-	g := generator.NewGenerator(code)
+	g := generator.NewGeneratorWithConfig(code, conf)
 
 	_, err = g.Generate(conf.Output, conf.Prints, conf.DryRun)
 	if err != nil {

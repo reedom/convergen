@@ -30,6 +30,8 @@ var (
 	ErrTypeSpecWithQualifiedTypes = errors.New("type specification contains qualified types but no import mappings provided")
 	// ErrInvalidInterfaceName is returned when interface name in type specification is invalid.
 	ErrInvalidInterfaceName = errors.New("invalid interface name in type specification")
+	// ErrConflictingStructLiteralFlags is returned when both --struct-literal and --no-struct-literal flags are specified.
+	ErrConflictingStructLiteralFlags = errors.New("cannot specify both --struct-literal and --no-struct-literal flags")
 )
 
 // Usage prints the usage of the tool.
@@ -41,9 +43,14 @@ func Usage() {
 	sb.WriteString("Cross-Package Type Support:\n")
 	sb.WriteString("  -type TypeMapper[pkg.User,dto.UserDTO]  Specify generic interface with cross-package types\n")
 	sb.WriteString("  -imports pkg=./internal/pkg,dto=./dto   Import mappings for package aliases\n\n")
+	sb.WriteString("Generation Control:\n")
+	sb.WriteString("  -no-struct-literal                      Disable struct literal output, use traditional assignment\n")
+	sb.WriteString("  -struct-literal                         Enable struct literal output (overrides project settings)\n")
+	sb.WriteString("  -verbose                                Show generation decisions and fallback reasons\n\n")
 	sb.WriteString("Examples:\n")
 	sb.WriteString("  convergen -type Converter[User,UserDTO] input.go\n")
-	sb.WriteString("  convergen -type TypeMapper[models.User,dto.UserDTO] -imports models=./internal/models,dto=./pkg/dto input.go\n\n")
+	sb.WriteString("  convergen -no-struct-literal input.go\n")
+	sb.WriteString("  convergen -verbose -type TypeMapper[models.User,dto.UserDTO] -imports models=./internal/models,dto=./pkg/dto input.go\n\n")
 	sb.WriteString("Flags:\n")
 	_, _ = fmt.Fprint(os.Stderr, sb.String())
 
@@ -70,6 +77,14 @@ type Config struct {
 	TypeSpec string
 	// ImportMap maps package aliases to import paths (e.g., "models=./internal/models")
 	ImportMap map[string]string
+
+	// Struct literal generation control
+	// NoStructLiteral disables struct literal output globally, using traditional assignment style
+	NoStructLiteral bool
+	// StructLiteral explicitly enables struct literal output (for overriding project settings)
+	StructLiteral bool
+	// Verbose enables detailed generation decision reporting
+	Verbose bool
 }
 
 // String returns the string representation of the config.
@@ -86,6 +101,15 @@ func (c *Config) String() string {
 	sb.WriteString(c.TypeSpec)
 	sb.WriteString("\"\n\tImportMap: ")
 	sb.WriteString(formatImportMap(c.ImportMap))
+	if c.NoStructLiteral {
+		sb.WriteString("\n\tNoStructLiteral: true")
+	}
+	if c.StructLiteral {
+		sb.WriteString("\n\tStructLiteral: true")
+	}
+	if c.Verbose {
+		sb.WriteString("\n\tVerbose: true")
+	}
 	sb.WriteString("\n}")
 
 	return sb.String()
@@ -125,6 +149,11 @@ func (c *Config) ParseArgs() error {
 	typeSpec := flag.String("type", "", "Specify generic interface to instantiate (e.g., TypeMapper[models.User,dto.UserDTO])")
 	imports := flag.String("imports", "", "Package alias mappings (e.g., models=./internal/models,dto=./pkg/dto)")
 
+	// Struct literal generation control flags
+	noStructLiteral := flag.Bool("no-struct-literal", false, "Disable struct literal output, use traditional assignment")
+	structLiteral := flag.Bool("struct-literal", false, "Enable struct literal output (overrides project settings)")
+	verbose := flag.Bool("verbose", false, "Show generation decisions and fallback reasons")
+
 	flag.Usage = Usage
 	flag.Parse()
 
@@ -157,6 +186,11 @@ func (c *Config) ParseArgs() error {
 	// Parse cross-package type configuration
 	c.TypeSpec = strings.TrimSpace(*typeSpec)
 
+	// Parse struct literal configuration
+	c.NoStructLiteral = *noStructLiteral
+	c.StructLiteral = *structLiteral
+	c.Verbose = *verbose
+
 	importMap, err := c.parseImportMap(*imports)
 	if err != nil {
 		return fmt.Errorf("failed to parse import mappings: %w", err)
@@ -166,6 +200,11 @@ func (c *Config) ParseArgs() error {
 	// Validate cross-package configuration consistency
 	if err := c.validateCrossPackageConfig(); err != nil {
 		return fmt.Errorf("invalid cross-package configuration: %w", err)
+	}
+
+	// Validate struct literal configuration consistency
+	if err := c.validateStructLiteralConfig(); err != nil {
+		return fmt.Errorf("invalid struct literal configuration: %w", err)
 	}
 
 	return nil
@@ -333,4 +372,29 @@ func (c *Config) GetPackageAlias(alias string) (string, bool) {
 
 	path, exists := c.ImportMap[alias]
 	return path, exists
+}
+
+// validateStructLiteralConfig validates the consistency of struct literal configuration.
+func (c *Config) validateStructLiteralConfig() error {
+	// Check for conflicting flags
+	if c.NoStructLiteral && c.StructLiteral {
+		return ErrConflictingStructLiteralFlags
+	}
+
+	return nil
+}
+
+// IsStructLiteralDisabled returns true if struct literal generation is explicitly disabled via CLI.
+func (c *Config) IsStructLiteralDisabled() bool {
+	return c.NoStructLiteral
+}
+
+// IsStructLiteralExplicitlyEnabled returns true if struct literal generation is explicitly enabled via CLI.
+func (c *Config) IsStructLiteralExplicitlyEnabled() bool {
+	return c.StructLiteral
+}
+
+// IsVerboseMode returns true if verbose generation reporting is enabled.
+func (c *Config) IsVerboseMode() bool {
+	return c.Verbose
 }

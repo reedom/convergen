@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -13,6 +15,20 @@ import (
 // the variable declarations (if any), the assignment statements, and the return statement.
 // The function uses ManipulatorToString to generate the string representation of manipulators.
 func (g *Generator) FuncToString(f *model.Function) string {
+	// Determine output style based on CLI flags and function configuration
+	outputStyle := g.determineOutputStyle(f)
+
+	// Add verbose comment if requested
+	if g.config.IsVerboseMode() {
+		f.Comments = append([]string{fmt.Sprintf("// Generated with output style: %s", outputStyle)}, f.Comments...)
+		if outputStyle == model.OutputStyleTraditional && g.config.IsStructLiteralExplicitlyEnabled() {
+			f.Comments = append(f.Comments, "// Note: Using traditional assignment (struct literal not yet fully implemented)")
+		}
+	}
+
+	// TODO: Implement actual struct literal generation when outputStyle == OutputStyleStructLiteral
+	// For now, continue with existing traditional assignment generation
+
 	var sb strings.Builder
 
 	// doc comment
@@ -139,4 +155,144 @@ func writePointerInitialization(f *model.Function, sb *strings.Builder) {
 	if f.Dst.Pointer {
 		sb.WriteString("&")
 	}
+}
+
+// determineOutputStyle determines the output style based on CLI flags and other factors.
+// Priority: CLI flags (highest) > method annotations > interface annotations > default.
+func (g *Generator) determineOutputStyle(f *model.Function) model.OutputStyle {
+	// Priority 1: CLI flags (highest priority)
+	if g.config.IsStructLiteralDisabled() {
+		return model.OutputStyleTraditional
+	}
+	if g.config.IsStructLiteralExplicitlyEnabled() {
+		return model.OutputStyleStructLiteral
+	}
+
+	// Priority 2: Function-level output style (if set)
+	if f.OutputStyle != "" {
+		return f.OutputStyle
+	}
+
+	// Priority 3: Default behavior (for now, traditional assignment to maintain compatibility)
+	// TODO: Once struct literal is fully implemented, this should default to OutputStyleAuto
+	return model.OutputStyleTraditional
+}
+
+// canUseStructLiteral determines whether a function can be generated using struct literal syntax.
+// It performs compatibility analysis to detect incompatible features that require traditional assignment.
+func (g *Generator) canUseStructLiteral(f *model.Function) bool {
+	// Check for incompatible features that require imperative execution
+	if f.PreProcess != nil || f.PostProcess != nil {
+		return false
+	}
+
+	// Check for incompatible destination variable style
+	// :style arg methods modify the passed argument, incompatible with struct literal return
+	if f.DstVarStyle == model.DstVarArg {
+		return false
+	}
+
+	// Check all assignments for compatibility
+	for _, assignment := range f.Assignments {
+		if !g.canAssignInStructLiteral(assignment) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// canAssignInStructLiteral determines whether an assignment can be included in a struct literal.
+// Returns false for assignments that require imperative execution or error handling.
+func (g *Generator) canAssignInStructLiteral(assignment model.Assignment) bool {
+	// Error-returning assignments need imperative style for error checking
+	if assignment.RetError() {
+		return false
+	}
+
+	// Complex assignments that generate multiple statements need imperative style
+	if g.isComplexAssignment(assignment) {
+		return false
+	}
+
+	// Skip and NoMatch assignments are not included in struct literals
+	// but they don't prevent struct literal usage
+	switch assignment.(type) {
+	case model.SkipField, model.NoMatchField:
+		return true // These don't appear in struct literal but don't prevent it
+	default:
+		return true // Simple value assignments are compatible
+	}
+}
+
+// isComplexAssignment determines if an assignment generates complex imperative code.
+// Complex assignments include loops, conditional blocks, and multiple statements.
+func (g *Generator) isComplexAssignment(assignment model.Assignment) bool {
+	switch assignment.(type) {
+	case model.SimpleField:
+		// Simple field assignments are not complex
+		return false
+	case model.SkipField, model.NoMatchField:
+		// Skip/NoMatch don't generate complex code (just comments)
+		return false
+	case model.NestStruct:
+		// Nested structs generate conditional blocks and are complex
+		return true
+	case model.SliceAssignment, model.SliceLoopAssignment, model.SliceTypecastAssignment:
+		// All slice assignments generate conditional blocks and loops
+		return true
+	default:
+		// Unknown assignment types are considered complex for safety
+		return true
+	}
+}
+
+// getFallbackReason returns a human-readable explanation of why struct literal cannot be used.
+// This is used for verbose mode reporting and debugging.
+func (g *Generator) getFallbackReason(f *model.Function) string {
+	if f.PreProcess != nil {
+		return "preprocess annotation requires imperative execution before struct creation"
+	}
+	if f.PostProcess != nil {
+		return "postprocess annotation requires imperative execution after struct creation"
+	}
+	if f.DstVarStyle == model.DstVarArg {
+		return ":style arg annotation modifies passed argument, incompatible with struct literal return"
+	}
+
+	// Check assignments for specific reasons
+	for i, assignment := range f.Assignments {
+		if assignment.RetError() {
+			return fmt.Sprintf("assignment %d returns error, requires imperative error handling", i+1)
+		}
+		if g.isComplexAssignment(assignment) {
+			switch assignment.(type) {
+			case model.NestStruct:
+				return fmt.Sprintf("assignment %d contains nested struct with conditional logic", i+1)
+			case model.SliceAssignment, model.SliceLoopAssignment, model.SliceTypecastAssignment:
+				return fmt.Sprintf("assignment %d contains slice operations requiring loops and conditionals", i+1)
+			default:
+				return fmt.Sprintf("assignment %d contains complex logic requiring imperative execution", i+1)
+			}
+		}
+	}
+
+	// This should not happen if canUseStructLiteral works correctly
+	return "unknown compatibility issue detected"
+}
+
+// ErrIncompatibleStructLiteral is returned when struct literal is forced but incompatible features are detected.
+var ErrIncompatibleStructLiteral = errors.New("method is forced to use struct literal but has incompatible features")
+
+// validateStructLiteralCompatibility performs pre-generation validation for forced struct literal usage.
+// Returns an error if struct literal is forced but incompatible features are detected.
+func (g *Generator) validateStructLiteralCompatibility(f *model.Function) error {
+	// Check if struct literal is explicitly forced through configuration
+	// TODO: This will need to check configuration flags when they're integrated
+	if f.OutputStyle == model.OutputStyleStructLiteral && !g.canUseStructLiteral(f) {
+		return fmt.Errorf("method %s: %w: %s",
+			f.Name, ErrIncompatibleStructLiteral, g.getFallbackReason(f))
+	}
+
+	return nil
 }

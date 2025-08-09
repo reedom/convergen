@@ -24,21 +24,21 @@ See requirements.md for acceptance criteria and design.md for technical analysis
 
 ### TASK-003: CLI Flag Integration
 **Requirements**: FR-004, CR-003  
-**Status**: [ ] Pending
-- [ ] Add `--no-struct-literal` and `--struct-literal` flags to `cmd/convergen/main.go`
-- [ ] Add `--verbose` flag for generation decision reporting
-- [ ] Implement option passing from CLI to generator
-- [ ] Add CLI flag validation and conflict detection
-- [ ] Update help text and usage documentation
+**Status**: [x] Complete
+- [x] Add `--no-struct-literal` and `--struct-literal` flags to `cmd/convergen/main.go`
+- [x] Add `--verbose` flag for generation decision reporting
+- [x] Implement option passing from CLI to generator
+- [x] Add CLI flag validation and conflict detection
+- [x] Update help text and usage documentation
 
 ### TASK-004: Compatibility Detection Engine
 **Requirements**: FR-005, NFR-001  
-**Status**: [ ] Pending
-- [ ] Implement `canUseStructLiteral()` method in generator
-- [ ] Add `canAssignInStructLiteral()` assignment compatibility check
-- [ ] Implement `getFallbackReason()` for documentation
-- [ ] Add `validateStructLiteralCompatibility()` for pre-generation validation
-- [ ] Create comprehensive compatibility test suite
+**Status**: [x] Complete
+- [x] Implement `canUseStructLiteral()` method in generator
+- [x] Add `canAssignInStructLiteral()` assignment compatibility check
+- [x] Implement `getFallbackReason()` for documentation
+- [x] Add `validateStructLiteralCompatibility()` for pre-generation validation
+- [x] Create comprehensive compatibility test suite
 
 ### TASK-005: Core Generation Logic
 **Requirements**: FR-001, FR-005, NFR-002  
