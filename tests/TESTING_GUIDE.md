@@ -106,7 +106,6 @@ go test ./tests -parallel 4 -v
 ## Documentation Links
 
 - **Framework Overview**: [`tests/README.md`](./README.md)
-- **Contributor Guide**: [`tests/CONTRIBUTING.md`](./CONTRIBUTING.md)
 - **Examples**: [`tests/examples/`](./examples/)
 - **Project Integration**: [`CLAUDE.md`](../CLAUDE.md)
 
