@@ -210,14 +210,18 @@ func (p *Parser) applyMatchNotation(args []string, n *ast.Comment, opts *option.
 }
 
 // applyReceiverNotation applies receiver notation to options.
+// The receiver can be a simple identifier (e.g., "c") or a full type specification (e.g., "*UserService").
 func (p *Parser) applyReceiverNotation(args []string, n *ast.Comment, opts *option.Options) error {
 	if len(args) == 0 {
-		return logger.Errorf("%v: needs name for the receiver", p.fset.Position(n.Pos()))
-	} else if !isValidIdentifier(args[0]) {
-		return logger.Errorf("%v: invalid ident", p.fset.Position(n.Pos()))
+		return logger.Errorf("%v: needs receiver specification", p.fset.Position(n.Pos()))
 	}
 
-	opts.Receiver = args[0]
+	receiver := args[0]
+	if !p.isValidReceiverSpec(receiver) {
+		return logger.Errorf("%v: invalid receiver specification '%s'", p.fset.Position(n.Pos()), receiver)
+	}
+
+	opts.Receiver = receiver
 	return nil
 }
 
@@ -459,4 +463,54 @@ func (p *Parser) lookupManipulatorFunc(funcName, optName string, pos token.Pos) 
 		RetError:       sig.Results().Len() == 1 && util.IsErrorType(sig.Results().At(0).Type()),
 		Pos:            pos,
 	}, nil
+}
+
+// isValidReceiverSpec validates that the receiver specification follows valid Go receiver syntax.
+// It accepts:
+// - Simple identifiers: "c", "service", "converter"
+// - Pointer type specifications: "*UserService", "*pkg.Service"
+// - Non-pointer type specifications: "UserService", "pkg.Service"
+func (p *Parser) isValidReceiverSpec(spec string) bool {
+	if spec == "" {
+		return false
+	}
+
+	// Check for simple identifier (backward compatibility)
+	if isValidIdentifier(spec) {
+		return true
+	}
+
+	// Check for pointer type specification
+	if strings.HasPrefix(spec, "*") {
+		typeName := spec[1:]
+		return p.isValidTypeName(typeName)
+	}
+
+	// Check for non-pointer type specification
+	return p.isValidTypeName(spec)
+}
+
+// isValidTypeName validates that a string is a valid Go type name.
+// It accepts:
+// - Simple type names: "UserService", "Converter"
+// - Qualified type names: "pkg.UserService", "github.com/user/repo.Service"
+func (p *Parser) isValidTypeName(typeName string) bool {
+	if typeName == "" {
+		return false
+	}
+
+	// Split on dots to handle qualified names
+	parts := strings.Split(typeName, ".")
+	if len(parts) == 0 {
+		return false
+	}
+
+	// Each part should be a valid identifier
+	for _, part := range parts {
+		if !isValidIdentifier(part) {
+			return false
+		}
+	}
+
+	return true
 }

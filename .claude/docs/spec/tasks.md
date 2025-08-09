@@ -27,8 +27,6 @@
 
 ### Code Generation Features
 - [ ] TASK-014 Complete annotation support for all types · refs: REQ-1.3, REQ-3.4, REQ-3.5, REQ-3.6 · DoD: All annotations work with struct literals and assignment blocks
-- [ ] TASK-015 Implement receiver method generation · refs: REQ-4.4 · DoD: :recv annotation generates methods instead of functions
-- [ ] TASK-016 Add function signature style support · refs: REQ-4.5 · DoD: :style arg/return generates appropriate function signatures
 - [ ] TASK-017 Implement converter function error propagation · refs: REQ-5.1, REQ-5.2 · DoD: Error-returning converters handled in both output styles
 
 ### Performance and Concurrency
@@ -69,6 +67,8 @@
 ## Done
 - [x] TASK-004 Implement struct literal default generation · refs: REQ-4.1, REQ-4.2 · DoD: Simple conversions generate struct literals automatically
 - [x] TASK-005 Add struct literal fallback detection · refs: REQ-4.2, REQ-4.3 · DoD: Complex scenarios automatically use assignment blocks
+- [x] TASK-015 Implement receiver method generation · refs: REQ-4.4 · DoD: :recv annotation generates methods instead of functions
+- [x] TASK-016 Add function signature style support · refs: REQ-4.5 · DoD: :style arg/return generates appropriate function signatures
 
 ## Retired
 # - [x] TASK-XXX (retired) <title> · refs: REQ-X.X · DoD: <criterion>

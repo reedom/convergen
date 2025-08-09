@@ -14,7 +14,7 @@ type Options struct {
 	Getter              bool              // Whether to use getter methods to access fields
 	Stringer            bool              // Whether to use stringer methods to convert values to strings
 	Typecast            bool              // Whether to use explicit typecasts when converting values
-	Receiver            string            // Receiver name for method generation
+	Receiver            string            // Receiver specification for method generation (e.g., "c" or "*UserService")
 	Reverse             bool              // Whether to reverse the order of struct tags
 	SkipFields          []*PatternMatcher // List of field names to skip during conversion
 	NameMapper          []*NameMatcher    // List of field name mapping rules

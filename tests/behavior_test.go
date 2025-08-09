@@ -208,6 +208,7 @@ func TestAnnotationCoverage(t *testing.T) {
 		"typecast":          helpers.TypecastAnnotationScenario().WithBehaviorTests(),
 		"stringer":          helpers.StringerAnnotationScenario().WithBehaviorTests(),
 		"recv_var":          helpers.RecvAnnotationScenario("c").WithBehaviorTests(),
+		"recv_type_spec":    helpers.RecvTypeSpecScenario("*UserService").WithBehaviorTests().WithCodeChecks(helpers.Contains("func (u *UserService) Convert")),
 		"map_basic":         helpers.MapAnnotationScenario("FirstName", "FullName").WithBehaviorTests(),
 		"map_templated":     helpers.MapTemplatedArgumentsScenario().WithBehaviorTests().WithCodeChecks(helpers.Contains("additionalInfo")),
 		"map_method_chain":  helpers.MapMethodChainScenario().WithBehaviorTests(),

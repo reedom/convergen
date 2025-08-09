@@ -105,13 +105,7 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 		additionalArgsVars[i] = p.createVar(arg, fmt.Sprintf("arg%d", i))
 	}
 
-	if m.Opts.Receiver != "" {
-		if srcVar.External {
-			return nil, logger.Errorf("%v: an external package type cannot be a receiver", p.fset.Position(m.Method.Pos()))
-		}
-
-		srcVar.Name = m.Opts.Receiver
-	}
+	// The receiver logic is now handled in the Function model after creation
 
 	var assignments []gmodel.Assignment
 
@@ -151,6 +145,20 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 		Assignments:    assignments,
 		PreProcess:     preProcess,
 		PostProcess:    postProcess,
+	}
+
+	// Parse receiver specification and set up receiver variables
+	fn.ParseReceiverSpec()
+
+	// Validate receiver compatibility
+	if fn.IsReceiverMethod() && srcVar.External {
+		return nil, logger.Errorf("%v: an external package type cannot be a receiver", p.fset.Position(m.Method.Pos()))
+	}
+
+	// Update source variable name for receiver methods
+	if fn.IsReceiverMethod() {
+		srcVar.Name = fn.ReceiverVar
+		fn.Src = srcVar
 	}
 
 	return fn, nil

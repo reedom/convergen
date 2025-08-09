@@ -52,12 +52,23 @@ func (g *Generator) generateTraditionalFunction(f *model.Function) string {
 	// "func"
 	sb.WriteString("func ")
 
-	if f.Receiver != "" {
+	if f.IsReceiverMethod() {
 		// "func (r *MyStruct)"
 		sb.WriteString("(")
-		sb.WriteString(f.Receiver)
-		sb.WriteString(" ")
-		sb.WriteString(f.Src.FullType())
+
+		// Use new fields if available, otherwise fall back to old behavior
+		if f.ReceiverVar != "" && f.ReceiverType != "" {
+			// New behavior: use parsed receiver variable and type
+			sb.WriteString(f.ReceiverVar)
+			sb.WriteString(" ")
+			sb.WriteString(f.ReceiverType)
+		} else {
+			// Backward compatibility: use original receiver and source type
+			sb.WriteString(f.Receiver)
+			sb.WriteString(" ")
+			sb.WriteString(f.Src.FullType())
+		}
+
 		sb.WriteString(") ")
 	}
 
@@ -71,13 +82,13 @@ func (g *Generator) generateTraditionalFunction(f *model.Function) string {
 		sb.WriteString(" *")
 		sb.WriteString(f.Dst.PtrLessFullType())
 
-		if f.Receiver == "" {
+		if !f.IsReceiverMethod() {
 			// "func Name(dst *DstModel, "
 			sb.WriteString(", ")
 		}
 	}
 
-	if f.Receiver == "" {
+	if !f.IsReceiverMethod() {
 		// "func Name(dst *DstModel, src *SrcModel"
 		sb.WriteString(f.Src.Name)
 		sb.WriteString(" ")
@@ -353,12 +364,23 @@ func (g *Generator) generateStructLiteralFunction(f *model.Function) string {
 	// "func"
 	sb.WriteString("func ")
 
-	if f.Receiver != "" {
+	if f.IsReceiverMethod() {
 		// "func (r *MyStruct)"
 		sb.WriteString("(")
-		sb.WriteString(f.Receiver)
-		sb.WriteString(" ")
-		sb.WriteString(f.Src.FullType())
+
+		// Use new fields if available, otherwise fall back to old behavior
+		if f.ReceiverVar != "" && f.ReceiverType != "" {
+			// New behavior: use parsed receiver variable and type
+			sb.WriteString(f.ReceiverVar)
+			sb.WriteString(" ")
+			sb.WriteString(f.ReceiverType)
+		} else {
+			// Backward compatibility: use original receiver and source type
+			sb.WriteString(f.Receiver)
+			sb.WriteString(" ")
+			sb.WriteString(f.Src.FullType())
+		}
+
 		sb.WriteString(") ")
 	}
 
@@ -367,7 +389,7 @@ func (g *Generator) generateStructLiteralFunction(f *model.Function) string {
 	sb.WriteString("(")
 
 	// Add source parameter (never dst arg for struct literal)
-	if f.Receiver == "" {
+	if !f.IsReceiverMethod() {
 		// "func Name(src *SrcModel"
 		sb.WriteString(f.Src.Name)
 		sb.WriteString(" ")

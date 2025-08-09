@@ -1,7 +1,10 @@
 // Package helpers provides testing utilities for the Convergen behavior-driven testing framework.
 package helpers
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // NewInlineScenario creates a new inline scenario.
 func NewInlineScenario(name, description string) InlineScenario {
@@ -288,6 +291,30 @@ type Convergen interface {
 	// :recv %s
 	Convert(*User) *UserModel
 }`, receiverVar))
+}
+
+// RecvTypeSpecScenario creates a scenario for testing :recv annotation with type specification.
+func RecvTypeSpecScenario(receiverType string) InlineScenario {
+	return NewInlineScenario(
+		fmt.Sprintf("RecvTypeSpec_%s", strings.ReplaceAll(receiverType, "*", "Ptr")),
+		"Test :recv annotation with type specification",
+	).WithTypes(`
+type User struct {
+	Name string
+	Age  int
+}
+
+type UserModel struct {
+	Name string
+	Age  int
+}
+
+type UserService struct{}
+`).WithInterface(fmt.Sprintf(`
+type Convergen interface {
+	// :recv %s
+	Convert(*User) *UserModel
+}`, receiverType))
 }
 
 // MapAnnotationScenario creates a scenario for testing :map annotation with basic field mapping.
