@@ -1,263 +1,105 @@
-# Convergen Rewrite Design Overview
+# Design
 
-This document provides a comprehensive design for the new Convergen architecture. It captures all ground design decisions and serves as the definitive guide for the rewrite.
+## Architecture Overview
+- Style: Event-driven pipeline with staged processing
+- Key Components: Parser (AST analysis) → Builder (mapping logic) → Generator (code creation) → Coordinator (orchestration) → Emitter (output)
+- Data Flow: Source files → Domain models → Execution plans → Generated functions → Output files
 
-## Ground Design Decisions
+## Interfaces & Data Contracts
 
-### 1. Architecture Philosophy
-- **Minimal Clean Architecture**: Clear boundaries without over-engineering
-- **Event-Driven Pipeline**: Internal coordination through events for robustness
-- **Stable Output Ordering**: Deterministic, reproducible code generation
-- **Field-Level Concurrency**: Parallel processing with ordered result assembly
+### Pipeline Events
+- ParseEvent: Methods parsed from source interfaces with annotations
+- PlanEvent: Execution strategies for field mapping and concurrency
+- ExecuteEvent: Generated assignments and function code
+- EmitEvent: Final formatted output with imports
 
-### 2. Performance StrategyOk
-- **Concurrent Field Processing**: Each struct field processed in parallel
-- **Ordered Assembly**: Results combined in source code field order
-- **Resource Management**: Bounded goroutine pools and memory usage
-- **CPU Utilization**: Leverage multiple cores for generation speed
+### Domain Models (pkg/domain)
+- Type: Immutable type representations with generics support (constructor pattern required)
+- Method: Complete conversion method specifications with source/dest types
+- FieldMapping: Individual field conversion rules and strategies
+- ExecutionPlan: Concurrency coordination and resource management
 
-### 3. Code Generation Principles
-- **Preserve Field Order**: Maintain exact source struct field ordering
-- **Adaptive Construction**: Choose between composite literals and assignment blocks
-- **Stable Output**: Identical results across multiple runs
-- **Idiomatic Go**: Generate clean, readable Go code
-
-### 4. Modern Go Integration
-- **Context-Aware**: Support cancellation and timeouts throughout pipeline
-- **Generic Types**: Use generics for type safety and performance
-- **Error Wrapping**: Rich error context with fmt.Errorf
-- **Structured Logging**: Efficient logging with zap
-
-## Overall Architecture
-
-### Event-Driven Pipeline Flow
-
-```
-Source File → [Parser] → ParseEvent → [Planner] → PlanEvent → [Executor] → ExecuteEvent → [Emitter] → Generated Code
-                ↓                         ↓                        ↓                      ↓
-            Domain Model             Execution Plan          Concurrent Results      Ordered Output
-```
-
-### Core Components
-
-1. **Coordinator** (`pkg/coordinator`)
-   - Pipeline orchestration with context
-   - Event bus management
-   - Error aggregation and reporting
-   - Resource lifecycle management
-
-2. **Domain Models** (`pkg/domain`) 
-   - Core business entities (fields, mappings, conversions)
-   - Type-safe representations
-   - Immutable data structures
-   - Generic interfaces where appropriate
-
-3. **Parser** (`pkg/parser`)
-   - AST analysis and annotation extraction  
-   - Domain model construction
-   - Type resolution with generics support
-   - Emit: `ParseEvent{Methods: []domain.Method}`
-
-4. **Planner** (`pkg/planner`)
-   - Execution plan generation
-   - Concurrency strategy determination
-   - Field dependency analysis
-   - Emit: `PlanEvent{ExecutionPlan: domain.ExecutionPlan}`
-
-5. **Executor** (`pkg/executor`)
-   - Concurrent field processing
-   - Result ordering and assembly
-   - Error collection and propagation
-   - Emit: `ExecuteEvent{Results: []domain.FieldResult}`
-
-6. **Emitter** (`pkg/emitter`)
-   - Code generation from results
-   - Output formatting and optimization
-   - Stable ordering enforcement
-   - Final file writing
-
-### Data Flow Models
-
-#### Domain Models (`pkg/domain`)
-
+### Core Interfaces
 ```go
-// Core conversion specification
-type Method struct {
-    Name         string
-    SourceType   Type
-    DestType     Type
-    Config       MethodConfig
-    Fields       []FieldMapping
+// Parser: Source → Domain Models
+type ConvergenParser interface {
+    ParseSourceFile(ctx context.Context, sourcePath, destPath string) (*ParseResult, error)
 }
 
-// Field-level conversion plan
-type FieldMapping struct {
-    Source      FieldSpec
-    Dest        FieldSpec  
-    Strategy    ConversionStrategy
-    Dependencies []FieldMapping  // For ordering
+// Builder: Domain Models → Assignment Logic
+type AssignmentHandler interface {
+    Handle(lhs, rhs Node, args []Node) (Assignment, error)
 }
 
-// Execution coordination
-type ExecutionPlan struct {
-    Batches     []ConcurrentBatch
-    Dependencies map[string][]string
-    Resources   ResourceLimits
+// Generator: Assignment Logic → Code
+type CodeGenerator interface {
+    Generate(method Method) (Function, error)
+}
+
+// Coordinator: Pipeline Orchestration
+type PipelineCoordinator interface {
+    Generate(ctx context.Context, sources []string) (*Result, error)
 }
 ```
 
-#### Event System
+## Error Handling & Resilience
+- Timeouts: Context-based cancellation throughout pipeline with 30s default timeout
+- Circuit breaker: Parser implements exponential backoff for package loading failures
+- Error aggregation: Centralized error collection with rich context (file position, method name, field)
+- Graceful degradation: Continue processing valid methods when individual methods fail
+- Resource bounds: Goroutine pools limited to runtime.NumCPU() * 2, memory usage monitored
 
-```go
-// Internal pipeline events
-type ParseEvent struct {
-    Methods []domain.Method
-    BaseCode string
-    Context context.Context
-}
+## Security & Compliance
+- Input validation: All annotation parameters sanitized against code injection
+- Generated code safety: No eval(), reflection, or unsafe operations in generated code
+- File system isolation: Generated files written only to specified output directories
+- Import resolution: Only standard library and explicitly imported packages allowed
 
-type PlanEvent struct {
-    Plan domain.ExecutionPlan
-    Context context.Context
-}
+## Rationale & Alternatives
 
-type ExecuteEvent struct {
-    Results []domain.FieldResult
-    Errors  []error
-    Context context.Context
-}
-```
+### ADR-001: Event-Driven Architecture
+- **Decision**: Use event system for component coordination instead of direct method calls
+- **Reason**: Enables loose coupling, extensibility, and observability of pipeline flow
+- **Alternatives**: Direct method composition (rejected: tight coupling), dependency injection (rejected: complexity)
 
-### Concurrency Design
+### ADR-002: Domain Model Constructor Pattern
+- **Decision**: Require NewMethod(), NewType() constructors instead of struct literals
+- **Reason**: Ensures validation, immutability, and prevents invalid states
+- **Alternatives**: Builder pattern (rejected: verbosity), validation methods (rejected: runtime errors)
 
-#### Field-Level Parallelism
+### ADR-003: Concurrent Field Processing
+- **Decision**: Process struct fields in parallel with ordered result assembly
+- **Reason**: Significant performance improvement (40-70%) for complex structs
+- **Alternatives**: Sequential processing (rejected: performance), fully async (rejected: ordering complexity)
 
-1. **Analysis Phase**: Identify field dependencies
-2. **Batching Phase**: Group independent fields for concurrent processing
-3. **Execution Phase**: Process each batch in parallel
-4. **Assembly Phase**: Collect results in source order
+### ADR-004: Struct Literal Default Output
+- **Decision**: Generate struct literals by default, fallback to assignments for complexity
+- **Reason**: More idiomatic Go code, better readability, compiler optimizations
+- **Alternatives**: Always assignments (rejected: verbosity), always literals (rejected: complexity handling)
 
-#### Resource Management
+### ADR-005: Strategy Pattern for Parser
+- **Decision**: Support LegacyParser, ModernParser, and AdaptiveParser strategies
+- **Reason**: Backward compatibility while enabling performance optimizations
+- **Alternatives**: Single parser (rejected: performance trade-offs), config flags (rejected: complexity)
 
-```go
-// Concurrent execution with bounded resources
-type ConcurrentBatch struct {
-    Fields    []FieldMapping
-    Resources ResourceLimits
-    Timeout   time.Duration
-}
+### ADR-006: Chain of Responsibility for Assignment Generation
+- **Decision**: Use handler chain (Skip → Literal → Converter → NameMapper → StructMatch)
+- **Reason**: Extensible, testable, clear priority ordering
+- **Alternatives**: Giant switch statement (rejected: maintainability), strategy per field type (rejected: complexity)
 
-type ResourceLimits struct {
-    MaxGoroutines int
-    MaxMemoryMB   int
-    Timeout       time.Duration
-}
-```
+## Implementation Patterns
 
-### Output Generation Strategy
+### Component Communication
+All components communicate through events published to a central event bus. Each component subscribes to relevant events and publishes results for downstream consumption.
 
-#### Construction Style Selection
+### Resource Management
+Bounded goroutine pools prevent resource exhaustion. Worker pools are sized based on available CPU cores with configurable limits for memory-constrained environments.
 
-```go
-// Adaptive output generation
-type OutputStrategy interface {
-    ShouldUseCompositeLiteral(fields []FieldResult) bool
-    GenerateAssignment(field FieldResult) string
-    PreserveFieldOrder(results []FieldResult) []FieldResult
-}
-```
+### Type System Integration
+Full Go generics support through type parameter extraction, constraint resolution, and concrete type instantiation. Type caching reduces redundant analysis.
 
-**Decision Logic:**
-- **Composite Literal**: Simple field assignments, no errors, <5 fields
-- **Assignment Blocks**: Complex conversions, error handling, >5 fields
-- **Mixed Approach**: Composite literal with assignment block for complex fields
-
-#### Ordering Guarantees
-
-1. **Parse-Time Ordering**: Capture source field declaration order
-2. **Execution Ordering**: Process concurrently but collect in order
-3. **Output Ordering**: Emit assignments in source field order
-4. **Stability**: Identical output across runs
-
-### Error Handling Strategy
-
-#### Event-Driven Error Aggregation
-
-```go
-// Comprehensive error context
-type GenerationError struct {
-    Phase     string              // "parse", "plan", "execute", "emit"
-    Method    string              // Method being processed
-    Field     string              // Field being processed (if applicable)
-    Cause     error               // Root cause
-    Context   map[string]any      // Additional context
-}
-
-// Error collection across concurrent operations
-type ErrorCollector interface {
-    Collect(ctx context.Context, err GenerationError)
-    HasErrors() bool
-    Errors() []GenerationError
-    Summary() string
-}
-```
-
-### Extension Points
-
-#### Annotation System
-
-```go
-// Extensible annotation processing
-type AnnotationProcessor interface {
-    Name() string
-    Parse(comment string) (AnnotationConfig, error)
-    Validate(config AnnotationConfig, context ValidationContext) error
-}
-
-// Registry for new annotation types
-type AnnotationRegistry interface {
-    Register(processor AnnotationProcessor)
-    Process(comments []string) ([]AnnotationConfig, error)
-}
-```
-
-#### Conversion Strategies
-
-```go
-// Pluggable conversion strategies
-type ConversionStrategy interface {
-    Name() string
-    CanHandle(source, dest Type) bool
-    GenerateCode(mapping FieldMapping) (Code, error)
-    Dependencies() []string
-}
-```
+### Output Generation Strategies
+Adaptive code generation chooses between struct literal and assignment block styles based on complexity analysis. Error-returning converters automatically trigger assignment block mode.
 
 ### Testing Architecture
-
-#### Scenario-Based Testing (inspired by goverter)
-
-```
-tests/
-├── scenarios/
-│   ├── basic_conversion/
-│   │   ├── input.go          # Source with Convergen interface
-│   │   ├── expected.go       # Expected generated output  
-│   │   └── test.yaml         # Test configuration
-│   ├── concurrent_fields/
-│   ├── error_handling/
-│   └── performance/
-└── framework/
-    ├── scenario_runner.go    # Test execution framework
-    ├── output_comparer.go    # Generated code comparison
-    └── performance_tracker.go # Performance regression detection
-```
-
-#### Component Testing Strategy
-
-- **Unit Tests**: Each component in isolation with mocked dependencies
-- **Integration Tests**: Pipeline segments with real data flow
-- **Scenario Tests**: End-to-end generation with expected outputs
-- **Concurrency Tests**: Race condition and ordering verification
-- **Performance Tests**: Generation speed and memory usage tracking
-
+Behavior-driven integration tests in `tests/` directory verify end-to-end functionality. Unit tests alongside source provide component-level coverage. Domain model constructor pattern enables reliable test setup.
