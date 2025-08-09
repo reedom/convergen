@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/reedom/convergen/v8/pkg/config"
 	"github.com/reedom/convergen/v8/pkg/generator"
 	"github.com/reedom/convergen/v8/pkg/generator/model"
 	"github.com/reedom/convergen/v8/pkg/parser"
@@ -62,7 +63,7 @@ func (isr *InlineScenarioRunner) RunScenario(scenario TestScenario) {
 		var generatedCode string
 		var codeErr error
 		if sourceErr == nil {
-			generatedCode, codeErr = isr.generateCode(sourceFile)
+			generatedCode, codeErr = isr.generateCode(sourceFile, scenario.CliFlags)
 		}
 
 		// Determine the primary error (source creation error takes precedence)
@@ -197,8 +198,8 @@ func (isr *InlineScenarioRunner) createSourceFile(scenario TestScenario) (string
 	return sourceFile, nil
 }
 
-// generateCode runs the Convergen pipeline on the source file.
-func (isr *InlineScenarioRunner) generateCode(sourceFile string) (string, error) {
+// generateCode runs the Convergen pipeline on the source file with CLI flags.
+func (isr *InlineScenarioRunner) generateCode(sourceFile string, cliFlags CLIFlags) (string, error) {
 	// Create parser
 	p, err := parser.NewParser(sourceFile, "")
 	if err != nil {
@@ -240,8 +241,17 @@ func (isr *InlineScenarioRunner) generateCode(sourceFile string) (string, error)
 		FunctionBlocks: funcBlocks,
 	}
 
-	// Generate final code
-	g := generator.NewGenerator(code)
+	// Create config from CLI flags
+	cfg := config.Config{
+		Input:           sourceFile,
+		Output:          "",
+		Verbose:         cliFlags.Verbose,
+		StructLiteral:   cliFlags.StructLiteral,
+		NoStructLiteral: cliFlags.NoStructLiteral,
+	}
+
+	// Generate final code with configuration
+	g := generator.NewGeneratorWithConfig(code, cfg)
 	actual, err := g.Generate(sourceFile, false, true)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate code: %w", err)

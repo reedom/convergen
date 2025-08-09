@@ -6,6 +6,13 @@ import (
 	"strings"
 )
 
+// CLIFlags represents CLI flags that can be set for testing scenarios.
+type CLIFlags struct {
+	StructLiteral   bool // Enable struct literal output
+	NoStructLiteral bool // Disable struct literal output
+	Verbose         bool // Enable verbose output
+}
+
 // TestScenario defines a behavior-driven test scenario for Convergen.
 type TestScenario struct {
 	Name        string
@@ -16,6 +23,9 @@ type TestScenario struct {
 	SourceTypes string   // Go struct definitions
 	Interface   string   // Converter interface definition
 	Imports     []string // Additional imports needed
+
+	// CLI Configuration
+	CliFlags CLIFlags // CLI flags to simulate
 
 	// Behavior Tests
 	BehaviorTests []BehaviorTest
@@ -63,6 +73,18 @@ func (is InlineScenario) WithBehaviorTests(tests ...BehaviorTest) TestScenario {
 	}
 }
 
+// AsTestScenario converts InlineScenario to TestScenario without behavior tests.
+func (is InlineScenario) AsTestScenario() TestScenario {
+	return TestScenario{
+		Name:          is.Name,
+		Description:   is.Description,
+		SourceTypes:   is.SourceTypes,
+		Interface:     is.Interface,
+		Imports:       is.Imports,
+		ShouldSucceed: true,
+	}
+}
+
 // WithCodeChecks adds code assertions to the scenario.
 func (ts TestScenario) WithCodeChecks(checks ...CodeAssertion) TestScenario {
 	ts.CodeChecks = append(ts.CodeChecks, checks...)
@@ -85,6 +107,24 @@ func (ts TestScenario) ShouldFail(expectedError string) TestScenario {
 // WithVerboseDebugging enables verbose debugging output for this scenario.
 func (ts TestScenario) WithVerboseDebugging() TestScenario {
 	ts.VerboseDebugging = true
+	return ts
+}
+
+// WithCliFlags sets CLI flags for the scenario.
+func (ts TestScenario) WithCliFlags(flags CLIFlags) TestScenario {
+	ts.CliFlags = flags
+	return ts
+}
+
+// WithStructLiteral enables struct literal output for this scenario.
+func (ts TestScenario) WithStructLiteral() TestScenario {
+	ts.CliFlags.StructLiteral = true
+	return ts
+}
+
+// WithNoStructLiteral disables struct literal output for this scenario.
+func (ts TestScenario) WithNoStructLiteral() TestScenario {
+	ts.CliFlags.NoStructLiteral = true
 	return ts
 }
 

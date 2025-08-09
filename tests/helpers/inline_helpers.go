@@ -32,6 +32,32 @@ func (is InlineScenario) WithImports(imports ...string) InlineScenario {
 	return is
 }
 
+// WithStructLiteral enables struct literal output for this scenario.
+func (is InlineScenario) WithStructLiteral() TestScenario {
+	return TestScenario{
+		Name:        is.Name,
+		Description: is.Description,
+		SourceTypes: is.SourceTypes,
+		Interface:   is.Interface,
+		Imports:     is.Imports,
+		ShouldSucceed: true,
+		CliFlags:    CLIFlags{StructLiteral: true},
+	}
+}
+
+// WithNoStructLiteral disables struct literal output for this scenario.
+func (is InlineScenario) WithNoStructLiteral() TestScenario {
+	return TestScenario{
+		Name:        is.Name,
+		Description: is.Description,
+		SourceTypes: is.SourceTypes,
+		Interface:   is.Interface,
+		Imports:     is.Imports,
+		ShouldSucceed: true,
+		CliFlags:    CLIFlags{NoStructLiteral: true},
+	}
+}
+
 // Common type definitions for reuse.
 
 // SimpleUserTypes creates basic User and UserModel types.

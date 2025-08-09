@@ -492,7 +492,9 @@ func (g *Generator) shouldIncludeInStructLiteral(assignment model.Assignment) bo
 func (g *Generator) writeStructLiteralAssignment(assignment model.Assignment, sb *strings.Builder) {
 	if simpleField, ok := assignment.(model.SimpleField); ok {
 		sb.WriteString("\t\t")
-		sb.WriteString(simpleField.LHS)
+		// Extract just the field name from LHS (e.g., "dst.ID" -> "ID")
+		fieldName := g.extractFieldNameFromLHS(simpleField.LHS)
+		sb.WriteString(fieldName)
 		sb.WriteString(": ")
 		sb.WriteString(simpleField.RHS)
 		sb.WriteString(",\n")
@@ -504,11 +506,27 @@ func (g *Generator) writeStructLiteralComment(assignment model.Assignment, sb *s
 	switch assign := assignment.(type) {
 	case model.SkipField:
 		sb.WriteString("\t// skip: ")
-		sb.WriteString(assign.LHS)
+		// Extract just the field name from LHS for consistent commenting
+		fieldName := g.extractFieldNameFromLHS(assign.LHS)
+		sb.WriteString(fieldName)
 		sb.WriteString("\n")
 	case model.NoMatchField:
 		sb.WriteString("\t// no match: ")
-		sb.WriteString(assign.LHS)
+		// Extract just the field name from LHS for consistent commenting
+		fieldName := g.extractFieldNameFromLHS(assign.LHS)
+		sb.WriteString(fieldName)
 		sb.WriteString("\n")
 	}
+}
+
+// extractFieldNameFromLHS extracts the field name from an LHS assignment expression.
+// For example: "dst.ID" -> "ID", "dst.Profile.Name" -> "Name", "ID" -> "ID".
+// This is used in struct literal generation where we need just the field name.
+func (g *Generator) extractFieldNameFromLHS(lhs string) string {
+	// Handle cases like "dst.ID", "dst.Profile.Name", etc.
+	if lastDotIndex := strings.LastIndex(lhs, "."); lastDotIndex != -1 {
+		return lhs[lastDotIndex+1:]
+	}
+	// If no dot found, return the entire string (for cases where it's already just a field name)
+	return lhs
 }
