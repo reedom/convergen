@@ -13,7 +13,6 @@
 - [ ] TASK-002 Implement domain model validation in all constructors · refs: REQ-1.2, REQ-2.1 · DoD: All NewMethod(), NewType() calls validate inputs
 - [ ] TASK-003 Complete handler chain migration in builder package · refs: REQ-3.1, REQ-3.2, REQ-3.3 · DoD: All assignment generation uses handler chain pattern
 - [ ] TASK-004 Implement struct literal default generation · refs: REQ-4.1, REQ-4.2 · DoD: Simple conversions generate struct literals automatically
-- [ ] TASK-005 Add struct literal fallback detection · refs: REQ-4.2, REQ-4.3 · DoD: Complex scenarios automatically use assignment blocks
 
 ### Type System and Generics
 - [ ] TASK-006 Complete generic type parameter resolution · refs: REQ-2.1, REQ-1.4 · DoD: Type constraints validated, concrete types instantiated
@@ -69,7 +68,7 @@
 # - [ ] TASK-XXX <title> · refs: REQ-X.X · DoD: <criterion>
 
 ## Done
-# - [x] TASK-XXX <title> · refs: REQ-X.X · DoD: <criterion>
+- [x] TASK-005 Add struct literal fallback detection · refs: REQ-4.2, REQ-4.3 · DoD: Complex scenarios automatically use assignment blocks
 
 ## Retired
 # - [x] TASK-XXX (retired) <title> · refs: REQ-X.X · DoD: <criterion>

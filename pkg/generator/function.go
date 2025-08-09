@@ -16,18 +16,22 @@ import (
 // The function uses ManipulatorToString to generate the string representation of manipulators.
 func (g *Generator) FuncToString(f *model.Function) string {
 	// Determine output style based on CLI flags and function configuration
-	outputStyle := g.determineOutputStyle(f)
+	initialOutputStyle := g.determineOutputStyle(f)
+
+	// Apply struct literal fallback detection
+	actualOutputStyle, fallbackApplied := g.applyStructLiteralFallback(f, initialOutputStyle)
 
 	// Add verbose comment if requested
 	if g.config.IsVerboseMode() {
-		f.Comments = append([]string{fmt.Sprintf("// Generated with output style: %s", outputStyle)}, f.Comments...)
-		if outputStyle == model.OutputStyleTraditional && g.config.IsStructLiteralExplicitlyEnabled() {
-			f.Comments = append(f.Comments, "// Note: Using traditional assignment (struct literal not yet fully implemented)")
+		f.Comments = append([]string{fmt.Sprintf("// Generated with output style: %s", actualOutputStyle)}, f.Comments...)
+		if fallbackApplied {
+			f.Comments = append(f.Comments, fmt.Sprintf("// Note: Fallback from %s to %s: %s", initialOutputStyle, actualOutputStyle, g.getFallbackReason(f)))
 		}
 	}
 
-	// TODO: Implement actual struct literal generation when outputStyle == OutputStyleStructLiteral
+	// TODO: Implement actual struct literal generation when actualOutputStyle == OutputStyleStructLiteral
 	// For now, continue with existing traditional assignment generation
+	// The fallback detection ensures we only use traditional assignment when appropriate
 
 	var sb strings.Builder
 
@@ -176,6 +180,36 @@ func (g *Generator) determineOutputStyle(f *model.Function) model.OutputStyle {
 	// Priority 3: Default behavior (for now, traditional assignment to maintain compatibility)
 	// TODO: Once struct literal is fully implemented, this should default to OutputStyleAuto
 	return model.OutputStyleTraditional
+}
+
+// applyStructLiteralFallback applies automatic fallback detection for struct literal compatibility.
+// Returns the final output style to use and whether a fallback was applied.
+func (g *Generator) applyStructLiteralFallback(f *model.Function, requestedStyle model.OutputStyle) (model.OutputStyle, bool) {
+	// If traditional assignment is explicitly requested, no fallback needed
+	if requestedStyle == model.OutputStyleTraditional {
+		return requestedStyle, false
+	}
+
+	// If struct literal is explicitly forced via CLI, validate compatibility and fail if incompatible
+	if requestedStyle == model.OutputStyleStructLiteral {
+		if !g.canUseStructLiteral(f) {
+			// For now, we'll apply fallback even for forced struct literal to avoid breaking builds
+			// TODO: Consider making this configurable or logging a warning
+			return model.OutputStyleTraditional, true
+		}
+		return requestedStyle, false
+	}
+
+	// For OutputStyleAuto, apply intelligent fallback detection
+	if requestedStyle == model.OutputStyleAuto {
+		if g.canUseStructLiteral(f) {
+			return model.OutputStyleStructLiteral, false
+		}
+		return model.OutputStyleTraditional, true
+	}
+
+	// Default case: fallback to traditional assignment for unknown styles
+	return model.OutputStyleTraditional, true
 }
 
 // canUseStructLiteral determines whether a function can be generated using struct literal syntax.

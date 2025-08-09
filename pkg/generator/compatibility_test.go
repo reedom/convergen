@@ -442,3 +442,119 @@ func TestGenerator_isComplexAssignment(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerator_applyStructLiteralFallback(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name             string
+		function         *model.Function
+		requestedStyle   model.OutputStyle
+		expectedStyle    model.OutputStyle
+		expectedFallback bool
+		description      string
+	}{
+		{
+			name: "traditional style requested - no fallback",
+			function: &model.Function{
+				Name:        "ConvertUser",
+				DstVarStyle: model.DstVarReturn,
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID", Error: false},
+				},
+			},
+			requestedStyle:   model.OutputStyleTraditional,
+			expectedStyle:    model.OutputStyleTraditional,
+			expectedFallback: false,
+			description:      "Traditional assignment is explicitly requested, no fallback needed",
+		},
+		{
+			name: "struct literal forced on compatible function - no fallback",
+			function: &model.Function{
+				Name:        "ConvertUser",
+				DstVarStyle: model.DstVarReturn,
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID", Error: false},
+				},
+			},
+			requestedStyle:   model.OutputStyleStructLiteral,
+			expectedStyle:    model.OutputStyleStructLiteral,
+			expectedFallback: false,
+			description:      "Compatible function can use forced struct literal",
+		},
+		{
+			name: "struct literal forced on incompatible function - fallback applied",
+			function: &model.Function{
+				Name:        "ConvertUser",
+				DstVarStyle: model.DstVarArg, // Incompatible with struct literal
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID", Error: false},
+				},
+			},
+			requestedStyle:   model.OutputStyleStructLiteral,
+			expectedStyle:    model.OutputStyleTraditional,
+			expectedFallback: true,
+			description:      "Incompatible function falls back to traditional assignment",
+		},
+		{
+			name: "auto style on compatible function - use struct literal",
+			function: &model.Function{
+				Name:        "ConvertUser",
+				DstVarStyle: model.DstVarReturn,
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID", Error: false},
+					model.SimpleField{LHS: "dst.Name", RHS: "src.Name", Error: false},
+				},
+			},
+			requestedStyle:   model.OutputStyleAuto,
+			expectedStyle:    model.OutputStyleStructLiteral,
+			expectedFallback: false,
+			description:      "Auto mode chooses struct literal for compatible function",
+		},
+		{
+			name: "auto style on incompatible function - fallback to traditional",
+			function: &model.Function{
+				Name:        "ConvertUser",
+				DstVarStyle: model.DstVarReturn,
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID", Error: false},
+					model.NestStruct{
+						InitExpr:      "dst.Profile = &Profile{}",
+						NullCheckExpr: "src.Profile",
+						Contents: []model.Assignment{
+							model.SimpleField{LHS: "dst.Profile.Name", RHS: "src.Profile.Name", Error: false},
+						},
+					},
+				},
+			},
+			requestedStyle:   model.OutputStyleAuto,
+			expectedStyle:    model.OutputStyleTraditional,
+			expectedFallback: true,
+			description:      "Auto mode falls back to traditional assignment for complex function",
+		},
+		{
+			name: "unknown style - fallback to traditional",
+			function: &model.Function{
+				Name:        "ConvertUser",
+				DstVarStyle: model.DstVarReturn,
+				Assignments: []model.Assignment{
+					model.SimpleField{LHS: "dst.ID", RHS: "src.ID", Error: false},
+				},
+			},
+			requestedStyle:   model.OutputStyle("unknown"),
+			expectedStyle:    model.OutputStyleTraditional,
+			expectedFallback: true,
+			description:      "Unknown style falls back to traditional assignment",
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			g := &Generator{}
+			actualStyle, actualFallback := g.applyStructLiteralFallback(tt.function, tt.requestedStyle)
+
+			assert.Equal(t, tt.expectedStyle, actualStyle, "output style mismatch")
+			assert.Equal(t, tt.expectedFallback, actualFallback, "fallback detection mismatch")
+		})
+	}
+}
