@@ -29,10 +29,18 @@ func (g *Generator) FuncToString(f *model.Function) string {
 		}
 	}
 
-	// TODO: Implement actual struct literal generation when actualOutputStyle == OutputStyleStructLiteral
-	// For now, continue with existing traditional assignment generation
-	// The fallback detection ensures we only use traditional assignment when appropriate
+	// Generate code based on the determined output style
+	if actualOutputStyle == model.OutputStyleStructLiteral {
+		return g.generateStructLiteralFunction(f)
+	}
 
+	// Traditional assignment generation (existing code)
+	return g.generateTraditionalFunction(f)
+}
+
+// generateTraditionalFunction generates the string representation of a Function using traditional assignment syntax.
+// This is the original generation method for backward compatibility and complex cases.
+func (g *Generator) generateTraditionalFunction(f *model.Function) string {
 	var sb strings.Builder
 
 	// doc comment
@@ -178,7 +186,7 @@ func (g *Generator) determineOutputStyle(f *model.Function) model.OutputStyle {
 	}
 
 	// Priority 3: Default behavior (for now, traditional assignment to maintain compatibility)
-	// TODO: Once struct literal is fully implemented, this should default to OutputStyleAuto
+	// TODO: Once struct literal is fully implemented and tested, consider defaulting to OutputStyleAuto
 	return model.OutputStyleTraditional
 }
 
@@ -329,4 +337,156 @@ func (g *Generator) validateStructLiteralCompatibility(f *model.Function) error 
 	}
 
 	return nil
+}
+
+// generateStructLiteralFunction generates the string representation of a Function using struct literal syntax.
+// This method is used when the output style is OutputStyleStructLiteral and the function is compatible.
+func (g *Generator) generateStructLiteralFunction(f *model.Function) string {
+	var sb strings.Builder
+
+	// doc comment
+	for i := range f.Comments {
+		sb.WriteString(f.Comments[i])
+		sb.WriteString("\n")
+	}
+
+	// "func"
+	sb.WriteString("func ")
+
+	if f.Receiver != "" {
+		// "func (r *MyStruct)"
+		sb.WriteString("(")
+		sb.WriteString(f.Receiver)
+		sb.WriteString(" ")
+		sb.WriteString(f.Src.FullType())
+		sb.WriteString(") ")
+	}
+
+	// "func (r *SrcModel) Name("
+	sb.WriteString(f.Name)
+	sb.WriteString("(")
+
+	// Add source parameter (never dst arg for struct literal)
+	if f.Receiver == "" {
+		// "func Name(src *SrcModel"
+		sb.WriteString(f.Src.Name)
+		sb.WriteString(" ")
+		sb.WriteString(f.Src.FullType())
+	}
+
+	// Add additional args
+	for _, args := range f.AdditionalArgs {
+		fullType := args.FullType()
+
+		if strings.Contains(args.Type, "/") {
+			re := regexp.MustCompile(`^([^a-zA-Z0-9]*)([a-zA-Z0-9].*/)(.+)$`)
+			fullType = re.ReplaceAllString(fullType, "$1$3")
+		}
+
+		sb.WriteString(", ")
+		sb.WriteString(args.Name)
+		sb.WriteString(" ")
+		sb.WriteString(fullType)
+	}
+
+	// "func Name(src *SrcModel)"
+	sb.WriteString(") ")
+
+	// Write return signature for struct literal style
+	g.writeStructLiteralReturnSignature(f, &sb)
+
+	if f.PreProcess != nil {
+		sb.WriteString(g.ManipulatorToString(f.PreProcess, f.Src, f.Dst, f.AdditionalArgs))
+	}
+
+	// Generate the struct literal return statement
+	g.writeStructLiteralReturn(f, &sb)
+
+	if f.PostProcess != nil {
+		sb.WriteString(g.ManipulatorToString(f.PostProcess, f.Src, f.Dst, f.AdditionalArgs))
+	}
+
+	sb.WriteString("}\n\n")
+
+	return sb.String()
+}
+
+// writeStructLiteralReturnSignature writes the return signature for struct literal functions.
+func (g *Generator) writeStructLiteralReturnSignature(f *model.Function, sb *strings.Builder) {
+	// "func Name(src *SrcModel) (dst DstModel"
+	sb.WriteString("(")
+	sb.WriteString(f.Dst.Name)
+	sb.WriteString(" ")
+	sb.WriteString(f.Dst.FullType())
+
+	if f.RetError {
+		// "func Name(src *SrcModel) (dst DstModel, err error"
+		sb.WriteString(", err error")
+	}
+
+	// "func Name(src *SrcModel) (dst DstModel) {\n"
+	sb.WriteString(") {\n")
+}
+
+// writeStructLiteralReturn writes the struct literal return statement.
+func (g *Generator) writeStructLiteralReturn(f *model.Function, sb *strings.Builder) {
+	sb.WriteString("\treturn ")
+
+	// Handle pointer types
+	if f.Dst.Pointer {
+		sb.WriteString("&")
+	}
+
+	// Write the struct literal
+	sb.WriteString(f.Dst.PtrLessFullType())
+	sb.WriteString("{\n")
+
+	// Generate field assignments for the struct literal
+	for _, assignment := range f.Assignments {
+		if g.shouldIncludeInStructLiteral(assignment) {
+			g.writeStructLiteralAssignment(assignment, sb)
+		} else {
+			// Write skip/nomatch comments outside the struct literal
+			g.writeStructLiteralComment(assignment, sb)
+		}
+	}
+
+	sb.WriteString("\t}\n")
+}
+
+// shouldIncludeInStructLiteral determines if an assignment should be included in the struct literal.
+func (g *Generator) shouldIncludeInStructLiteral(assignment model.Assignment) bool {
+	switch assignment.(type) {
+	case model.SkipField, model.NoMatchField:
+		return false // These become comments outside the struct literal
+	case model.SimpleField:
+		return !assignment.RetError() // Only include simple fields without errors
+	default:
+		return false // Complex assignments are not supported in struct literals
+	}
+}
+
+// writeStructLiteralAssignment writes a field assignment within the struct literal.
+func (g *Generator) writeStructLiteralAssignment(assignment model.Assignment, sb *strings.Builder) {
+	if simpleField, ok := assignment.(model.SimpleField); ok {
+		sb.WriteString("\t\t")
+		sb.WriteString(simpleField.LHS)
+		sb.WriteString(": ")
+		sb.WriteString(simpleField.RHS)
+		sb.WriteString(",\n")
+	}
+}
+
+// writeStructLiteralComment writes a comment for skip/nomatch fields outside the struct literal.
+func (g *Generator) writeStructLiteralComment(assignment model.Assignment, sb *strings.Builder) {
+	switch assign := assignment.(type) {
+	case model.SkipField:
+		sb.WriteString("\t// skip: ")
+		sb.WriteString(assign.LHS)
+		sb.WriteString("\n")
+	case model.NoMatchField:
+		sb.WriteString("\t// no match: ")
+		sb.WriteString(assign.LHS)
+		sb.WriteString("\n")
+	}
 }
