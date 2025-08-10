@@ -87,6 +87,21 @@ type PipelineCoordinator interface {
 - **Reason**: Extensible, testable, clear priority ordering
 - **Alternatives**: Giant switch statement (rejected: maintainability), strategy per field type (rejected: complexity)
 
+### ADR-007: Template-Based Generic Code Generation
+- **Decision**: Use template system with type substitution for generic code generation
+- **Reason**: Flexible, maintainable, supports complex generic patterns, enables optimization
+- **Alternatives**: AST manipulation (rejected: complexity), string replacement (rejected: fragility)
+
+### ADR-008: Two-Phase Type Instantiation
+- **Decision**: Separate constraint validation from type substitution in instantiation process
+- **Reason**: Clear separation of concerns, better error reporting, enables caching at different levels
+- **Alternatives**: Single-phase instantiation (rejected: harder to debug), runtime validation (rejected: performance)
+
+### ADR-009: Comprehensive Constraint Support
+- **Decision**: Support all Go generic constraint types: any, comparable, union, underlying, interface
+- **Reason**: Full Go generics compatibility, future-proofing, developer expectations
+- **Alternatives**: Limited constraint support (rejected: incomplete), constraint approximation (rejected: incorrect semantics)
+
 ## Implementation Patterns
 
 ### Component Communication
@@ -96,7 +111,32 @@ All components communicate through events published to a central event bus. Each
 Bounded goroutine pools prevent resource exhaustion. Worker pools are sized based on available CPU cores with configurable limits for memory-constrained environments.
 
 ### Type System Integration
-Full Go generics support through type parameter extraction, constraint resolution, and concrete type instantiation. Type caching reduces redundant analysis.
+Full Go generics support through comprehensive type parameter extraction, constraint resolution, and concrete type instantiation. Features include:
+
+**Generic Interface Processing**:
+- Parse generic interfaces with type parameter declarations
+- Extract constraint information (any, comparable, union, underlying, interface)
+- Validate constraint syntax and semantic correctness
+- Handle cross-package generic type references
+
+**Type Instantiation Engine**:
+- Convert generic interfaces to concrete implementations
+- Validate type arguments against declared constraints
+- Perform recursive type substitution in complex type structures
+- Cache instantiated types for performance (LRU cache with configurable capacity)
+- Detect and prevent circular type dependencies
+
+**Constraint Validation**:
+- Union constraints: `~int | ~string | ~float64`
+- Underlying constraints: `~string` (assignable to underlying string type)
+- Interface constraints: custom interfaces and built-in `comparable`
+- Comprehensive validation with detailed error reporting
+
+**Code Generation for Generics**:
+- Template-based generation with type parameter substitution
+- Import resolution for generic type dependencies
+- Optimization of generated code (dead code elimination, type conversion optimization)
+- Support for all annotation types with generic types (`:map`, `:conv`, `:skip`, etc.)
 
 ### Output Generation Strategies
 Adaptive code generation chooses between struct literal and assignment block styles based on complexity analysis. Error-returning converters automatically trigger assignment block mode.

@@ -180,10 +180,14 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 	nested := false
 
 	handler := func(rhs bmodel.Node) (done bool) {
+		// Field matching - debug logging removed
+
 		if !b.isStructFieldAccessible(rhsStruct, rhs.ObjName()) ||
 			!opts.CompareFieldName(lhs.ObjName(), rhs.ObjName()) {
 			return
 		}
+
+		// Assignment type checking - debug logging removed
 
 		if util.IsSliceType(lhs.ExprType()) && util.IsSliceType(rhs.ExprType()) {
 			a, err = b.sliceToSlice(lhs, rhs)
@@ -195,19 +199,24 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 
 		if c, ok := b.castNode(lhs.ExprType(), rhs); ok {
 			rhsExpr := c.AssignExpr()
-			logger.Printf("%v: assignment found: %v = %v", methodPosStr, lhsExpr, rhsExpr)
+			// Cast node successful - debug logging removed
 			a = gmodel.SimpleField{LHS: lhsExpr, RHS: rhsExpr, Error: c.ReturnsError()}
 
 			return true
 		}
 
-		if util.IsStructType(lhs.ExprType()) &&
-			util.IsStructType(rhs.ExprType()) {
+		// Fix: Check if both sides are struct types (including dereferencing pointers)
+		lhsStructType := util.DerefPtr(lhs.ExprType())
+		rhsStructType := util.DerefPtr(rhs.ExprType())
+		if util.IsStructType(lhsStructType) && util.IsStructType(rhsStructType) {
+			// Both sides are struct types after dereferencing pointers
 			nested = true
 
 			nestStruct := gmodel.NestStruct{}
 			if util.IsPtr(lhs.ExprType()) {
-				nestStruct.InitExpr = fmt.Sprintf("%v = %v{}", lhs.AssignExpr(), b.imports.TypeName(lhs.ExprType()))
+				// Fix: For pointer types, use &TypeName{} not *TypeName{}
+				lhsElemType := util.DerefPtr(lhs.ExprType())
+				nestStruct.InitExpr = fmt.Sprintf("%v = &%v{}", lhs.AssignExpr(), b.imports.TypeName(lhsElemType))
 			}
 
 			if rhs.ObjNullable() {
@@ -215,6 +224,9 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 			}
 
 			nestStruct.Contents, err = b.structToStruct(lhs, rhs, nil)
+
+			// Nested struct conversion completed
+
 			if err == nil && 0 < len(nestStruct.Contents) {
 				a = nestStruct
 			}
@@ -232,6 +244,8 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 	}
 
 	if opts.Rule == gmodel.MatchRuleName {
+		// Field iteration - debug logging removed
+
 		bmodel.IterateStructFields(rhsStruct, handler)
 
 		if a != nil || err != nil || nested {

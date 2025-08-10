@@ -34,10 +34,12 @@ The architecture centers around a rich domain model:
 **Responsibility**: Source file analysis and interface extraction
 
 **Key Components**:
-- **AST Parser**: Go abstract syntax tree analysis
+- **AST Parser**: Go abstract syntax tree analysis with concurrent processing and LRU caching
 - **Interface Detector**: Identifies marked interfaces (`Convergen` or `:convergen`)
 - **Annotation Parser**: Extracts and validates comment annotations
-- **Type Analyzer**: Analyzes source and destination types
+- **Type Analyzer**: Analyzes source and destination types including generic type parameters
+- **Constraint Parser**: Parses and validates Go generic constraints (union, underlying, interface)
+- **Generic Interface Parser**: Extracts generic interfaces with type parameter information
 
 **Input**: Go source files
 **Output**: Parsed interface definitions with annotations
@@ -46,6 +48,9 @@ The architecture centers around a rich domain model:
 - `Interface`: Represents a parsed interface with methods
 - `Method`: Individual method definition with annotations
 - `Annotation`: Parsed comment annotations with validation
+- `GenericInterface`: Generic interface with type parameters and constraints
+- `ParsedConstraint`: Validated constraint information (any, comparable, union, underlying)
+- `TypeParam`: Type parameter with constraint validation
 
 ### Stage 2: Builder (`pkg/builder/`)
 
@@ -56,6 +61,8 @@ The architecture centers around a rich domain model:
 - **Field Mapping Engine**: Applies various mapping strategies
 - **Strategy Selector**: Chooses optimal mapping strategy for each field
 - **Validation Engine**: Validates mapping completeness and correctness
+- **Generic Field Mapper**: Handles field mapping for instantiated generic types
+- **Type Instantiator**: Converts generic interfaces to concrete implementations
 
 **Input**: Parsed interface definitions
 **Output**: Conversion models with field mapping strategies
@@ -81,6 +88,8 @@ The architecture centers around a rich domain model:
 - **Import Manager**: Resolves and organizes import statements
 - **Optimization Engine**: Applies code optimizations
 - **Syntax Validator**: Ensures generated code is syntactically correct
+- **Generic Code Generator**: Generates concrete implementations from generic templates
+- **Template System**: Generic-aware templates with type substitution support
 
 **Input**: Conversion models with mapping strategies
 **Output**: Generated Go function representations
@@ -108,6 +117,88 @@ The architecture centers around a rich domain model:
 - `ProcessingContext`: Execution context and state
 - `ComponentStatus`: Component health and status tracking
 
+## Generics Architecture (`pkg/domain/`, `pkg/parser/`, `pkg/generator/`)
+
+### Type System and Constraints
+
+**Constraint Parsing System**:
+- **Union Constraints**: Parse `~int | ~string | ~float64` syntax
+- **Underlying Constraints**: Handle `~string` underlying type constraints  
+- **Interface Constraints**: Support custom interface constraints and `comparable`
+- **Validation**: Comprehensive constraint satisfaction checking
+
+**Constraint Types Supported**:
+```go
+// Basic constraints
+type Orderable interface{ ~int | ~float64 | ~string }
+type Comparable interface{ comparable }
+type Any interface{ any }
+
+// Complex constraints
+type StringLike interface{ ~string }
+type NumericUnion interface{ ~int | ~int32 | ~int64 | ~float32 | ~float64 }
+```
+
+### Type Instantiation Engine
+
+**Core Components**:
+- **TypeInstantiator**: Main instantiation engine with caching and validation
+- **TypeSubstitutionEngine**: Handles type parameter replacement in complex types
+- **CrossPackageTypeLoader**: Resolves types from external packages
+- **ConstraintValidator**: Validates type arguments against constraints
+
+**Instantiation Process**:
+1. **Parse**: Extract generic interface with type parameters
+2. **Validate**: Check type arguments satisfy constraints
+3. **Substitute**: Replace type parameters with concrete types throughout type structure
+4. **Cache**: Store instantiated results for performance
+5. **Generate**: Create concrete implementation code
+
+**Performance Features**:
+- **Caching**: LRU cache for instantiated interfaces with configurable capacity
+- **Cycle Detection**: Prevents infinite recursion in circular type dependencies
+- **Cross-Package**: Support for resolving types from imported packages
+- **Metrics Tracking**: Performance monitoring and optimization statistics
+
+### Generic Code Generation
+
+**Template Architecture**:
+- **Generic Templates**: Specialized templates for generic type generation
+- **Type Substitution**: Runtime type parameter replacement in generated code
+- **Import Resolution**: Automatic import management for generic type dependencies
+- **Optimization**: Dead code elimination and performance optimizations
+
+**Code Generation Templates**:
+```go
+// Basic generic conversion template
+func Convert{{.TypeParams}}(src {{.SourceType}}) ({{.DestType}}, error) {
+    return {{.DestType}}{
+        {{range .FieldMappings}}
+        {{.DestField}}: {{.ConversionExpression}},
+        {{end}}
+    }, nil
+}
+
+// Complex conversion with error handling
+func ConvertWithValidation{{.TypeParams}}(src {{.SourceType}}) ({{.DestType}}, error) {
+    {{.ValidationCode}}
+    // ... conversion logic
+}
+```
+
+### Integration Points
+
+**CLI Integration**:
+- Support for `-type TypeMapper[T,U]` syntax
+- Multiple generic type instantiation in single generation run
+- Error handling for invalid constraint combinations
+
+**Pipeline Integration**:
+- **Parser Stage**: Extract generic interfaces and type parameters
+- **Builder Stage**: Instantiate concrete types from generic specifications
+- **Generator Stage**: Generate concrete implementation code
+- **Emitter Stage**: Output with proper imports and formatting
+
 ## Supporting Architecture
 
 ### Domain Model (`pkg/domain/`)
@@ -119,6 +210,16 @@ The architecture centers around a rich domain model:
 - `StructType`: Struct-specific type information
 - `ExecutionError`: Domain-specific error types
 - `GenerationError`: Code generation error types
+
+**Generics-Specific Types**:
+- `TypeParam`: Type parameter with constraint information and validation
+- `GenericInterface`: Generic interface with type parameters and methods
+- `InstantiatedInterface`: Concrete interface created from generic + type arguments
+- `TypeInstantiator`: Engine for converting generic types to concrete types
+- `TypeSubstitutionEngine`: Handles type parameter replacement in complex type structures
+- `ParsedConstraint`: Validated constraint with union/underlying/interface support
+- `SubstitutionResult`: Result of type substitution with performance metrics
+- `ValidationResult`: Constraint validation results with detailed violation information
 
 **Constructor Pattern**:
 ```go

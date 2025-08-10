@@ -9,6 +9,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/reedom/convergen/v8/pkg/builder"
 	"github.com/reedom/convergen/v8/pkg/domain"
 )
 
@@ -357,8 +358,13 @@ func (gcg *GenericCodeGenerator) generateFieldMappings(
 		return nil, fmt.Errorf("failed to substitute destination type: %w", err)
 	}
 
-	// Generate field mappings using the field mapper
-	mappings, err := gcg.fieldMapper.MapFields(substitutedSourceType, substitutedDestType, method.Annotations)
+	gcg.logger.Debug("generating field mappings for generic method",
+		zap.String("method", method.Name),
+		zap.String("source_type", substitutedSourceType.String()),
+		zap.String("dest_type", substitutedDestType.String()))
+
+	// Use the enhanced field mapping logic
+	mappings, err := gcg.generateEnhancedFieldMappings(substitutedSourceType, substitutedDestType, method.Annotations)
 	if err != nil {
 		return nil, fmt.Errorf("field mapping failed: %w", err)
 	}
@@ -596,6 +602,193 @@ func (gcg *GenericCodeGenerator) GetMetrics() *GenericGenerationMetrics {
 // ClearMetrics resets all metrics.
 func (gcg *GenericCodeGenerator) ClearMetrics() {
 	gcg.metrics = NewGenericGenerationMetrics()
+}
+
+// generateEnhancedFieldMappings uses the builder package's GenericFieldMapper for proper field mapping.
+func (gcg *GenericCodeGenerator) generateEnhancedFieldMappings(
+	sourceType, destType domain.Type,
+	annotations map[string]string,
+) ([]*FieldMapping, error) {
+	// Create a GenericFieldMapper from the builder package
+	genericMapper := builder.NewGenericFieldMapper(
+		nil, // Use default base mapper
+		nil, // Use default type substitution engine
+		gcg.logger,
+		nil, // Use default config
+	)
+
+	// Convert annotations to the format expected by the builder
+	options := builder.DefaultFieldMappingOptions()
+	if len(annotations) > 0 {
+		options.CustomMappings = annotations
+	}
+
+	// Create empty type substitutions for now - this could be enhanced later
+	typeSubstitutions := make(map[string]domain.Type)
+
+	// Use the builder's field mapping logic
+	builderFieldMapping, err := genericMapper.MapGenericFields(
+		sourceType,
+		destType,
+		typeSubstitutions,
+		options,
+	)
+	if err != nil {
+		gcg.logger.Debug("builder field mapping failed, using fallback", zap.Error(err))
+		// Fall back to simple field mapping
+		return gcg.generateSimpleFieldMappings(sourceType, destType, annotations)
+	}
+
+	// Convert builder.FieldMapping to generator.FieldMapping
+	mappings := make([]*FieldMapping, len(builderFieldMapping.Assignments))
+	for i, assignment := range builderFieldMapping.Assignments {
+		mapping := &FieldMapping{
+			SourceField: assignment.GetSourceFieldName(),
+			DestField:   assignment.GetDestFieldName(),
+			Annotations: annotations,
+		}
+
+		// Set types if available
+		if assignment.SourceField != nil {
+			mapping.SourceType = assignment.SourceField.Type
+		}
+		if assignment.DestField != nil {
+			mapping.DestType = assignment.DestField.Type
+		}
+
+		// Extract converter from assignment code if present
+		if assignment.Converter != "" {
+			mapping.Converter = assignment.Converter
+		}
+
+		mappings[i] = mapping
+	}
+
+	gcg.logger.Debug("generated field mappings using builder",
+		zap.Int("mappings_count", len(mappings)))
+
+	return mappings, nil
+}
+
+// extractStructFields extracts fields from a struct type.
+func (gcg *GenericCodeGenerator) extractStructFields(typ domain.Type) ([]*domain.Field, error) {
+	// Handle pointer types by dereferencing
+	if typ.Kind() == domain.KindPointer {
+		if ptrType, ok := typ.(*domain.PointerType); ok {
+			return gcg.extractStructFields(ptrType.Elem())
+		}
+	}
+
+	// Only handle struct types
+	if typ.Kind() != domain.KindStruct {
+		return nil, fmt.Errorf("cannot extract fields from non-struct type: %s", typ.Kind())
+	}
+
+	// Cast to struct type and get fields
+	if structType, ok := typ.(*domain.StructType); ok {
+		fields := structType.Fields()
+		result := make([]*domain.Field, len(fields))
+		for i, field := range fields {
+			result[i] = &domain.Field{
+				Name:     field.Name,
+				Type:     field.Type,
+				Position: field.Position,
+				Exported: field.Exported,
+			}
+		}
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("type is not a proper struct type: %T", typ)
+}
+
+// generateSimpleFieldMappings provides a fallback field mapping implementation.
+func (gcg *GenericCodeGenerator) generateSimpleFieldMappings(
+	sourceType, destType domain.Type,
+	annotations map[string]string,
+) ([]*FieldMapping, error) {
+	// Extract fields from source and destination types
+	srcFields, err := gcg.extractStructFields(sourceType)
+	if err != nil {
+		gcg.logger.Debug("failed to extract source fields", zap.Error(err))
+		return []*FieldMapping{}, nil // Return empty mappings rather than error for non-struct types
+	}
+
+	dstFields, err := gcg.extractStructFields(destType)
+	if err != nil {
+		gcg.logger.Debug("failed to extract destination fields", zap.Error(err))
+		return []*FieldMapping{}, nil
+	}
+
+	gcg.logger.Debug("extracted fields for simple mapping",
+		zap.Int("source_fields", len(srcFields)),
+		zap.Int("dest_fields", len(dstFields)))
+
+	// Generate field mappings using simple name-based matching
+	mappings := make([]*FieldMapping, 0, len(dstFields))
+
+	for _, dstField := range dstFields {
+		// Try to find matching source field by name
+		for _, srcField := range srcFields {
+			if gcg.fieldsCanMap(srcField, dstField) {
+				mapping := &FieldMapping{
+					SourceField: srcField.Name,
+					DestField:   dstField.Name,
+					SourceType:  srcField.Type,
+					DestType:    dstField.Type,
+					Annotations: annotations,
+				}
+
+				// Add type conversion if needed
+				if !srcField.Type.AssignableTo(dstField.Type) {
+					mapping.Converter = gcg.generateTypeConversion(srcField.Type, dstField.Type)
+				}
+
+				mappings = append(mappings, mapping)
+				break
+			}
+		}
+	}
+
+	gcg.logger.Debug("generated simple field mappings",
+		zap.Int("mappings_count", len(mappings)))
+
+	return mappings, nil
+}
+
+// fieldsCanMap determines if two fields can be mapped to each other.
+func (gcg *GenericCodeGenerator) fieldsCanMap(srcField, dstField *domain.Field) bool {
+	// Check name match (primary criteria)
+	if srcField.Name == dstField.Name {
+		return true
+	}
+
+	// Check for common field name patterns
+	commonMappings := map[string]string{
+		"Name":  "Value", // Name -> Value mapping
+		"Value": "Value", // Value -> Value mapping
+		"Inner": "Inner", // Inner -> Inner mapping
+	}
+
+	for srcName, dstName := range commonMappings {
+		if srcField.Name == srcName && dstField.Name == dstName {
+			return true
+		}
+	}
+
+	// Special case for nested fields - could be enhanced
+	return false
+}
+
+// generateTypeConversion generates type conversion code if needed.
+func (gcg *GenericCodeGenerator) generateTypeConversion(srcType, dstType domain.Type) string {
+	// Handle basic type conversions
+	if srcType.Kind() == domain.KindBasic && dstType.Kind() == domain.KindBasic {
+		return dstType.Name() // Simple type conversion
+	}
+
+	// For more complex types, return empty string (direct assignment)
+	return ""
 }
 
 // Shutdown gracefully shuts down the generator.

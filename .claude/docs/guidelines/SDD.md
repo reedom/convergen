@@ -9,6 +9,12 @@
 ## spec Structure
 Use repo root `.claude/docs/spec/{requirements,design,tasks}.md`.
 
+## Generics Integration
+SDD workflows apply to generics features with specific considerations:
+- **Requirements**: Use EARS patterns with type parameter specifications
+- **Design**: Include type system architecture and constraint resolution
+- **Tasks**: Break down by parser, instantiator, generator, and integration components
+
 ### requirements.md — **What**
 - **Use EARS** for all functional requirements.
 - Include: `REQ-X.Y` IDs, stakeholders & goals, constraints, verifiable behaviors.
@@ -19,6 +25,11 @@ Use repo root `.claude/docs/spec/{requirements,design,tasks}.md`.
 - Event: `When <trigger>, the system shall <response>`
 - State: `While <state>, the system shall <response>`
 - Conditional: `Where <condition>, the system shall <response>`
+
+**Generics-specific EARS extensions**
+- Type Parameter: `When type parameters <T, K> are declared, the system shall <response>`
+- Constraint: `Where constraints <~int | ~string> are specified, the system shall <response>`
+- Instantiation: `When generic types are instantiated with <ConcreteType>, the system shall <response>`
 
 ### design.md — **How**
 - Architecture overview, interfaces & data contracts, resilience, security.

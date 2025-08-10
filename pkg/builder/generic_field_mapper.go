@@ -3,6 +3,7 @@ package builder
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -397,6 +398,11 @@ func (gfm *GenericFieldMapper) generateFieldAssignment(
 		}
 	}
 
+	// Try to generate nested field assignment
+	if nestedAssignment := gfm.generateNestedFieldAssignment(dstField, srcFields, context); nestedAssignment != nil {
+		return nestedAssignment, nil
+	}
+
 	// No match found
 	if context.Options.IgnoreUnmatched {
 		return nil, nil
@@ -407,17 +413,20 @@ func (gfm *GenericFieldMapper) generateFieldAssignment(
 
 // fieldsMatch checks if two fields can be mapped to each other.
 func (gfm *GenericFieldMapper) fieldsMatch(srcField, dstField *domain.Field, context *GenericMappingContext) bool {
-	// Check name match
-	if srcField.Name != dstField.Name {
-		return false
-	}
-
-	// Check type compatibility
-	if context.Options.ValidateTypes {
+	// Check exact name match first
+	if srcField.Name == dstField.Name {
+		if !context.Options.ValidateTypes {
+			return true
+		}
 		return gfm.typesCompatible(srcField.Type, dstField.Type, context)
 	}
 
-	return true
+	// Check for common field mapping patterns
+	if gfm.fieldsMatchByPattern(srcField, dstField, context) {
+		return true
+	}
+
+	return false
 }
 
 // typesCompatible checks if two types are compatible for assignment.
@@ -584,6 +593,62 @@ func (gfm *GenericFieldMapper) getTypeName(typ domain.Type) string {
 	return typ.Name()
 }
 
+// fieldsMatchByPattern checks if fields can be mapped using common patterns.
+func (gfm *GenericFieldMapper) fieldsMatchByPattern(srcField, dstField *domain.Field, context *GenericMappingContext) bool {
+	// Common field name mapping patterns
+	mappingPatterns := map[string][]string{
+		"Value": {"Name", "Value", "Data", "Content", "Result"}, // Value can accept from multiple sources
+		"Name":  {"Name", "Title", "Label", "Value"},            // Name can accept from multiple sources
+		"Data":  {"Data", "Content", "Value", "Payload"},        // Data can accept from multiple sources
+		"Inner": {"Inner", "Value", "Data", "Content"},          // Inner can accept from multiple sources
+	}
+
+	// Check if destination field can accept from source field
+	if acceptableSources, exists := mappingPatterns[dstField.Name]; exists {
+		for _, acceptableSource := range acceptableSources {
+			if srcField.Name == acceptableSource {
+				// Check type compatibility if validation is enabled
+				if !context.Options.ValidateTypes {
+					return true
+				}
+				return gfm.typesCompatible(srcField.Type, dstField.Type, context)
+			}
+		}
+	}
+
+	// Check if source and destination have compatible patterns (bidirectional)
+	for pattern, sources := range mappingPatterns {
+		// Check if source field matches this pattern
+		for _, source := range sources {
+			if srcField.Name == source {
+				// Check if dest field also matches a compatible pattern
+				for _, compatibleSource := range sources {
+					if dstField.Name == compatibleSource {
+						if !context.Options.ValidateTypes {
+							return true
+						}
+						return gfm.typesCompatible(srcField.Type, dstField.Type, context)
+					}
+				}
+				break
+			}
+		}
+		if srcField.Name == pattern {
+			// Source field is a pattern name, check if dest field is compatible
+			for _, compatibleSource := range sources {
+				if dstField.Name == compatibleSource {
+					if !context.Options.ValidateTypes {
+						return true
+					}
+					return gfm.typesCompatible(srcField.Type, dstField.Type, context)
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 // optimizeAssignments applies optimizations to field assignments.
 func (gfm *GenericFieldMapper) optimizeAssignments(
 	assignments []*FieldAssignment,
@@ -621,6 +686,99 @@ func (gfm *GenericFieldMapper) GetMetrics() *GenericFieldMappingMetrics {
 // ClearMetrics resets all metrics.
 func (gfm *GenericFieldMapper) ClearMetrics() {
 	gfm.metrics = NewGenericFieldMappingMetrics()
+}
+
+// generateNestedFieldAssignment attempts to generate a nested field assignment.
+func (gfm *GenericFieldMapper) generateNestedFieldAssignment(
+	dstField *domain.Field,
+	srcFields []*domain.Field,
+	context *GenericMappingContext,
+) *FieldAssignment {
+	// Handle nested struct field mappings
+	if dstField.Type.Kind() == domain.KindStruct {
+		// Look for a source field with the same name that's also a struct
+		for _, srcField := range srcFields {
+			if srcField.Name == dstField.Name && srcField.Type.Kind() == domain.KindStruct {
+				// Generate nested struct assignment
+				nestedCode := gfm.generateNestedStructAssignment(srcField, dstField, context)
+				if nestedCode != "" {
+					return &FieldAssignment{
+						SourceField:    srcField,
+						DestField:      dstField,
+						AssignmentType: DirectAssignment,
+						Code:           nestedCode,
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// generateNestedStructAssignment generates code for nested struct assignments.
+func (gfm *GenericFieldMapper) generateNestedStructAssignment(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	// Extract fields from both structs
+	srcStructFields, err := gfm.extractTypeFields(srcField.Type)
+	if err != nil {
+		return ""
+	}
+
+	dstStructFields, err := gfm.extractTypeFields(dstField.Type)
+	if err != nil {
+		return ""
+	}
+
+	// Generate field-by-field assignments for the nested struct
+	assignments := make([]string, 0)
+
+	for _, dstNestedField := range dstStructFields {
+		for _, srcNestedField := range srcStructFields {
+			if gfm.fieldsCanMapNested(srcNestedField, dstNestedField) {
+				// Generate the nested assignment
+				assignment := fmt.Sprintf("dst.%s.%s = src.%s.%s",
+					dstField.Name, dstNestedField.Name,
+					srcField.Name, srcNestedField.Name)
+				assignments = append(assignments, assignment)
+				break
+			}
+		}
+	}
+
+	if len(assignments) == 0 {
+		return ""
+	}
+
+	// Join all assignments with newlines
+	return strings.Join(assignments, "\n\t")
+}
+
+// fieldsCanMapNested checks if nested fields can be mapped (simpler rules).
+func (gfm *GenericFieldMapper) fieldsCanMapNested(srcField, dstField *domain.Field) bool {
+	// For nested fields, use more lenient matching
+	if srcField.Name == dstField.Name {
+		return true
+	}
+
+	// Allow common transformations for nested fields
+	commonMappings := map[string][]string{
+		"Inner": {"Inner", "Value", "Data"},
+		"Value": {"Value", "Inner", "Data", "Name"},
+		"Data":  {"Data", "Value", "Content"},
+	}
+
+	if acceptable, exists := commonMappings[dstField.Name]; exists {
+		for _, source := range acceptable {
+			if srcField.Name == source {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // SetConfiguration updates the mapper configuration.

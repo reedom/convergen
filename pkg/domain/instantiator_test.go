@@ -1,7 +1,10 @@
 package domain
 
 import (
+	"context"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -907,5 +910,344 @@ func TestEdgeCases(t *testing.T) {
 		cached, found := instantiator.GetCachedInstantiation("anything")
 		assert.False(t, found)
 		assert.Nil(t, cached)
+	})
+}
+
+// Mock CrossPackageTypeLoader for testing
+type mockCrossPackageLoader struct {
+	types       map[string]Type
+	importPaths []string
+}
+
+func newMockCrossPackageLoader() *mockCrossPackageLoader {
+	return &mockCrossPackageLoader{
+		types: map[string]Type{
+			"external.ExternalType": NewBasicType("ExternalType", reflect.Struct),
+			"other.pkg.OtherType":   NewBasicType("OtherType", reflect.Struct),
+		},
+		importPaths: []string{"external", "other/pkg"},
+	}
+}
+
+func (m *mockCrossPackageLoader) ResolveType(ctx context.Context, qualifiedTypeName string) (Type, error) {
+	if typ, found := m.types[qualifiedTypeName]; found {
+		return typ, nil
+	}
+	return nil, fmt.Errorf("type %s not found", qualifiedTypeName)
+}
+
+func (m *mockCrossPackageLoader) ValidateTypeArguments(ctx context.Context, typeArguments []string) error {
+	for _, arg := range typeArguments {
+		if strings.Contains(arg, ".") {
+			if _, found := m.types[arg]; !found {
+				return fmt.Errorf("external type %s not found", arg)
+			}
+		}
+	}
+	return nil
+}
+
+func (m *mockCrossPackageLoader) GetImportPaths(typeArguments []string) []string {
+	pathSet := make(map[string]bool)
+	for _, arg := range typeArguments {
+		if strings.Contains(arg, ".") {
+			for _, path := range m.importPaths {
+				if strings.HasPrefix(arg, strings.ReplaceAll(path, "/", ".")) {
+					pathSet[path] = true
+				}
+			}
+		}
+	}
+	result := make([]string, 0, len(pathSet))
+	for path := range pathSet {
+		result = append(result, path)
+	}
+	return result
+}
+
+func TestCrossPackageTypeResolution(t *testing.T) {
+	typeBuilder := NewTypeBuilder()
+	logger := zaptest.NewLogger(t)
+	mockLoader := newMockCrossPackageLoader()
+
+	config := &TypeInstantiatorConfig{
+		MaxRecursionDepth:      10,
+		EnableCaching:          true,
+		EnablePerformanceTrack: true,
+		CacheCapacity:          1000,
+		CrossPackageTypeLoader: mockLoader,
+	}
+	instantiator := NewTypeInstantiatorWithConfig(typeBuilder, logger, config)
+
+	t.Run("instantiate with external types", func(t *testing.T) {
+		typeParams := []TypeParam{*NewAnyTypeParam("T", 0)}
+		genericInterface, err := NewGenericInterface("TestInterface", typeParams, nil, "testpkg")
+		require.NoError(t, err)
+
+		// Test instantiation from string type arguments
+		typeArguments := []string{"external.ExternalType"}
+		result, err := instantiator.InstantiateInterfaceFromStrings(
+			context.Background(),
+			genericInterface,
+			typeArguments,
+		)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, "testpkg.TestInterface[ExternalType]", result.TypeSignature)
+		assert.True(t, result.ValidationResult.Valid)
+		assert.Equal(t, 1, len(result.TypeArguments))
+
+		// Verify the external type was resolved correctly
+		externalType := result.TypeArguments["T"]
+		assert.Equal(t, "ExternalType", externalType.Name())
+	})
+
+	t.Run("error with missing cross-package loader", func(t *testing.T) {
+		// Create instantiator without cross-package loader
+		noLoaderInstantiator := NewTypeInstantiator(typeBuilder, logger)
+
+		typeParams := []TypeParam{*NewAnyTypeParam("T", 0)}
+		genericInterface, err := NewGenericInterface("TestInterface", typeParams, nil, "testpkg")
+		require.NoError(t, err)
+
+		typeArguments := []string{"external.ExternalType"}
+		_, err = noLoaderInstantiator.InstantiateInterfaceFromStrings(
+			context.Background(),
+			genericInterface,
+			typeArguments,
+		)
+
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrCrossPackageTypeLoader)
+	})
+
+	t.Run("error with unresolvable external type", func(t *testing.T) {
+		typeParams := []TypeParam{*NewAnyTypeParam("T", 0)}
+		genericInterface, err := NewGenericInterface("TestInterface", typeParams, nil, "testpkg")
+		require.NoError(t, err)
+
+		typeArguments := []string{"nonexistent.Type"}
+		_, err = instantiator.InstantiateInterfaceFromStrings(
+			context.Background(),
+			genericInterface,
+			typeArguments,
+		)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to resolve type arguments")
+	})
+
+	t.Run("mixed local and external types", func(t *testing.T) {
+		typeParams := []TypeParam{
+			*NewAnyTypeParam("T", 0),
+			*NewAnyTypeParam("U", 1),
+		}
+		genericInterface, err := NewGenericInterface("MixedInterface", typeParams, nil, "testpkg")
+		require.NoError(t, err)
+
+		// Mix local and external types
+		typeArguments := []string{"string", "external.ExternalType"}
+		result, err := instantiator.InstantiateInterfaceFromStrings(
+			context.Background(),
+			genericInterface,
+			typeArguments,
+		)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, "testpkg.MixedInterface[string,ExternalType]", result.TypeSignature)
+		assert.Equal(t, 2, len(result.TypeArguments))
+
+		// Verify both types were resolved correctly
+		localType := result.TypeArguments["T"]
+		assert.Equal(t, "string", localType.Name())
+		externalType := result.TypeArguments["U"]
+		assert.Equal(t, "ExternalType", externalType.Name())
+	})
+
+	t.Run("cross-package loader interface methods", func(t *testing.T) {
+		// Test HasCrossPackageSupport
+		assert.True(t, instantiator.HasCrossPackageSupport())
+
+		// Test GetCrossPackageLoader
+		loader := instantiator.GetCrossPackageLoader()
+		assert.Equal(t, mockLoader, loader)
+
+		// Test SetCrossPackageLoader
+		newMockLoader := newMockCrossPackageLoader()
+		instantiator.SetCrossPackageLoader(newMockLoader)
+		assert.Equal(t, newMockLoader, instantiator.GetCrossPackageLoader())
+	})
+}
+
+func TestAdvancedConstraintValidation(t *testing.T) {
+	typeBuilder := NewTypeBuilder()
+	logger := zaptest.NewLogger(t)
+	instantiator := NewTypeInstantiator(typeBuilder, logger)
+
+	t.Run("interface constraint validation", func(t *testing.T) {
+		// Create a generic interface with interface constraint
+		constraint := NewBasicType("Stringer", reflect.Interface)
+		typeParams := []TypeParam{*NewTypeParam("T", constraint, 0)}
+		genericInterface, err := NewGenericInterface("StringerInterface", typeParams, nil, "testpkg")
+		require.NoError(t, err)
+
+		// Test with a type that doesn't implement the interface (current BasicType implementation)
+		typeArgs := []Type{StringType}
+		_, err = instantiator.InstantiateInterface(genericInterface, typeArgs)
+
+		// This should fail because BasicType.Implements always returns false
+		// This is expected behavior with the current implementation
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrConstraintViolation)
+	})
+
+	t.Run("underlying constraint validation", func(t *testing.T) {
+		// Create a generic interface with underlying constraint
+		underlying := NewUnderlyingConstraint(StringType, "")
+		typeParams := []TypeParam{*NewUnderlyingTypeParam("T", underlying, 0)}
+		genericInterface, err := NewGenericInterface("UnderlyingInterface", typeParams, nil, "testpkg")
+		require.NoError(t, err)
+
+		// Test with a string type (should satisfy ~string)
+		typeArgs := []Type{StringType}
+		result, err := instantiator.InstantiateInterface(genericInterface, typeArgs)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.True(t, result.ValidationResult.Valid)
+	})
+
+	t.Run("union underlying constraint validation", func(t *testing.T) {
+		// Create a generic interface with union underlying constraint (T ~int | ~string)
+		unionTypes := []Type{IntType, StringType}
+		typeParams := []TypeParam{*NewUnionUnderlyingTypeParam("T", unionTypes, 0)}
+		genericInterface, err := NewGenericInterface("UnionUnderlyingInterface", typeParams, nil, "testpkg")
+		require.NoError(t, err)
+
+		// Test with valid type (string)
+		typeArgs := []Type{StringType}
+		result, err := instantiator.InstantiateInterface(genericInterface, typeArgs)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.True(t, result.ValidationResult.Valid)
+
+		// Test with invalid type (float)
+		typeArgs = []Type{Float64Type}
+		_, err = instantiator.InstantiateInterface(genericInterface, typeArgs)
+
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrConstraintViolation)
+	})
+}
+
+func TestPerformanceMetrics(t *testing.T) {
+	typeBuilder := NewTypeBuilder()
+	logger := zaptest.NewLogger(t)
+	config := &TypeInstantiatorConfig{
+		MaxRecursionDepth:      10,
+		EnableCaching:          true,
+		EnablePerformanceTrack: true,
+		CacheCapacity:          1000,
+	}
+	instantiator := NewTypeInstantiatorWithConfig(typeBuilder, logger, config)
+
+	t.Run("cache performance metrics", func(t *testing.T) {
+		typeParams := []TypeParam{*NewAnyTypeParam("T", 0)}
+		genericInterface, err := NewGenericInterface("PerfTestInterface", typeParams, nil, "testpkg")
+		require.NoError(t, err)
+
+		typeArgs := []Type{StringType}
+
+		// First instantiation - cache miss
+		result1, err := instantiator.InstantiateInterface(genericInterface, typeArgs)
+		require.NoError(t, err)
+		assert.False(t, result1.CacheHit)
+		assert.GreaterOrEqual(t, result1.InstantiationDurationMS, int64(0))
+		assert.GreaterOrEqual(t, result1.ValidationResult.ValidationDurationMS, int64(0))
+
+		// Second instantiation - cache hit
+		result2, err := instantiator.InstantiateInterface(genericInterface, typeArgs)
+		require.NoError(t, err)
+		assert.True(t, result2.CacheHit)
+
+		// Verify cache statistics
+		stats := instantiator.GetCacheStats()
+		assert.Equal(t, int64(1), stats.CacheHits)
+		assert.Equal(t, int64(1), stats.CacheMisses)
+		assert.Equal(t, int64(2), stats.TotalInstantiations)
+		assert.Equal(t, int64(1), stats.CacheSize)
+		assert.Equal(t, 50.0, stats.HitRate)
+	})
+
+	t.Run("substitution engine metrics", func(t *testing.T) {
+		// Test substitution engine performance tracking
+		substitutionEngine := instantiator.GetSubstitutionEngine()
+		stats := instantiator.GetSubstitutionStats()
+		assert.NotNil(t, stats)
+
+		// Test cache operations
+		cacheSize := instantiator.GetSubstitutionCacheSize()
+		assert.GreaterOrEqual(t, cacheSize, 0)
+
+		// Test cache clearing
+		instantiator.ClearSubstitutionCache()
+		newCacheSize := instantiator.GetSubstitutionCacheSize()
+		assert.Equal(t, 0, newCacheSize)
+
+		// Verify substitution engine is accessible
+		assert.NotNil(t, substitutionEngine)
+	})
+}
+
+func TestCircularDependencyDetection(t *testing.T) {
+	typeBuilder := NewTypeBuilder()
+	logger := zaptest.NewLogger(t)
+	config := &TypeInstantiatorConfig{
+		MaxRecursionDepth:      3,     // Low limit for testing
+		EnableCaching:          false, // Disable to ensure we test recursion detection
+		EnablePerformanceTrack: true,
+		CacheCapacity:          0,
+	}
+	instantiator := NewTypeInstantiatorWithConfig(typeBuilder, logger, config)
+
+	t.Run("direct recursion detection", func(t *testing.T) {
+		// Set up for direct recursion test
+		instantiator.recursionDepth = 3 // At max depth
+
+		err := instantiator.checkRecursion("TestInterface[string]")
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrRecursiveInstantiation)
+	})
+
+	t.Run("circular dependency detection", func(t *testing.T) {
+		// Reset first
+		instantiator.recursionDepth = 1
+		instantiator.instantiationStack = []string{}
+
+		signature := "TestInterface[string]"
+		instantiator.instantiationStack = append(instantiator.instantiationStack, signature)
+
+		err := instantiator.checkRecursion(signature)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrCircularTypeDetected)
+	})
+
+	t.Run("substitution engine recursion limits", func(t *testing.T) {
+		// Test substitution engine's recursion detection
+		substitutionEngine := instantiator.GetSubstitutionEngine()
+
+		// Create a type that would cause deep recursion
+		genericType := NewBasicType("RecursiveType", reflect.Struct)
+		typeParams := []TypeParam{*NewAnyTypeParam("T", 0)}
+		typeArgs := []Type{StringType}
+
+		// This should work within limits
+		result, err := substitutionEngine.SubstituteType(genericType, typeParams, typeArgs)
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.GreaterOrEqual(t, result.RecursionDepth, 0)
 	})
 }
