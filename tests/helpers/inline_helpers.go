@@ -35,26 +35,26 @@ func (is InlineScenario) WithImports(imports ...string) InlineScenario {
 // WithStructLiteral enables struct literal output for this scenario.
 func (is InlineScenario) WithStructLiteral() TestScenario {
 	return TestScenario{
-		Name:        is.Name,
-		Description: is.Description,
-		SourceTypes: is.SourceTypes,
-		Interface:   is.Interface,
-		Imports:     is.Imports,
+		Name:          is.Name,
+		Description:   is.Description,
+		SourceTypes:   is.SourceTypes,
+		Interface:     is.Interface,
+		Imports:       is.Imports,
 		ShouldSucceed: true,
-		CliFlags:    CLIFlags{StructLiteral: true},
+		CliFlags:      CLIFlags{StructLiteral: true},
 	}
 }
 
 // WithNoStructLiteral disables struct literal output for this scenario.
 func (is InlineScenario) WithNoStructLiteral() TestScenario {
 	return TestScenario{
-		Name:        is.Name,
-		Description: is.Description,
-		SourceTypes: is.SourceTypes,
-		Interface:   is.Interface,
-		Imports:     is.Imports,
+		Name:          is.Name,
+		Description:   is.Description,
+		SourceTypes:   is.SourceTypes,
+		Interface:     is.Interface,
+		Imports:       is.Imports,
 		ShouldSucceed: true,
-		CliFlags:    CLIFlags{NoStructLiteral: true},
+		CliFlags:      CLIFlags{NoStructLiteral: true},
 	}
 }
 
@@ -131,6 +131,14 @@ func WithDebug(scenario TestScenario) TestScenario {
 
 // StyleAnnotationScenario creates a scenario for testing :style annotation.
 func StyleAnnotationScenario(style string) InlineScenario {
+	// :style arg requires different method signature (dst parameter first)
+	var methodSig string
+	if style == "arg" {
+		methodSig = "Convert(dst *UserModel, src *User) *UserModel"
+	} else {
+		methodSig = "Convert(*User) *UserModel"
+	}
+
 	return NewInlineScenario(
 		fmt.Sprintf("Style_%s", style),
 		fmt.Sprintf("Test :style %s annotation", style),
@@ -146,8 +154,8 @@ type UserModel struct {
 }`).WithInterface(fmt.Sprintf(`
 type Convergen interface {
 	// :style %s
-	Convert(*User) *UserModel
-}`, style))
+	%s
+}`, style, methodSig))
 }
 
 // MatchAnnotationScenario creates a scenario for testing :match annotation.

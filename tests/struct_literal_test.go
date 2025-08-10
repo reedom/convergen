@@ -212,7 +212,7 @@ type Convergen interface {
 			helpers.CompilesSuccessfully(),
 		),
 
-		// Style arg should fallback (note: :style arg has implementation bugs, testing basic fallback behavior)
+		// Style arg should fallback (note: :style arg now works correctly, testing basic fallback behavior)
 		helpers.NewInlineScenario(
 			"FallbackStyleArg",
 			"Test fallback for :style arg annotation - verifies no struct literal is used",
@@ -230,7 +230,7 @@ type Convergen interface {
 }`).AsTestScenario().WithCodeChecks(
 			helpers.NotContains("return &UserDTO{"),
 			helpers.NotContains("return UserDTO{"),
-			// Note: :style arg has bugs (dst.Name = dst.Name), but we're testing struct literal fallback
+			// Note: :style arg now works correctly (dst.Name = src.Name), testing struct literal fallback
 			helpers.Contains("dst.Name ="),
 		),
 
@@ -296,7 +296,7 @@ type UserDTO struct {
 type Convergen interface {
 	// :struct-literal
 	Convert(*User) *UserDTO
-}`).WithStructLiteral().WithCodeChecks(
+}`).AsTestScenario().WithCodeChecks(
 			helpers.Contains("return &UserDTO{"),
 			helpers.MatchesRegex(`ID:\s+src\.ID`),
 			helpers.MatchesRegex(`Name:\s+src\.Name`),
@@ -331,11 +331,10 @@ type Convergen interface {
 			helpers.CompilesSuccessfully(),
 		),
 
-		// Interface-level :struct-literal - NOTE: Annotations not implemented,
-		// using CLI flag to enable struct literal behavior for all methods
+		// Interface-level :struct-literal annotation
 		helpers.NewInlineScenario(
 			"InterfaceLevelStructLiteral",
-			"Test struct literal generation for all methods with CLI flag",
+			"Test :struct-literal annotation at interface level affects all methods",
 		).WithTypes(`
 type User struct {
 	ID   uint64
@@ -358,7 +357,7 @@ type ProfileDTO struct {
 type Convergen interface {
 	ConvertUser(*User) *UserDTO
 	ConvertProfile(*Profile) *ProfileDTO
-}`).WithStructLiteral().WithCodeChecks(
+}`).AsTestScenario().WithCodeChecks(
 			helpers.Contains("return &UserDTO{"),
 			helpers.MatchesRegex(`ID:\s+src\.ID`),
 			helpers.MatchesRegex(`Name:\s+src\.Name`),
@@ -369,13 +368,40 @@ type Convergen interface {
 			helpers.CompilesSuccessfully(),
 		),
 
-		// Method-level annotation override - SKIPPED: Annotations not yet implemented
-		// This test would require per-method annotation support which needs implementation
-		// TODO: Implement :struct-literal and :no-struct-literal annotation support
-		// helpers.NewInlineScenario(
-		//	"MethodOverridesInterface",
-		//	"Test method-level annotation overrides interface-level setting",
-		// ).AsTestScenario().ShouldSkip("Annotations not yet implemented"),
+		// Method-level annotation override
+		helpers.NewInlineScenario(
+			"MethodOverridesInterface",
+			"Test method-level annotation overrides interface-level setting",
+		).WithTypes(`
+type User struct {
+	ID   uint64
+	Name string
+}
+
+type UserDTO struct {
+	ID   uint64
+	Name string
+}
+
+type Profile struct {
+	Bio string
+}
+
+type ProfileDTO struct {
+	Bio string
+}`).WithInterface(`
+// :struct-literal
+type Convergen interface {
+	// Method uses interface default (struct literal)
+	ConvertUser(*User) *UserDTO
+
+	// :no-struct-literal
+	ConvertProfile(*Profile) *ProfileDTO
+}`).AsTestScenario().WithCodeChecks(
+			helpers.Contains("return &UserDTO{"),    // Interface default
+			helpers.Contains("dst = &ProfileDTO{}"), // Method override
+			helpers.CompilesSuccessfully(),
+		),
 	}
 
 	// Run all annotation scenarios
@@ -443,10 +469,10 @@ type Convergen interface {
 		),
 
 		// :style arg should prevent struct literals (fallback test)
-		// NOTE: :style arg has a known bug - generates dst.ID = dst.ID instead of dst.ID = src.ID
+		// Fixed: :style arg now correctly generates dst.ID = src.ID
 		helpers.NewInlineScenario(
 			"StyleArgPreventsStructLiteral",
-			"Test :style arg prevents struct literal generation (has known assignment bug)",
+			"Test :style arg prevents struct literal generation (assignments work correctly)",
 		).WithTypes(`
 type User struct {
 	ID   uint64
@@ -463,10 +489,10 @@ type Convergen interface {
 }`).AsTestScenario().WithCodeChecks(
 			helpers.NotContains("return &UserDTO{"),
 			helpers.NotContains("return UserDTO{"),
-			// Known bug: generates dst.ID = dst.ID instead of dst.ID = src.ID
-			helpers.Contains("dst.ID = dst.ID"),
-			helpers.Contains("dst.Name = dst.Name"),
-			// Still compiles but doesn't work correctly
+			// Fixed: now generates correct assignments dst.ID = src.ID
+			helpers.Contains("dst.ID = src.ID"),
+			helpers.Contains("dst.Name = src.Name"),
+			// Compiles and works correctly
 		),
 
 		// Struct literal with field mappings

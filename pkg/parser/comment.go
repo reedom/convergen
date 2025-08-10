@@ -34,6 +34,7 @@ const (
 	annotationTypecast        = "typecast"
 	annotationTypeCastOff     = "typecast:off"
 	annotationReverse         = "reverse"
+	annotationStructLiteral   = "struct-literal"
 	annotationNoStructLiteral = "no-struct-literal"
 	annotationSkip            = "skip"
 	annotationMap             = "map"
@@ -121,9 +122,11 @@ func (p *Parser) applyBooleanFlags(notation string, opts *option.Options, posRev
 		opts.Reverse = true
 		*posReverse = n.Pos()
 		return true
+	case annotationStructLiteral:
+		opts.StructLiteral = true
+		return true
 	case annotationNoStructLiteral:
-		// This will be handled by the struct literal feature implementation
-		// For now, we just acknowledge the annotation is valid
+		opts.NoStructLiteral = true
 		return true
 	default:
 		return false
@@ -318,10 +321,17 @@ func (p *Parser) applyPostprocessNotation(args []string, n *ast.Comment, opts *o
 }
 
 // validateNotationOptions validates the final option configuration.
+// Note: This validation only checks for conflicts within the same annotation scope.
+// Method-level annotations are allowed to override interface-level annotations.
 func (p *Parser) validateNotationOptions(opts *option.Options, posReverse token.Pos) error {
 	if opts.Reverse && opts.Style == gmodel.DstVarReturn {
 		return logger.Errorf(`%v: to use ":reverse", style must be ":style arg"`, p.fset.Position(posReverse))
 	}
+
+	// Note: We don't validate StructLiteral && NoStructLiteral conflicts here anymore
+	// because method-level annotations should be able to override interface-level annotations.
+	// The final resolution happens in the generator where method-level takes precedence.
+
 	return nil
 }
 

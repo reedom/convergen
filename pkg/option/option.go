@@ -16,6 +16,8 @@ type Options struct {
 	Typecast            bool              // Whether to use explicit typecasts when converting values
 	Receiver            string            // Receiver specification for method generation (e.g., "c" or "*UserService")
 	Reverse             bool              // Whether to reverse the order of struct tags
+	StructLiteral       bool              // Whether to force struct literal generation
+	NoStructLiteral     bool              // Whether to disable struct literal generation
 	SkipFields          []*PatternMatcher // List of field names to skip during conversion
 	NameMapper          []*NameMatcher    // List of field name mapping rules
 	TemplatedNameMapper []*NameMatcher    // List of templated field name mapping rules
@@ -70,6 +72,7 @@ var ValidOpsIntf = map[string]struct{}{
 	"stringer:off":      {},
 	"typecast":          {},
 	"typecast:off":      {},
+	"struct-literal":    {},
 	"no-struct-literal": {},
 }
 
@@ -87,6 +90,7 @@ var ValidOpsMethod = map[string]struct{}{
 	"typecast:off":      {},
 	"recv":              {},
 	"reverse":           {},
+	"struct-literal":    {},
 	"no-struct-literal": {},
 	"skip":              {},
 	"map":               {},

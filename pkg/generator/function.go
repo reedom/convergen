@@ -191,12 +191,20 @@ func (g *Generator) determineOutputStyle(f *model.Function) model.OutputStyle {
 		return model.OutputStyleStructLiteral
 	}
 
-	// Priority 2: Function-level output style (if set)
+	// Priority 2: Method-level annotations (highest annotation priority)
+	if f.NoStructLiteral {
+		return model.OutputStyleTraditional
+	}
+	if f.ForceStructLiteral {
+		return model.OutputStyleStructLiteral
+	}
+
+	// Priority 3: Function-level output style (if set)
 	if f.OutputStyle != "" {
 		return f.OutputStyle
 	}
 
-	// Priority 3: Default behavior (for now, traditional assignment to maintain compatibility)
+	// Priority 4: Default behavior (for now, traditional assignment to maintain compatibility)
 	// TODO: Once struct literal is fully implemented and tested, consider defaulting to OutputStyleAuto
 	return model.OutputStyleTraditional
 }

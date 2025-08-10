@@ -111,7 +111,22 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 
 	var err error
 
-	if m.Opts.Reverse {
+	// Special handling for :style arg - parameters have different semantics
+	if m.Opts.Style == gmodel.DstVarArg {
+		// For :style arg, first parameter is LHS (destination) and additional args contain RHS (source)
+		if len(additionalArgs) == 0 {
+			return nil, logger.Errorf("%v: :style arg requires at least one source argument", p.fset.Position(m.Method.Pos()))
+		}
+
+		// Create variables with correct semantics:
+		// - firstParam (dst in signature) becomes LHS for assignments
+		// - additionalArgs[0] (src in signature) becomes RHS for assignments
+		firstParamVar := p.createVar(src, "dst") // src is the first param in the signature
+		sourceArgVar := p.createVar(additionalArgs[0], "src")
+
+		builder := newAssignmentBuilder(p, m, firstParamVar, sourceArgVar, additionalArgsVars[1:]) // Skip first additional arg
+		assignments, err = builder.build(src, additionalArgs[0], additionalArgs[1:])
+	} else if m.Opts.Reverse {
 		builder := newAssignmentBuilder(p, m, srcVar, dstVar, additionalArgsVars)
 		assignments, err = builder.build(src, dst, additionalArgs)
 	} else {
@@ -133,18 +148,36 @@ func (p *FunctionBuilder) CreateFunction(m *bmodel.MethodEntry) (*gmodel.Functio
 		return nil, err
 	}
 
+	// Create Function with appropriate variable assignments
+	var fnSrcVar, fnDstVar gmodel.Var
+	var fnAdditionalArgs []gmodel.Var
+
+	if m.Opts.Style == gmodel.DstVarArg {
+		// For :style arg, use the corrected variables
+		fnSrcVar = p.createVar(additionalArgs[0], "src") // Real source
+		fnDstVar = p.createVar(src, "dst")               // Real destination (first param)
+		fnAdditionalArgs = additionalArgsVars[1:]        // Skip first additional arg
+	} else {
+		// For normal cases, use original variables
+		fnSrcVar = srcVar
+		fnDstVar = dstVar
+		fnAdditionalArgs = additionalArgsVars
+	}
+
 	fn := &gmodel.Function{
-		Name:           m.Method.Name(),
-		Comments:       comments,
-		Receiver:       m.Opts.Receiver,
-		Src:            srcVar,
-		Dst:            dstVar,
-		AdditionalArgs: additionalArgsVars,
-		DstVarStyle:    m.Opts.Style,
-		RetError:       m.RetError(),
-		Assignments:    assignments,
-		PreProcess:     preProcess,
-		PostProcess:    postProcess,
+		Name:               m.Method.Name(),
+		Comments:           comments,
+		Receiver:           m.Opts.Receiver,
+		Src:                fnSrcVar,
+		Dst:                fnDstVar,
+		AdditionalArgs:     fnAdditionalArgs,
+		DstVarStyle:        m.Opts.Style,
+		RetError:           m.RetError(),
+		Assignments:        assignments,
+		PreProcess:         preProcess,
+		PostProcess:        postProcess,
+		ForceStructLiteral: m.Opts.StructLiteral,
+		NoStructLiteral:    m.Opts.NoStructLiteral,
 	}
 
 	// Parse receiver specification and set up receiver variables
