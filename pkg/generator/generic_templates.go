@@ -45,7 +45,7 @@ type GenericTemplateData struct {
 // MethodTemplateData contains template data for a specific method.
 type MethodTemplateData struct {
 	*GenericTemplateData                 // Parent template data
-	Method               *MethodData     `json:"method"` // Current method being generated
+	Method               *MethodData     `json:"method"`         // Current method being generated
 	FieldMappings        []*FieldMapping `json:"field_mappings"` // Field mappings for this method
 }
 
