@@ -82,6 +82,11 @@ lint-deps:
 		echo "govulncheck not found. Install with: go install golang.org/x/vuln/cmd/govulncheck@latest"; \
 	fi
 
+.PHONY: lint-group
+lint-group: ## Group linting results by linter
+lint-group:
+	@golangci-lint run --print-issued-lines=false --out-format=json 2>/dev/null  | jq -r '.Issues[] | .FromLinter' | sort | uniq -c | sort -nr
+
 .PHONY: fmt
 fmt: ## Format all Go code
 fmt:
