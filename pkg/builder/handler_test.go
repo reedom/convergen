@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	bmodel "github.com/reedom/convergen/v8/pkg/builder/model"
-	gmodel "github.com/reedom/convergen/v8/pkg/generator/model"
-	"github.com/reedom/convergen/v8/pkg/option"
+	bmodel "github.com/reedom/convergen/v9/pkg/builder/model"
+	gmodel "github.com/reedom/convergen/v9/pkg/generator/model"
+	"github.com/reedom/convergen/v9/pkg/option"
 )
 
 func TestSkipHandler(t *testing.T) {
