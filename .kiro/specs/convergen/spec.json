@@ -4,14 +4,14 @@
   "created_at": "2025-08-11T14:00:00Z",
   "updated_at": "2025-08-11T14:30:00Z",
   "language": "english",
-  "phase": "requirements-generated",
+  "phase": "design-generated",
   "approvals": {
     "requirements": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "design": {
-      "generated": false,
+      "generated": true,
       "approved": false
     },
     "tasks": {
