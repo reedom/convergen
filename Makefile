@@ -167,3 +167,7 @@ coverage:
 	@go test -v -cover ./... -coverprofile coverage.out -coverpkg ./... 2>&1 >/dev/null && \
 	go tool cover -func coverage.out -o coverage.out 2>&1 >/dev/null && \
 	cat coverage.out
+
+.PHONY: gen-mkdocs
+gen-mkdocs: ## Generate MkDocs documentation
+	@mkdocs build --strict
