@@ -1,264 +1,186 @@
 # Technology Stack
 
-## Architecture Overview
+## Architecture
 
-Convergen follows a **modular, pipeline-based architecture** with concurrent processing capabilities. The system is built around a domain-driven design with immutable models and event-driven coordination.
+### High-Level System Design
+**Pipeline Architecture**: Linear processing pipeline with strategic concurrent optimizations for performance-critical stages.
 
-### High-Level Architecture
 ```
-Input (Annotated Interfaces)
-    ↓
-Parser (AST Analysis + Cross-Package Resolution)
-    ↓
-Builder (Field Mapping + Type Analysis)
-    ↓
-Generator (Code Template Processing)
-    ↓
-Emitter (Optimization + Output)
-    ↓
-Generated Go Code (Zero Dependencies)
+CLI Input → Adaptive Parser → Field Mapper → Code Generator → File Emitter
+     ↓           ↓                ↓             ↓             ↓
+Config Mgmt → Concurrent AST → Type Resolution → Template Engine → Format/Output
+     ↓           ↓                ↓             ↓             ↓
+Validation  → Cross-Package  → Strategy Exec  → Import Mgmt  → Error Handling
+            → Type Loading   → Resource Pools → Optimization
 ```
 
-### Core Design Principles
-- **Domain-Driven Design**: Immutable domain models as single source of truth
-- **Event-Driven Architecture**: Loose coupling through event orchestration
-- **Concurrent Processing**: Multi-core utilization with resource pooling
-- **Pipeline Pattern**: Clear separation of concerns across processing stages
-- **Fail-Fast Strategy**: Early error detection with comprehensive context
+### Core Components
+- **Coordinator**: Central orchestrator managing pipeline lifecycle and resource allocation
+- **Parser**: Multi-strategy AST parser with concurrent package loading (40-70% performance improvement)
+- **Builder**: Field mapping strategy engine with type compatibility checking
+- **Generator**: Template-based code generation with struct literal optimization
+- **Emitter**: Code formatting, import management, and file output
 
-## Language & Runtime
+## Backend Technology
 
-### Go Language Requirements
-- **Minimum Version**: Go 1.21.0
-- **Recommended Toolchain**: go1.24.5 (as configured)
-- **Module Path**: `github.com/reedom/convergen/v8`
-- **Build Target**: Cross-platform (Linux, macOS, Windows)
+### Language & Runtime
+- **Go**: 1.21+ (specified in go.mod)
+- **Module**: `github.com/reedom/convergen/v8`
+- **Entry Point**: `main.go` (CLI application)
+- **Architecture Pattern**: Package-based modular design with `pkg/` organization
 
-### Language Features Used
-- **Generics**: Full support for type parameters and constraints
-- **AST Processing**: `go/ast`, `go/parser`, `go/types` packages
-- **Concurrent Processing**: Goroutines with `golang.org/x/sync` coordination
-- **Module System**: Go modules with semantic versioning
-
-## Core Dependencies
-
-### Production Dependencies
+### Core Dependencies
 ```go
-// Essential Dependencies
-github.com/google/go-cmp v0.6.0           // Deep comparison for testing/validation
-github.com/matoous/go-nanoid v1.5.0       // Unique ID generation
-go.uber.org/zap v1.27.0                   // Structured logging with performance
-golang.org/x/sync v0.16.0                 // Extended concurrency primitives
-golang.org/x/text v0.27.0                 // Text processing and encoding
-golang.org/x/tools v0.34.0                // Go toolchain integration
+// Production dependencies
+golang.org/x/tools v0.13.0    // Go AST parsing and type checking
 
-// Testing Dependencies
-github.com/stretchr/testify v1.8.1        // Comprehensive testing framework
+// Indirect dependencies
+golang.org/x/mod v0.12.0       // Go module utilities
+golang.org/x/sys v0.12.0       // System calls and OS interface
 ```
 
-### Dependency Strategy
-- **Minimal Dependencies**: Only essential, well-maintained packages
-- **No Runtime Dependencies**: Generated code requires zero external libraries
-- **Security First**: All dependencies monitored for vulnerabilities via `govulncheck`
-- **Performance Focus**: Dependencies chosen for minimal overhead and high performance
+### Package Structure
+```
+pkg/
+├── coordinator/     # Pipeline orchestration and lifecycle management
+├── parser/         # Multi-strategy AST parsing with concurrent processing
+├── builder/        # Field mapping and type conversion logic
+├── generator/      # Code generation with template engine
+├── emitter/        # Output formatting and file emission
+├── executor/       # Field mapping strategy execution
+├── domain/         # Core domain models (immutable with constructors)
+├── config/         # Configuration management
+├── util/           # AST utilities and type checking helpers
+├── option/         # Annotation processing and validation
+├── planner/        # Dependency analysis and optimization
+├── runner/         # CLI execution framework
+└── internal/events/ # Event-driven communication
+```
 
 ## Development Environment
 
 ### Required Tools
+- **Go**: 1.21+ with modules enabled
+- **golangci-lint**: Comprehensive code linting (installed via `make install-linters`)
+- **goimports**: Enhanced import formatting with local package prioritization
 
-#### Core Development Tools
+### Recommended Development Tools
+- **gosec**: Security-focused static analysis
+- **govulncheck**: Vulnerability scanning for dependencies
+- **gocyclo**: Cyclomatic complexity analysis (threshold: 15)
+- **gocognit**: Cognitive complexity analysis (threshold: 20)
+
+### Code Quality Standards
 ```bash
-# Go toolchain
-go version          # Go 1.23.0+
-go mod              # Module management
-go generate         # Code generation workflow
-
-# Code Quality Tools
-golangci-lint       # Comprehensive linting
-goimports          # Import organization and formatting
-gofmt              # Code formatting
+# Formatting
+indent_style = tab (Go files)
+indent_size = 4 (Go files)
+charset = utf-8
+end_of_line = lf
+local_import_prefix = github.com/reedom/convergen
 ```
 
-#### Quality Assurance Tools
-```bash
-# Security & Analysis
-gosec              # Security vulnerability scanning
-govulncheck        # Go vulnerability database checking
-gocyclo            # Cyclomatic complexity analysis
-gocognit           # Cognitive complexity measurement
-
-# Testing & Coverage
-go test            # Native testing framework
-go tool cover      # Coverage analysis
-```
-
-#### Documentation Tools
-```bash
-# Documentation Generation
-mkdocs             # Documentation site generator
-mkdocs-material    # Material design theme
-```
-
-### Development Workflow Tools
-
-#### Build System
-- **Make**: Primary build orchestration via `Makefile`
-- **Go Build**: Native compilation with optimizations
-- **Cross-compilation**: Support for multiple platforms
-
-#### Linting & Quality
-```bash
-make lint          # Comprehensive linting with golangci-lint
-make lint-fix      # Auto-fix linting issues where possible
-make lint-security # Security-focused analysis
-make lint-complexity # Complexity analysis
-make lint-deps     # Dependency vulnerability checking
-make lint-all      # Complete quality check suite
-```
-
-## Common Development Commands
+## Common Commands
 
 ### Build & Development
 ```bash
-# Primary development commands
 make build                    # Build CLI to build/convergen
-make test                     # Run all tests (integration + unit)
-make coverage                 # Generate coverage report
-
-# Direct execution
-go run main.go <input-file>   # Run convergen on specific file
-go generate                   # Execute go:generate workflows
+make test                     # Run all tests (behavior-driven + unit tests)
+make coverage                 # Generate comprehensive test coverage report
+go run main.go <input-file>   # Execute convergen directly on source files
 ```
 
-### Code Quality & Maintenance
+### Code Quality & Linting
 ```bash
-# Formatting and quality
-make fmt                      # Format all Go code with goimports
-make fmt-check               # Verify code formatting
-make lint                    # Run comprehensive linting
-make lint-fix                # Auto-fix issues where possible
-
-# Comprehensive analysis
-make lint-all                # Complete quality suite
-make lint-security           # Security vulnerability analysis
-make lint-complexity         # Code complexity metrics
-make lint-deps              # Dependency analysis
+make lint                     # Run comprehensive linting with golangci-lint
+make lint-fix                 # Auto-fix linting issues where possible
+make lint-all                 # Run complete linting suite (fmt + lint + security + complexity + deps)
+make lint-security            # Security-focused linting with gosec
+make lint-complexity          # Check cyclomatic and cognitive complexity
+make lint-deps                # Dependency vulnerability and tidiness check
+make fmt                      # Format code with goimports (local package priority)
+make install-linters          # Install all recommended linting tools
 ```
 
-### Setup & Installation
+### Testing Framework
 ```bash
-# Tool installation
-make install-linters         # Install all development tools
-go install golang.org/x/tools/cmd/goimports@latest
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+go test ./tests -v                                   # Behavior-driven integration tests
+go test ./tests -run TestAnnotationCoverage -v      # Annotation system coverage
+go test ./tests -run TestErrorScenarios -v          # Error handling scenarios
+go test ./tests/examples -v                         # Framework usage examples
+go test github.com/reedom/convergen/v8/pkg/...      # Unit tests for all packages
 ```
+
+### Production Usage
+```bash
+# As go:generate tool (recommended)
+//go:generate go run github.com/reedom/convergen@latest
+
+# As installed CLI
+go install github.com/reedom/convergen@latest
+convergen --input=interfaces.go --output=generated.go
+```
+
+## Environment Variables
+
+### Build Environment
+```bash
+GOOS=linux|darwin|windows     # Target operating system
+GOARCH=amd64|arm64            # Target architecture
+CGO_ENABLED=0                 # Disable CGO for static binaries
+```
+
+### Development Configuration
+```bash
+GOLANGCI_LINT_CACHE           # golangci-lint cache directory
+GOPATH                        # Go workspace (if not using modules)
+GOCACHE                       # Go build cache location
+```
+
+### Runtime Configuration
+```bash
+GOMAXPROCS                    # Maximum CPU cores for concurrent processing
+```
+
+## Performance Characteristics
+
+### Benchmarks (Real-world Measurements)
+- **Parser Performance**: 40-70% improvement with concurrent processing
+- **Memory Usage**: <100MB typical usage for large codebases
+- **Processing Latency**: Sub-second for typical interface processing
+- **Concurrent Scaling**: Adaptive concurrency based on available CPU cores
+- **Cross-Package Resolution**: Efficient LRU caching reduces repeated type lookups
+
+### Resource Management
+- **Bounded Concurrency**: Configurable worker pools prevent resource exhaustion
+- **Memory Optimization**: Object pooling and explicit cleanup for temporary objects
+- **Cache Strategy**: LRU caching for type resolution and AST parsing results
+- **Deterministic Output**: Consistent results despite concurrent processing
 
 ## Testing Strategy
 
-### Testing Framework Architecture
-- **Behavior-Driven Testing**: Focus on actual functionality over file comparison
-- **Integration Testing**: End-to-end workflow validation
-- **Unit Testing**: Component-level verification
-- **Performance Testing**: Benchmarking and regression detection
+### Behavior-Driven Testing Framework
+- **Philosophy**: Test functionality, not implementation details
+- **Inline Code Generation**: Generate and test code at runtime
+- **Zero Maintenance**: No fixture files or expected output management
+- **Comprehensive Coverage**: All 18 annotation types and error scenarios
+- **Cross-Package Testing**: Generic instantiation across module boundaries
 
-### Testing Commands
-```bash
-# Core testing
-go test github.com/reedom/convergen/v8/tests    # Integration tests
-go test github.com/reedom/convergen/v8/pkg/...  # Package unit tests
-
-# Coverage analysis
-make coverage                                     # Generate coverage report
-go tool cover -html=coverage.out                # HTML coverage visualization
-```
-
-## Documentation System
-
-### MkDocs Configuration
-- **Site Generator**: MkDocs with Material theme
-- **Hosting**: GitHub Pages at `https://reedom.github.io/convergen/`
-- **Features**: Search, syntax highlighting, responsive design, dark mode
-- **Content**: Comprehensive user guides, API references, examples
-
-### Documentation Structure
-```
-docs/
-├── getting-started/     # Installation, quick start, basic examples
-├── guide/              # Comprehensive user guides and best practices
-├── api/                # CLI and programmatic API references
-├── examples/           # Real-world usage examples and integrations
-└── troubleshooting/    # Common issues, debugging, migration guides
-```
-
-### Documentation Commands
-```bash
-# Local development
-mkdocs serve            # Local development server
-mkdocs build            # Generate static site
-mkdocs gh-deploy        # Deploy to GitHub Pages
-```
-
-## Configuration Management
-
-### Configuration Sources
-1. **Command-line arguments**: Primary configuration interface
-2. **Environment variables**: Secondary configuration for automation
-3. **Configuration files**: Future extensibility (not currently implemented)
-
-### Key Configuration Areas
-- **Input/Output paths**: Source files and output destinations
-- **Processing options**: Concurrency limits, memory constraints
-- **Generation options**: Code style, optimization levels
-- **Debugging options**: Verbose logging, intermediate file output
-
-## Performance & Scalability
-
-### Concurrent Architecture
-- **Resource Pooling**: Configurable worker pools for CPU-intensive tasks
-- **Batch Processing**: Efficient handling of multiple files
-- **Memory Management**: Streaming processing for large codebases
-- **Cache Strategy**: AST parsing results cached across operations
-
-### Performance Characteristics
-- **Build Performance**: 40-70% faster than previous versions
-- **Memory Efficiency**: Minimal allocation overhead in generated code
-- **Scalability**: Handles large codebases with thousands of conversion methods
-- **Resource Usage**: Configurable limits for different deployment environments
-
-## Integration Points
-
-### Go Ecosystem Integration
-- **go:generate**: Native integration with Go toolchain
-- **Module System**: Full Go module compatibility
-- **IDE Support**: Works with all major Go IDEs (VS Code, GoLand, etc.)
-- **CI/CD Integration**: Compatible with all major CI systems
-
-### External Tool Integration
-- **Version Control**: Git-friendly generated code with consistent formatting
-- **Build Systems**: Makefile, Go modules, Docker compatible
-- **Documentation**: Automated API documentation generation
-- **Quality Gates**: Integration with linting and security scanning tools
+### Coverage Standards
+- **Target Coverage**: 95%+ for core packages
+- **Integration Testing**: End-to-end pipeline validation
+- **Performance Regression**: Automated benchmarking prevents performance degradation
+- **Race Condition Detection**: Concurrent processing validation with race detector
 
 ## Security Considerations
 
-### Security Architecture
-- **No External Network Access**: All processing is local
-- **No Sensitive Data Storage**: Temporary files cleaned automatically
-- **Input Validation**: Comprehensive validation of all inputs
-- **Safe Code Generation**: Generated code follows security best practices
+### Static Analysis
+- **gosec**: Security-focused linting with SARIF output
+- **govulncheck**: Continuous dependency vulnerability scanning
+- **golangci-lint**: Comprehensive code quality analysis
 
-### Security Tools & Processes
-```bash
-gosec ./...                   # Security vulnerability scanning
-govulncheck ./...             # Go vulnerability database check
-make lint-deps               # Dependency security analysis
-```
-
-## Future Technology Considerations
-
-### Planned Enhancements
-- **Plugin Architecture**: Extensible processing pipeline
-- **Configuration Files**: YAML/JSON configuration support
-- **IDE Extensions**: Enhanced development experience
-- **Performance Monitoring**: Runtime performance analytics
-- **Multi-language Support**: Expansion beyond Go
+### Code Generation Safety
+- **Input Validation**: Safe handling of malformed interfaces and annotations
+- **Code Injection Prevention**: Proper escaping and validation of annotation parameters
+- **Type Safety**: Compile-time validation of generated conversion functions
+- **Error Handling**: Graceful failure with detailed error context
