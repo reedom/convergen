@@ -32,6 +32,15 @@ var (
 	ErrEmptyImportPath           = errors.New("qualified type has empty import path for non-local type")
 )
 
+// PackageInfo represents information about a loaded package.
+type PackageInfo struct {
+	ImportPath   string                 `json:"import_path"`
+	Name         string                 `json:"name"`
+	Types        map[string]domain.Type `json:"types"`
+	Dependencies []string               `json:"dependencies"`
+	GoModPath    string                 `json:"go_mod_path"`
+}
+
 // QualifiedType represents a type reference that may come from an external package.
 type QualifiedType struct {
 	PackageAlias string `json:"package_alias"` // "pkg" in "pkg.User"
@@ -324,7 +333,7 @@ func (cpr *CrossPackageResolver) ResolveType(
 	}
 
 	// Convert to domain type
-	domainType := cpr.convertTodomainType(obj, qualifiedType)
+	domainType := cpr.convertToDomainType(obj, qualifiedType)
 
 	cpr.logger.Debug("resolved cross-package type",
 		zap.String("qualified_name", qualifiedType.String()),
@@ -417,24 +426,43 @@ func (cpr *CrossPackageResolver) checkCircularDependency(importPath string) erro
 	return nil
 }
 
-// convertTodomainType converts a types.Object to a domain.Type.
-func (cpr *CrossPackageResolver) convertTodomainType(obj types.Object, qualifiedType *QualifiedType) domain.Type {
+// convertToDomainType converts a types.Object to a domain.Type.
+func (cpr *CrossPackageResolver) convertToDomainType(obj types.Object, qualifiedType *QualifiedType) domain.Type {
 	switch t := obj.Type().(type) {
 	case *types.Named:
 		// Handle named types (structs, interfaces, etc.)
-		underlying := t.Underlying()
-		kind := getReflectKindFromType(underlying)
-
-		// Create a basic type with the qualified name
-		return domain.NewBasicType(qualifiedType.String(), kind)
+		return cpr.convertNamedType(t, qualifiedType)
 
 	case *types.Interface:
 		// Handle interface types
-		return domain.NewBasicType(qualifiedType.String(), getReflectKind("interface"))
+		return cpr.convertInterfaceType(t, qualifiedType)
 
 	case *types.Struct:
-		// Handle struct types
-		return domain.NewBasicType(qualifiedType.String(), getReflectKind("struct"))
+		// Handle struct types directly
+		return cpr.convertStructType(t, qualifiedType)
+
+	case *types.Slice:
+		// Handle slice types
+		return cpr.convertSliceType(t, qualifiedType)
+
+	case *types.Pointer:
+		// Handle pointer types
+		return cpr.convertPointerType(t, qualifiedType)
+
+	case *types.Signature:
+		// Handle function types
+		return domain.NewBasicType(qualifiedType.String(), reflect.Func)
+
+	case *types.Map:
+		// Handle map types
+		return domain.NewMapType(
+			cpr.convertTypeToType(t.Key(), qualifiedType),
+			cpr.convertTypeToType(t.Elem(), qualifiedType),
+		)
+
+	case *types.Basic:
+		// Handle basic types
+		return domain.NewBasicType(t.Name(), getReflectKind(t.Name()))
 
 	default:
 		// For other types, create a basic type
@@ -497,6 +525,120 @@ func (cpr *CrossPackageResolver) GetCacheStats() (hits, misses int) {
 	// This is a simplified implementation
 	// In a full implementation, this would track actual hit/miss statistics
 	return len(cpr.cache.cache), 0
+}
+
+// convertNamedType converts a named type to a domain type.
+func (cpr *CrossPackageResolver) convertNamedType(t *types.Named, qualifiedType *QualifiedType) domain.Type {
+	underlying := t.Underlying()
+
+	// Check if it's a generic type
+	if typeParams := t.TypeParams(); typeParams != nil && typeParams.Len() > 0 {
+		// Create generic type with type parameters
+		domainTypeParams := make([]domain.TypeParam, typeParams.Len())
+		for i := 0; i < typeParams.Len(); i++ {
+			tp := typeParams.At(i)
+			constraint := cpr.convertTypeToType(tp.Constraint(), qualifiedType)
+			domainTypeParams[i] = *domain.NewTypeParam(tp.Obj().Name(), constraint, i)
+		}
+
+		// Create a struct type with type parameters
+		if structType, ok := underlying.(*types.Struct); ok {
+			fields := cpr.extractStructFields(structType, qualifiedType)
+			genericStruct := domain.NewStructType(qualifiedType.String(), fields, qualifiedType.ImportPath)
+			// Set type parameters if we could access them (would need to extend domain types)
+			return genericStruct
+		}
+	}
+
+	// Handle different underlying types
+	switch ut := underlying.(type) {
+	case *types.Struct:
+		fields := cpr.extractStructFields(ut, qualifiedType)
+		return domain.NewStructType(qualifiedType.String(), fields, qualifiedType.ImportPath)
+	case *types.Interface:
+		return cpr.convertInterfaceType(ut, qualifiedType)
+	default:
+		return domain.NewBasicType(qualifiedType.String(), getReflectKindFromType(underlying))
+	}
+}
+
+// convertInterfaceType converts an interface type to a domain type.
+func (cpr *CrossPackageResolver) convertInterfaceType(t *types.Interface, qualifiedType *QualifiedType) domain.Type {
+	// For now, create a basic interface type
+	// In a full implementation, we would extract methods
+	return domain.NewBasicType(qualifiedType.String(), reflect.Interface)
+}
+
+// convertStructType converts a struct type to a domain type.
+func (cpr *CrossPackageResolver) convertStructType(t *types.Struct, qualifiedType *QualifiedType) domain.Type {
+	fields := cpr.extractStructFields(t, qualifiedType)
+	return domain.NewStructType(qualifiedType.String(), fields, qualifiedType.ImportPath)
+}
+
+// convertSliceType converts a slice type to a domain type.
+func (cpr *CrossPackageResolver) convertSliceType(t *types.Slice, qualifiedType *QualifiedType) domain.Type {
+	elemType := cpr.convertTypeToType(t.Elem(), qualifiedType)
+	return domain.NewSliceType(elemType, qualifiedType.ImportPath)
+}
+
+// convertPointerType converts a pointer type to a domain type.
+func (cpr *CrossPackageResolver) convertPointerType(t *types.Pointer, qualifiedType *QualifiedType) domain.Type {
+	elemType := cpr.convertTypeToType(t.Elem(), qualifiedType)
+	return domain.NewPointerType(elemType, qualifiedType.ImportPath)
+}
+
+// convertTypeToType converts a generic types.Type to a domain.Type.
+func (cpr *CrossPackageResolver) convertTypeToType(t types.Type, context *QualifiedType) domain.Type {
+	switch tt := t.(type) {
+	case *types.Basic:
+		return domain.NewBasicType(tt.Name(), getReflectKind(tt.Name()))
+	case *types.Named:
+		// For named types in the same context, use the full qualified name
+		fakeQualified := &QualifiedType{
+			TypeName:   tt.Obj().Name(),
+			ImportPath: context.ImportPath,
+			IsLocal:    false,
+		}
+		return cpr.convertNamedType(tt, fakeQualified)
+	case *types.Slice:
+		elemType := cpr.convertTypeToType(tt.Elem(), context)
+		return domain.NewSliceType(elemType, context.ImportPath)
+	case *types.Pointer:
+		elemType := cpr.convertTypeToType(tt.Elem(), context)
+		return domain.NewPointerType(elemType, context.ImportPath)
+	case *types.Map:
+		keyType := cpr.convertTypeToType(tt.Key(), context)
+		valueType := cpr.convertTypeToType(tt.Elem(), context)
+		return domain.NewMapType(keyType, valueType)
+	default:
+		return domain.NewBasicType("interface{}", reflect.Interface)
+	}
+}
+
+// extractStructFields extracts fields from a struct type.
+func (cpr *CrossPackageResolver) extractStructFields(structType *types.Struct, qualifiedType *QualifiedType) []domain.Field {
+	fields := make([]domain.Field, structType.NumFields())
+
+	for i := 0; i < structType.NumFields(); i++ {
+		field := structType.Field(i)
+		fieldType := cpr.convertTypeToType(field.Type(), qualifiedType)
+
+		// Get field tags
+		tag := ""
+		if i < structType.NumFields() {
+			tag = structType.Tag(i)
+		}
+
+		fields[i] = domain.Field{
+			Name:     field.Name(),
+			Type:     fieldType,
+			Tag:      tag,
+			Embedded: field.Embedded(),
+			Exported: field.Exported(),
+		}
+	}
+
+	return fields
 }
 
 // Helper functions
@@ -631,6 +773,143 @@ func (cpr *CrossPackageResolver) GetPackageByAlias(ctx context.Context, alias st
 	}
 
 	return cpr.loadPackage(ctx, importPath)
+}
+
+// LoadType loads a specific type from a package.
+func (cpr *CrossPackageResolver) LoadType(packagePath, typeName string) (domain.Type, error) {
+	ctx := context.Background()
+
+	// Create a qualified type for the request
+	qualifiedType := &QualifiedType{
+		PackageAlias: "", // Not needed for direct loading
+		TypeName:     typeName,
+		ImportPath:   packagePath,
+		IsLocal:      packagePath == "",
+	}
+
+	return cpr.ResolveType(ctx, qualifiedType)
+}
+
+// LoadPackage loads package information and extracts types.
+func (cpr *CrossPackageResolver) LoadPackage(importPath string) (*PackageInfo, error) {
+	ctx := context.Background()
+
+	// Load the package
+	pkg, err := cpr.loadPackage(ctx, importPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load package %s: %w", importPath, err)
+	}
+
+	// Extract package information
+	packageInfo := &PackageInfo{
+		ImportPath:   importPath,
+		Name:         pkg.Name,
+		Types:        make(map[string]domain.Type),
+		Dependencies: make([]string, 0),
+		GoModPath:    "", // Could be enhanced to detect go.mod path
+	}
+
+	// Extract all exported types
+	if pkg.Types != nil && pkg.Types.Scope() != nil {
+		for _, name := range pkg.Types.Scope().Names() {
+			obj := pkg.Types.Scope().Lookup(name)
+			if obj != nil && obj.Exported() {
+				// Create qualified type for conversion
+				qualifiedType := &QualifiedType{
+					PackageAlias: "",
+					TypeName:     name,
+					ImportPath:   importPath,
+					IsLocal:      false,
+				}
+
+				// Convert to domain type
+				domainType := cpr.convertToDomainType(obj, qualifiedType)
+				packageInfo.Types[name] = domainType
+			}
+		}
+	}
+
+	// Extract dependencies
+	for _, dep := range pkg.Imports {
+		packageInfo.Dependencies = append(packageInfo.Dependencies, dep.PkgPath)
+	}
+
+	cpr.logger.Debug("loaded package information",
+		zap.String("import_path", importPath),
+		zap.Int("type_count", len(packageInfo.Types)),
+		zap.Int("dependency_count", len(packageInfo.Dependencies)))
+
+	return packageInfo, nil
+}
+
+// ResolveImports resolves and validates import mappings.
+func (cpr *CrossPackageResolver) ResolveImports(imports map[string]string) error {
+	// Update the import map
+	cpr.UpdateImportMap(imports)
+
+	// Validate that all import paths can be loaded
+	ctx := context.Background()
+	for alias, importPath := range imports {
+		if err := cpr.validateImportPath(importPath); err != nil {
+			return fmt.Errorf("invalid import path for alias '%s': %w", alias, err)
+		}
+
+		// Try to load the package to validate it exists
+		_, err := cpr.loadPackage(ctx, importPath)
+		if err != nil {
+			return fmt.Errorf("failed to resolve import '%s=%s': %w", alias, importPath, err)
+		}
+	}
+
+	return nil
+}
+
+// GetCachedPackages returns a copy of all cached packages.
+func (cpr *CrossPackageResolver) GetCachedPackages() map[string]*PackageInfo {
+	cachedPackages := make(map[string]*PackageInfo)
+
+	// Convert cached packages.Package to PackageInfo
+	cpr.cache.mutex.RLock()
+	defer cpr.cache.mutex.RUnlock()
+
+	for importPath, pkg := range cpr.cache.cache {
+		if pkg != nil {
+			// Create PackageInfo from packages.Package
+			packageInfo := &PackageInfo{
+				ImportPath:   importPath,
+				Name:         pkg.Name,
+				Types:        make(map[string]domain.Type),
+				Dependencies: make([]string, 0),
+				GoModPath:    "",
+			}
+
+			// Extract types if available
+			if pkg.Types != nil && pkg.Types.Scope() != nil {
+				for _, name := range pkg.Types.Scope().Names() {
+					obj := pkg.Types.Scope().Lookup(name)
+					if obj != nil && obj.Exported() {
+						qualifiedType := &QualifiedType{
+							PackageAlias: "",
+							TypeName:     name,
+							ImportPath:   importPath,
+							IsLocal:      false,
+						}
+						domainType := cpr.convertToDomainType(obj, qualifiedType)
+						packageInfo.Types[name] = domainType
+					}
+				}
+			}
+
+			// Extract dependencies
+			for _, dep := range pkg.Imports {
+				packageInfo.Dependencies = append(packageInfo.Dependencies, dep.PkgPath)
+			}
+
+			cachedPackages[importPath] = packageInfo
+		}
+	}
+
+	return cachedPackages
 }
 
 // ExtractPackageInfo extracts package information for debugging and validation.

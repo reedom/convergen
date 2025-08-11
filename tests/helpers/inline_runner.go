@@ -162,7 +162,7 @@ func (isr *InlineScenarioRunner) createSourceFile(scenario TestScenario) (string
 	if len(scenario.Imports) > 0 {
 		content.WriteString("import (\n")
 		for _, imp := range scenario.Imports {
-			fmt.Fprintf(&content, "\t\"%s\"\n", imp)
+			fmt.Fprintf(&content, "\t%s\n", imp)
 		}
 		content.WriteString(")\n\n")
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 
 	"go.uber.org/zap"
@@ -100,14 +101,29 @@ func runGenericGeneration(conf config.Config) error {
 
 	logger.Info("starting generic type instantiation", zap.String("type_spec", conf.TypeSpec))
 
-	// Parse the type specification
-	instantiatedInterface, err := parseTypeSpec(conf.TypeSpec, logger)
+	// Create cross-package resolver if we have import mappings
+	var crossPackageLoader domain.CrossPackageTypeLoader
+	if len(conf.ImportMap) > 0 {
+		crossPackageResolver := parser.NewCrossPackageResolver(nil, conf.ImportMap, logger)
+		crossPackageLoader = parser.NewCrossPackageTypeLoaderAdapter(crossPackageResolver, logger)
+
+		// Validate all import mappings
+		if err := crossPackageResolver.ResolveImports(conf.ImportMap); err != nil {
+			return fmt.Errorf("failed to resolve import mappings: %w", err)
+		}
+
+		logger.Info("cross-package type loading enabled",
+			zap.Int("import_count", len(conf.ImportMap)))
+	}
+
+	// Parse the type specification with cross-package support
+	instantiatedInterface, err := parseTypeSpecWithCrossPackage(conf.TypeSpec, crossPackageLoader, logger)
 	if err != nil {
 		return fmt.Errorf("failed to parse type specification %s: %w", conf.TypeSpec, err)
 	}
 
-	// Create the generic code generator with proper field mapping
-	generator, err := createGenericGenerator(logger)
+	// Create the generic code generator with cross-package support
+	generator, err := createGenericGeneratorWithCrossPackage(crossPackageLoader, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create generic generator: %w", err)
 	}
@@ -141,6 +157,95 @@ func runGenericGeneration(conf config.Config) error {
 	return nil
 }
 
+// parseTypeSpecWithCrossPackage parses a type specification with cross-package support.
+func parseTypeSpecWithCrossPackage(
+	typeSpec string,
+	crossPackageLoader domain.CrossPackageTypeLoader,
+	logger *zap.Logger,
+) (*domain.InstantiatedInterface, error) {
+	// Parse the type specification using cross-package resolver
+	if crossPackageLoader != nil {
+		return parseTypeSpecWithResolver(typeSpec, crossPackageLoader, logger)
+	}
+
+	// Fall back to simple parsing
+	return parseTypeSpec(typeSpec, logger)
+}
+
+// parseTypeSpecWithResolver parses a type specification using the cross-package resolver.
+func parseTypeSpecWithResolver(
+	typeSpec string,
+	crossPackageLoader domain.CrossPackageTypeLoader,
+	logger *zap.Logger,
+) (*domain.InstantiatedInterface, error) {
+	ctx := context.Background()
+
+	// Parse the basic structure
+	if !strings.Contains(typeSpec, "[") || !strings.Contains(typeSpec, "]") {
+		return nil, fmt.Errorf("invalid type specification format: %s", typeSpec)
+	}
+
+	// Extract interface name and type arguments
+	bracketStart := strings.Index(typeSpec, "[")
+	bracketEnd := strings.LastIndex(typeSpec, "]")
+
+	interfaceName := strings.TrimSpace(typeSpec[:bracketStart])
+	typeArgsStr := strings.TrimSpace(typeSpec[bracketStart+1 : bracketEnd])
+
+	// Parse type arguments
+	typeArgStrs := strings.Split(typeArgsStr, ",")
+	for i := range typeArgStrs {
+		typeArgStrs[i] = strings.TrimSpace(typeArgStrs[i])
+	}
+
+	// Validate all type arguments can be resolved
+	if err := crossPackageLoader.ValidateTypeArguments(ctx, typeArgStrs); err != nil {
+		return nil, fmt.Errorf("type argument validation failed: %w", err)
+	}
+
+	// Resolve all type arguments
+	typeArguments := make(map[string]domain.Type)
+	typeParamNames := []string{"T", "U", "V", "W", "X", "Y", "Z"}
+
+	for i, typeArgStr := range typeArgStrs {
+		if i < len(typeParamNames) {
+			// Resolve the type using cross-package loader
+			resolvedType, err := crossPackageLoader.ResolveType(ctx, typeArgStr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve type argument '%s': %w", typeArgStr, err)
+			}
+			typeArguments[typeParamNames[i]] = resolvedType
+		}
+	}
+
+	logger.Info("parsed type specification with cross-package support",
+		zap.String("interface", interfaceName),
+		zap.Int("type_args", len(typeArguments)),
+		zap.Strings("import_paths", crossPackageLoader.GetImportPaths(typeArgStrs)))
+
+	// Create the source interface type
+	sourceInterface := domain.NewBasicType(interfaceName, reflect.Interface)
+
+	// Use the first type argument as the concrete type
+	var concreteType domain.Type
+	if len(typeArguments) > 0 {
+		for _, t := range typeArguments {
+			concreteType = t
+			break
+		}
+	} else {
+		concreteType = domain.NewBasicType("interface{}", reflect.Interface)
+	}
+
+	// Create the instantiated interface
+	return domain.NewInstantiatedInterface(
+		sourceInterface,
+		typeArguments,
+		concreteType,
+		typeSpec,
+	)
+}
+
 // parseTypeSpec parses a type specification like "TypeMapper[User,UserDTO]" into an InstantiatedInterface.
 func parseTypeSpec(typeSpec string, logger *zap.Logger) (*domain.InstantiatedInterface, error) {
 	// Simple parsing for now - could be enhanced with proper AST parsing
@@ -166,7 +271,7 @@ func parseTypeSpec(typeSpec string, logger *zap.Logger) (*domain.InstantiatedInt
 		typeArgStr = strings.TrimSpace(typeArgStr)
 		if i < len(typeParamNames) {
 			// Create a basic type for this argument
-			concrete := domain.NewBasicType(typeArgStr, 0)
+			concrete := domain.NewBasicType(typeArgStr, reflect.Struct)
 			typeArguments[typeParamNames[i]] = concrete
 		}
 	}
@@ -176,7 +281,7 @@ func parseTypeSpec(typeSpec string, logger *zap.Logger) (*domain.InstantiatedInt
 		zap.Int("type_args", len(typeArguments)))
 
 	// Create the source interface type (simplified)
-	sourceInterface := domain.NewBasicType(interfaceName, 0)
+	sourceInterface := domain.NewBasicType(interfaceName, reflect.Interface)
 
 	// Use the first type argument as the concrete type for now
 	var concreteType domain.Type
@@ -186,7 +291,7 @@ func parseTypeSpec(typeSpec string, logger *zap.Logger) (*domain.InstantiatedInt
 			break
 		}
 	} else {
-		concreteType = domain.NewBasicType("interface{}", 0)
+		concreteType = domain.NewBasicType("interface{}", reflect.Interface)
 	}
 
 	// Create the instantiated interface
@@ -196,6 +301,36 @@ func parseTypeSpec(typeSpec string, logger *zap.Logger) (*domain.InstantiatedInt
 		concreteType,
 		typeSpec,
 	)
+}
+
+// createGenericGeneratorWithCrossPackage creates a generator with cross-package support.
+func createGenericGeneratorWithCrossPackage(
+	crossPackageLoader domain.CrossPackageTypeLoader,
+	logger *zap.Logger,
+) (*generator.GenericCodeGenerator, error) {
+	// Create a simple template engine (this would need to be implemented)
+	templateEngine := &simpleTemplateEngine{}
+
+	// Create type instantiator with cross-package support
+	typeBuilder := domain.NewTypeBuilder()
+	instantiatorConfig := domain.NewTypeInstantiatorConfig()
+	instantiatorConfig.CrossPackageTypeLoader = crossPackageLoader
+
+	typeInstantiator := domain.NewTypeInstantiatorWithConfig(typeBuilder, logger, instantiatorConfig)
+
+	// Create field mapper (this would use the enhanced field mapping from the builder package)
+	fieldMapper := &simpleFieldMapper{}
+
+	// Create the generator
+	generator := generator.NewGenericCodeGenerator(
+		templateEngine,
+		typeInstantiator,
+		fieldMapper,
+		logger,
+		nil, // Use default config
+	)
+
+	return generator, nil
 }
 
 // createGenericGenerator creates a generic code generator with proper field mapping.

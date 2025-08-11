@@ -55,6 +55,36 @@ func IsStructType(t types.Type) bool {
 	return ok
 }
 
+// IsTypeParam returns true if the given type is a type parameter.
+func IsTypeParam(t types.Type) bool {
+	_, ok := t.(*types.TypeParam)
+	return ok
+}
+
+// IsStructTypeOrTypeParam returns true if the given type is a struct type or a type parameter.
+// This is useful for validation in generic contexts where type parameters will be resolved
+// to concrete struct types at instantiation time.
+func IsStructTypeOrTypeParam(t types.Type) bool {
+	return IsStructType(t) || IsTypeParam(t)
+}
+
+// IsValidConversionType returns true if the given type is valid for conversion generation.
+// This includes struct types, type parameters, and slices of type parameters (for variadic support).
+func IsValidConversionType(t types.Type) bool {
+	// Handle direct struct types and type parameters
+	if IsStructType(t) || IsTypeParam(t) {
+		return true
+	}
+	
+	// Handle slices (for variadic parameters)
+	if slice, ok := t.(*types.Slice); ok {
+		// Allow slices of type parameters (e.g., []T for variadic ...T)
+		return IsTypeParam(slice.Elem()) || IsStructType(slice.Elem())
+	}
+	
+	return false
+}
+
 // IsNamedType returns true if the given type is a named type.
 func IsNamedType(t types.Type) bool {
 	_, ok := t.(*types.Named)

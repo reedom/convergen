@@ -83,7 +83,7 @@ func (b *assignmentBuilder) dispatch(lhs, rhs bmodel.Node, additionalArgs []bmod
 	lhsType := util.DerefPtr(lhs.ExprType())
 	rhsType := util.DerefPtr(rhs.ExprType())
 
-	if util.IsStructType(lhsType) && util.IsStructType(rhsType) {
+	if util.IsStructTypeOrTypeParam(lhsType) && util.IsStructTypeOrTypeParam(rhsType) {
 		return b.structToStruct(lhs, rhs, additionalArgs)
 	}
 
@@ -208,7 +208,7 @@ func (b *assignmentBuilder) structFieldAndStructGettersAndFields(lhs bmodel.Node
 		// Fix: Check if both sides are struct types (including dereferencing pointers)
 		lhsStructType := util.DerefPtr(lhs.ExprType())
 		rhsStructType := util.DerefPtr(rhs.ExprType())
-		if util.IsStructType(lhsStructType) && util.IsStructType(rhsStructType) {
+		if util.IsStructTypeOrTypeParam(lhsStructType) && util.IsStructTypeOrTypeParam(rhsStructType) {
 			// Both sides are struct types after dereferencing pointers
 			nested = true
 
