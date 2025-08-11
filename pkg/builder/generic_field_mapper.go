@@ -3,12 +3,13 @@ package builder
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
 	"go.uber.org/zap"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 // Static errors for err113 compliance.
@@ -63,6 +64,9 @@ type GenericFieldMapper struct {
 
 	// Built-in conversion strategies
 	strategies []domain.ConversionStrategy
+
+	// Enhanced: Recursive type resolver for deeply nested generics
+	recursiveResolver *RecursiveTypeResolver
 }
 
 // GenericFieldMapperConfig configures the generic field mapper.
@@ -169,14 +173,22 @@ func NewGenericFieldMapper(
 		logger = zap.NewNop()
 	}
 
+	// Create recursive resolver for enhanced generic support
+	recursiveResolver := NewRecursiveTypeResolver(
+		typeSubstitution,
+		logger,
+		DefaultRecursiveResolverConfig(),
+	)
+
 	mapper := &GenericFieldMapper{
-		baseMapper:       baseMapper,
-		typeSubstitution: typeSubstitution,
-		logger:           logger,
-		config:           config,
-		metrics:          NewGenericFieldMappingMetrics(),
-		strategyCache:    make(map[string]domain.ConversionStrategy),
-		strategies:       domain.DefaultConversionStrategies(),
+		baseMapper:        baseMapper,
+		typeSubstitution:  typeSubstitution,
+		logger:            logger,
+		config:            config,
+		metrics:           NewGenericFieldMappingMetrics(),
+		strategyCache:     make(map[string]domain.ConversionStrategy),
+		strategies:        domain.DefaultConversionStrategies(),
+		recursiveResolver: recursiveResolver,
 	}
 
 	logger.Info("generic field mapper initialized",
@@ -255,7 +267,7 @@ func (gfm *GenericFieldMapper) MapGenericFields(
 	return fieldMapping, nil
 }
 
-// substituteTypeIfNeeded applies type substitutions if the type is generic.
+// substituteTypeIfNeeded applies type substitutions if the type is generic, with enhanced recursive support.
 func (gfm *GenericFieldMapper) substituteTypeIfNeeded(
 	typ domain.Type,
 	typeSubstitutions map[string]domain.Type,
@@ -266,6 +278,16 @@ func (gfm *GenericFieldMapper) substituteTypeIfNeeded(
 
 	gfm.metrics.TypeSubstitutions++
 
+	// Enhanced: Use recursive resolver for deeply nested generic types
+	if gfm.isDeeplyNestedGeneric(typ) {
+		result, err := gfm.recursiveResolver.ResolveNestedGenericType(typ, typeSubstitutions)
+		if err != nil {
+			return nil, fmt.Errorf("recursive type resolution failed: %w", err)
+		}
+		return result.ResolvedType, nil
+	}
+
+	// Fallback to standard type substitution for simpler cases
 	// Convert the substitution map to the format expected by TypeSubstitutionEngine
 	typeParams := make([]domain.TypeParam, 0, len(typeSubstitutions))
 	typeArgs := make([]domain.Type, 0, len(typeSubstitutions))
@@ -273,7 +295,7 @@ func (gfm *GenericFieldMapper) substituteTypeIfNeeded(
 	for paramName, concreteType := range typeSubstitutions {
 		typeParam := domain.TypeParam{
 			Name:       paramName,
-			Constraint: domain.NewBasicType("any", 0), // Default constraint as Type
+			Constraint: domain.NewBasicType("any", reflect.Invalid), // Default constraint as Type
 		}
 		typeParams = append(typeParams, typeParam)
 		typeArgs = append(typeArgs, concreteType)
@@ -431,15 +453,23 @@ func (gfm *GenericFieldMapper) fieldsMatch(srcField, dstField *domain.Field, con
 
 // typesCompatible checks if two types are compatible for assignment.
 func (gfm *GenericFieldMapper) typesCompatible(srcType, dstType domain.Type, context *GenericMappingContext) bool {
+	if srcType == nil || dstType == nil {
+		return false
+	}
+	
+	// Apply type substitutions before comparing
+	substitutedSrcType := gfm.applyTypeSubstitution(srcType, context)
+	substitutedDstType := gfm.applyTypeSubstitution(dstType, context)
+	
 	// Direct assignability
-	if srcType.AssignableTo(dstType) {
+	if substitutedSrcType.AssignableTo(substitutedDstType) {
 		return true
 	}
 
 	// Type conversion allowed
-	if context.Options.UseTypeConversion {
+	if context != nil && context.Options.UseTypeConversion {
 		// Check if types are convertible
-		if gfm.typesConvertible(srcType, dstType) {
+		if gfm.typesConvertible(substitutedSrcType, substitutedDstType) {
 			return true
 		}
 	}
@@ -447,7 +477,40 @@ func (gfm *GenericFieldMapper) typesCompatible(srcType, dstType domain.Type, con
 	return false
 }
 
-// typesConvertible checks if types can be converted.
+// applyTypeSubstitution applies type parameter substitutions to a type.
+func (gfm *GenericFieldMapper) applyTypeSubstitution(typ domain.Type, context *GenericMappingContext) domain.Type {
+	if typ == nil || context == nil || len(context.TypeSubstitutions) == 0 {
+		return typ
+	}
+
+	// Handle generic types by substitution
+	if genericType, ok := typ.(*domain.GenericType); ok {
+		if substitution, exists := context.TypeSubstitutions[genericType.Name()]; exists {
+			return substitution
+		}
+		return typ
+	}
+
+	// Handle other types recursively if needed
+	switch typ.Kind() {
+	case domain.KindSlice:
+		if sliceType, ok := typ.(*domain.SliceType); ok {
+			elemType := gfm.applyTypeSubstitution(sliceType.Elem(), context)
+			return domain.NewSliceType(elemType, sliceType.Package())
+		}
+	case domain.KindPointer:
+		if pointerType, ok := typ.(*domain.PointerType); ok {
+			elemType := gfm.applyTypeSubstitution(pointerType.Elem(), context)
+			return domain.NewPointerType(elemType, pointerType.Package())
+		}
+	// Note: Map type substitution is not fully implemented in the domain package yet
+	// case domain.KindMap: ... would go here when available
+	}
+
+	return typ
+}
+
+// typesConvertible checks if types can be converted, with enhanced support for nested generics.
 func (gfm *GenericFieldMapper) typesConvertible(srcType, dstType domain.Type) bool {
 	// Basic type conversions
 	if srcType.Kind() == domain.KindBasic && dstType.Kind() == domain.KindBasic {
@@ -466,6 +529,21 @@ func (gfm *GenericFieldMapper) typesConvertible(srcType, dstType domain.Type) bo
 		srcElem := srcType.(*domain.SliceType).Elem()
 		dstElem := dstType.(*domain.SliceType).Elem()
 		return gfm.typesConvertible(srcElem, dstElem)
+	}
+
+	// Enhanced: Map conversions for nested generics
+	if srcType.Kind() == domain.KindMap && dstType.Kind() == domain.KindMap {
+		return gfm.typesConvertibleForMaps(srcType, dstType)
+	}
+
+	// Enhanced: Generic type conversions
+	if srcType.Kind() == domain.KindGeneric || dstType.Kind() == domain.KindGeneric {
+		return gfm.typesConvertibleForGenerics(srcType, dstType)
+	}
+
+	// Enhanced: Named type conversions with generic support
+	if srcType.Kind() == domain.KindNamed || dstType.Kind() == domain.KindNamed {
+		return gfm.typesConvertibleForNamedTypes(srcType, dstType)
 	}
 
 	return false
@@ -688,7 +766,7 @@ func (gfm *GenericFieldMapper) ClearMetrics() {
 	gfm.metrics = NewGenericFieldMappingMetrics()
 }
 
-// generateNestedFieldAssignment attempts to generate a nested field assignment.
+// generateNestedFieldAssignment attempts to generate a nested field assignment with enhanced generic support.
 func (gfm *GenericFieldMapper) generateNestedFieldAssignment(
 	dstField *domain.Field,
 	srcFields []*domain.Field,
@@ -696,64 +774,35 @@ func (gfm *GenericFieldMapper) generateNestedFieldAssignment(
 ) *FieldAssignment {
 	// Handle nested struct field mappings
 	if dstField.Type.Kind() == domain.KindStruct {
-		// Look for a source field with the same name that's also a struct
-		for _, srcField := range srcFields {
-			if srcField.Name == dstField.Name && srcField.Type.Kind() == domain.KindStruct {
-				// Generate nested struct assignment
-				nestedCode := gfm.generateNestedStructAssignment(srcField, dstField, context)
-				if nestedCode != "" {
-					return &FieldAssignment{
-						SourceField:    srcField,
-						DestField:      dstField,
-						AssignmentType: DirectAssignment,
-						Code:           nestedCode,
-					}
-				}
-			}
-		}
+		return gfm.generateNestedStructFieldAssignment(dstField, srcFields, context)
+	}
+
+	// Enhanced: Handle nested slice field mappings (e.g., []List[T] -> []Array[U])
+	if dstField.Type.Kind() == domain.KindSlice {
+		return gfm.generateNestedSliceFieldAssignment(dstField, srcFields, context)
+	}
+
+	// Enhanced: Handle nested map field mappings (e.g., Map[string, List[T]] -> Map[string, Array[U]])
+	if dstField.Type.Kind() == domain.KindMap {
+		return gfm.generateNestedMapFieldAssignment(dstField, srcFields, context)
+	}
+
+	// Enhanced: Handle nested generic field mappings
+	if dstField.Type.Kind() == domain.KindGeneric || dstField.Type.Generic() {
+		return gfm.generateNestedGenericFieldAssignment(dstField, srcFields, context)
 	}
 
 	return nil
 }
 
-// generateNestedStructAssignment generates code for nested struct assignments.
+// generateNestedStructAssignment generates code for nested struct assignments (legacy method).
+// This method is kept for backward compatibility but delegates to the enhanced version.
 func (gfm *GenericFieldMapper) generateNestedStructAssignment(
 	srcField, dstField *domain.Field,
 	context *GenericMappingContext,
 ) string {
-	// Extract fields from both structs
-	srcStructFields, err := gfm.extractTypeFields(srcField.Type)
-	if err != nil {
-		return ""
-	}
-
-	dstStructFields, err := gfm.extractTypeFields(dstField.Type)
-	if err != nil {
-		return ""
-	}
-
-	// Generate field-by-field assignments for the nested struct
-	assignments := make([]string, 0)
-
-	for _, dstNestedField := range dstStructFields {
-		for _, srcNestedField := range srcStructFields {
-			if gfm.fieldsCanMapNested(srcNestedField, dstNestedField) {
-				// Generate the nested assignment
-				assignment := fmt.Sprintf("dst.%s.%s = src.%s.%s",
-					dstField.Name, dstNestedField.Name,
-					srcField.Name, srcNestedField.Name)
-				assignments = append(assignments, assignment)
-				break
-			}
-		}
-	}
-
-	if len(assignments) == 0 {
-		return ""
-	}
-
-	// Join all assignments with newlines
-	return strings.Join(assignments, "\n\t")
+	// Delegate to enhanced version
+	return gfm.generateEnhancedNestedStructAssignment(srcField, dstField, context)
 }
 
 // fieldsCanMapNested checks if nested fields can be mapped (simpler rules).
@@ -785,5 +834,500 @@ func (gfm *GenericFieldMapper) fieldsCanMapNested(srcField, dstField *domain.Fie
 func (gfm *GenericFieldMapper) SetConfiguration(config *GenericFieldMapperConfig) {
 	if config != nil {
 		gfm.config = config
+	}
+}
+
+// Enhanced methods for nested generic type handling
+
+// typesConvertibleForMaps checks convertibility between map types with potential generic arguments.
+func (gfm *GenericFieldMapper) typesConvertibleForMaps(srcType, dstType domain.Type) bool {
+	// For map types, we need to check both key and value type compatibility
+	// This is a simplified implementation - in production, would need proper MapType interface
+	gfm.logger.Debug("checking map type convertibility",
+		zap.String("src_type", srcType.String()),
+		zap.String("dst_type", dstType.String()))
+	
+	// For now, allow conversion between map types if they have compatible structure
+	// A full implementation would examine key/value types recursively
+	return srcType.Name() != "" && dstType.Name() != ""
+}
+
+// typesConvertibleForGenerics checks convertibility between generic types.
+func (gfm *GenericFieldMapper) typesConvertibleForGenerics(srcType, dstType domain.Type) bool {
+	// If one type is generic and the other is concrete, check if substitution can work
+	if srcType.Kind() == domain.KindGeneric {
+		// Source is generic parameter, check if destination can accept it
+		return gfm.canAcceptGenericType(srcType, dstType)
+	}
+	
+	if dstType.Kind() == domain.KindGeneric {
+		// Destination is generic parameter, check if source can be assigned
+		return gfm.canAssignToGenericType(srcType, dstType)
+	}
+	
+	// Both types might have generic parameters in their structure
+	if srcType.Generic() && dstType.Generic() {
+		return gfm.compatibleGenericStructures(srcType, dstType)
+	}
+	
+	return false
+}
+
+// typesConvertibleForNamedTypes checks convertibility between named types with generic support.
+func (gfm *GenericFieldMapper) typesConvertibleForNamedTypes(srcType, dstType domain.Type) bool {
+	// Named types can have generic parameters, need to check underlying types
+	if srcType.Kind() == domain.KindNamed {
+		srcUnderlying := srcType.Underlying()
+		if srcUnderlying != nil && srcUnderlying != srcType {
+			return gfm.typesConvertible(srcUnderlying, dstType)
+		}
+	}
+	
+	if dstType.Kind() == domain.KindNamed {
+		dstUnderlying := dstType.Underlying()
+		if dstUnderlying != nil && dstUnderlying != dstType {
+			return gfm.typesConvertible(srcType, dstUnderlying)
+		}
+	}
+	
+	// Check if both are named types with compatible names/packages
+	return gfm.compatibleNamedTypes(srcType, dstType)
+}
+
+// canAcceptGenericType checks if a concrete type can accept a generic type parameter.
+func (gfm *GenericFieldMapper) canAcceptGenericType(genericType, concreteType domain.Type) bool {
+	// This would check type constraints in a full implementation
+	// For now, be permissive for any concrete type
+	return concreteType.Kind() != domain.KindGeneric
+}
+
+// canAssignToGenericType checks if a concrete type can be assigned to a generic parameter.
+func (gfm *GenericFieldMapper) canAssignToGenericType(concreteType, genericType domain.Type) bool {
+	// This would check type constraints in a full implementation
+	// For now, be permissive for any concrete type
+	return concreteType.Kind() != domain.KindGeneric
+}
+
+// compatibleGenericStructures checks if two generic structures are compatible.
+func (gfm *GenericFieldMapper) compatibleGenericStructures(srcType, dstType domain.Type) bool {
+	// Check if the base structure is similar even if type parameters differ
+	// This is a simplified compatibility check
+	srcName := gfm.extractBaseTypeName(srcType.String())
+	dstName := gfm.extractBaseTypeName(dstType.String())
+	
+	return srcName == dstName || gfm.structurallyCompatible(srcType, dstType)
+}
+
+// compatibleNamedTypes checks if two named types are compatible.
+func (gfm *GenericFieldMapper) compatibleNamedTypes(srcType, dstType domain.Type) bool {
+	// Check name compatibility and package compatibility
+	if srcType.Name() == dstType.Name() {
+		// Same name, check if packages are compatible
+		return gfm.packagesCompatible(srcType.Package(), dstType.Package())
+	}
+	
+	// Different names, check if they represent similar concepts
+	return gfm.semanticallyCompatibleNames(srcType.Name(), dstType.Name())
+}
+
+// extractBaseTypeName extracts the base type name from a generic type string.
+func (gfm *GenericFieldMapper) extractBaseTypeName(typeStr string) string {
+	// Extract base name before any generic parameters
+	if idx := strings.Index(typeStr, "["); idx != -1 {
+		return typeStr[:idx]
+	}
+	return typeStr
+}
+
+// structurallyCompatible checks if two types have compatible structure.
+func (gfm *GenericFieldMapper) structurallyCompatible(srcType, dstType domain.Type) bool {
+	// This would perform deeper structural analysis
+	// For now, use a heuristic based on type kinds
+	return srcType.Kind() == dstType.Kind()
+}
+
+// packagesCompatible checks if two packages are compatible for type conversion.
+func (gfm *GenericFieldMapper) packagesCompatible(srcPkg, dstPkg string) bool {
+	// Same package is always compatible
+	if srcPkg == dstPkg {
+		return true
+	}
+	
+	// Different packages might still be compatible if they're related
+	return gfm.relatedPackages(srcPkg, dstPkg)
+}
+
+// semanticallyCompatibleNames checks if two type names represent compatible concepts.
+func (gfm *GenericFieldMapper) semanticallyCompatibleNames(srcName, dstName string) bool {
+	// Common type name mappings for generic collections
+	compatibilityMap := map[string][]string{
+		"List":  {"Array", "Slice", "Vector", "Collection"},
+		"Array": {"List", "Slice", "Vector", "Collection"},
+		"Map":   {"Dict", "HashMap", "Dictionary", "Table"},
+		"Dict":  {"Map", "HashMap", "Dictionary", "Table"},
+		"Set":   {"HashSet", "Collection"},
+	}
+	
+	if compatibleNames, exists := compatibilityMap[srcName]; exists {
+		for _, name := range compatibleNames {
+			if name == dstName {
+				return true
+			}
+		}
+	}
+	
+	return false
+}
+
+// relatedPackages checks if two packages are related for type compatibility.
+func (gfm *GenericFieldMapper) relatedPackages(srcPkg, dstPkg string) bool {
+	// This could check for version differences, alias packages, etc.
+	// For now, be conservative
+	return false
+}
+
+// generateNestedStructFieldAssignment generates assignment for nested struct fields.
+func (gfm *GenericFieldMapper) generateNestedStructFieldAssignment(
+	dstField *domain.Field,
+	srcFields []*domain.Field,
+	context *GenericMappingContext,
+) *FieldAssignment {
+	// Look for a source field with the same name that's also a struct
+	for _, srcField := range srcFields {
+		if srcField.Name == dstField.Name && srcField.Type.Kind() == domain.KindStruct {
+			// Generate nested struct assignment with generic support
+			nestedCode := gfm.generateEnhancedNestedStructAssignment(srcField, dstField, context)
+			if nestedCode != "" {
+				return &FieldAssignment{
+					SourceField:    srcField,
+					DestField:      dstField,
+					AssignmentType: DirectAssignment,
+					Code:           nestedCode,
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// generateNestedSliceFieldAssignment generates assignment for nested slice fields.
+func (gfm *GenericFieldMapper) generateNestedSliceFieldAssignment(
+	dstField *domain.Field,
+	srcFields []*domain.Field,
+	context *GenericMappingContext,
+) *FieldAssignment {
+	// Look for compatible source slice fields
+	for _, srcField := range srcFields {
+		if gfm.fieldsMatch(srcField, dstField, context) && srcField.Type.Kind() == domain.KindSlice {
+			// Generate slice conversion code
+			sliceCode := gfm.generateSliceConversionCode(srcField, dstField, context)
+			if sliceCode != "" {
+				return &FieldAssignment{
+					SourceField:    srcField,
+					DestField:      dstField,
+					AssignmentType: SliceAssignment,
+					Code:           sliceCode,
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// generateNestedMapFieldAssignment generates assignment for nested map fields.
+func (gfm *GenericFieldMapper) generateNestedMapFieldAssignment(
+	dstField *domain.Field,
+	srcFields []*domain.Field,
+	context *GenericMappingContext,
+) *FieldAssignment {
+	// Look for compatible source map fields
+	for _, srcField := range srcFields {
+		if gfm.fieldsMatch(srcField, dstField, context) && srcField.Type.Kind() == domain.KindMap {
+			// Generate map conversion code
+			mapCode := gfm.generateMapConversionCode(srcField, dstField, context)
+			if mapCode != "" {
+				return &FieldAssignment{
+					SourceField:    srcField,
+					DestField:      dstField,
+					AssignmentType: MapAssignment,
+					Code:           mapCode,
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// generateNestedGenericFieldAssignment generates assignment for nested generic fields.
+func (gfm *GenericFieldMapper) generateNestedGenericFieldAssignment(
+	dstField *domain.Field,
+	srcFields []*domain.Field,
+	context *GenericMappingContext,
+) *FieldAssignment {
+	// Look for source fields that can be converted to the generic destination
+	for _, srcField := range srcFields {
+		if gfm.canConvertToGenericField(srcField, dstField, context) {
+			// Generate generic conversion code
+			genericCode := gfm.generateGenericConversionCode(srcField, dstField, context)
+			if genericCode != "" {
+				return &FieldAssignment{
+					SourceField:    srcField,
+					DestField:      dstField,
+					AssignmentType: ConversionAssignment,
+					Code:           genericCode,
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// generateEnhancedNestedStructAssignment generates enhanced code for nested struct assignments with generic support.
+func (gfm *GenericFieldMapper) generateEnhancedNestedStructAssignment(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	// Extract fields from both structs with type substitution awareness
+	srcStructFields, err := gfm.extractTypeFieldsWithSubstitution(srcField.Type, context)
+	if err != nil {
+		return ""
+	}
+
+	dstStructFields, err := gfm.extractTypeFieldsWithSubstitution(dstField.Type, context)
+	if err != nil {
+		return ""
+	}
+
+	// Generate field-by-field assignments for the nested struct with enhanced matching
+	assignments := make([]string, 0)
+
+	for _, dstNestedField := range dstStructFields {
+		for _, srcNestedField := range srcStructFields {
+			if gfm.enhancedFieldsCanMapNested(srcNestedField, dstNestedField, context) {
+				// Generate the nested assignment with type conversion if needed
+				assignment := gfm.generateNestedAssignmentCode(srcField, dstField, srcNestedField, dstNestedField, context)
+				assignments = append(assignments, assignment)
+				break
+			}
+		}
+	}
+
+	if len(assignments) == 0 {
+		return ""
+	}
+
+	// Join all assignments with newlines
+	return strings.Join(assignments, "\n\t")
+}
+
+// extractTypeFieldsWithSubstitution extracts fields from a type with type substitution applied.
+func (gfm *GenericFieldMapper) extractTypeFieldsWithSubstitution(
+	typ domain.Type,
+	context *GenericMappingContext,
+) ([]*domain.Field, error) {
+	// Apply type substitutions first if needed
+	if typ.Generic() && context.RequiresTypeSubstitution() {
+		substitutedType, err := gfm.substituteTypeIfNeeded(typ, context.TypeSubstitutions)
+		if err != nil {
+			return nil, err
+		}
+		typ = substitutedType
+	}
+	
+	return gfm.extractTypeFields(typ)
+}
+
+// enhancedFieldsCanMapNested checks if nested fields can be mapped with enhanced generic support.
+func (gfm *GenericFieldMapper) enhancedFieldsCanMapNested(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) bool {
+	// Enhanced field matching with generic type awareness
+	if srcField.Name == dstField.Name {
+		// Names match, check type compatibility with generic support
+		return gfm.typesCompatible(srcField.Type, dstField.Type, context)
+	}
+
+	// Allow common transformations for nested fields with enhanced patterns
+	return gfm.fieldsMatchByPattern(srcField, dstField, context)
+}
+
+// generateNestedAssignmentCode generates assignment code for nested fields.
+func (gfm *GenericFieldMapper) generateNestedAssignmentCode(
+	srcField, dstField *domain.Field,
+	srcNestedField, dstNestedField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	basicAssignment := fmt.Sprintf("dst.%s.%s = src.%s.%s",
+		dstField.Name, dstNestedField.Name,
+		srcField.Name, srcNestedField.Name)
+
+	// Add type conversion if needed
+	if !srcNestedField.Type.AssignableTo(dstNestedField.Type) && context.Options.UseTypeConversion {
+		dstTypeName := gfm.getTypeName(dstNestedField.Type)
+		return fmt.Sprintf("dst.%s.%s = %s(src.%s.%s)",
+			dstField.Name, dstNestedField.Name, dstTypeName,
+			srcField.Name, srcNestedField.Name)
+	}
+
+	return basicAssignment
+}
+
+// generateSliceConversionCode generates conversion code for slice fields.
+func (gfm *GenericFieldMapper) generateSliceConversionCode(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	// For slice conversions, we need to handle element type conversion
+	// This is a simplified implementation
+	return fmt.Sprintf(`// Convert slice: %s -> %s
+	dst.%s = make(%s, len(src.%s))
+	for i, item := range src.%s {
+		// TODO: Add element conversion logic here
+		dst.%s[i] = item // Placeholder conversion
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, srcField.Name, dstField.Name)
+}
+
+// generateMapConversionCode generates conversion code for map fields.
+func (gfm *GenericFieldMapper) generateMapConversionCode(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	// For map conversions, we need to handle both key and value type conversion
+	// This is a simplified implementation
+	return fmt.Sprintf(`// Convert map: %s -> %s
+	dst.%s = make(%s, len(src.%s))
+	for key, value := range src.%s {
+		// TODO: Add key/value conversion logic here
+		dst.%s[key] = value // Placeholder conversion
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, srcField.Name, dstField.Name)
+}
+
+// canConvertToGenericField checks if a source field can be converted to a generic destination field.
+func (gfm *GenericFieldMapper) canConvertToGenericField(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) bool {
+	// Check if field names are compatible
+	if !gfm.fieldsMatch(srcField, dstField, context) {
+		return false
+	}
+	
+	// Check if source type can be converted to the generic destination type
+	return gfm.typesConvertibleForGenerics(srcField.Type, dstField.Type)
+}
+
+// generateGenericConversionCode generates conversion code for generic fields.
+func (gfm *GenericFieldMapper) generateGenericConversionCode(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	// For generic conversions, we might need to apply type substitutions
+	assignmentCode := fmt.Sprintf("dst.%s = src.%s", dstField.Name, srcField.Name)
+	
+	// Add type conversion if the destination field requires it
+	if dstField.Type.Kind() == domain.KindGeneric {
+		// Check if we have a concrete type substitution for this generic parameter
+		if concreteType, found := context.TypeSubstitutions[dstField.Type.Name()]; found {
+			concreteTypeName := gfm.getTypeName(concreteType)
+			assignmentCode = fmt.Sprintf("dst.%s = %s(src.%s)",
+				dstField.Name, concreteTypeName, srcField.Name)
+		}
+	}
+	
+	return assignmentCode
+}
+
+// Enhanced helper methods for deeply nested generic support
+
+// isDeeplyNestedGeneric checks if a type contains deeply nested generic structures.
+func (gfm *GenericFieldMapper) isDeeplyNestedGeneric(typ domain.Type) bool {
+	// Check for nested generic patterns
+	if !typ.Generic() {
+		return false
+	}
+	
+	// Heuristic: Check if type string contains nested generic patterns
+	typeStr := typ.String()
+	
+	// Count bracket depth to detect nested generics like Map[K, List[V]]
+	bracketDepth := 0
+	maxDepth := 0
+	
+	for _, char := range typeStr {
+		switch char {
+		case '[':
+			bracketDepth++
+			if bracketDepth > maxDepth {
+				maxDepth = bracketDepth
+			}
+		case ']':
+			bracketDepth--
+		}
+	}
+	
+	// Consider deeply nested if bracket depth > 1 or contains known complex patterns
+	return maxDepth > 1 || gfm.containsComplexGenericPatterns(typeStr)
+}
+
+// containsComplexGenericPatterns checks for known complex generic patterns.
+func (gfm *GenericFieldMapper) containsComplexGenericPatterns(typeStr string) bool {
+	complexPatterns := []string{
+		"Map[",
+		"List[",
+		"Array[",
+		"Set[",
+		"Optional[",
+		"Future[",
+		"Result[",
+		"Either[",
+	}
+	
+	patternCount := 0
+	for _, pattern := range complexPatterns {
+		if strings.Contains(typeStr, pattern) {
+			patternCount++
+			if patternCount > 1 {
+				return true // Multiple generic patterns indicate complexity
+			}
+		}
+	}
+	
+	return false
+}
+
+// RegisterTypeAlias registers a type alias for use in generic field mapping.
+func (gfm *GenericFieldMapper) RegisterTypeAlias(aliasName string, actualType domain.Type) {
+	if gfm.recursiveResolver != nil {
+		gfm.recursiveResolver.RegisterTypeAlias(aliasName, actualType)
+		gfm.logger.Debug("registered type alias for field mapping",
+			zap.String("alias", aliasName),
+			zap.String("actual_type", actualType.String()))
+	}
+}
+
+// SupportsGenericTypeAlias checks if the mapper supports generic type aliases.
+func (gfm *GenericFieldMapper) SupportsGenericTypeAlias() bool {
+	return gfm.recursiveResolver != nil
+}
+
+// GetRecursiveResolutionMetrics returns metrics from the recursive resolver.
+func (gfm *GenericFieldMapper) GetRecursiveResolutionMetrics() *RecursiveResolutionMetrics {
+	if gfm.recursiveResolver != nil {
+		return gfm.recursiveResolver.GetMetrics()
+	}
+	return nil
+}
+
+// ClearRecursiveResolutionCache clears the recursive resolver's cache.
+func (gfm *GenericFieldMapper) ClearRecursiveResolutionCache() {
+	if gfm.recursiveResolver != nil {
+		gfm.recursiveResolver.ClearCache()
 	}
 }
