@@ -25,7 +25,7 @@ Advanced debugging techniques:
 ### 📈 **[Migration Guide](migration.md)**
 Upgrading between Convergen versions:
 
-- Migration from v7 to v8
+- Migration from v7 to v9
 - Breaking changes and compatibility
 - Performance improvements and new features
 - Deprecation notices and replacements
@@ -40,7 +40,7 @@ Upgrading between Convergen versions:
     **Symptoms**: Code generation produces errors or no output
     
     **Quick Checks**:
-    - Verify Go version (1.21+ required for v8)
+    - Verify Go version (1.21+ required for v9)
     - Check interface syntax and annotations
     - Ensure proper import statements
     - Validate file permissions and paths
@@ -76,7 +76,7 @@ Upgrading between Convergen versions:
     **Symptoms**: Slow generation or runtime performance
     
     **Quick Checks**:
-    - Update to v8 for parser improvements
+    - Update to v9 for parser improvements
     - Review complex annotation patterns
     - Check for inefficient converter functions
     - Analyze generated code patterns
@@ -159,7 +159,7 @@ When reporting issues, include:
    //go:build convergen
    package example
    
-   //go:generate go run github.com/reedom/convergen@v8.0.3
+   //go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
    type Convergen interface {
        // Your problematic interface definition
    }
@@ -198,7 +198,7 @@ When adding or modifying Convergen interfaces:
 
 1. **Start Simple**: Begin with basic conversions and add complexity gradually
 2. **Test Early**: Generate and test code frequently during development
-3. **Version Pin**: Use specific versions in production (`@v8.0.3` not `@latest`)
+3. **Version Pin**: Use specific versions in production (`@v9.0.0-beta.1` not `@latest`)
 4. **Document Patterns**: Document custom annotation patterns for team use
 5. **Review Generated Code**: Periodically review generated code for optimization opportunities
 

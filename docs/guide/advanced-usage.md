@@ -4,7 +4,7 @@ Advanced patterns and techniques for using Convergen in complex scenarios, inclu
 
 ## Struct Literal Generation
 
-**NEW in v8.1** - Convergen can generate functions using struct literal syntax for cleaner, more performant code.
+**NEW in v9.0.0** - Convergen can generate functions using struct literal syntax for cleaner, more performant code.
 
 ### Automatic Detection
 
@@ -118,7 +118,7 @@ func Convert(src *User) (dst *UserDTO) {
 
 ## Enhanced Generics Support
 
-**MAJOR UPDATE in v8.1** - Production-ready generics with cross-package support.
+**MAJOR UPDATE in v9.0.0** - Production-ready generics with cross-package support.
 
 ### Cross-Package Generic Conversions
 

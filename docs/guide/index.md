@@ -25,7 +25,7 @@ Complex scenarios and advanced techniques:
 ### ⚡ **[Performance](performance.md)**
 Optimization techniques and performance considerations:
 
-- Parser performance improvements in v8
+- Parser performance improvements in v9
 - Generated code optimization
 - Memory allocation patterns
 - Benchmarking your conversions

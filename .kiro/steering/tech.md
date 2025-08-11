@@ -25,7 +25,7 @@ Validation  → Cross-Package  → Strategy Exec  → Import Mgmt  → Error Han
 
 ### Language & Runtime
 - **Go**: 1.21+ (specified in go.mod)
-- **Module**: `github.com/reedom/convergen/v8`
+- **Module**: `github.com/reedom/convergen/v9`
 - **Entry Point**: `main.go` (CLI application)
 - **Architecture Pattern**: Package-based modular design with `pkg/` organization
 
@@ -108,7 +108,7 @@ go test ./tests -v                                   # Behavior-driven integrati
 go test ./tests -run TestAnnotationCoverage -v      # Annotation system coverage
 go test ./tests -run TestErrorScenarios -v          # Error handling scenarios
 go test ./tests/examples -v                         # Framework usage examples
-go test github.com/reedom/convergen/v8/pkg/...      # Unit tests for all packages
+go test github.com/reedom/convergen/v9/pkg/...      # Unit tests for all packages
 ```
 
 ### Production Usage

@@ -26,7 +26,7 @@ import (
     "github.com/myorg/myproject/internal/storage"
 )
 
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type Convergen interface {
     DomainToStorage(*domain.User) *storage.User
 }
@@ -137,20 +137,20 @@ For production use, always pin to a specific version:
 
 ```go
 // ✅ Recommended: Pin to specific version
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 
 // ⚠️ Development only: Use latest
 //go:generate go run github.com/reedom/convergen@latest
 
 // ✅ Alternative: Pin to major version (gets patch updates)
-//go:generate go run github.com/reedom/convergen@v8
+//go:generate go run github.com/reedom/convergen@v9
 ```
 
 ### Version Compatibility
 
 | Convergen Version | Go Version | Key Features |
 |-------------------|------------|--------------|
-| **v8.x** | Go 1.21+ | Concurrent parsing, enhanced performance |
+| **v9.x** | Go 1.21+ | Concurrent parsing, enhanced performance |
 | **v7.x** | Go 1.18+ | Basic generics support |
 | **v6.x** | Go 1.16+ | Legacy compatibility |
 
@@ -161,7 +161,7 @@ For production use, always pin to a specific version:
 convergen -version
 
 # For go:generate usage
-go run github.com/reedom/convergen@v8.0.3 -version
+go run github.com/reedom/convergen@v9.0.0-beta.1 -version
 
 # Check installed version
 go list -m github.com/reedom/convergen
@@ -200,7 +200,7 @@ Use build tags to exclude converter definitions from regular builds:
 package converters
 
 // This file is only included during code generation
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type Convergen interface {
     // Your conversion methods
 }
@@ -247,7 +247,7 @@ type UserDTO struct {
     Name string
 }
 
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type Convergen interface {
     UserToDTO(*User) *UserDTO
 }

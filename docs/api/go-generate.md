@@ -25,7 +25,7 @@ import (
     "github.com/myorg/myproject/storage"
 )
 
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type Convergen interface {
     DomainToStorage(*domain.User) *storage.User
 }
@@ -50,10 +50,10 @@ go generate ./internal/converters/...
 
 ```go
 // ✅ Recommended: Pin to specific version for stability
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 
 // ✅ Alternative: Pin to major version (gets patches automatically)
-//go:generate go run github.com/reedom/convergen@v8
+//go:generate go run github.com/reedom/convergen@v9
 
 // ⚠️ Development only: Use latest (not recommended for production)
 //go:generate go run github.com/reedom/convergen@latest
@@ -62,8 +62,8 @@ go generate ./internal/converters/...
 ### Version Updates
 
 ```bash
-# Update to latest v8.x
-find . -name "*.go" -exec sed -i 's/@v8\.[0-9]\+\.[0-9]\+/@v8.0.3/g' {} +
+# Update to latest v9.x
+find . -name "*.go" -exec sed -i 's/@v8\.[0-9]\+\.[0-9]\+/@v9.0.0-beta.1/g' {} +
 
 # Or update to latest
 find . -name "*.go" -exec sed -i 's/@v8\.[0-9]\+\.[0-9]\+/@latest/g' {} +
@@ -81,7 +81,7 @@ package converters
 // This file is only included during code generation
 // and won't interfere with regular builds
 
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type Convergen interface {
     Convert(*User) *UserDTO
 }
@@ -95,7 +95,7 @@ type Convergen interface {
 package converters
 
 // Only include in development builds, skip in release
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type Convergen interface {
     // Development-specific converters
 }
@@ -120,7 +120,7 @@ internal/
 
 package converters
 
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type UserConvergen interface {
     // :skip Password
     UserToAPI(*domain.User) *api.User
@@ -137,7 +137,7 @@ type UserConvergen interface {
 
 package converters
 
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 
 // :convergen
 type UserConvergen interface {
@@ -338,7 +338,7 @@ ENTRYPOINT ["app"]
 package converters
 
 // Only generate debug converters in debug builds
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type DebugConvergen interface {
     // :literal DebugInfo true
     AddDebugInfo(*User) *DebugUser
@@ -353,7 +353,7 @@ type DebugConvergen interface {
 package converters
 
 // Use different versions for different purposes
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 
 // Production converters
 type ProdConvergen interface {
@@ -379,7 +379,7 @@ head -5 converter.go
 grep -n "go:generate" converter.go
 
 # Test manual generation
-go run github.com/reedom/convergen@v8.0.3 converter.go
+go run github.com/reedom/convergen@v9.0.0-beta.1 converter.go
 ```
 
 ### Module Download Issues
@@ -451,7 +451,7 @@ convergen converter.go
 
 # After (go:generate)
 # Add to converter.go:
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 
 # Then run:
 go generate

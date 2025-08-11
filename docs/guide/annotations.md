@@ -243,7 +243,7 @@ func Convert(src *User) (dst *UserDTO) {
 
 ### Struct Literal Control
 
-**NEW in v8.1** - Control whether generated functions use struct literal syntax or traditional assignment blocks.
+**NEW in v9.0.0** - Control whether generated functions use struct literal syntax or traditional assignment blocks.
 
 **Location:** Interface, Method
 **Default:** Automatic detection based on conversion complexity

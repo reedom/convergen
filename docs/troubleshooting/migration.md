@@ -2,9 +2,9 @@
 
 Guide for upgrading between Convergen versions, including breaking changes and compatibility information.
 
-## Migration to v8.1 - Major Feature Update
+## Migration to v9.0.0 - Major Feature Update
 
-### 🔥 New Features in v8.1
+### 🔥 New Features in v9.0.0
 
 **Struct Literal Generation (90% complete):**
 - Automatic detection with intelligent fallback
@@ -40,7 +40,7 @@ Guide for upgrading between Convergen versions, including breaking changes and c
 - Automatic fallback detection
 - Rich CLI integration
 
-### Migration Steps for v8.1 Features
+### Migration Steps for v9.0.0 Features
 
 #### 1. Adopting Struct Literals
 
@@ -266,7 +266,7 @@ type Converter[S, D any] interface {
 
 ### Performance Improvements
 
-v8 introduces significant performance improvements:
+v9 introduces significant performance improvements:
 
 - 40-70% faster parsing with concurrent processing
 - Smart strategy selection
@@ -274,7 +274,7 @@ v8 introduces significant performance improvements:
 
 ### Compatibility
 
-v8 is **fully backward compatible** with v7 code:
+v9 is **fully backward compatible** with v7 code:
 
 - All existing annotations work unchanged
 - Generated code maintains same API
@@ -290,7 +290,7 @@ v8 is **fully backward compatible** with v7 code:
 2. **Update Convergen version**:
    ```bash
    # For go:generate
-   //go:generate go run github.com/reedom/convergen@v8.0.3
+   //go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
    
    # For CLI
    go install github.com/reedom/convergen@latest
@@ -305,35 +305,20 @@ v8 is **fully backward compatible** with v7 code:
    go test ./...
    ```
 
-### New Features in v8
+### New Features in v9
 
 - Concurrent parser engine
 - Enhanced error handling
 - Improved performance metrics
 - Better debugging capabilities
-
-## Migration from v6 to v7
-
-### Generics Support
-
-v7 introduced basic generics support:
-
 - Generic type parameters in interfaces
 - Type constraints
 - Collection transformations
 
 ### Breaking Changes
 
-- Minimum Go version increased to 1.18
+- Minimum Go version increased to 1.21
 - Some internal APIs changed (affects only programmatic usage)
-
-## Version Compatibility Matrix
-
-| Convergen Version | Go Version | Key Features |
-|-------------------|------------|--------------|
-| **v8.x** | Go 1.21+ | Concurrent parsing, enhanced performance |
-| **v7.x** | Go 1.18+ | Basic generics support |
-| **v6.x** | Go 1.16+ | Legacy compatibility |
 
 ## Getting Help
 

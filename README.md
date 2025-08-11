@@ -11,7 +11,7 @@ Convergen is a **high-performance** code generator that creates type-to-type cop
 
 ## ⚡ Key Features
 
-- **🚀 High Performance**: 40-70% faster parsing with concurrent processing (v8)
+- **🚀 High Performance**: 40-70% faster parsing with concurrent processing (v9)
 - **🎯 Type-Safe**: Leverages Go's type system for safe conversions
 - **🔧 Flexible**: Supports field mapping, type casting, custom converters
 - **📦 Zero Runtime Dependencies**: Generated code has no external dependencies

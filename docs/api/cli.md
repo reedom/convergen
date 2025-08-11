@@ -197,7 +197,7 @@ Display version information and exit.
 
 ```bash
 convergen -version
-# Output: convergen v8.0.3 (built with go1.21.5)
+# Output: convergen v9.0.0-beta.1 (built with go1.21.5)
 ```
 
 ### `-type <specification>`
@@ -625,7 +625,7 @@ jobs:
 set -euo pipefail
 
 # Configuration
-CONVERGEN_VERSION="v8.0.3"
+CONVERGEN_VERSION="v9.0.0-beta.1"
 LOG_LEVEL="INFO"
 
 # Functions

@@ -16,9 +16,9 @@ This section will cover:
 
 ## Quick Configuration
 
-### Parser Configuration (v8)
+### Parser Configuration (v9)
 
-The v8 parser engine supports multiple strategies:
+The v9 parser engine supports multiple strategies:
 
 ```go
 // For programmatic usage

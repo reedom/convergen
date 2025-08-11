@@ -59,7 +59,7 @@ Advanced configuration options:
     package mypackage
     
     // Version pinned for reproducible builds
-    //go:generate go run github.com/reedom/convergen@v8.0.3
+    //go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
     
     type Convergen interface {
         Convert(*Source) *Destination
@@ -178,20 +178,20 @@ ENTRYPOINT ["app"]
 
 ```go
 // Pin to specific version for stability
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 
 // Use latest for development (not recommended for production)
 //go:generate go run github.com/reedom/convergen@latest
 
 // Use major version for automatic patches
-//go:generate go run github.com/reedom/convergen@v8
+//go:generate go run github.com/reedom/convergen@v9
 ```
 
 ### Version Compatibility
 
 | Version | Go Version | Features |
 |---------|------------|----------|
-| v8.x | Go 1.21+ | Concurrent parsing, generics |
+| v9.x | Go 1.21+ | Concurrent parsing, generics |
 | v7.x | Go 1.18+ | Basic generics support |
 | v6.x | Go 1.16+ | Legacy compatibility |
 
@@ -199,7 +199,7 @@ ENTRYPOINT ["app"]
 
 ### Parser Configuration
 
-The v8 parser engine supports multiple strategies:
+The v9 parser engine supports multiple strategies:
 
 - **LegacyParser**: Traditional synchronous (backward compatible)
 - **ModernParser**: Concurrent processing (40-70% faster)

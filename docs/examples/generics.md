@@ -1,6 +1,6 @@
 # Generics Support
 
-**MAJOR UPDATE in v8.1** - Comprehensive Go generics support with cross-package type resolution, constraint validation, and production-ready infrastructure.
+**MAJOR UPDATE in v9.0.0** - Comprehensive Go generics support with cross-package type resolution, constraint validation, and production-ready infrastructure.
 
 ## Overview
 

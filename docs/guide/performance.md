@@ -2,9 +2,9 @@
 
 Optimization techniques and performance considerations for Convergen usage.
 
-## v8 Performance Improvements
+## v9 Performance Improvements
 
-**New in v8**: The parser engine has been completely rewritten with concurrent processing capabilities:
+**New in v9**: The parser engine has been completely rewritten with concurrent processing capabilities:
 
 - 🚀 **40-70% faster** parsing with concurrent package loading and method processing
 - 🏗️ **Smart strategy selection** - automatically chooses optimal parsing approach
@@ -13,7 +13,7 @@ Optimization techniques and performance considerations for Convergen usage.
 
 ## Parser Strategies
 
-The v8 parser engine supports multiple strategies:
+The v9 parser engine supports multiple strategies:
 
 - **LegacyParser**: Traditional synchronous parsing (backward compatible)
 - **ModernParser**: Concurrent processing (40-70% faster)

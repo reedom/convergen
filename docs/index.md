@@ -21,7 +21,7 @@ import (
     "github.com/sample/myapp/storage"
 )
 
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type Convergen interface {
     // :typecast
     // :stringer
@@ -54,7 +54,7 @@ func DomainToStorage(src *domain.User) *storage.User {
 }
 ```
 
-## 🆕 What's New in v8.1
+## 🆕 What's New in v9.0.0
 
 ### 🔥 **Struct Literal Generation**
 Automatic detection with intelligent fallback - generates cleaner, more performant code:
@@ -107,7 +107,7 @@ Comprehensive annotation system for fine-grained control over conversions:
 - **Flexible styles**: `:style return|arg` - Control function signatures
 
 ### 🚀 **High Performance**
-- **New in v8**: 40-70% faster parsing with concurrent processing
+- **New in v9**: 40-70% faster parsing with concurrent processing
 - Smart strategy selection - automatically chooses optimal parsing approach  
 - Enterprise reliability with circuit breaker pattern and error recovery
 - Zero runtime dependencies - pure generated code
@@ -137,7 +137,7 @@ Choose your preferred installation method:
 
     Add to your Go file:
     ```go
-    //go:generate go run github.com/reedom/convergen@v8.0.3
+    //go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
     ```
     
     Then run:

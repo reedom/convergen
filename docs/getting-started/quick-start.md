@@ -83,7 +83,7 @@ type UserResponse struct {
 
 package main
 
-//go:generate go run github.com/reedom/convergen@v8.0.3
+//go:generate go run github.com/reedom/convergen@v9.0.0-beta.1
 type Convergen interface {
     // Convert User to UserResponse
     // :skip Password                           # Don't copy sensitive field

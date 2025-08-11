@@ -22,7 +22,7 @@ go version
 
 | Convergen Version | Go Version | Use Command |
 |-------------------|------------|-------------|
-| v8.x | Go 1.21+ | `@latest` |
+| v9.x | Go 1.21+ | `@latest` |
 | v7.x | Go 1.18+ | `@v7.2.1` |
 | v6.x | Go 1.16+ | `@v6.3.0` |
 
@@ -384,7 +384,7 @@ func SafeStringConvert(v interface{}) string {
 
 **Solutions:**
 
-=== "Update to v8"
+=== "Update to v9"
 
     ```bash
     # Update to latest version for performance improvements
@@ -399,9 +399,9 @@ func SafeStringConvert(v interface{}) string {
     # Use specific imports instead of wildcard imports
     ```
 
-=== "Use Concurrent Parser (v8)"
+=== "Use Concurrent Parser (v9)"
 
-    **Automatic in v8, but you can configure:**
+    **Automatic in v9, but you can configure:**
     ```go
     // For programmatic usage
     config := parser.NewConcurrentParserConfig()
@@ -466,7 +466,7 @@ func SafeStringConvert(v interface{}) string {
     ```yaml
     # Install Convergen in CI
     - name: Install Convergen
-      run: go install github.com/reedom/convergen@v8.0.3
+      run: go install github.com/reedom/convergen@v9.0.0-beta.1
     ```
 
 === "File Permissions"

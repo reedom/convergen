@@ -84,7 +84,7 @@ Managed by `/kiro:steering` command. Updates here reflect command changes.
 - `make test` - Run all tests (both integration tests and package tests)
 - `make coverage` - Generate test coverage report
 - `go run main.go <input-file>` - Run convergen directly on a file
-- `go run github.com/reedom/convergen@v8.0.3` - Run as go:generate command
+- `go run github.com/reedom/convergen@v9` - Run as go:generate command
 
 ### Code Quality & Linting
 - `make lint` - Run comprehensive linting with golangci-lint (no Docker required)
@@ -107,7 +107,7 @@ Managed by `/kiro:steering` command. Updates here reflect command changes.
 
 ## Current Module Information
 
-- **Module Path**: `github.com/reedom/convergen/v8`
+- **Module Path**: `github.com/reedom/convergen/v9`
 - **Go Version**: 1.21+
 - **Entry Point**: `main.go`
 - **Package Layout**: Standard Go project layout with `pkg/` organization
