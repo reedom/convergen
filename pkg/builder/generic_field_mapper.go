@@ -456,11 +456,11 @@ func (gfm *GenericFieldMapper) typesCompatible(srcType, dstType domain.Type, con
 	if srcType == nil || dstType == nil {
 		return false
 	}
-	
+
 	// Apply type substitutions before comparing
 	substitutedSrcType := gfm.applyTypeSubstitution(srcType, context)
 	substitutedDstType := gfm.applyTypeSubstitution(dstType, context)
-	
+
 	// Direct assignability
 	if substitutedSrcType.AssignableTo(substitutedDstType) {
 		return true
@@ -503,8 +503,8 @@ func (gfm *GenericFieldMapper) applyTypeSubstitution(typ domain.Type, context *G
 			elemType := gfm.applyTypeSubstitution(pointerType.Elem(), context)
 			return domain.NewPointerType(elemType, pointerType.Package())
 		}
-	// Note: Map type substitution is not fully implemented in the domain package yet
-	// case domain.KindMap: ... would go here when available
+		// Note: Map type substitution is not fully implemented in the domain package yet
+		// case domain.KindMap: ... would go here when available
 	}
 
 	return typ
@@ -846,7 +846,7 @@ func (gfm *GenericFieldMapper) typesConvertibleForMaps(srcType, dstType domain.T
 	gfm.logger.Debug("checking map type convertibility",
 		zap.String("src_type", srcType.String()),
 		zap.String("dst_type", dstType.String()))
-	
+
 	// For now, allow conversion between map types if they have compatible structure
 	// A full implementation would examine key/value types recursively
 	return srcType.Name() != "" && dstType.Name() != ""
@@ -859,17 +859,17 @@ func (gfm *GenericFieldMapper) typesConvertibleForGenerics(srcType, dstType doma
 		// Source is generic parameter, check if destination can accept it
 		return gfm.canAcceptGenericType(srcType, dstType)
 	}
-	
+
 	if dstType.Kind() == domain.KindGeneric {
 		// Destination is generic parameter, check if source can be assigned
 		return gfm.canAssignToGenericType(srcType, dstType)
 	}
-	
+
 	// Both types might have generic parameters in their structure
 	if srcType.Generic() && dstType.Generic() {
 		return gfm.compatibleGenericStructures(srcType, dstType)
 	}
-	
+
 	return false
 }
 
@@ -882,14 +882,14 @@ func (gfm *GenericFieldMapper) typesConvertibleForNamedTypes(srcType, dstType do
 			return gfm.typesConvertible(srcUnderlying, dstType)
 		}
 	}
-	
+
 	if dstType.Kind() == domain.KindNamed {
 		dstUnderlying := dstType.Underlying()
 		if dstUnderlying != nil && dstUnderlying != dstType {
 			return gfm.typesConvertible(srcType, dstUnderlying)
 		}
 	}
-	
+
 	// Check if both are named types with compatible names/packages
 	return gfm.compatibleNamedTypes(srcType, dstType)
 }
@@ -914,7 +914,7 @@ func (gfm *GenericFieldMapper) compatibleGenericStructures(srcType, dstType doma
 	// This is a simplified compatibility check
 	srcName := gfm.extractBaseTypeName(srcType.String())
 	dstName := gfm.extractBaseTypeName(dstType.String())
-	
+
 	return srcName == dstName || gfm.structurallyCompatible(srcType, dstType)
 }
 
@@ -925,7 +925,7 @@ func (gfm *GenericFieldMapper) compatibleNamedTypes(srcType, dstType domain.Type
 		// Same name, check if packages are compatible
 		return gfm.packagesCompatible(srcType.Package(), dstType.Package())
 	}
-	
+
 	// Different names, check if they represent similar concepts
 	return gfm.semanticallyCompatibleNames(srcType.Name(), dstType.Name())
 }
@@ -952,7 +952,7 @@ func (gfm *GenericFieldMapper) packagesCompatible(srcPkg, dstPkg string) bool {
 	if srcPkg == dstPkg {
 		return true
 	}
-	
+
 	// Different packages might still be compatible if they're related
 	return gfm.relatedPackages(srcPkg, dstPkg)
 }
@@ -967,7 +967,7 @@ func (gfm *GenericFieldMapper) semanticallyCompatibleNames(srcName, dstName stri
 		"Dict":  {"Map", "HashMap", "Dictionary", "Table"},
 		"Set":   {"HashSet", "Collection"},
 	}
-	
+
 	if compatibleNames, exists := compatibilityMap[srcName]; exists {
 		for _, name := range compatibleNames {
 			if name == dstName {
@@ -975,7 +975,7 @@ func (gfm *GenericFieldMapper) semanticallyCompatibleNames(srcName, dstName stri
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -1133,7 +1133,7 @@ func (gfm *GenericFieldMapper) extractTypeFieldsWithSubstitution(
 		}
 		typ = substitutedType
 	}
-	
+
 	return gfm.extractTypeFields(typ)
 }
 
@@ -1218,7 +1218,7 @@ func (gfm *GenericFieldMapper) canConvertToGenericField(
 	if !gfm.fieldsMatch(srcField, dstField, context) {
 		return false
 	}
-	
+
 	// Check if source type can be converted to the generic destination type
 	return gfm.typesConvertibleForGenerics(srcField.Type, dstField.Type)
 }
@@ -1230,7 +1230,7 @@ func (gfm *GenericFieldMapper) generateGenericConversionCode(
 ) string {
 	// For generic conversions, we might need to apply type substitutions
 	assignmentCode := fmt.Sprintf("dst.%s = src.%s", dstField.Name, srcField.Name)
-	
+
 	// Add type conversion if the destination field requires it
 	if dstField.Type.Kind() == domain.KindGeneric {
 		// Check if we have a concrete type substitution for this generic parameter
@@ -1240,7 +1240,7 @@ func (gfm *GenericFieldMapper) generateGenericConversionCode(
 				dstField.Name, concreteTypeName, srcField.Name)
 		}
 	}
-	
+
 	return assignmentCode
 }
 
@@ -1252,14 +1252,14 @@ func (gfm *GenericFieldMapper) isDeeplyNestedGeneric(typ domain.Type) bool {
 	if !typ.Generic() {
 		return false
 	}
-	
+
 	// Heuristic: Check if type string contains nested generic patterns
 	typeStr := typ.String()
-	
+
 	// Count bracket depth to detect nested generics like Map[K, List[V]]
 	bracketDepth := 0
 	maxDepth := 0
-	
+
 	for _, char := range typeStr {
 		switch char {
 		case '[':
@@ -1271,7 +1271,7 @@ func (gfm *GenericFieldMapper) isDeeplyNestedGeneric(typ domain.Type) bool {
 			bracketDepth--
 		}
 	}
-	
+
 	// Consider deeply nested if bracket depth > 1 or contains known complex patterns
 	return maxDepth > 1 || gfm.containsComplexGenericPatterns(typeStr)
 }
@@ -1288,7 +1288,7 @@ func (gfm *GenericFieldMapper) containsComplexGenericPatterns(typeStr string) bo
 		"Result[",
 		"Either[",
 	}
-	
+
 	patternCount := 0
 	for _, pattern := range complexPatterns {
 		if strings.Contains(typeStr, pattern) {
@@ -1298,7 +1298,7 @@ func (gfm *GenericFieldMapper) containsComplexGenericPatterns(typeStr string) bo
 			}
 		}
 	}
-	
+
 	return false
 }
 

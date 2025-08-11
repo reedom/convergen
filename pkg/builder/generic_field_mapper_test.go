@@ -15,11 +15,11 @@ func TestGenericFieldMapper_EnhancedNestedGenerics(t *testing.T) {
 
 	logger := zaptest.NewLogger(t)
 	config := DefaultGenericFieldMapperConfig()
-	
+
 	// Create type builder and substitution engine
 	typeBuilder := domain.NewTypeBuilder()
 	substitutionEngine := domain.NewTypeSubstitutionEngine(typeBuilder, logger)
-	
+
 	// Create enhanced generic field mapper
 	mapper := NewGenericFieldMapper(nil, substitutionEngine, logger, config)
 
@@ -74,9 +74,9 @@ func TestGenericFieldMapper_EnhancedNestedGenerics(t *testing.T) {
 			sourceType:  createComplexGenericType("ComplexSource", []string{"K", "V", "T"}),
 			destType:    createComplexGenericType("ComplexDest", []string{"K", "V", "T"}),
 			typeSubstitutions: map[string]domain.Type{
-				"K":  domain.NewBasicType("string", 0),
-				"V":  domain.NewBasicType("int", 0),
-				"T":  domain.NewBasicType("bool", 0),
+				"K": domain.NewBasicType("string", 0),
+				"V": domain.NewBasicType("int", 0),
+				"T": domain.NewBasicType("bool", 0),
 			},
 			expectSuccess:    true,
 			expectedMappings: 3,
@@ -133,10 +133,10 @@ func TestGenericFieldMapper_TypeAliasSupport(t *testing.T) {
 
 	logger := zaptest.NewLogger(t)
 	config := DefaultGenericFieldMapperConfig()
-	
+
 	typeBuilder := domain.NewTypeBuilder()
 	substitutionEngine := domain.NewTypeSubstitutionEngine(typeBuilder, logger)
-	
+
 	mapper := NewGenericFieldMapper(nil, substitutionEngine, logger, config)
 
 	// Test type alias registration
@@ -163,21 +163,21 @@ func TestGenericFieldMapper_RecursiveTypeResolution(t *testing.T) {
 
 	logger := zaptest.NewLogger(t)
 	config := DefaultGenericFieldMapperConfig()
-	
+
 	typeBuilder := domain.NewTypeBuilder()
 	substitutionEngine := domain.NewTypeSubstitutionEngine(typeBuilder, logger)
-	
+
 	mapper := NewGenericFieldMapper(nil, substitutionEngine, logger, config)
 
 	// Test complex recursive scenarios
 	tests := []struct {
-		name             string
-		description      string
-		sourceType       domain.Type
-		destType         domain.Type
+		name              string
+		description       string
+		sourceType        domain.Type
+		destType          domain.Type
 		typeSubstitutions map[string]domain.Type
-		setupAliases     func(*GenericFieldMapper)
-		expectError      bool
+		setupAliases      func(*GenericFieldMapper)
+		expectError       bool
 	}{
 		{
 			name:        "RecursiveGenericStructs",
@@ -262,10 +262,10 @@ func TestGenericFieldMapper_Performance(t *testing.T) {
 	config := DefaultGenericFieldMapperConfig()
 	config.EnableOptimization = true
 	config.PerformanceMode = true
-	
+
 	typeBuilder := domain.NewTypeBuilder()
 	substitutionEngine := domain.NewTypeSubstitutionEngine(typeBuilder, logger)
-	
+
 	mapper := NewGenericFieldMapper(nil, substitutionEngine, logger, config)
 
 	// Test performance with large numbers of fields and deep nesting
@@ -381,7 +381,7 @@ func createSimpleGenericType(name, typeParam string) domain.Type {
 func createNestedSliceType(name, typeParam string) domain.Type {
 	elemType := domain.NewGenericType(typeParam, nil, 0, "")
 	sliceType := domain.NewSliceType(elemType, "")
-	
+
 	fields := []domain.Field{
 		{
 			Name:     "Items",
@@ -397,7 +397,7 @@ func createDeeplyNestedType(name, typeParam string) domain.Type {
 	// Create a type representing Map[string, List[T]]
 	innerType := domain.NewGenericType(typeParam, nil, 0, "")
 	listType := domain.NewSliceType(innerType, "") // Representing List[T]
-	
+
 	fields := []domain.Field{
 		{
 			Name:     "Data",
@@ -411,7 +411,7 @@ func createDeeplyNestedType(name, typeParam string) domain.Type {
 
 func createComplexGenericType(name string, typeParams []string) domain.Type {
 	fields := make([]domain.Field, len(typeParams))
-	
+
 	for i, param := range typeParams {
 		fields[i] = domain.Field{
 			Name:     fmt.Sprintf("Field%s", param),
@@ -420,7 +420,7 @@ func createComplexGenericType(name string, typeParams []string) domain.Type {
 			Exported: true,
 		}
 	}
-	
+
 	return domain.NewStructType(name, fields, "")
 }
 
@@ -464,7 +464,7 @@ func createTypeWithAliases(name string) domain.Type {
 
 func createLargeGenericStruct(name string, numFields int, typeParam string) domain.Type {
 	fields := make([]domain.Field, numFields)
-	
+
 	for i := 0; i < numFields; i++ {
 		fields[i] = domain.Field{
 			Name:     fmt.Sprintf("Field%02d", i+1),
@@ -473,14 +473,14 @@ func createLargeGenericStruct(name string, numFields int, typeParam string) doma
 			Exported: true,
 		}
 	}
-	
+
 	return domain.NewStructType(name, fields, "")
 }
 
 func createDeeplyNestedGenericType(name string, depth int, typeParam string) domain.Type {
 	// Create a deeply nested type by creating nested struct layers
 	var currentType domain.Type = domain.NewGenericType(typeParam, nil, 0, "")
-	
+
 	// Build nested structure from inside out
 	for i := 0; i < depth; i++ {
 		fields := []domain.Field{
@@ -493,6 +493,6 @@ func createDeeplyNestedGenericType(name string, depth int, typeParam string) dom
 		}
 		currentType = domain.NewStructType(fmt.Sprintf("%sLevel%d", name, i), fields, "")
 	}
-	
+
 	return currentType
 }

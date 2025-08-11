@@ -202,7 +202,7 @@ type MixedComparableSource struct {
 
 type MixedStringerSource struct {
 	Value string
-}  
+}
 
 type MixedTarget struct {
 	ID    int
@@ -355,7 +355,7 @@ type MissingConverter interface {
 			expectedError: "not defined",
 		},
 		{
-			name:        "InvalidConstraintType", 
+			name:        "InvalidConstraintType",
 			description: "Should fail when destination type is invalid",
 			imports:     []string{},
 			types: `
@@ -363,7 +363,7 @@ type ValidSource struct {
 	Data string
 }`,
 			interface_: `
-// :convergen  
+// :convergen
 type InvalidConverter interface {
 	Convert(ValidSource) string  // string is not a valid destination type
 }`,
@@ -393,7 +393,7 @@ func TestGenericsCrossPackagePerformance(t *testing.T) {
 
 	// Test with multiple concrete types for performance
 	scenario := helpers.NewInlineScenario(
-		"MultipleTypeParametersPerformance", 
+		"MultipleTypeParametersPerformance",
 		"Should handle multiple concrete types efficiently",
 	).WithImports().
 		WithTypes(`
@@ -427,7 +427,7 @@ type Target3 struct {
 		WithInterface(`
 type Convergen interface {
 	ConvertFirst(Source1) Target1
-	ConvertSecond(Source2) Target2  
+	ConvertSecond(Source2) Target2
 	ConvertThird(Source3) Target3
 }`).WithBehaviorTests().
 		WithCodeChecks(

@@ -165,12 +165,12 @@ func ExampleCustomTemplates() {
 func (c *converter) {{.Method.Name}}(src {{substituteType .Method.Parameters.0.Type $.TypeSubstitutions}}) ({{substituteType .Method.ReturnType $.TypeSubstitutions}}, error) {
 	// Custom conversion logic
 	var result {{substituteType .Method.ReturnType $.TypeSubstitutions}}
-	
+
 	// Apply custom mapping
 	{{range .FieldMappings}}
 	result.{{.DestField}} = convertField(src.{{.SourceField}})
 	{{end}}
-	
+
 	return result, nil
 }`,
 		},
@@ -308,10 +308,10 @@ func (ete *ExampleTemplateEngine) renderSimpleConversion(data interface{}) (stri
 // %s converts %s to %s
 func (c *converter) %s(src %s) (%s, error) {
 	var result %s
-	
+
 	// Field mappings
 	%s
-	
+
 	return result, nil
 }`,
 			method.Name,
@@ -336,10 +336,10 @@ func (ete *ExampleTemplateEngine) renderComplexConversion(data interface{}) (str
 // %s converts %s to %s with validation and error handling
 func (c *converter) %s(src %s) (%s, error) {
 	var result %s
-	
+
 	// Validation and complex field mappings
 	%s
-	
+
 	return result, nil
 }`,
 			method.Name,

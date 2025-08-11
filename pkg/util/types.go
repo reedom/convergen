@@ -75,13 +75,13 @@ func IsValidConversionType(t types.Type) bool {
 	if IsStructType(t) || IsTypeParam(t) {
 		return true
 	}
-	
+
 	// Handle slices (for variadic parameters)
 	if slice, ok := t.(*types.Slice); ok {
 		// Allow slices of type parameters (e.g., []T for variadic ...T)
 		return IsTypeParam(slice.Elem()) || IsStructType(slice.Elem())
 	}
-	
+
 	return false
 }
 

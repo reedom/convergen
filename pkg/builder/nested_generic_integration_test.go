@@ -18,16 +18,16 @@ func TestNestedGenericFieldMapping_MapListConversion(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	config := DefaultGenericFieldMapperConfig()
 	config.DebugMode = true
-	
+
 	typeBuilder := domain.NewTypeBuilder()
 	substitutionEngine := domain.NewTypeSubstitutionEngine(typeBuilder, logger)
-	
+
 	mapper := NewGenericFieldMapper(nil, substitutionEngine, logger, config)
 
 	// Register type aliases for List and Array to simulate the conversion scenario
 	mapper.RegisterTypeAlias("List", domain.NewSliceType(domain.NewBasicType("interface{}", 0), ""))
 	mapper.RegisterTypeAlias("Array", domain.NewSliceType(domain.NewBasicType("interface{}", 0), ""))
-	
+
 	tests := []struct {
 		name                  string
 		description           string
@@ -225,10 +225,10 @@ func TestRecursiveTypeParameterResolution(t *testing.T) {
 
 	logger := zaptest.NewLogger(t)
 	config := DefaultGenericFieldMapperConfig()
-	
+
 	typeBuilder := domain.NewTypeBuilder()
 	substitutionEngine := domain.NewTypeSubstitutionEngine(typeBuilder, logger)
-	
+
 	mapper := NewGenericFieldMapper(nil, substitutionEngine, logger, config)
 
 	// Register common type aliases for testing

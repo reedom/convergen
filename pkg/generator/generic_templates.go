@@ -45,7 +45,7 @@ type GenericTemplateData struct {
 // MethodTemplateData contains template data for a specific method.
 type MethodTemplateData struct {
 	*GenericTemplateData                 // Parent template data
-	Method               *MethodData     `json:"method"`         // Current method being generated
+	Method               *MethodData     `json:"method"` // Current method being generated
 	FieldMappings        []*FieldMapping `json:"field_mappings"` // Field mappings for this method
 }
 
@@ -138,10 +138,10 @@ func GetDefaultTemplateDefinitions() *TemplateDefinitions {
 // {{.Method.Name}} converts {{.Method.Parameters.0.Type.Name}} to {{.Method.ReturnType.Name}}.
 func ({{.Method.Receiver.Name}} *{{.Method.Receiver.Type.Name}}) {{.Method.Name}}({{range $i, $p := .Method.Parameters}}{{if $i}}, {{end}}{{$p.Name}} {{substituteType $p.Type $.TypeSubstitutions}}{{end}}) {{if .Method.ReturnType}}{{substituteType .Method.ReturnType $.TypeSubstitutions}}{{end}} {
 	{{if .Method.ReturnType}}var result {{substituteType .Method.ReturnType $.TypeSubstitutions}}
-	
+
 	{{range .FieldMappings}}{{generateFieldAccess .}}
 	{{end}}
-	
+
 	return result{{end}}
 }`,
 
@@ -149,10 +149,10 @@ func ({{.Method.Receiver.Name}} *{{.Method.Receiver.Type.Name}}) {{.Method.Name}
 // {{.Method.Name}} converts {{.Method.Parameters.0.Type.Name}} to {{.Method.ReturnType.Name}}.
 func ({{.Method.Receiver.Name}} *{{.Method.Receiver.Type.Name}}) {{.Method.Name}}({{range $i, $p := .Method.Parameters}}{{if $i}}, {{end}}{{$p.Name}} {{substituteType $p.Type $.TypeSubstitutions}}{{end}}) ({{if .Method.ReturnType}}{{substituteType .Method.ReturnType $.TypeSubstitutions}}, {{end}}error) {
 	{{if .Method.ReturnType}}var result {{substituteType .Method.ReturnType $.TypeSubstitutions}}
-	
+
 	{{range .FieldMappings}}{{generateFieldAccess .}}
 	{{end}}
-	
+
 	return result, nil{{else}}return nil{{end}}
 }`,
 
@@ -160,11 +160,11 @@ func ({{.Method.Receiver.Name}} *{{.Method.Receiver.Type.Name}}) {{.Method.Name}
 // {{.Method.Name}} converts {{.Method.Parameters.0.Type.Name}} to {{.Method.ReturnType.Name}}.
 func ({{.Method.Receiver.Name}} *{{.Method.Receiver.Type.Name}}) {{.Method.Name}}(src {{substituteType .Method.Parameters.0.Type $.TypeSubstitutions}}) {{if .Method.ReturnsError}}({{end}}{{substituteType .Method.ReturnType $.TypeSubstitutions}}{{if .Method.ReturnsError}}, error){{end}} {
 	{{if .Method.ReturnType}}var dst {{substituteType .Method.ReturnType $.TypeSubstitutions}}
-	
+
 	{{range .FieldMappings}}dst.{{.DestField}} = src.{{.SourceField}}{{if .Converter}}
 	// Apply converter: {{.Converter}}{{end}}
 	{{end}}
-	
+
 	return dst{{if .Method.ReturnsError}}, nil{{end}}{{else}}{{if .Method.ReturnsError}}return nil{{end}}{{end}}
 }`,
 
@@ -172,7 +172,7 @@ func ({{.Method.Receiver.Name}} *{{.Method.Receiver.Type.Name}}) {{.Method.Name}
 // {{.Method.Name}} converts {{.Method.Parameters.0.Type.Name}} to {{.Method.ReturnType.Name}} with advanced mapping.
 func ({{.Method.Receiver.Name}} *{{.Method.Receiver.Type.Name}}) {{.Method.Name}}(src {{substituteType .Method.Parameters.0.Type $.TypeSubstitutions}}) ({{substituteType .Method.ReturnType $.TypeSubstitutions}}, error) {
 	var dst {{substituteType .Method.ReturnType $.TypeSubstitutions}}
-	
+
 	{{range .FieldMappings}}// Map {{.SourceField}} -> {{.DestField}}
 	{{if .Validation}}if {{.Validation}} {
 		return dst, fmt.Errorf("validation failed for field {{.SourceField}}")
@@ -182,7 +182,7 @@ func ({{.Method.Receiver.Name}} *{{.Method.Receiver.Type.Name}}) {{.Method.Name}
 		return dst, fmt.Errorf("conversion failed for field {{.SourceField}}: %w", err)
 	}
 	dst.{{.DestField}} = converted{{else}}dst.{{.DestField}} = src.{{.SourceField}}{{end}}
-	
+
 	{{end}}
 	return dst, nil
 }`,
