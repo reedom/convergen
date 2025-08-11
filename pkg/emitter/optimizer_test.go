@@ -8,7 +8,7 @@ import (
 
 	"go.uber.org/zap/zaptest"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 func TestCodeOptimizer_OptimizeCode(t *testing.T) {

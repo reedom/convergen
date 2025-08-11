@@ -1,4 +1,4 @@
-module github.com/reedom/convergen/v8
+module github.com/reedom/convergen/v9
 
 go 1.23.0
 

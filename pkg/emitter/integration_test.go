@@ -9,8 +9,8 @@ import (
 
 	"go.uber.org/zap/zaptest"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
+	"github.com/reedom/convergen/v9/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/internal/events"
 )
 
 // TestEmitterIntegration tests the complete emitter pipeline.

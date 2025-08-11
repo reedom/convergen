@@ -9,8 +9,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/reedom/convergen/v8/pkg/builder"
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/builder"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 // ImportInfo represents import information without emitter dependency.

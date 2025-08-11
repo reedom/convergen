@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 // TypeCache provides thread-safe caching for type resolution with TTL and memory pressure awareness.

@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/reedom/convergen/v8/pkg/builder/model"
-	"github.com/reedom/convergen/v8/pkg/option"
+	"github.com/reedom/convergen/v9/pkg/builder/model"
+	"github.com/reedom/convergen/v9/pkg/option"
 )
 
 func loadSrc(t *testing.T, src string) (*ast.File, *token.FileSet, *types.Package) {

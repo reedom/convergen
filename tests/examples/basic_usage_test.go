@@ -3,7 +3,7 @@ package examples
 import (
 	"testing"
 
-	"github.com/reedom/convergen/v8/tests/helpers"
+	"github.com/reedom/convergen/v9/tests/helpers"
 )
 
 // TestFrameworkBasics demonstrates the fundamental testing framework usage.
@@ -99,7 +99,7 @@ type User struct {
 	Password string
 }`).WithInterface(`
 type Convergen interface {
-	// :conv NonExistentFunction Password Hashed  
+	// :conv NonExistentFunction Password Hashed
 	Convert(*User) *User
 }`).WithBehaviorTests().
 		ShouldFail("function NonExistentFunction not found") // Expect specific error

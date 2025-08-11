@@ -3,7 +3,7 @@ package examples
 import (
 	"testing"
 
-	"github.com/reedom/convergen/v8/tests/helpers"
+	"github.com/reedom/convergen/v9/tests/helpers"
 )
 
 // TestDebugExample demonstrates how to use enhanced debugging features.

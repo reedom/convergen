@@ -8,10 +8,10 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
-	"github.com/reedom/convergen/v8/pkg/emitter"
-	"github.com/reedom/convergen/v8/pkg/executor"
-	"github.com/reedom/convergen/v8/pkg/parser"
-	"github.com/reedom/convergen/v8/pkg/planner"
+	"github.com/reedom/convergen/v9/pkg/emitter"
+	"github.com/reedom/convergen/v9/pkg/executor"
+	"github.com/reedom/convergen/v9/pkg/parser"
+	"github.com/reedom/convergen/v9/pkg/planner"
 )
 
 func TestNew(t *testing.T) {

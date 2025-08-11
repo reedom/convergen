@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/reedom/convergen/v8/pkg/generator/model"
+	"github.com/reedom/convergen/v9/pkg/generator/model"
 )
 
 // FuncToString generates the string representation of a given Function.

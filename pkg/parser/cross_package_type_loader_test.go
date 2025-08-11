@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 func TestNewCrossPackageTypeLoaderAdapter(t *testing.T) {

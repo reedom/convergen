@@ -10,12 +10,12 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/reedom/convergen/v8/pkg/config"
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/generator"
-	"github.com/reedom/convergen/v8/pkg/generator/model"
-	"github.com/reedom/convergen/v8/pkg/logger"
-	"github.com/reedom/convergen/v8/pkg/parser"
+	"github.com/reedom/convergen/v9/pkg/config"
+	"github.com/reedom/convergen/v9/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/generator"
+	"github.com/reedom/convergen/v9/pkg/generator/model"
+	"github.com/reedom/convergen/v9/pkg/logger"
+	"github.com/reedom/convergen/v9/pkg/parser"
 )
 
 // Run runs the convergen code generator using the provided configuration.

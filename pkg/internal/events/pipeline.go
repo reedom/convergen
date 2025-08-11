@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 // Event type constants for the generation pipeline.

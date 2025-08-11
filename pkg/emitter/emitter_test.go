@@ -8,9 +8,9 @@ import (
 
 	"go.uber.org/zap/zaptest"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/executor"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
+	"github.com/reedom/convergen/v9/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/executor"
+	"github.com/reedom/convergen/v9/pkg/internal/events"
 )
 
 // Helper function to create test method with proper field mappings.

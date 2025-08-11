@@ -5,8 +5,8 @@ import (
 	"go/types"
 	"strings"
 
-	"github.com/reedom/convergen/v8/pkg/option"
-	"github.com/reedom/convergen/v8/pkg/util"
+	"github.com/reedom/convergen/v9/pkg/option"
+	"github.com/reedom/convergen/v9/pkg/util"
 )
 
 type Node interface {

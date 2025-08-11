@@ -3,7 +3,7 @@ package testing
 import (
 	"testing"
 
-	"github.com/reedom/convergen/v8/tests/helpers"
+	"github.com/reedom/convergen/v9/tests/helpers"
 )
 
 func TestBehaviorDrivenScenarios(t *testing.T) {

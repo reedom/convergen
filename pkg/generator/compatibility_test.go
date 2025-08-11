@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/reedom/convergen/v8/pkg/generator/model"
+	"github.com/reedom/convergen/v9/pkg/generator/model"
 )
 
 func TestGenerator_canUseStructLiteral(t *testing.T) {

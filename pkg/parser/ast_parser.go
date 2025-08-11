@@ -15,8 +15,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/tools/go/packages"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
+	"github.com/reedom/convergen/v9/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/internal/events"
 )
 
 // Static errors for err113 compliance.

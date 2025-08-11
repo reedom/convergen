@@ -10,11 +10,11 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/reedom/convergen/v8/pkg/emitter"
-	"github.com/reedom/convergen/v8/pkg/executor"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"github.com/reedom/convergen/v8/pkg/parser"
-	"github.com/reedom/convergen/v8/pkg/planner"
+	"github.com/reedom/convergen/v9/pkg/emitter"
+	"github.com/reedom/convergen/v9/pkg/executor"
+	"github.com/reedom/convergen/v9/pkg/internal/events"
+	"github.com/reedom/convergen/v9/pkg/parser"
+	"github.com/reedom/convergen/v9/pkg/planner"
 )
 
 // Static errors for err113 compliance.

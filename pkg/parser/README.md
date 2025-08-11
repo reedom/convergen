@@ -35,7 +35,7 @@ The parser implements a unified interface with multiple strategies for optimal p
 ### Basic Usage
 
 ```go
-import "github.com/reedom/convergen/v8/pkg/parser"
+import "github.com/reedom/convergen/v9/pkg/parser"
 
 // Simple parsing
 parser, err := parser.NewParser(sourcePath, destPath)

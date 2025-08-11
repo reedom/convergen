@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/reedom/convergen/v8/pkg/config"
-	"github.com/reedom/convergen/v8/pkg/generator"
-	"github.com/reedom/convergen/v8/pkg/generator/model"
-	"github.com/reedom/convergen/v8/pkg/parser"
+	"github.com/reedom/convergen/v9/pkg/config"
+	"github.com/reedom/convergen/v9/pkg/generator"
+	"github.com/reedom/convergen/v9/pkg/generator/model"
+	"github.com/reedom/convergen/v9/pkg/parser"
 )
 
 // InlineScenarioRunner handles behavior-driven scenario testing.
@@ -168,7 +168,7 @@ func (isr *InlineScenarioRunner) createSourceFile(scenario TestScenario) (string
 	}
 
 	// Generate directive
-	content.WriteString("//go:generate go run github.com/reedom/convergen/v8\n\n")
+	content.WriteString("//go:generate go run github.com/reedom/convergen/v9\n\n")
 
 	// Source types
 	if scenario.SourceTypes != "" {

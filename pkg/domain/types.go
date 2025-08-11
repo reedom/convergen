@@ -671,20 +671,29 @@ func (t *GenericType) Index() int { return t.index }
 
 // AssignableTo checks if this generic type is assignable to another type.
 func (t *GenericType) AssignableTo(other Type) bool {
-	if other == nil {
+	if t == nil || other == nil {
 		return false
 	}
 	// Generic types are assignable based on their constraints
+	if t.constraint == nil {
+		return false
+	}
 	return t.constraint.AssignableTo(other)
 }
 
 // Implements checks if this generic type implements an interface.
 func (t *GenericType) Implements(iface Type) bool {
+	if t == nil || t.constraint == nil {
+		return false
+	}
 	return t.constraint.Implements(iface)
 }
 
 // Comparable returns true if the constraint type is comparable.
 func (t *GenericType) Comparable() bool {
+	if t == nil || t.constraint == nil {
+		return false
+	}
 	return t.constraint.Comparable()
 }
 

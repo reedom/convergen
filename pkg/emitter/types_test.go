@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/executor"
+	"github.com/reedom/convergen/v9/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/executor"
 )
 
 func TestOptimizationLevel_String(t *testing.T) {

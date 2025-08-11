@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
-	"github.com/reedom/convergen/v8/pkg/internal/events"
+	"github.com/reedom/convergen/v9/pkg/internal/events"
 )
 
 func TestNewBaseCodeGenerator(t *testing.T) {
@@ -501,7 +501,7 @@ func BenchmarkRemoveConvergenComments(b *testing.B) {
 // :match name
 type TestInterface interface {
 	// :skip Field1
-	// :map src dst  
+	// :map src dst
 	Convert(src *Source) *Dest
 }
 

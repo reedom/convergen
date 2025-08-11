@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/reedom/convergen/v8/tests/helpers"
+	"github.com/reedom/convergen/v9/tests/helpers"
 )
 
 // TestCustomScenarioBuilder shows how to create reusable scenario builders.

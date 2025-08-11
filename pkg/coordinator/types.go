@@ -5,12 +5,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/emitter"
-	"github.com/reedom/convergen/v8/pkg/executor"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
-	"github.com/reedom/convergen/v8/pkg/parser"
-	"github.com/reedom/convergen/v8/pkg/planner"
+	"github.com/reedom/convergen/v9/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/emitter"
+	"github.com/reedom/convergen/v9/pkg/executor"
+	"github.com/reedom/convergen/v9/pkg/internal/events"
+	"github.com/reedom/convergen/v9/pkg/parser"
+	"github.com/reedom/convergen/v9/pkg/planner"
 )
 
 // PipelineStage represents the current stage of pipeline execution.

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 // GenericMappingStrategy defines strategies for generic field mapping.

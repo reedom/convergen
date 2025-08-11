@@ -11,9 +11,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/reedom/convergen/v8/pkg/builder/model"
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/option"
+	"github.com/reedom/convergen/v9/pkg/builder/model"
+	"github.com/reedom/convergen/v9/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/option"
 )
 
 // Static errors for err113 compliance.

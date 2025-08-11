@@ -3,7 +3,7 @@ package option
 import (
 	"testing"
 
-	"github.com/reedom/convergen/v8/pkg/generator/model"
+	"github.com/reedom/convergen/v9/pkg/generator/model"
 )
 
 func TestValidOpsIntf_NoStructLiteral(t *testing.T) {

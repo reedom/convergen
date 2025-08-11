@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 func TestAnnotationConstant_NoStructLiteral(t *testing.T) {

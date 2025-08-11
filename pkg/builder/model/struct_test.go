@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/reedom/convergen/v8/pkg/builder/model"
+	"github.com/reedom/convergen/v9/pkg/builder/model"
 )
 
 func TestStructFieldNode(t *testing.T) {

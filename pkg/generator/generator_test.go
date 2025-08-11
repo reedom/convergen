@@ -5,15 +5,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/reedom/convergen/v8/pkg/generator"
-	"github.com/reedom/convergen/v8/pkg/generator/model"
+	"github.com/reedom/convergen/v9/pkg/generator"
+	"github.com/reedom/convergen/v9/pkg/generator/model"
 )
 
 const pre = `package simple
 
 import (
-	"github.com/reedom/convergen/v8/pkg/tests/fixtures/data/domain"
-	"github.com/reedom/convergen/v8/pkg/tests/fixtures/data/model"
+	"github.com/reedom/convergen/v9/pkg/tests/fixtures/data/domain"
+	"github.com/reedom/convergen/v9/pkg/tests/fixtures/data/model"
 )
 `
 

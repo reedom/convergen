@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
-	"github.com/reedom/convergen/v8/pkg/internal/events"
+	"github.com/reedom/convergen/v9/pkg/internal/events"
 )
 
 // checkForFinalEvent checks if any of the published events is a final event (contains "completed").

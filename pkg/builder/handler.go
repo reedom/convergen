@@ -1,9 +1,9 @@
 package builder
 
 import (
-	bmodel "github.com/reedom/convergen/v8/pkg/builder/model"
-	gmodel "github.com/reedom/convergen/v8/pkg/generator/model"
-	"github.com/reedom/convergen/v8/pkg/logger"
+	bmodel "github.com/reedom/convergen/v9/pkg/builder/model"
+	gmodel "github.com/reedom/convergen/v9/pkg/generator/model"
+	"github.com/reedom/convergen/v9/pkg/logger"
 )
 
 // AssignmentHandler defines the interface for a handler in the chain of responsibility

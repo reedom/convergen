@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/parser"
+	"github.com/reedom/convergen/v9/pkg/parser"
 )
 
 // ExampleNewParser demonstrates basic parser usage with default configuration.

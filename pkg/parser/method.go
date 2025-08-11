@@ -10,10 +10,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/reedom/convergen/v8/pkg/builder/model"
-	"github.com/reedom/convergen/v8/pkg/logger"
-	"github.com/reedom/convergen/v8/pkg/option"
-	"github.com/reedom/convergen/v8/pkg/util"
+	"github.com/reedom/convergen/v9/pkg/builder/model"
+	"github.com/reedom/convergen/v9/pkg/logger"
+	"github.com/reedom/convergen/v9/pkg/option"
+	"github.com/reedom/convergen/v9/pkg/util"
 )
 
 var (

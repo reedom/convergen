@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/tools/go/packages"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 // Static errors for err113 compliance.

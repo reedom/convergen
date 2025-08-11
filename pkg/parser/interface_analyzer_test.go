@@ -13,8 +13,8 @@ import (
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/tools/go/packages"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
-	"github.com/reedom/convergen/v8/pkg/internal/events"
+	"github.com/reedom/convergen/v9/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/internal/events"
 )
 
 func TestExtractInterfaceTypeParams(t *testing.T) {
@@ -191,7 +191,7 @@ func TestExtractInterfaceTypeParamsEdgeCases(t *testing.T) {
 			name: "Empty type parameter list",
 			sourceCode: `package test
 
-//go:convergen  
+//go:convergen
 type Converter interface {
 	Convert(src string) string
 }

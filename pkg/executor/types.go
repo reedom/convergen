@@ -3,7 +3,7 @@ package executor
 import (
 	"time"
 
-	"github.com/reedom/convergen/v8/pkg/domain"
+	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
 // State represents the current state of the executor.

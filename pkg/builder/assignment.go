@@ -9,11 +9,11 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
-	bmodel "github.com/reedom/convergen/v8/pkg/builder/model"
-	gmodel "github.com/reedom/convergen/v8/pkg/generator/model"
-	"github.com/reedom/convergen/v8/pkg/logger"
-	"github.com/reedom/convergen/v8/pkg/option"
-	"github.com/reedom/convergen/v8/pkg/util"
+	bmodel "github.com/reedom/convergen/v9/pkg/builder/model"
+	gmodel "github.com/reedom/convergen/v9/pkg/generator/model"
+	"github.com/reedom/convergen/v9/pkg/logger"
+	"github.com/reedom/convergen/v9/pkg/option"
+	"github.com/reedom/convergen/v9/pkg/util"
 )
 
 // assignmentBuilder represents the builder for a single assignment between
