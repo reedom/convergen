@@ -2,7 +2,6 @@
 
 ## Quick Reference
 
-- **SDD Workflow**:     See `.claude/docs/guidelines/SDD.md`
 - **Code Conventions**: See `.claude/docs/guidelines/coding_guidelines.md`
 - **Architecture**:     See `.claude/docs/project/architecture_design.md`
 - **Test Strategy**:    See `.claude/docs/project/test_strategy.md`
@@ -54,6 +53,12 @@
 - **`pkg/config/`** - Configuration management
 - **`pkg/util/`** - AST utilities and type checking
 - **`pkg/internal/events/`** - Event-driven communication
+
+## Active Specifications
+
+- **convergen-code-generator**: High-performance Go code generator with type-safe conversion functions, full generics support, and concurrent processing
+  - Status: Requirements Generated - Ready for design phase
+  - Location: `.kiro/specs/convergen-code-generator/`
 
 ### 💡 Pro Tips for Future Claude
 - **Domain model issues?** → Always check constructor patterns in CLAUDE.md first

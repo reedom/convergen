@@ -29,7 +29,7 @@ Generated Go Code (Zero Dependencies)
 ## Language & Runtime
 
 ### Go Language Requirements
-- **Minimum Version**: Go 1.23.0
+- **Minimum Version**: Go 1.21.0
 - **Recommended Toolchain**: go1.24.5 (as configured)
 - **Module Path**: `github.com/reedom/convergen/v8`
 - **Build Target**: Cross-platform (Linux, macOS, Windows)

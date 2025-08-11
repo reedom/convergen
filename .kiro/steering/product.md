@@ -7,7 +7,6 @@ Convergen is a **high-performance Go code generator** that creates type-safe con
 ## Core Features
 
 ### 🚀 High Performance
-- **40-70% faster parsing** with concurrent processing architecture (v8)
 - **Zero runtime dependencies** - generated code has no external requirements
 - **Enterprise-grade reliability** with comprehensive error handling and recovery
 - **Resource pooling** and batch execution for optimal throughput
