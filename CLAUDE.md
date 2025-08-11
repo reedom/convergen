@@ -125,6 +125,15 @@ Managed by `/kiro:steering` command. Updates here reflect command changes.
 - **`pkg/util/`** - AST utilities and type checking
 - **`pkg/internal/events/`** - Event-driven communication
 
+## Code Conventions
+
+### Comparison Operators
+
+To maintain consistency and readability, all comparisons should follow the model of a number line. This means:
+
+-   **Use `<` and `<=`**: Always prefer the "less than" and "less than or equal to" operators.
+-   **Avoid `>` and `>=`**: Do not use the "greater than" and "greater than or equal to" operators. Re-order the expression to use `<` or `<=` instead.
+
 ### 💡 Pro Tips for Future Claude
 - **Starting new work?** → Use Kiro SDD workflow: `/kiro:spec-init` → `/kiro:spec-requirements` → `/kiro:spec-design` → `/kiro:spec-tasks`
 - **Domain model issues?** → Check constructor patterns and steering docs (`.kiro/steering/`)
