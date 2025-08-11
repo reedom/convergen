@@ -118,6 +118,72 @@ convergen -log converter.go
 convergen -log converter.go && tail -f converter.gen.go.log
 ```
 
+### `-struct-literal`
+
+**NEW in v9** - Force struct literal output for all generated functions.
+
+**Use Cases:**
+- Override project-level settings
+- Ensure consistent struct literal style
+- Performance optimization for simple conversions
+- Clean, readable generated code
+
+**Examples:**
+
+```bash
+# Force struct literal output
+convergen -struct-literal converter.go
+
+# Combine with other flags
+convergen -struct-literal -print converter.go
+```
+
+**Generated Output:**
+
+```go
+func Convert(src *User) (dst *UserDTO) {
+    return &UserDTO{
+        ID:   src.ID,
+        Name: src.Name,
+        Email: src.Email,
+    }
+}
+```
+
+### `-no-struct-literal`
+
+**NEW in v9** - Disable struct literal output, use traditional assignment style.
+
+**Use Cases:**
+- Force traditional assignment blocks
+- Compatibility with complex conversion logic
+- Override automatic struct literal detection
+- Debug complex field mappings
+
+**Examples:**
+
+```bash
+# Force assignment style
+convergen -no-struct-literal converter.go
+
+# For debugging complex mappings
+convergen -no-struct-literal -log converter.go
+```
+
+**Generated Output:**
+
+```go
+func Convert(src *User) (dst *UserDTO) {
+    dst = &UserDTO{}
+    dst.ID = src.ID
+    dst.Name = src.Name
+    dst.Email = src.Email
+    return
+}
+```
+
+**Note:** Cannot be used together with `-struct-literal`.
+
 ### `-version`
 
 Display version information and exit.
@@ -133,6 +199,89 @@ Display version information and exit.
 convergen -version
 # Output: convergen v8.0.3 (built with go1.21.5)
 ```
+
+### `-type <specification>`
+
+**NEW in v9** - Specify generic type parameters for cross-package conversions.
+
+**Format:** `<InterfaceName>[<SourceType>,<DestinationType>]`
+
+**Use Cases:**
+- Cross-package type conversions
+- Generic interface instantiation
+- Complex type parameter scenarios
+- External package integration
+
+**Examples:**
+
+```bash
+# Basic cross-package conversion
+convergen -type 'UserConverter[models.User,dto.UserDTO]' \
+          -imports 'models=./internal/models,dto=./api/dto' converter.go
+
+# Multiple type parameters
+convergen -type 'Mapper[domain.Order,api.OrderResponse]' \
+          -imports 'domain=./pkg/domain,api=./pkg/api' mapper.go
+
+# Complex nested types
+convergen -type 'Converter[store.ProductData,view.ProductView]' \
+          -imports 'store=./internal/store,view=./ui/view' product_converter.go
+```
+
+### `-imports <mappings>`
+
+**NEW in v9** - Define package alias mappings for cross-package type resolution.
+
+**Format:** `<alias>=<path>,<alias>=<path>,...`
+
+**Requirements:**
+- Must be used together with `-type` flag
+- Paths must be valid Go import paths
+- Aliases must match those used in type specifications
+
+**Examples:**
+
+```bash
+# Single package mapping
+convergen -imports 'models=./internal/models' converter.go
+
+# Multiple package mappings
+convergen -imports 'models=./internal/models,dto=./api/dto,common=./pkg/common' converter.go
+
+# External package support
+convergen -imports 'proto=./gen/proto,grpc=google.golang.org/grpc' grpc_converter.go
+```
+
+### Cross-Package Usage Pattern
+
+**Complete Example:**
+
+```bash
+# Generate cross-package converter
+convergen -type 'UserConverter[models.User,dto.UserDTO]' \
+          -imports 'models=./internal/models,dto=./api/dto' \
+          -out user_conversions.gen.go \
+          user_converter.go
+```
+
+**Input file structure:**
+
+```go
+//go:build convergen
+
+package converters
+
+// Type will be resolved using -type and -imports flags
+type UserConverter[S, D any] interface {
+    // :typecast
+    Convert(S) D
+}
+```
+
+**Error Handling:**
+- Invalid package paths result in clear error messages
+- Missing type resolution provides helpful suggestions  
+- Type compatibility validation with constraint checking
 
 ### `-help`
 
@@ -205,17 +354,38 @@ package mypackage
 # 1. Write converter interface
 vim converter.go
 
-# 2. Test generation
-convergen -dry -print converter.go
+# 2. Test generation with struct literals
+convergen -struct-literal -dry -print converter.go
 
 # 3. Generate code
-convergen converter.go
+convergen -struct-literal converter.go
 
 # 4. Test compilation
 go build ./...
 
 # 5. Run tests
 go test ./...
+```
+
+### Cross-Package Development Workflow
+
+```bash
+# 1. Set up cross-package converter
+vim cross_package_converter.go
+
+# 2. Test with type resolution
+convergen -type 'Converter[models.User,dto.UserDTO]' \
+          -imports 'models=./internal/models,dto=./api/dto' \
+          -dry -print cross_package_converter.go
+
+# 3. Generate final code
+convergen -type 'Converter[models.User,dto.UserDTO]' \
+          -imports 'models=./internal/models,dto=./api/dto' \
+          -struct-literal \
+          cross_package_converter.go
+
+# 4. Verify imports and compilation
+go build ./...
 ```
 
 ### CI/CD Integration

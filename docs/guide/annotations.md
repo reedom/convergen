@@ -21,6 +21,8 @@ Complete reference for all Convergen annotations. This guide covers syntax, usag
 | `:literal <dst> <value>` | method | Assign literal value | `:literal CreatedAt time.Now()` |
 | `:preprocess <func>` | method | Pre-conversion hook | `:preprocess validate` |
 | `:postprocess <func>` | method | Post-conversion hook | `:postprocess cleanup` |
+| `:struct-literal` | interface, method | **NEW**: Force struct literal generation | `:struct-literal` |
+| `:no-struct-literal` | interface, method | **NEW**: Disable struct literal generation | `:no-struct-literal` |
 
 ## Interface-Level Annotations
 
@@ -239,12 +241,102 @@ func Convert(src *User) (dst *UserDTO) {
 }
 ```
 
+### Struct Literal Control
+
+**NEW in v8.1** - Control whether generated functions use struct literal syntax or traditional assignment blocks.
+
+**Location:** Interface, Method
+**Default:** Automatic detection based on conversion complexity
+**Format:** `:struct-literal` | `:no-struct-literal`
+
+**Feature Benefits:**
+- **Performance**: Struct literals can be more performant for simple conversions
+- **Readability**: Cleaner, more compact generated code
+- **Automatic Fallback**: Automatically falls back to assignment blocks for complex scenarios
+- **Manual Control**: Override automatic detection when needed
+
+**Example:**
+
+```go
+type User struct {
+    ID   int
+    Name string
+    Email string
+}
+
+type UserDTO struct {
+    ID   int64
+    Name string
+    Email string
+}
+
+// :struct-literal
+type Convergen interface {
+    // Uses struct literal for all methods
+    Convert(*User) *UserDTO
+
+    // :no-struct-literal
+    // Override to use assignment block
+    ComplexConvert(*User) *UserDTO
+}
+```
+
+**Generated code with `:struct-literal`:**
+
+```go
+func Convert(src *User) (dst *UserDTO) {
+    return &UserDTO{
+        ID:   int64(src.ID),
+        Name: src.Name,
+        Email: src.Email,
+    }
+}
+
+func ComplexConvert(src *User) (dst *UserDTO) {
+    dst = &UserDTO{}
+    dst.ID = int64(src.ID)
+    dst.Name = src.Name
+    dst.Email = src.Email
+    return
+}
+```
+
+**Automatic Fallback Detection:**
+
+Convergen automatically detects when struct literal syntax is incompatible and falls back to assignment blocks:
+
+- **:style arg methods** - Modify passed arguments, incompatible with struct literal returns
+- **Complex preprocessing** - Requires imperative execution before struct creation
+- **Error handling with multiple return paths** - Struct literals don't support conditional logic
+- **Custom converter functions with errors** - Requires error handling between assignments
+
+**Example of automatic fallback:**
+
+```go
+// Even with :struct-literal, this falls back to assignment block
+// :struct-literal
+type Convergen interface {
+    // :style arg - incompatible with struct literal
+    Convert(*UserDTO, *User)
+
+    // :conv validateEmail Email - error handling incompatible
+    ConvertWithValidation(*User) (*UserDTO, error)
+}
+
+func validateEmail(email string) (string, error) {
+    if !strings.Contains(email, "@") {
+        return "", errors.New("invalid email")
+    }
+    return email, nil
+}
+```
+
 ### Type Conversion Helpers
 
 Enable automatic type conversions and string formatting.
 
-**Location:** Interface, Method  
-**Default:** `:stringer:off`, `:typecast:off`  
+**Location:** Interface, Method
+**Default:** `:stringer:off`, `:typecast:off`
 **Format:** `:stringer` | `:stringer:off`, `:typecast` | `:typecast:off`
 
 **Example:**
@@ -289,7 +381,7 @@ These annotations apply to specific methods and override interface-level default
 
 Generates the function as a method with a receiver.
 
-**Location:** Method  
+**Location:** Method
 **Format:** `:recv <variable>`
 
 **Requirements:**
@@ -328,8 +420,8 @@ func (u *User) ToStorage() (dst *storage.User) {
 
 Reverses the copy direction in receiver methods.
 
-**Location:** Method  
-**Requirements:** Must use `:style arg`  
+**Location:** Method
+**Requirements:** Must use `:style arg`
 **Format:** `:reverse`
 
 **Example:**
@@ -356,7 +448,7 @@ func (u *User) FromStorage(src *storage.User) {
 
 Skips copying to specific destination fields.
 
-**Location:** Method  
+**Location:** Method
 **Format:** `:skip <field-path>` | `:skip /<regex>/`
 
 **Field Path Syntax:**
@@ -371,13 +463,13 @@ type Convergen interface {
     // Skip single field
     // :skip Password
     UserToPublic(*User) *PublicUser
-    
+
     // Skip multiple fields
     // :skip Password
     // :skip InternalNotes
     // :skip CreatedBy
     UserToAPI(*User) *APIUser
-    
+
     // Skip with regex
     // :skip /^internal/
     // :skip /Secret$/
@@ -389,13 +481,13 @@ type Convergen interface {
 
 Explicitly maps source to destination fields.
 
-**Location:** Method  
+**Location:** Method
 **Format:** `:map <source-expression> <destination-field>`
 
 **Source Expression Types:**
 
 === "Field Path"
-    
+
     ```go
     // :map ID UserID
     // :map Address.Street StreetAddress
@@ -403,7 +495,7 @@ Explicitly maps source to destination fields.
     ```
 
 === "Method Call"
-    
+
     ```go
     // :map Name() FullName
     // :map Status.String() StatusText
@@ -411,24 +503,24 @@ Explicitly maps source to destination fields.
     ```
 
 === "Method with Arguments (Use :conv instead)"
-    
+
     ```go
     // For complex expressions, use :conv annotation instead:
-    // :conv formatFullName FirstName FullName  
+    // :conv formatFullName FirstName FullName
     // :conv formatDate CreatedAt CreatedDate
     Convert(*User) *UserDTO
-    
+
     func formatFullName(firstName string) string {
         return firstName + " " + lastName // You'll need both fields
     }
-    
+
     func formatDate(createdAt time.Time) string {
         return createdAt.Format("2006-01-02")
     }
     ```
 
 === "Template Arguments"
-    
+
     ```go
     // :map $1 ExtraField    # First additional parameter
     // :map $2 AnotherField  # Second additional parameter
@@ -454,19 +546,19 @@ func Convert(src *User, arg0 string, arg1 int) (dst *UserDTO) {
 
 Applies custom converter function to field transformation.
 
-**Location:** Method  
+**Location:** Method
 **Format:** `:conv <function> <source-field> [destination-field]`
 
 **Converter Function Requirements:**
 
 === "Simple Converter"
-    
+
     **Signature:** `func(srcType) dstType`
-    
+
     ```go
     // :conv hashPassword Password
     Convert(*User) *UserDTO
-    
+
     func hashPassword(password string) string {
         // Hash the password
         return hashedPassword
@@ -474,13 +566,13 @@ Applies custom converter function to field transformation.
     ```
 
 === "Error-Returning Converter"
-    
+
     **Signature:** `func(srcType) (dstType, error)`
-    
+
     ```go
     // :conv validateEmail Email
     Convert(*User) (*UserDTO, error)
-    
+
     func validateEmail(email string) (string, error) {
         if !isValidEmail(email) {
             return "", errors.New("invalid email")
@@ -501,7 +593,7 @@ import (
 
 type Convergen interface {
     // :conv hashPassword Password
-    // :conv validateEmail Email  
+    // :conv validateEmail Email
     // :conv formatName Name FullName
     Convert(*User) (*UserDTO, error)
 }
@@ -542,7 +634,7 @@ func Convert(src *User) (dst *UserDTO, err error) {
 
 Assigns literal values to destination fields.
 
-**Location:** Method  
+**Location:** Method
 **Format:** `:literal <destination-field> <expression>`
 
 **Example:**
@@ -578,27 +670,27 @@ func Convert(src *User) (dst *UserDTO) {
 
 Execute custom functions before or after the main conversion logic.
 
-**Location:** Method  
+**Location:** Method
 **Format:** `:preprocess <function>` | `:postprocess <function>`
 
 **Function Signatures:**
 
 === "Without Error"
-    
+
     ```go
     func preprocess(dst *DstType, src *SrcType) {}
     func postprocess(dst *DstType, src *SrcType) *DstType {}
     ```
 
 === "With Error"
-    
+
     ```go
     func preprocess(dst *DstType, src *SrcType) error {}
     func postprocess(dst *DstType, src *SrcType) error {}
     ```
 
 === "With Additional Arguments"
-    
+
     ```go
     func preprocess(dst *DstType, src *SrcType, arg0 int, arg1 string) error {}
     func postprocess(dst *DstType, src *SrcType, arg0 int, arg1 string) error {}
@@ -631,24 +723,24 @@ func auditConversion(dst *UserDTO, src *User, context string) error {
 ```go
 func Convert(src *User, arg0 string) (dst *UserDTO, err error) {
     dst = &UserDTO{}
-    
+
     // Preprocess hook
     err = validateInput(dst, src, arg0)
     if err != nil {
         return
     }
-    
+
     // Main conversion logic
     dst.ID = src.ID
     dst.Email = src.Email
     // ... other field assignments
-    
+
     // Postprocess hook
     err = auditConversion(dst, src, arg0)
     if err != nil {
         return
     }
-    
+
     return
 }
 ```
@@ -731,7 +823,7 @@ type Convergen interface {
     // :case:off
     // :getter
     //
-    // Type conversion helpers  
+    // Type conversion helpers
     // :typecast
     // :stringer
     //
@@ -754,12 +846,12 @@ type Convergen interface {
     // Simple conversion (no errors expected)
     // :typecast
     SimpleConvert(*User) *UserDTO
-    
+
     // Validation conversion (errors possible)
     // :conv validateEmail Email
     // :conv checkAge Age
     ValidatedConvert(*User) (*UserDTO, error)
-    
+
     // Complex conversion with hooks
     // :preprocess authorize
     // :conv encryptData Data
@@ -793,6 +885,6 @@ func convertItems(items []*OrderItem) []*ItemDTO {
 Now that you understand all available annotations:
 
 1. **[Advanced Usage](advanced-usage.md)** - Complex scenarios and patterns
-2. **[Best Practices](best-practices.md)** - Team development guidelines  
+2. **[Best Practices](best-practices.md)** - Team development guidelines
 3. **[Examples](../examples/real-world.md)** - Real-world usage patterns
 4. **[Performance](performance.md)** - Optimization techniques
