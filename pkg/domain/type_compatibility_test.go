@@ -171,7 +171,7 @@ func TestGenericErrorEnhancer_EnhanceError(t *testing.T) {
 	assert.Equal(t, "field_mapping", enhanced.Context["context"])
 }
 
-// mockType is a helper for testing
+// mockType is a helper for testing.
 type mockType struct {
 	name         string
 	kind         TypeKind

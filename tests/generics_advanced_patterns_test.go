@@ -6,7 +6,7 @@ import (
 	"github.com/reedom/convergen/v9/tests/helpers"
 )
 
-// TestGenericsMultipleTypeParameters tests scenarios with multiple type parameters
+// TestGenericsMultipleTypeParameters tests scenarios with multiple type parameters.
 func TestGenericsMultipleTypeParameters(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)
@@ -136,7 +136,7 @@ type MixedConstraintConverter[T comparable, U fmt.Stringer, V any] interface {
 	}
 }
 
-// TestGenericsComplexConstraints tests advanced constraint scenarios
+// TestGenericsComplexConstraints tests advanced constraint scenarios.
 func TestGenericsComplexConstraints(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)
@@ -279,7 +279,7 @@ type CombinedConstraintConverter[T interface {
 	}
 }
 
-// TestGenericsNestedGenericTypes tests nested generic type scenarios
+// TestGenericsNestedGenericTypes tests nested generic type scenarios.
 func TestGenericsNestedGenericTypes(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)
@@ -419,7 +419,7 @@ type ChannelConverter[T any, U any] interface {
 	}
 }
 
-// TestGenericsGenericMethodsAndInterfaces tests generic methods and interfaces
+// TestGenericsGenericMethodsAndInterfaces tests generic methods and interfaces.
 func TestGenericsGenericMethodsAndInterfaces(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)
@@ -548,7 +548,7 @@ type VariadicConverter[T any, U any] interface {
 	}
 }
 
-// TestGenericsPerformanceScenarios tests performance-related scenarios
+// TestGenericsPerformanceScenarios tests performance-related scenarios.
 func TestGenericsPerformanceScenarios(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)

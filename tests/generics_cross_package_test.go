@@ -6,7 +6,7 @@ import (
 	"github.com/reedom/convergen/v9/tests/helpers"
 )
 
-// TestCrossPackageTypeResolution tests the cross-package type resolution functionality
+// TestCrossPackageTypeResolution tests the cross-package type resolution functionality.
 func TestGenericsCrossPackageBasic(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)
@@ -127,7 +127,7 @@ type Convergen interface {
 	}
 }
 
-// TestGenericsCrossPackageConstraints tests constraint-based conversions across packages
+// TestGenericsCrossPackageConstraints tests constraint-based conversions across packages.
 func TestGenericsCrossPackageConstraints(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)
@@ -237,7 +237,7 @@ type Convergen interface {
 	}
 }
 
-// TestGenericsCrossPackageNestedTypes tests nested generic types across packages
+// TestGenericsCrossPackageNestedTypes tests nested generic types across packages.
 func TestGenericsCrossPackageNestedTypes(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)
@@ -319,7 +319,7 @@ type Convergen interface {
 	}
 }
 
-// TestGenericsCrossPackageErrorScenarios tests error conditions for cross-package scenarios
+// TestGenericsCrossPackageErrorScenarios tests error conditions for cross-package scenarios.
 func TestGenericsCrossPackageErrorScenarios(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)
@@ -385,7 +385,7 @@ type InvalidConverter interface {
 	}
 }
 
-// TestGenericsCrossPackagePerformance tests performance characteristics
+// TestGenericsCrossPackagePerformance tests performance characteristics.
 func TestGenericsCrossPackagePerformance(t *testing.T) {
 	t.Parallel()
 	runner := helpers.NewInlineScenarioRunner(t)

@@ -913,7 +913,7 @@ func TestEdgeCases(t *testing.T) {
 	})
 }
 
-// Mock CrossPackageTypeLoader for testing
+// Mock CrossPackageTypeLoader for testing.
 type mockCrossPackageLoader struct {
 	types       map[string]Type
 	importPaths []string

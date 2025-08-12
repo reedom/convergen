@@ -77,7 +77,7 @@ func (o Options) CompareFieldName(a, b string) bool {
 	return false
 }
 
-// matchFieldNames implements intelligent field name matching for :match name annotation
+// matchFieldNames implements intelligent field name matching for :match name annotation.
 func (o Options) matchFieldNames(srcName, dstName string) bool {
 	// Try common prefix removal patterns
 	prefixes := []string{
