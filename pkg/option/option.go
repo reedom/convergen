@@ -52,11 +52,92 @@ func (o Options) ShouldSkip(fieldName string) bool {
 
 // CompareFieldName compares two field names.
 func (o Options) CompareFieldName(a, b string) bool {
-	if o.ExactCase {
-		return a == b
+	// For MatchRuleNone, no fields should match
+	if o.Rule == model.MatchRuleNone {
+		return false
 	}
 
-	return strings.EqualFold(a, b)
+	// Exact match (fastest path)
+	if o.ExactCase {
+		if a == b {
+			return true
+		}
+	} else {
+		if strings.EqualFold(a, b) {
+			return true
+		}
+	}
+
+	// For MatchRuleName, implement intelligent name matching
+	if o.Rule == model.MatchRuleName {
+		return o.matchFieldNames(a, b)
+	}
+
+	// For MatchRuleTag or other cases, fall back to exact/case-insensitive matching
+	return false
+}
+
+// matchFieldNames implements intelligent field name matching for :match name annotation
+func (o Options) matchFieldNames(srcName, dstName string) bool {
+	// Try common prefix removal patterns
+	prefixes := []string{
+		"User", "Item", "Data", "Info", "Record", "Entity", "Model",
+		"Src", "Source", "Dst", "Dest", "Destination", "Target",
+	}
+
+	compareNames := func(a, b string) bool {
+		if o.ExactCase {
+			return a == b
+		}
+		return strings.EqualFold(a, b)
+	}
+
+	// Try removing prefixes from source name
+	for _, prefix := range prefixes {
+		if o.ExactCase {
+			if strings.HasPrefix(srcName, prefix) && compareNames(strings.TrimPrefix(srcName, prefix), dstName) {
+				return true
+			}
+		} else {
+			if strings.HasPrefix(strings.ToLower(srcName), strings.ToLower(prefix)) {
+				trimmed := srcName[len(prefix):]
+				if compareNames(trimmed, dstName) {
+					return true
+				}
+			}
+		}
+	}
+
+	// Try removing prefixes from destination name
+	for _, prefix := range prefixes {
+		if o.ExactCase {
+			if strings.HasPrefix(dstName, prefix) && compareNames(srcName, strings.TrimPrefix(dstName, prefix)) {
+				return true
+			}
+		} else {
+			if strings.HasPrefix(strings.ToLower(dstName), strings.ToLower(prefix)) {
+				trimmed := dstName[len(prefix):]
+				if compareNames(srcName, trimmed) {
+					return true
+				}
+			}
+		}
+	}
+
+	// Try suffix matching patterns (e.g., Name in UserName)
+	if o.ExactCase {
+		if strings.HasSuffix(srcName, dstName) || strings.HasSuffix(dstName, srcName) {
+			return true
+		}
+	} else {
+		srcLower := strings.ToLower(srcName)
+		dstLower := strings.ToLower(dstName)
+		if strings.HasSuffix(srcLower, dstLower) || strings.HasSuffix(dstLower, srcLower) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // ValidOpsIntf is a set of valid conversion option keys for interface-level conversion.
