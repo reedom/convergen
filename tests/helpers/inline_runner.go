@@ -162,7 +162,12 @@ func (isr *InlineScenarioRunner) createSourceFile(scenario TestScenario) (string
 	if len(scenario.Imports) > 0 {
 		content.WriteString("import (\n")
 		for _, imp := range scenario.Imports {
-			fmt.Fprintf(&content, "\t%s\n", imp)
+			// Add quotes around import path if not already present
+			if strings.HasPrefix(imp, "\"") && strings.HasSuffix(imp, "\"") {
+				fmt.Fprintf(&content, "\t%s\n", imp)
+			} else {
+				fmt.Fprintf(&content, "\t%q\n", imp)
+			}
 		}
 		content.WriteString(")\n\n")
 	}
