@@ -159,7 +159,7 @@ install-linters:
 .PHONY: test
 test: ## Run all tests
 test:
-	go test github.com/reedom/convergen/v9/tests && \
+	go test github.com/reedom/convergen/v9/tests/... && \
 	go test github.com/reedom/convergen/v9/pkg/...
 
 .PHONY: coverage
