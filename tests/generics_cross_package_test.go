@@ -16,7 +16,7 @@ func TestGenericsCrossPackageBasic(t *testing.T) {
 		name          string
 		description   string
 		types         string
-		interface_    string
+		interfaceCode string
 		imports       []string
 		expectSuccess bool
 		codeChecks    []helpers.CodeAssertion
@@ -38,7 +38,7 @@ type UserTarget struct {
 	Name string
 	Email string
 }`,
-			interface_: `
+			interfaceCode: `
 type Convergen interface {
 	ConvertUser(UserSource) UserTarget
 }`,
@@ -67,7 +67,7 @@ type ContainerDTO[T any] struct {
 	Value T
 	Metadata string
 }`,
-			interface_: `
+			interfaceCode: `
 type Convergen interface {
 	ConvertContainer(Container[string]) ContainerDTO[string]
 }`,
@@ -94,7 +94,7 @@ type ComparableDTO struct {
 	ID   int
 	Name string
 }`,
-			interface_: `
+			interfaceCode: `
 type Convergen interface {
 	ConvertComparable(ComparableData) ComparableDTO
 }`,
@@ -113,7 +113,7 @@ type Convergen interface {
 		t.Run(tt.name, func(t *testing.T) {
 			scenario := helpers.NewInlineScenario(tt.name, tt.description).
 				WithTypes(tt.types).
-				WithInterface(tt.interface_).
+				WithInterface(tt.interfaceCode).
 				WithImports(tt.imports...).
 				WithBehaviorTests().
 				WithCodeChecks(tt.codeChecks...)
@@ -134,12 +134,12 @@ func TestGenericsCrossPackageConstraints(t *testing.T) {
 	defer runner.Cleanup()
 
 	constraintTests := []struct {
-		name        string
-		description string
-		types       string
-		interface_  string
-		imports     []string
-		checks      []helpers.CodeAssertion
+		name          string
+		description   string
+		types         string
+		interfaceCode string
+		imports       []string
+		checks        []helpers.CodeAssertion
 	}{
 		{
 			name:        "ComparableConstraintConversion",
@@ -155,7 +155,7 @@ type ComparableTarget struct {
 	ID   int
 	Name string
 }`,
-			interface_: `
+			interfaceCode: `
 type Convergen interface {
 	ConvertComparable(ComparableSource) ComparableTarget
 }`,
@@ -179,7 +179,7 @@ type StringerSource struct {
 type StringerTarget struct {
 	Value string
 }`,
-			interface_: `
+			interfaceCode: `
 type Convergen interface {
 	ConvertStringer(StringerSource) StringerTarget
 }`,
@@ -209,7 +209,7 @@ type MixedTarget struct {
 	Name  string
 	Value string
 }`,
-			interface_: `
+			interfaceCode: `
 type Convergen interface {
 	ConvertComparable(MixedComparableSource) MixedTarget
 	ConvertStringer(MixedStringerSource) MixedTarget
@@ -227,7 +227,7 @@ type Convergen interface {
 		t.Run(tt.name, func(t *testing.T) {
 			scenario := helpers.NewInlineScenario(tt.name, tt.description).
 				WithTypes(tt.types).
-				WithInterface(tt.interface_).
+				WithInterface(tt.interfaceCode).
 				WithImports(tt.imports...).
 				WithBehaviorTests().
 				WithCodeChecks(tt.checks...)
@@ -244,12 +244,12 @@ func TestGenericsCrossPackageNestedTypes(t *testing.T) {
 	defer runner.Cleanup()
 
 	nestedTests := []struct {
-		name        string
-		description string
-		types       string
-		interface_  string
-		imports     []string
-		checks      []helpers.CodeAssertion
+		name          string
+		description   string
+		types         string
+		interfaceCode string
+		imports       []string
+		checks        []helpers.CodeAssertion
 	}{
 		{
 			name:        "NestedGenericContainerConversion",
@@ -267,7 +267,7 @@ type NestedTarget struct {
 	Metadata string
 	Count    int
 }`,
-			interface_: `
+			interfaceCode: `
 type Convergen interface {
 	ConvertNested(NestedSource) NestedTarget
 }`,
@@ -292,7 +292,7 @@ type ComplexNestedSource struct {
 type ComplexNestedTarget struct {
 	Value string
 }`,
-			interface_: `
+			interfaceCode: `
 type Convergen interface {
 	ConvertComplex(ComplexNestedSource) ComplexNestedTarget
 }`,
@@ -309,7 +309,7 @@ type Convergen interface {
 		t.Run(tt.name, func(t *testing.T) {
 			scenario := helpers.NewInlineScenario(tt.name, tt.description).
 				WithTypes(tt.types).
-				WithInterface(tt.interface_).
+				WithInterface(tt.interfaceCode).
 				WithImports(tt.imports...).
 				WithBehaviorTests().
 				WithCodeChecks(tt.checks...)
@@ -329,7 +329,7 @@ func TestGenericsCrossPackageErrorScenarios(t *testing.T) {
 		name          string
 		description   string
 		types         string
-		interface_    string
+		interfaceCode string
 		imports       []string
 		expectedError string
 	}{
@@ -347,7 +347,7 @@ type MissingTarget struct {
 	ID   int
 	Name string
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type MissingConverter interface {
 	ConvertUser(models.User) dto.UserDTO  // Use undefined types directly in method
@@ -362,7 +362,7 @@ type MissingConverter interface {
 type ValidSource struct {
 	Data string
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type InvalidConverter interface {
 	Convert(ValidSource) string  // string is not a valid destination type
@@ -375,7 +375,7 @@ type InvalidConverter interface {
 		t.Run(tt.name, func(t *testing.T) {
 			scenario := helpers.NewInlineScenario(tt.name, tt.description).
 				WithTypes(tt.types).
-				WithInterface(tt.interface_).
+				WithInterface(tt.interfaceCode).
 				WithImports(tt.imports...).
 				WithBehaviorTests().
 				ShouldFail(tt.expectedError)

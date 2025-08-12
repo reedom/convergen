@@ -290,7 +290,7 @@ func (fmv *FieldMappingValidator) validateSingleFieldMapping(
 
 	// Handle generic types
 	if mapping.SourceType.Generic() || mapping.TargetType.Generic() {
-		result.GenericContext = fmv.createGenericFieldContext(ctx, mapping, compatibilityResult)
+		result.GenericContext = fmv.createGenericFieldContext(mapping, compatibilityResult)
 	}
 
 	return result
@@ -298,7 +298,6 @@ func (fmv *FieldMappingValidator) validateSingleFieldMapping(
 
 // createGenericFieldContext creates context information for generic field validation.
 func (fmv *FieldMappingValidator) createGenericFieldContext(
-	ctx context.Context,
 	mapping ValidatorFieldMapping,
 	compatibilityResult *CompatibilityResult,
 ) *GenericFieldContext {

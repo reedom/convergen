@@ -89,22 +89,31 @@ const (
 	ConstraintExact
 )
 
+// String constants for constraint types to avoid goconst violations.
+const (
+	anyConstraint             = "any"
+	comparableConstraint      = "comparable"
+	unionConstraint           = "union"
+	underlyingConstraint      = "underlying"
+	unionUnderlyingConstraint = "union_underlying"
+)
+
 func (cs ConstraintStrictness) String() string {
 	switch cs {
 	case ConstraintAny:
-		return "any"
+		return anyConstraint
 	case ConstraintComparable:
-		return "comparable"
+		return comparableConstraint
 	case ConstraintInterface:
-		return "interface"
+		return interfaceKeyword
 	case ConstraintUnion:
-		return "union"
+		return unionConstraint
 	case ConstraintUnderlying:
-		return "underlying"
+		return underlyingConstraint
 	case ConstraintExact:
 		return "exact"
 	default:
-		return "unknown"
+		return UnknownValue
 	}
 }
 
@@ -180,13 +189,11 @@ func (gcm *GenericCompatibilityMatrix) AnalyzeCompatibility(
 	}
 
 	// Analyze constraint compatibility
-	constraintMatrix, err := gcm.analyzeConstraintCompatibility(sourceType, targetType)
-	if err != nil {
-		return nil, fmt.Errorf("constraint compatibility analysis failed: %w", err)
-	}
+	constraintMatrix := gcm.analyzeConstraintCompatibility(sourceType, targetType)
 
 	// Get basic compatibility result
 	var baseResult *CompatibilityResult
+	var err error
 	if gcm.compatibilityChecker != nil {
 		baseResult, err = gcm.compatibilityChecker.CheckAssignabilityWithContext(ctx, sourceType, targetType)
 		if err != nil {
@@ -252,15 +259,15 @@ func (gcm *GenericCompatibilityMatrix) analyzeTypeStructure(t Type) TypeStructur
 
 			// Calculate complexity based on constraint type
 			switch param.GetConstraintType() {
-			case "any":
-				structure.GenericComplexity += 1
-			case "comparable":
+			case anyConstraint:
+				structure.GenericComplexity++
+			case comparableConstraint:
 				structure.GenericComplexity += 2
-			case "union", "union_underlying":
+			case unionConstraint, unionUnderlyingConstraint:
 				structure.GenericComplexity += 4
-			case "interface":
+			case interfaceKeyword:
 				structure.GenericComplexity += 3
-			case "underlying":
+			case underlyingConstraint:
 				structure.GenericComplexity += 3
 			default:
 				structure.GenericComplexity += 5 // Custom constraints are most complex
@@ -325,20 +332,20 @@ func (gcm *GenericCompatibilityMatrix) areConstraintsStructurallyCompatible(sour
 	}
 
 	// 'any' is compatible with everything
-	if source == "any" || target == "any" {
+	if source == anyConstraint || target == anyConstraint {
 		return true
 	}
 
 	// Specific compatibility rules
 	switch source {
-	case "comparable":
+	case comparableConstraint:
 		return gcm.isComparableCompatible(target)
-	case "union", "union_underlying":
-		return strings.HasPrefix(target, "union")
-	case "underlying":
-		return target == "underlying" || strings.HasPrefix(target, "union")
-	case "interface":
-		return target == "interface"
+	case unionConstraint, unionUnderlyingConstraint:
+		return strings.HasPrefix(target, unionConstraint)
+	case underlyingConstraint:
+		return target == underlyingConstraint || strings.HasPrefix(target, unionConstraint)
+	case interfaceKeyword:
+		return target == interfaceKeyword
 	default:
 		// For custom constraints, require exact match in strict mode
 		if gcm.strictConstraintMode {
@@ -351,7 +358,7 @@ func (gcm *GenericCompatibilityMatrix) areConstraintsStructurallyCompatible(sour
 // isComparableCompatible checks if a constraint is compatible with 'comparable'.
 func (gcm *GenericCompatibilityMatrix) isComparableCompatible(constraint string) bool {
 	comparableConstraints := []string{
-		"comparable", "any", "int", "string", "bool", "float64", "int64",
+		comparableConstraint, anyConstraint, "int", "string", "bool", "float64", "int64",
 	}
 
 	for _, comp := range comparableConstraints {
@@ -402,7 +409,7 @@ func (gcm *GenericCompatibilityMatrix) calculatePartialMatchScore(source, target
 }
 
 // analyzeConstraintCompatibility analyzes constraint compatibility in detail.
-func (gcm *GenericCompatibilityMatrix) analyzeConstraintCompatibility(sourceType, targetType Type) (*ConstraintMatrix, error) {
+func (gcm *GenericCompatibilityMatrix) analyzeConstraintCompatibility(sourceType, targetType Type) *ConstraintMatrix {
 	matrix := &ConstraintMatrix{
 		SourceConstraints: make([]ConstraintInfo, 0),
 		TargetConstraints: make([]ConstraintInfo, 0),
@@ -430,7 +437,7 @@ func (gcm *GenericCompatibilityMatrix) analyzeConstraintCompatibility(sourceType
 	// Build compatibility map
 	gcm.buildCompatibilityMap(matrix)
 
-	return matrix, nil
+	return matrix
 }
 
 // analyzeConstraint analyzes a single constraint in detail.
@@ -446,25 +453,25 @@ func (gcm *GenericCompatibilityMatrix) analyzeConstraint(param TypeParam) Constr
 
 	// Determine strictness
 	switch constraintType {
-	case "any":
+	case anyConstraint:
 		info.Strictness = ConstraintAny
-		info.AllowedTypes = []string{"any"}
-	case "comparable":
+		info.AllowedTypes = []string{anyConstraint}
+	case comparableConstraint:
 		info.Strictness = ConstraintComparable
-		info.AllowedTypes = []string{"int", "string", "bool", "float64", "int64", "uint64", "comparable"}
-	case "union", "union_underlying":
+		info.AllowedTypes = []string{"int", "string", "bool", "float64", "int64", "uint64", comparableConstraint}
+	case unionConstraint, unionUnderlyingConstraint:
 		info.Strictness = ConstraintUnion
 		if 0 < len(param.UnionTypes) {
 			for _, unionType := range param.UnionTypes {
 				info.AllowedTypes = append(info.AllowedTypes, unionType.String())
 			}
 		}
-	case "underlying":
+	case underlyingConstraint:
 		info.Strictness = ConstraintUnderlying
 		if param.Underlying != nil {
 			info.AllowedTypes = []string{param.Underlying.Type.String()}
 		}
-	case "interface":
+	case interfaceKeyword:
 		info.Strictness = ConstraintInterface
 		if param.Constraint != nil {
 			info.AllowedTypes = []string{param.Constraint.String()}
@@ -526,7 +533,7 @@ func (gcm *GenericCompatibilityMatrix) calculateConstraintCompatibilityScore(sou
 	}
 
 	// 'any' compatibility
-	if source.ConstraintType == "any" || target.ConstraintType == "any" {
+	if source.ConstraintType == anyConstraint || target.ConstraintType == anyConstraint {
 		return 0.9
 	}
 

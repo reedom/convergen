@@ -147,7 +147,7 @@ func runGenericGeneration(conf config.Config) error {
 			outputPath = strings.TrimSuffix(conf.Input, ".go") + ".gen.go"
 		}
 
-		if err := os.WriteFile(outputPath, []byte(generatedCode), 0644); err != nil {
+		if err := os.WriteFile(outputPath, []byte(generatedCode), 0600); err != nil {
 			return fmt.Errorf("failed to write generated code to %s: %w", outputPath, err)
 		}
 
@@ -317,30 +317,6 @@ func createGenericGeneratorWithCrossPackage(
 	instantiatorConfig.CrossPackageTypeLoader = crossPackageLoader
 
 	typeInstantiator := domain.NewTypeInstantiatorWithConfig(typeBuilder, logger, instantiatorConfig)
-
-	// Create field mapper (this would use the enhanced field mapping from the builder package)
-	fieldMapper := &simpleFieldMapper{}
-
-	// Create the generator
-	generator := generator.NewGenericCodeGenerator(
-		templateEngine,
-		typeInstantiator,
-		fieldMapper,
-		logger,
-		nil, // Use default config
-	)
-
-	return generator, nil
-}
-
-// createGenericGenerator creates a generic code generator with proper field mapping.
-func createGenericGenerator(logger *zap.Logger) (*generator.GenericCodeGenerator, error) {
-	// Create a simple template engine (this would need to be implemented)
-	templateEngine := &simpleTemplateEngine{}
-
-	// Create type instantiator
-	typeBuilder := domain.NewTypeBuilder()
-	typeInstantiator := domain.NewTypeInstantiator(typeBuilder, logger)
 
 	// Create field mapper (this would use the enhanced field mapping from the builder package)
 	fieldMapper := &simpleFieldMapper{}

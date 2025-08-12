@@ -9,6 +9,13 @@ import (
 	"go.uber.org/zap"
 )
 
+// Error category constants to avoid goconst violations.
+const (
+	constraintViolation = "constraint_violation"
+	typeInstantiation   = "type_instantiation"
+	typeCompatibility   = "type_compatibility"
+)
+
 // GenericErrorEnhancer provides enhanced error messages with type parameter context.
 type GenericErrorEnhancer struct {
 	logger *zap.Logger
@@ -139,7 +146,7 @@ func (gee *GenericErrorEnhancer) EnhanceError(
 
 	// Generate error code based on error type
 	enhanced.ErrorCode = gee.generateErrorCode(originalError, sourceType, targetType)
-	enhanced.ErrorCategory = gee.categorizeError(originalError, sourceType, targetType)
+	enhanced.ErrorCategory = gee.categorizeError(originalError, targetType)
 
 	// Create generic context
 	if sourceType != nil || targetType != nil {
@@ -147,7 +154,7 @@ func (gee *GenericErrorEnhancer) EnhanceError(
 	}
 
 	// Extract type parameter details
-	enhanced.TypeParameterDetails = gee.extractTypeParameterDetails(sourceType, targetType, originalError)
+	enhanced.TypeParameterDetails = gee.extractTypeParameterDetails(sourceType, targetType)
 
 	// Generate constraint details
 	enhanced.ConstraintDetails = gee.generateConstraintDetails(sourceType, targetType)
@@ -235,15 +242,15 @@ func (gee *GenericErrorEnhancer) generateErrorCode(originalError error, sourceTy
 }
 
 // categorizeError categorizes the error for better organization.
-func (gee *GenericErrorEnhancer) categorizeError(originalError error, sourceType, targetType Type) string {
+func (gee *GenericErrorEnhancer) categorizeError(originalError error, targetType Type) string {
 	errorMessage := strings.ToLower(originalError.Error())
 
 	if strings.Contains(errorMessage, "constraint") {
-		return "constraint_violation"
+		return constraintViolation
 	}
 
 	if strings.Contains(errorMessage, "instantiation") {
-		return "type_instantiation"
+		return typeInstantiation
 	}
 
 	if strings.Contains(errorMessage, "substitution") {
@@ -251,7 +258,7 @@ func (gee *GenericErrorEnhancer) categorizeError(originalError error, sourceType
 	}
 
 	if strings.Contains(errorMessage, "compatibility") || strings.Contains(errorMessage, "incompatible") {
-		return "type_compatibility"
+		return typeCompatibility
 	}
 
 	if strings.Contains(errorMessage, "assignment") {
@@ -290,14 +297,14 @@ func (gee *GenericErrorEnhancer) createGenericContext(sourceType, targetType Typ
 	// Extract constraint violation details from error message
 	errorMessage := originalError.Error()
 	if strings.Contains(errorMessage, "constraint violation") {
-		context.ConstraintViolationType = "constraint_violation"
+		context.ConstraintViolationType = constraintViolation
 		// Try to extract specific details from error message
 		if strings.Contains(errorMessage, "comparable") {
-			context.ExpectedConstraint = "comparable"
+			context.ExpectedConstraint = comparableConstraint
 		} else if strings.Contains(errorMessage, "union") {
-			context.ExpectedConstraint = "union"
+			context.ExpectedConstraint = unionConstraint
 		} else if strings.Contains(errorMessage, "underlying") {
-			context.ExpectedConstraint = "underlying"
+			context.ExpectedConstraint = underlyingConstraint
 		}
 	}
 
@@ -305,7 +312,7 @@ func (gee *GenericErrorEnhancer) createGenericContext(sourceType, targetType Typ
 }
 
 // extractTypeParameterDetails extracts detailed information about type parameters.
-func (gee *GenericErrorEnhancer) extractTypeParameterDetails(sourceType, targetType Type, originalError error) []TypeParameterDetail {
+func (gee *GenericErrorEnhancer) extractTypeParameterDetails(sourceType, targetType Type) []TypeParameterDetail {
 	details := make([]TypeParameterDetail, 0)
 
 	// Extract from source type
@@ -351,11 +358,11 @@ func (gee *GenericErrorEnhancer) extractTypeParameterDetails(sourceType, targetT
 // getConstraintString returns a human-readable constraint string.
 func (gee *GenericErrorEnhancer) getConstraintString(param TypeParam) string {
 	switch param.GetConstraintType() {
-	case "any":
+	case anyConstraint:
 		return "any type"
-	case "comparable":
+	case comparableConstraint:
 		return "comparable type (supports == and !=)"
-	case "union":
+	case unionConstraint:
 		if 0 < len(param.UnionTypes) {
 			types := make([]string, len(param.UnionTypes))
 			for i, t := range param.UnionTypes {
@@ -364,7 +371,7 @@ func (gee *GenericErrorEnhancer) getConstraintString(param TypeParam) string {
 			return fmt.Sprintf("one of: %s", strings.Join(types, " | "))
 		}
 		return "union type"
-	case "union_underlying":
+	case unionUnderlyingConstraint:
 		if 0 < len(param.UnionTypes) {
 			types := make([]string, len(param.UnionTypes))
 			for i, t := range param.UnionTypes {
@@ -373,12 +380,12 @@ func (gee *GenericErrorEnhancer) getConstraintString(param TypeParam) string {
 			return fmt.Sprintf("underlying type of: %s", strings.Join(types, " | "))
 		}
 		return "underlying union type"
-	case "underlying":
+	case underlyingConstraint:
 		if param.Underlying != nil {
 			return fmt.Sprintf("underlying type ~%s", param.Underlying.Type.String())
 		}
 		return "underlying type"
-	case "interface":
+	case interfaceKeyword:
 		if param.Constraint != nil {
 			return fmt.Sprintf("implements %s", param.Constraint.String())
 		}
@@ -391,11 +398,11 @@ func (gee *GenericErrorEnhancer) getConstraintString(param TypeParam) string {
 // getAlternativeTypes suggests alternative types for a constraint.
 func (gee *GenericErrorEnhancer) getAlternativeTypes(param TypeParam) []string {
 	switch param.GetConstraintType() {
-	case "any":
+	case anyConstraint:
 		return []string{"int", "string", "bool", "interface{}", "any"}
-	case "comparable":
+	case comparableConstraint:
 		return []string{"int", "string", "bool", "float64", "int64", "uint64"}
-	case "union":
+	case unionConstraint:
 		if 0 < len(param.UnionTypes) {
 			types := make([]string, len(param.UnionTypes))
 			for i, t := range param.UnionTypes {
@@ -404,7 +411,7 @@ func (gee *GenericErrorEnhancer) getAlternativeTypes(param TypeParam) []string {
 			return types
 		}
 		return []string{}
-	case "underlying":
+	case underlyingConstraint:
 		if param.Underlying != nil {
 			baseType := param.Underlying.Type.String()
 			return []string{baseType, "~" + baseType}
@@ -453,13 +460,13 @@ func (gee *GenericErrorEnhancer) createConstraintDetail(constraintType string, p
 	}
 
 	switch constraintType {
-	case "any":
+	case anyConstraint:
 		detail.ConstraintDescription = "Accepts any type - no restrictions"
 		detail.AllowedTypes = []string{"any type"}
 		detail.ExampleUsage = "func Process[T any](value T) { ... }"
 		detail.CommonMistakes = []string{"No common mistakes - any type is accepted"}
 
-	case "comparable":
+	case comparableConstraint:
 		detail.ConstraintDescription = "Requires types that support equality operators (== and !=)"
 		detail.AllowedTypes = []string{"int", "string", "bool", "float64", "pointers", "arrays", "channels"}
 		detail.ForbiddenTypes = []string{"slices", "maps", "functions"}
@@ -470,7 +477,7 @@ func (gee *GenericErrorEnhancer) createConstraintDetail(constraintType string, p
 			"Using function types with comparable constraint",
 		}
 
-	case "union":
+	case unionConstraint:
 		detail.ConstraintDescription = "Must be one of the specified types"
 		if 0 < len(param.UnionTypes) {
 			for _, t := range param.UnionTypes {
@@ -483,7 +490,7 @@ func (gee *GenericErrorEnhancer) createConstraintDetail(constraintType string, p
 			"Confusing union with underlying type union (~int | ~float64)",
 		}
 
-	case "union_underlying":
+	case unionUnderlyingConstraint:
 		detail.ConstraintDescription = "Must have underlying type that matches one of the specified types"
 		if 0 < len(param.UnionTypes) {
 			for _, t := range param.UnionTypes {
@@ -496,7 +503,7 @@ func (gee *GenericErrorEnhancer) createConstraintDetail(constraintType string, p
 			"Forgetting the ~ prefix in constraint definitions",
 		}
 
-	case "underlying":
+	case underlyingConstraint:
 		detail.ConstraintDescription = "Must have the specified underlying type"
 		if param.Underlying != nil {
 			detail.AllowedTypes = []string{"~" + param.Underlying.Type.String()}
@@ -507,7 +514,7 @@ func (gee *GenericErrorEnhancer) createConstraintDetail(constraintType string, p
 			"Not understanding the difference between T and ~T",
 		}
 
-	case "interface":
+	case interfaceKeyword:
 		detail.ConstraintDescription = "Must implement the specified interface"
 		if param.Constraint != nil {
 			detail.AllowedTypes = []string{"types implementing " + param.Constraint.String()}
@@ -532,13 +539,13 @@ func (gee *GenericErrorEnhancer) generateEnhancedMessage(enhanced *EnhancedError
 
 	// Start with the error category
 	switch enhanced.ErrorCategory {
-	case "constraint_violation":
+	case constraintViolation:
 		builder.WriteString("🚫 Generic Constraint Violation\n")
-	case "type_instantiation":
+	case typeInstantiation:
 		builder.WriteString("🔧 Type Instantiation Error\n")
 	case "type_substitution":
 		builder.WriteString("🔄 Type Substitution Error\n")
-	case "type_compatibility":
+	case typeCompatibility:
 		builder.WriteString("❌ Type Compatibility Error\n")
 	case "field_assignment":
 		builder.WriteString("📝 Field Assignment Error\n")
@@ -622,12 +629,12 @@ func (gee *GenericErrorEnhancer) generateSuggestions(enhanced *EnhancedError, so
 
 	// Generate suggestions based on error category
 	switch enhanced.ErrorCategory {
-	case "constraint_violation":
-		suggestions = append(suggestions, gee.generateConstraintSuggestions(enhanced, sourceType, targetType)...)
-	case "type_instantiation":
-		suggestions = append(suggestions, gee.generateInstantiationSuggestions(enhanced, sourceType, targetType)...)
-	case "type_compatibility":
-		suggestions = append(suggestions, gee.generateCompatibilitySuggestions(enhanced, sourceType, targetType)...)
+	case constraintViolation:
+		suggestions = append(suggestions, gee.generateConstraintSuggestions(enhanced, targetType)...)
+	case typeInstantiation:
+		suggestions = append(suggestions, gee.generateInstantiationSuggestions(sourceType, targetType)...)
+	case typeCompatibility:
+		suggestions = append(suggestions, gee.generateCompatibilitySuggestions(sourceType, targetType)...)
 	}
 
 	// Add general suggestions
@@ -637,14 +644,14 @@ func (gee *GenericErrorEnhancer) generateSuggestions(enhanced *EnhancedError, so
 }
 
 // generateConstraintSuggestions generates suggestions for constraint violations.
-func (gee *GenericErrorEnhancer) generateConstraintSuggestions(enhanced *EnhancedError, sourceType, targetType Type) []ErrorSuggestion {
+func (gee *GenericErrorEnhancer) generateConstraintSuggestions(enhanced *EnhancedError, targetType Type) []ErrorSuggestion {
 	suggestions := make([]ErrorSuggestion, 0)
 
 	if enhanced.GenericContext != nil && enhanced.GenericContext.ExpectedConstraint != "" {
 		constraint := enhanced.GenericContext.ExpectedConstraint
 
 		switch constraint {
-		case "comparable":
+		case comparableConstraint:
 			suggestions = append(suggestions, ErrorSuggestion{
 				SuggestionType:     "constraint_fix",
 				Description:        "Use a comparable type like int, string, or bool",
@@ -654,7 +661,7 @@ func (gee *GenericErrorEnhancer) generateConstraintSuggestions(enhanced *Enhance
 				RequiresCodeChange: true,
 			})
 
-		case "union":
+		case unionConstraint:
 			suggestions = append(suggestions, ErrorSuggestion{
 				SuggestionType:     "constraint_fix",
 				Description:        "Use one of the allowed union types",
@@ -670,7 +677,7 @@ func (gee *GenericErrorEnhancer) generateConstraintSuggestions(enhanced *Enhance
 }
 
 // generateInstantiationSuggestions generates suggestions for instantiation errors.
-func (gee *GenericErrorEnhancer) generateInstantiationSuggestions(enhanced *EnhancedError, sourceType, targetType Type) []ErrorSuggestion {
+func (gee *GenericErrorEnhancer) generateInstantiationSuggestions(sourceType, targetType Type) []ErrorSuggestion {
 	suggestions := make([]ErrorSuggestion, 0)
 
 	suggestions = append(suggestions, ErrorSuggestion{
@@ -685,7 +692,7 @@ func (gee *GenericErrorEnhancer) generateInstantiationSuggestions(enhanced *Enha
 }
 
 // generateCompatibilitySuggestions generates suggestions for compatibility errors.
-func (gee *GenericErrorEnhancer) generateCompatibilitySuggestions(enhanced *EnhancedError, sourceType, targetType Type) []ErrorSuggestion {
+func (gee *GenericErrorEnhancer) generateCompatibilitySuggestions(sourceType, targetType Type) []ErrorSuggestion {
 	suggestions := make([]ErrorSuggestion, 0)
 
 	suggestions = append(suggestions, ErrorSuggestion{

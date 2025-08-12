@@ -13,11 +13,11 @@ func TestGenericsMultipleTypeParameters(t *testing.T) {
 	defer runner.Cleanup()
 
 	multiTypeTests := []struct {
-		name        string
-		description string
-		types       string
-		interface_  string
-		checks      []helpers.CodeAssertion
+		name          string
+		description   string
+		types         string
+		interfaceCode string
+		checks        []helpers.CodeAssertion
 	}{
 		{
 			name:        "ThreeTypeParameters",
@@ -46,7 +46,7 @@ type TargetResult struct {
 	CData   []string
 	CCount  int
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type TripleConverter[T any, U any, V any] interface {
 	ConvertTriple(T, U, V) TargetResult
@@ -74,7 +74,7 @@ type CombinedOutput struct {
 	Field4 float64
 	Field5 []string
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type PentaConverter[T1 any, T2 any, T3 any, T4 any, T5 any] interface {
 	CombineAll(T1, T2, T3, T4, T5) CombinedOutput
@@ -110,7 +110,7 @@ type MixedResult struct {
 	StringerField   string
 	AnyField        interface{}
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type MixedConstraintConverter[T comparable, U fmt.Stringer, V any] interface {
 	ConvertMixed(T, U, V) MixedResult
@@ -127,7 +127,7 @@ type MixedConstraintConverter[T comparable, U fmt.Stringer, V any] interface {
 		t.Run(tt.name, func(t *testing.T) {
 			scenario := helpers.NewInlineScenario(tt.name, tt.description).
 				WithTypes(tt.types).
-				WithInterface(tt.interface_).
+				WithInterface(tt.interfaceCode).
 				WithBehaviorTests().
 				WithCodeChecks(tt.checks...)
 
@@ -143,11 +143,11 @@ func TestGenericsComplexConstraints(t *testing.T) {
 	defer runner.Cleanup()
 
 	constraintTests := []struct {
-		name        string
-		description string
-		types       string
-		interface_  string
-		checks      []helpers.CodeAssertion
+		name          string
+		description   string
+		types         string
+		interfaceCode string
+		checks        []helpers.CodeAssertion
 	}{
 		{
 			name:        "UnionConstraints",
@@ -169,7 +169,7 @@ type UnifiedTarget struct {
 	IntValue    int
 	StringValue string
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type UnionConverter[T IntOrString, U any] interface {
 	ConvertUnion(T) U
@@ -205,7 +205,7 @@ type ProcessorTarget struct {
 	ProcessedData string
 	IsValid       bool
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type InterfaceConstraintConverter[T Processor, U any] interface {
 	ConvertProcessor(T) U
@@ -249,7 +249,7 @@ type ComplexTarget struct {
 	SerializedValue  []byte
 	ValidationResult bool
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type CombinedConstraintConverter[T interface {
 	fmt.Stringer
@@ -270,7 +270,7 @@ type CombinedConstraintConverter[T interface {
 		t.Run(tt.name, func(t *testing.T) {
 			scenario := helpers.NewInlineScenario(tt.name, tt.description).
 				WithTypes(tt.types).
-				WithInterface(tt.interface_).
+				WithInterface(tt.interfaceCode).
 				WithBehaviorTests().
 				WithCodeChecks(tt.checks...)
 
@@ -286,11 +286,11 @@ func TestGenericsNestedGenericTypes(t *testing.T) {
 	defer runner.Cleanup()
 
 	nestedTests := []struct {
-		name        string
-		description string
-		types       string
-		interface_  string
-		checks      []helpers.CodeAssertion
+		name          string
+		description   string
+		types         string
+		interfaceCode string
+		checks        []helpers.CodeAssertion
 	}{
 		{
 			name:        "GenericSliceConversion",
@@ -305,7 +305,7 @@ type StringContainer struct {
 	Items []string
 	Count int
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type GenericSliceConverter[T any, U any] interface {
 	ConvertContainer(Container[T]) U
@@ -331,7 +331,7 @@ type StringIntMap struct {
 	Data map[string]int
 	Size int
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type GenericMapConverter[K comparable, V any, T any] interface {
 	ConvertMap(KeyValue[K, V]) T
@@ -367,7 +367,7 @@ type FlatResult struct {
 	Meta       string
 	ID         int
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type DeepNestedConverter[T any, U any] interface {
 	ConvertDeep(Level3[T]) U
@@ -392,7 +392,7 @@ type StringChannelResult struct {
 	Buffer []string
 	Size   int
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type ChannelConverter[T any, U any] interface {
 	ConvertChannel(ChannelWrapper[T]) U
@@ -410,7 +410,7 @@ type ChannelConverter[T any, U any] interface {
 		t.Run(tt.name, func(t *testing.T) {
 			scenario := helpers.NewInlineScenario(tt.name, tt.description).
 				WithTypes(tt.types).
-				WithInterface(tt.interface_).
+				WithInterface(tt.interfaceCode).
 				WithBehaviorTests().
 				WithCodeChecks(tt.checks...)
 
@@ -426,11 +426,11 @@ func TestGenericsGenericMethodsAndInterfaces(t *testing.T) {
 	defer runner.Cleanup()
 
 	methodTests := []struct {
-		name        string
-		description string
-		types       string
-		interface_  string
-		checks      []helpers.CodeAssertion
+		name          string
+		description   string
+		types         string
+		interfaceCode string
+		checks        []helpers.CodeAssertion
 	}{
 		{
 			name:        "MultipleGenericMethods",
@@ -453,7 +453,7 @@ type IntTarget struct {
 type BoolTarget struct {
 	Value bool
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type MultiMethodConverter[S any, T1 any, T2 any, T3 any] interface {
 	ConvertToString(S) T1
@@ -494,7 +494,7 @@ type UniversalTarget struct {
 	StringerData   string
 	AnyData        interface{}
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type ConstrainedMethodConverter[C comparable, S fmt.Stringer, A any, T any] interface {
 	ConvertComparable(C) T
@@ -522,7 +522,7 @@ type BatchResult struct {
 	Items []Item
 	Count int
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type VariadicConverter[T any, U any] interface {
 	ConvertBatch(...T) U
@@ -539,7 +539,7 @@ type VariadicConverter[T any, U any] interface {
 		t.Run(tt.name, func(t *testing.T) {
 			scenario := helpers.NewInlineScenario(tt.name, tt.description).
 				WithTypes(tt.types).
-				WithInterface(tt.interface_).
+				WithInterface(tt.interfaceCode).
 				WithBehaviorTests().
 				WithCodeChecks(tt.checks...)
 
@@ -555,11 +555,11 @@ func TestGenericsPerformanceScenarios(t *testing.T) {
 	defer runner.Cleanup()
 
 	performanceTests := []struct {
-		name        string
-		description string
-		types       string
-		interface_  string
-		checks      []helpers.CodeAssertion
+		name          string
+		description   string
+		types         string
+		interfaceCode string
+		checks        []helpers.CodeAssertion
 	}{
 		{
 			name:        "LargeStructConversion",
@@ -582,7 +582,7 @@ type LargeTarget struct {
 	Field21, Field22, Field23, Field24, Field25 bool
 	Field26, Field27, Field28, Field29, Field30 bool
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type LargeStructConverter[T any, U any] interface {
 	ConvertLarge(T) U
@@ -619,7 +619,7 @@ type ComplexTarget struct {
 	Data7 interface{}
 	Data8 chan string
 }`,
-			interface_: `
+			interfaceCode: `
 // :convergen
 type ManyTypeConverter[T1, T2, T3, T4, T5, T6, T7, T8 any] interface {
 	ConvertMany(T1, T2, T3, T4, T5, T6, T7, T8) ComplexTarget
@@ -638,7 +638,7 @@ type ManyTypeConverter[T1, T2, T3, T4, T5, T6, T7, T8 any] interface {
 		t.Run(tt.name, func(t *testing.T) {
 			scenario := helpers.NewInlineScenario(tt.name, tt.description).
 				WithTypes(tt.types).
-				WithInterface(tt.interface_).
+				WithInterface(tt.interfaceCode).
 				WithBehaviorTests().
 				WithCodeChecks(tt.checks...)
 
