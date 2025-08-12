@@ -3,6 +3,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -16,6 +17,11 @@ import (
 	"github.com/reedom/convergen/v9/pkg/generator/model"
 	"github.com/reedom/convergen/v9/pkg/logger"
 	"github.com/reedom/convergen/v9/pkg/parser"
+)
+
+// Package-level error definitions for static error handling.
+var (
+	ErrInvalidTypeSpec = errors.New("invalid type specification format")
 )
 
 // Run runs the convergen code generator using the provided configuration.
@@ -123,10 +129,7 @@ func runGenericGeneration(conf config.Config) error {
 	}
 
 	// Create the generic code generator with cross-package support
-	generator, err := createGenericGeneratorWithCrossPackage(crossPackageLoader, logger)
-	if err != nil {
-		return fmt.Errorf("failed to create generic generator: %w", err)
-	}
+	generator := createGenericGeneratorWithCrossPackage(crossPackageLoader, logger)
 
 	// Generate the code
 	ctx := context.Background()
@@ -182,7 +185,7 @@ func parseTypeSpecWithResolver(
 
 	// Parse the basic structure
 	if !strings.Contains(typeSpec, "[") || !strings.Contains(typeSpec, "]") {
-		return nil, fmt.Errorf("invalid type specification format: %s", typeSpec)
+		return nil, fmt.Errorf("%w: %s", ErrInvalidTypeSpec, typeSpec)
 	}
 
 	// Extract interface name and type arguments
@@ -238,19 +241,23 @@ func parseTypeSpecWithResolver(
 	}
 
 	// Create the instantiated interface
-	return domain.NewInstantiatedInterface(
+	result, err := domain.NewInstantiatedInterface(
 		sourceInterface,
 		typeArguments,
 		concreteType,
 		typeSpec,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create instantiated interface for %s: %w", interfaceName, err)
+	}
+	return result, nil
 }
 
 // parseTypeSpec parses a type specification like "TypeMapper[User,UserDTO]" into an InstantiatedInterface.
 func parseTypeSpec(typeSpec string, logger *zap.Logger) (*domain.InstantiatedInterface, error) {
 	// Simple parsing for now - could be enhanced with proper AST parsing
 	if !strings.Contains(typeSpec, "[") || !strings.Contains(typeSpec, "]") {
-		return nil, fmt.Errorf("invalid type specification format: %s", typeSpec)
+		return nil, fmt.Errorf("%w: %s", ErrInvalidTypeSpec, typeSpec)
 	}
 
 	// Extract interface name and type arguments
@@ -295,19 +302,23 @@ func parseTypeSpec(typeSpec string, logger *zap.Logger) (*domain.InstantiatedInt
 	}
 
 	// Create the instantiated interface
-	return domain.NewInstantiatedInterface(
+	result, err := domain.NewInstantiatedInterface(
 		sourceInterface,
 		typeArguments,
 		concreteType,
 		typeSpec,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create instantiated interface for %s: %w", interfaceName, err)
+	}
+	return result, nil
 }
 
 // createGenericGeneratorWithCrossPackage creates a generator with cross-package support.
 func createGenericGeneratorWithCrossPackage(
 	crossPackageLoader domain.CrossPackageTypeLoader,
 	logger *zap.Logger,
-) (*generator.GenericCodeGenerator, error) {
+) *generator.GenericCodeGenerator {
 	// Create a simple template engine (this would need to be implemented)
 	templateEngine := &simpleTemplateEngine{}
 
@@ -330,7 +341,7 @@ func createGenericGeneratorWithCrossPackage(
 		nil, // Use default config
 	)
 
-	return generator, nil
+	return generator
 }
 
 // simpleTemplateEngine provides a basic template engine implementation for testing.

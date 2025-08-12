@@ -242,7 +242,7 @@ func (gee *GenericErrorEnhancer) generateErrorCode(originalError error, sourceTy
 }
 
 // categorizeError categorizes the error for better organization.
-func (gee *GenericErrorEnhancer) categorizeError(originalError error, targetType Type) string {
+func (gee *GenericErrorEnhancer) categorizeError(originalError error, _targetType Type) string {
 	errorMessage := strings.ToLower(originalError.Error())
 
 	if strings.Contains(errorMessage, "constraint") {
@@ -595,32 +595,46 @@ func (gee *GenericErrorEnhancer) generateEnhancedMessage(enhanced *EnhancedError
 
 // addGenericContextToMessage adds generic context information to the message.
 func (gee *GenericErrorEnhancer) addGenericContextToMessage(builder *strings.Builder, context *GenericErrorContext) {
-	if context.SourceTypeName != "" || context.TargetTypeName != "" {
-		builder.WriteString("🔍 Type Information:\n")
-		if context.SourceTypeName != "" {
-			builder.WriteString(fmt.Sprintf("  Source: %s", context.SourceTypeName))
-			if 0 < len(context.SourceTypeParameters) {
-				builder.WriteString(fmt.Sprintf(" [%s]", strings.Join(context.SourceTypeParameters, ", ")))
-			}
-			builder.WriteString("\n")
-		}
-		if context.TargetTypeName != "" {
-			builder.WriteString(fmt.Sprintf("  Target: %s", context.TargetTypeName))
-			if 0 < len(context.TargetTypeParameters) {
-				builder.WriteString(fmt.Sprintf(" [%s]", strings.Join(context.TargetTypeParameters, ", ")))
-			}
-			builder.WriteString("\n")
-		}
-		builder.WriteString("\n")
+	gee.addTypeInformation(builder, context)
+	gee.addFailedTypeParameter(builder, context)
+}
+
+// addTypeInformation adds source and target type information to the message.
+func (gee *GenericErrorEnhancer) addTypeInformation(builder *strings.Builder, context *GenericErrorContext) {
+	if context.SourceTypeName == "" && context.TargetTypeName == "" {
+		return
 	}
 
-	if context.FailedTypeParameter != "" {
-		builder.WriteString(fmt.Sprintf("❌ Failed Type Parameter: %s\n", context.FailedTypeParameter))
-		if context.ExpectedConstraint != "" && context.ActualType != "" {
-			builder.WriteString(fmt.Sprintf("   Expected: %s, Got: %s\n", context.ExpectedConstraint, context.ActualType))
-		}
-		builder.WriteString("\n")
+	builder.WriteString("🔍 Type Information:\n")
+	gee.addSingleTypeInfo(builder, "  Source: %s", context.SourceTypeName, context.SourceTypeParameters)
+	gee.addSingleTypeInfo(builder, "  Target: %s", context.TargetTypeName, context.TargetTypeParameters)
+	builder.WriteString("\n")
+}
+
+// addSingleTypeInfo adds information for a single type (source or target).
+func (gee *GenericErrorEnhancer) addSingleTypeInfo(builder *strings.Builder, format, typeName string, typeParameters []string) {
+	if typeName == "" {
+		return
 	}
+
+	builder.WriteString(fmt.Sprintf(format, typeName))
+	if 0 < len(typeParameters) {
+		builder.WriteString(fmt.Sprintf(" [%s]", strings.Join(typeParameters, ", ")))
+	}
+	builder.WriteString("\n")
+}
+
+// addFailedTypeParameter adds failed type parameter information to the message.
+func (gee *GenericErrorEnhancer) addFailedTypeParameter(builder *strings.Builder, context *GenericErrorContext) {
+	if context.FailedTypeParameter == "" {
+		return
+	}
+
+	builder.WriteString(fmt.Sprintf("❌ Failed Type Parameter: %s\n", context.FailedTypeParameter))
+	if context.ExpectedConstraint != "" && context.ActualType != "" {
+		builder.WriteString(fmt.Sprintf("   Expected: %s, Got: %s\n", context.ExpectedConstraint, context.ActualType))
+	}
+	builder.WriteString("\n")
 }
 
 // generateSuggestions generates helpful suggestions for resolving the error.
@@ -644,7 +658,7 @@ func (gee *GenericErrorEnhancer) generateSuggestions(enhanced *EnhancedError, so
 }
 
 // generateConstraintSuggestions generates suggestions for constraint violations.
-func (gee *GenericErrorEnhancer) generateConstraintSuggestions(enhanced *EnhancedError, targetType Type) []ErrorSuggestion {
+func (gee *GenericErrorEnhancer) generateConstraintSuggestions(enhanced *EnhancedError, _targetType Type) []ErrorSuggestion {
 	suggestions := make([]ErrorSuggestion, 0)
 
 	if enhanced.GenericContext != nil && enhanced.GenericContext.ExpectedConstraint != "" {
@@ -677,7 +691,7 @@ func (gee *GenericErrorEnhancer) generateConstraintSuggestions(enhanced *Enhance
 }
 
 // generateInstantiationSuggestions generates suggestions for instantiation errors.
-func (gee *GenericErrorEnhancer) generateInstantiationSuggestions(sourceType, targetType Type) []ErrorSuggestion {
+func (gee *GenericErrorEnhancer) generateInstantiationSuggestions(_sourceType, _targetType Type) []ErrorSuggestion {
 	suggestions := make([]ErrorSuggestion, 0)
 
 	suggestions = append(suggestions, ErrorSuggestion{
@@ -692,7 +706,7 @@ func (gee *GenericErrorEnhancer) generateInstantiationSuggestions(sourceType, ta
 }
 
 // generateCompatibilitySuggestions generates suggestions for compatibility errors.
-func (gee *GenericErrorEnhancer) generateCompatibilitySuggestions(sourceType, targetType Type) []ErrorSuggestion {
+func (gee *GenericErrorEnhancer) generateCompatibilitySuggestions(_sourceType, _targetType Type) []ErrorSuggestion {
 	suggestions := make([]ErrorSuggestion, 0)
 
 	suggestions = append(suggestions, ErrorSuggestion{
@@ -708,7 +722,7 @@ func (gee *GenericErrorEnhancer) generateCompatibilitySuggestions(sourceType, ta
 }
 
 // generateGeneralSuggestions generates general suggestions applicable to most errors.
-func (gee *GenericErrorEnhancer) generateGeneralSuggestions(enhanced *EnhancedError) []ErrorSuggestion {
+func (gee *GenericErrorEnhancer) generateGeneralSuggestions(_enhanced *EnhancedError) []ErrorSuggestion {
 	suggestions := make([]ErrorSuggestion, 0)
 
 	suggestions = append(suggestions, ErrorSuggestion{

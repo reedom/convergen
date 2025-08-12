@@ -93,35 +93,13 @@ func (o Options) matchFieldNames(srcName, dstName string) bool {
 	}
 
 	// Try removing prefixes from source name
-	for _, prefix := range prefixes {
-		if o.ExactCase {
-			if strings.HasPrefix(srcName, prefix) && compareNames(strings.TrimPrefix(srcName, prefix), dstName) {
-				return true
-			}
-		} else {
-			if strings.HasPrefix(strings.ToLower(srcName), strings.ToLower(prefix)) {
-				trimmed := srcName[len(prefix):]
-				if compareNames(trimmed, dstName) {
-					return true
-				}
-			}
-		}
+	if o.matchWithPrefixRemoval(srcName, dstName, prefixes, compareNames) {
+		return true
 	}
 
 	// Try removing prefixes from destination name
-	for _, prefix := range prefixes {
-		if o.ExactCase {
-			if strings.HasPrefix(dstName, prefix) && compareNames(srcName, strings.TrimPrefix(dstName, prefix)) {
-				return true
-			}
-		} else {
-			if strings.HasPrefix(strings.ToLower(dstName), strings.ToLower(prefix)) {
-				trimmed := dstName[len(prefix):]
-				if compareNames(srcName, trimmed) {
-					return true
-				}
-			}
-		}
+	if o.matchWithPrefixRemoval(dstName, srcName, prefixes, compareNames) {
+		return true
 	}
 
 	// Try suffix matching patterns (e.g., Name in UserName)
@@ -138,6 +116,32 @@ func (o Options) matchFieldNames(srcName, dstName string) bool {
 	}
 
 	return false
+}
+
+// matchWithPrefixRemoval checks if fieldName matches otherName after removing any of the given prefixes.
+func (o Options) matchWithPrefixRemoval(fieldName, otherName string, prefixes []string, compareNames func(a, b string) bool) bool {
+	for _, prefix := range prefixes {
+		if o.matchSinglePrefix(fieldName, otherName, prefix, compareNames) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchSinglePrefix checks if fieldName matches otherName after removing a specific prefix.
+func (o Options) matchSinglePrefix(fieldName, otherName, prefix string, compareNames func(a, b string) bool) bool {
+	if o.ExactCase {
+		if !strings.HasPrefix(fieldName, prefix) {
+			return false
+		}
+		return compareNames(strings.TrimPrefix(fieldName, prefix), otherName)
+	}
+
+	if !strings.HasPrefix(strings.ToLower(fieldName), strings.ToLower(prefix)) {
+		return false
+	}
+	trimmed := fieldName[len(prefix):]
+	return compareNames(trimmed, otherName)
 }
 
 // ValidOpsIntf is a set of valid conversion option keys for interface-level conversion.

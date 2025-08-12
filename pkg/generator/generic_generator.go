@@ -13,6 +13,12 @@ import (
 	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
+// Package-level error definitions for static error handling.
+var (
+	ErrNotStructType     = errors.New("cannot extract fields from non-struct type")
+	ErrInvalidStructType = errors.New("type is not a proper struct type")
+)
+
 // ImportInfo represents import information without emitter dependency.
 type ImportInfo struct {
 	Path     string `json:"path"`
@@ -681,7 +687,7 @@ func (gcg *GenericCodeGenerator) extractStructFields(typ domain.Type) ([]*domain
 
 	// Only handle struct types
 	if typ.Kind() != domain.KindStruct {
-		return nil, fmt.Errorf("cannot extract fields from non-struct type: %s", typ.Kind())
+		return nil, fmt.Errorf("%w: %s", ErrNotStructType, typ.Kind())
 	}
 
 	// Cast to struct type and get fields
@@ -699,7 +705,7 @@ func (gcg *GenericCodeGenerator) extractStructFields(typ domain.Type) ([]*domain
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("type is not a proper struct type: %T", typ)
+	return nil, fmt.Errorf("%w: %T", ErrInvalidStructType, typ)
 }
 
 // generateSimpleFieldMappings provides a fallback field mapping implementation.

@@ -164,17 +164,12 @@ func (sv *SubstitutionValidator) ValidateSubstitutionResult(
 
 	// Constraint validation
 	if sv.validateConstraints {
-		constraintResult, err := sv.performConstraintValidation(ctx, result)
-		if err != nil {
-			sv.logger.Warn("constraint validation error", zap.Error(err))
-			sv.addValidationError(validationResult, "constraint", err.Error(), "warning")
-		} else {
-			validationResult.ConstraintValidation = constraintResult
+		constraintResult := sv.performConstraintValidation(ctx, result)
+		validationResult.ConstraintValidation = constraintResult
 
-			if !constraintResult.AllConstraintsSatisfied {
-				validationResult.Valid = false
-				sv.addValidationError(validationResult, "constraint", "Constraint validation failed", "error")
-			}
+		if !constraintResult.AllConstraintsSatisfied {
+			validationResult.Valid = false
+			sv.addValidationError(validationResult, "constraint", "Constraint validation failed", "error")
 		}
 	}
 
@@ -299,9 +294,9 @@ func (sv *SubstitutionValidator) performConsistencyCheck(result *SubstitutionRes
 
 // performConstraintValidation validates that substitutions satisfy type constraints.
 func (sv *SubstitutionValidator) performConstraintValidation(
-	ctx context.Context,
+	_ctx context.Context,
 	result *SubstitutionResult,
-) (*ConstraintValidationResult, error) {
+) *ConstraintValidationResult {
 	constraintResult := &ConstraintValidationResult{
 		AllConstraintsSatisfied: true,
 		ConstraintViolations:    make([]ConstraintViolation, 0),
@@ -310,7 +305,7 @@ func (sv *SubstitutionValidator) performConstraintValidation(
 
 	// Only validate constraints for generic types
 	if !result.OriginalType.Generic() {
-		return constraintResult, nil
+		return constraintResult
 	}
 
 	originalParams := result.OriginalType.TypeParams()
@@ -356,7 +351,7 @@ func (sv *SubstitutionValidator) performConstraintValidation(
 		constraintResult.TypeParameterValidation = append(constraintResult.TypeParameterValidation, validation)
 	}
 
-	return constraintResult, nil
+	return constraintResult
 }
 
 // performPerformanceValidation validates performance characteristics of the substitution.

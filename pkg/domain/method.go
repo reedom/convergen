@@ -531,7 +531,7 @@ const (
 func (s MethodStrategy) String() string {
 	switch s {
 	case MethodStrategyDirect:
-		return "direct"
+		return DirectStrategyType
 	case MethodStrategyPipelined:
 		return "pipelined"
 	case MethodStrategyBatched:

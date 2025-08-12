@@ -347,7 +347,7 @@ func (tcc *TypeCompatibilityChecker) checkGenericCompatibility(
 
 // checkBothGenericCompatibility handles the case where both types are generic.
 func (tcc *TypeCompatibilityChecker) checkBothGenericCompatibility(
-	ctx context.Context,
+	_ctx context.Context,
 	sourceType, targetType Type,
 	result *CompatibilityResult,
 ) (*CompatibilityResult, error) {
@@ -405,7 +405,7 @@ func (tcc *TypeCompatibilityChecker) checkBothGenericCompatibility(
 
 // checkGenericToConcreteCompatibility handles generic source to concrete target.
 func (tcc *TypeCompatibilityChecker) checkGenericToConcreteCompatibility(
-	ctx context.Context,
+	_ctx context.Context,
 	sourceType, targetType Type,
 	result *CompatibilityResult,
 ) (*CompatibilityResult, error) {
@@ -468,7 +468,7 @@ func (tcc *TypeCompatibilityChecker) checkGenericToConcreteCompatibility(
 
 // checkConcreteToGenericCompatibility handles concrete source to generic target.
 func (tcc *TypeCompatibilityChecker) checkConcreteToGenericCompatibility(
-	ctx context.Context,
+	_ctx context.Context,
 	sourceType, targetType Type,
 	result *CompatibilityResult,
 ) (*CompatibilityResult, error) {
@@ -532,9 +532,9 @@ func (tcc *TypeCompatibilityChecker) areConstraintsCompatible(param1, param2 Typ
 	case "any":
 		// 'any' is compatible with everything
 		return true
-	case "comparable":
+	case comparableConstraint:
 		// 'comparable' is compatible with basic types and specific interfaces
-		return constraint2 == "comparable" || tcc.isBasicComparableType(constraint2)
+		return constraint2 == comparableConstraint || tcc.isBasicComparableType(constraint2)
 	default:
 		// For custom constraints, they need to be identical for now
 		// In a more sophisticated implementation, we could check constraint relationships
@@ -561,7 +561,7 @@ func (tcc *TypeCompatibilityChecker) isBasicComparableType(constraint string) bo
 
 // checkConversionCompatibility checks if types are compatible through conversion.
 func (tcc *TypeCompatibilityChecker) checkConversionCompatibility(
-	ctx context.Context,
+	_ctx context.Context,
 	sourceType, targetType Type,
 ) *CompatibilityResult {
 	result := &CompatibilityResult{
@@ -674,7 +674,7 @@ func (tcc *TypeCompatibilityChecker) arePointerCompatibleTypes(sourceType, targe
 }
 
 // getNumericConversionFunction returns the conversion function name for numeric types.
-func (tcc *TypeCompatibilityChecker) getNumericConversionFunction(sourceType, targetType Type) string {
+func (tcc *TypeCompatibilityChecker) getNumericConversionFunction(_sourceType, targetType Type) string {
 	return fmt.Sprintf("%s(%s)", targetType.Name(), "value")
 }
 
@@ -683,16 +683,16 @@ func (tcc *TypeCompatibilityChecker) getStringConversionFunction(sourceType, tar
 	sourceName := sourceType.Name()
 	targetName := targetType.Name()
 
-	if sourceName == "string" && targetName == "[]byte" {
+	if sourceName == stringTypeName && targetName == "[]byte" {
 		return "[]byte(value)"
 	}
-	if sourceName == "[]byte" && targetName == "string" {
+	if sourceName == "[]byte" && targetName == stringTypeName {
 		return "string(value)"
 	}
-	if sourceName == "string" && targetName == "[]rune" {
+	if sourceName == stringTypeName && targetName == "[]rune" {
 		return "[]rune(value)"
 	}
-	if sourceName == "[]rune" && targetName == "string" {
+	if sourceName == "[]rune" && targetName == stringTypeName {
 		return "string(value)"
 	}
 

@@ -29,6 +29,11 @@ var (
 	ErrEmptyTypeArgument                      = errors.New("empty type argument")
 )
 
+// String constant for type names to avoid goconst violations.
+const (
+	stringTypeName = "string"
+)
+
 // InstantiatedInterface represents a concrete instantiation of a generic interface.
 // This is the primary result of the type instantiation process.
 type InstantiatedInterface struct {
@@ -353,7 +358,7 @@ func (ti *TypeInstantiator) InstantiateInterfaceWithContext(
 	}
 
 	// Perform the actual instantiation
-	concreteType, err := ti.instantiateType(genericInterface, typeArgMap)
+	concreteType, err := ti.instantiateType(ctx, genericInterface, typeArgMap)
 	if err != nil {
 		ti.logger.Error("type instantiation failed",
 			zap.String("interface", genericInterface.Name),
@@ -518,7 +523,7 @@ func getReflectKindFromTypeName(typeName string) reflect.Kind {
 		return reflect.Float32
 	case "float64":
 		return reflect.Float64
-	case "string":
+	case stringTypeName:
 		return reflect.String
 	case interfaceKeyword:
 		return reflect.Interface
@@ -624,9 +629,9 @@ func (ti *TypeInstantiator) validateConstraints(
 // generateConstraintViolationMessage creates a detailed error message for constraint violations.
 func (ti *TypeInstantiator) generateConstraintViolationMessage(param *TypeParam, typeArg Type) string {
 	switch param.GetConstraintType() {
-	case "any":
+	case anyConstraint:
 		return "should never happen - any constraint accepts all types"
-	case "comparable":
+	case comparableConstraint:
 		return fmt.Sprintf("type %s is not comparable", typeArg.String())
 	case "union":
 		unionTypes := make([]string, len(param.UnionTypes))
@@ -656,6 +661,7 @@ func (ti *TypeInstantiator) generateConstraintViolationMessage(param *TypeParam,
 
 // instantiateType performs the actual type instantiation logic using the substitution engine.
 func (ti *TypeInstantiator) instantiateType(
+	ctx context.Context,
 	genericInterface *GenericInterface,
 	typeArgs map[string]Type,
 ) (Type, error) {
@@ -670,7 +676,8 @@ func (ti *TypeInstantiator) instantiateType(
 	}
 
 	// Perform type substitution using the substitution engine
-	substitutionResult, err := ti.substitutionEngine.SubstituteType(
+	substitutionResult, err := ti.substitutionEngine.SubstituteTypeWithContext(
+		ctx,
 		genericInterfaceType,
 		typeParams,
 		orderedTypeArgs,

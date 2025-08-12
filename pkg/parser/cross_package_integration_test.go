@@ -29,10 +29,10 @@ func TestCrossPackageIntegration(t *testing.T) {
 
 	// Create test package structure
 	modelsDir := filepath.Join(tempDir, "models")
-	require.NoError(t, os.MkdirAll(modelsDir, 0755))
+	require.NoError(t, os.MkdirAll(modelsDir, 0750))
 
 	dtoDir := filepath.Join(tempDir, "dto")
-	require.NoError(t, os.MkdirAll(dtoDir, 0755))
+	require.NoError(t, os.MkdirAll(dtoDir, 0750))
 
 	// Create test Go files
 	userModelFile := filepath.Join(modelsDir, "user.go")
@@ -49,7 +49,7 @@ type Profile struct {
 	Bio    string ` + "`json:\"bio\"`" + `
 }
 `
-	require.NoError(t, os.WriteFile(userModelFile, []byte(userModel), 0644))
+	require.NoError(t, os.WriteFile(userModelFile, []byte(userModel), 0600))
 
 	userDTOFile := filepath.Join(dtoDir, "user.go")
 	userDTO := `package dto
@@ -65,16 +65,16 @@ type ProfileDTO struct {
 	Bio    string ` + "`json:\"bio\"`" + `
 }
 `
-	require.NoError(t, os.WriteFile(userDTOFile, []byte(userDTO), 0644))
+	require.NoError(t, os.WriteFile(userDTOFile, []byte(userDTO), 0600))
 
 	// Create go.mod files
 	modelsModFile := filepath.Join(modelsDir, "go.mod")
 	modelsModContent := "module models\n\ngo 1.21\n"
-	require.NoError(t, os.WriteFile(modelsModFile, []byte(modelsModContent), 0644))
+	require.NoError(t, os.WriteFile(modelsModFile, []byte(modelsModContent), 0600))
 
 	dtoModFile := filepath.Join(dtoDir, "go.mod")
 	dtoModContent := "module dto\n\ngo 1.21\n"
-	require.NoError(t, os.WriteFile(dtoModFile, []byte(dtoModContent), 0644))
+	require.NoError(t, os.WriteFile(dtoModFile, []byte(dtoModContent), 0600))
 
 	// Set up import mappings
 	importMap := map[string]string{

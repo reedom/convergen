@@ -158,7 +158,7 @@ func (h *EventHandler) PublishStrategySelected(ctx context.Context, methodName s
 
 // Event handlers
 
-func (h *EventHandler) handleExecutorCompleted(_ context.Context, event events.Event) error {
+func (h *EventHandler) handleExecutorCompleted(ctx context.Context, event events.Event) error {
 	h.logger.Debug("handling executor completed event")
 
 	// Extract execution results from event metadata
@@ -171,7 +171,7 @@ func (h *EventHandler) handleExecutorCompleted(_ context.Context, event events.E
 
 	// Trigger code generation
 	go func() {
-		codeCtx := context.Background()
+		codeCtx := ctx
 		if err := h.PublishEmitterStarted(codeCtx, results.PackageName, len(results.Methods)); err != nil {
 			h.logger.Error("failed to publish emitter started event", zap.Error(err))
 		}

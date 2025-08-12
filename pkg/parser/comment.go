@@ -479,7 +479,7 @@ func (p *Parser) lookupManipulatorFunc(funcName, optName string, pos token.Pos) 
 // It accepts:
 // - Simple identifiers: "c", "service", "converter"
 // - Pointer type specifications: "*UserService", "*pkg.Service"
-// - Non-pointer type specifications: "UserService", "pkg.Service"
+// - Non-pointer type specifications: "UserService", "pkg.Service".
 func (p *Parser) isValidReceiverSpec(spec string) bool {
 	if spec == "" {
 		return false
@@ -503,7 +503,7 @@ func (p *Parser) isValidReceiverSpec(spec string) bool {
 // isValidTypeName validates that a string is a valid Go type name.
 // It accepts:
 // - Simple type names: "UserService", "Converter"
-// - Qualified type names: "pkg.UserService", "github.com/user/repo.Service"
+// - Qualified type names: "pkg.UserService", "github.com/user/repo.Service".
 func (p *Parser) isValidTypeName(typeName string) bool {
 	if typeName == "" {
 		return false

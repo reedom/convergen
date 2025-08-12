@@ -99,10 +99,15 @@ const (
 	ErrorHandlingLog
 )
 
+// String constants for error handling method names to avoid goconst violations.
+const (
+	errorHandlingNoneString = "none"
+)
+
 func (e ErrorHandlingMethod) String() string {
 	switch e {
 	case ErrorHandlingNone:
-		return "none"
+		return errorHandlingNoneString
 	case ErrorHandlingReturn:
 		return "return"
 	case ErrorHandlingPanic:

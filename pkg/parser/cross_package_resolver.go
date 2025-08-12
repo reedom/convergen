@@ -563,7 +563,7 @@ func (cpr *CrossPackageResolver) convertNamedType(t *types.Named, qualifiedType 
 }
 
 // convertInterfaceType converts an interface type to a domain type.
-func (cpr *CrossPackageResolver) convertInterfaceType(t *types.Interface, qualifiedType *QualifiedType) domain.Type {
+func (cpr *CrossPackageResolver) convertInterfaceType(_t *types.Interface, qualifiedType *QualifiedType) domain.Type {
 	// For now, create a basic interface type
 	// In a full implementation, we would extract methods
 	return domain.NewBasicType(qualifiedType.String(), reflect.Interface)

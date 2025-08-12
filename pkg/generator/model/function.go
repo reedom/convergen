@@ -108,7 +108,7 @@ func isSimpleIdentifier(s string) bool {
 // Examples:
 // - "*UserService" -> "u"
 // - "Service" -> "s"
-// - "pkg.UserService" -> "u"
+// - "pkg.UserService" -> "u".
 func generateReceiverVarName(receiverType string) string {
 	// Remove pointer prefix
 	typeName := strings.TrimPrefix(receiverType, "*")
