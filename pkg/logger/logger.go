@@ -24,8 +24,10 @@ type option struct {
 	out     io.Writer // out is the output destination of the logger.
 }
 
-var logger = log.New(io.Discard, "", 0) // logger is the info logger instance.
-var elogger = log.New(os.Stderr, "", 0) // elogger is the error logger instance.
+var (
+	logger  = log.New(io.Discard, "", 0) // logger is the info logger instance.
+	elogger = log.New(os.Stderr, "", 0)  // elogger is the error logger instance.
+)
 
 // Enable sets the enabled flag to true.
 func Enable() Opt {
@@ -55,17 +57,18 @@ func SetupLogger(options ...Opt) {
 		o(&opt)
 	}
 
-	if !opt.enabled {
+	switch {
+	case !opt.enabled:
 		logger = log.New(io.Discard, "", 0)
 		elogger = log.New(os.Stderr, "", 0)
-	} else if opt.out != nil {
-		//f, err := os.OpenFile(opt.outputPath, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0644)
-		//if err != nil {
-		//	return err
-		//}
+	case opt.out != nil:
+		// f, err := os.OpenFile(opt.outputPath, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0644)
+		// if err != nil {
+		// 	return err
+		// }
 		logger = log.New(opt.out, "", log.LstdFlags)
 		elogger = log.New(os.Stderr, "", 0)
-	} else {
+	default:
 		logger = log.New(os.Stdout, "", log.LstdFlags)
 		elogger = log.New(io.Discard, "", 0)
 	}

@@ -39,7 +39,7 @@ func (m *IdentMatcher) Match(ident string, exactCase bool) bool {
 // If exactCase is false, it matches case-insensitively.
 func (m *IdentMatcher) PartialMatch(ident string, exactCase bool) bool {
 	// Construct a partial pattern by joining all the path segments until the last one that
-	//fits into the length of ident.
+	// fits into the length of ident.
 	partial := m.paths[0]
 	for i := 1; i < len(m.paths) && len(partial)+len(m.paths[i]) < len(ident); i++ {
 		partial += "."

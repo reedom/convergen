@@ -775,7 +775,6 @@ func NewASTAnalyzer(logger *zap.Logger) ASTAnalyzer {
 func (aa *DefaultASTAnalyzer) ParseCode(code string) (*ast.File, *token.FileSet, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "", code, parser.ParseComments)
-
 	if err != nil {
 		return nil, fset, fmt.Errorf("failed to parse generated code: %w", err)
 	}

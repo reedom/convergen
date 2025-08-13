@@ -27,9 +27,8 @@ func NewCopier(name string, lhs, rhs types.Type) *Copier {
 
 // MarkHandle returns true if the copier has handled the given types.
 func (h *Copier) MarkHandle(lhs, rhs types.Type) bool {
-	canHandle :=
-		types.AssignableTo(util.DerefPtr(lhs), util.DerefPtr(h.LHS)) &&
-			types.AssignableTo(util.DerefPtr(rhs), util.DerefPtr(h.RHS))
+	canHandle := types.AssignableTo(util.DerefPtr(lhs), util.DerefPtr(h.LHS)) &&
+		types.AssignableTo(util.DerefPtr(rhs), util.DerefPtr(h.RHS))
 	if !canHandle {
 		return false
 	}

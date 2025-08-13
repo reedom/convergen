@@ -227,7 +227,6 @@ func (tr *TypeResolver) resolveStructType(ctx context.Context, structType *types
 		g.Go(func() error {
 			field := structType.Field(i)
 			fieldType, err := tr.ResolveType(gctx, field.Type())
-
 			if err != nil {
 				return fmt.Errorf("failed to resolve field %s: %w", field.Name(), err)
 			}

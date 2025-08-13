@@ -147,7 +147,7 @@ func (isr *InlineScenarioRunner) createSourceFile(scenario TestScenario) (string
 	// Create package directory
 	packageName := "test" + strings.ReplaceAll(scenario.Name, " ", "")
 	packageDir := filepath.Join(isr.tempDir, packageName)
-	err := os.MkdirAll(packageDir, 0750)
+	err := os.MkdirAll(packageDir, 0o750)
 	if err != nil {
 		return "", fmt.Errorf("failed to create package directory: %w", err)
 	}
@@ -195,7 +195,7 @@ func (isr *InlineScenarioRunner) createSourceFile(scenario TestScenario) (string
 
 	// Write to file
 	sourceFile := filepath.Join(packageDir, "setup.go")
-	err = os.WriteFile(sourceFile, formatted, 0600)
+	err = os.WriteFile(sourceFile, formatted, 0o600)
 	if err != nil {
 		return "", fmt.Errorf("failed to write source file: %w", err)
 	}
@@ -300,7 +300,7 @@ func (isr *InlineScenarioRunner) runBehaviorTests(t *testing.T, scenario TestSce
 
 	// Write generated code to file
 	generatedFile := strings.Replace(sourceFile, ".go", ".gen.go", 1)
-	err := os.WriteFile(generatedFile, []byte(generatedCode), 0600)
+	err := os.WriteFile(generatedFile, []byte(generatedCode), 0o600)
 	require.NoError(t, err, "Failed to write generated code")
 
 	// Create test file that uses the generated functions
@@ -346,7 +346,7 @@ func (isr *InlineScenarioRunner) createBehaviorTestFile(t *testing.T, scenario T
 		fmt.Fprintf(&content, "}\n\n")
 	}
 
-	err := os.WriteFile(testFile, []byte(content.String()), 0600)
+	err := os.WriteFile(testFile, []byte(content.String()), 0o600)
 	require.NoError(t, err, "Failed to write behavior test file")
 
 	return testFile
