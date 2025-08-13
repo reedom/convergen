@@ -124,9 +124,11 @@ func (p *Parser) applyBooleanFlags(notation string, opts *option.Options, posRev
 		return true
 	case annotationStructLiteral:
 		opts.StructLiteral = true
+		opts.NoStructLiteral = false
 		return true
 	case annotationNoStructLiteral:
 		opts.NoStructLiteral = true
+		opts.StructLiteral = false
 		return true
 	default:
 		return false

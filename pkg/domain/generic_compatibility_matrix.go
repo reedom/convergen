@@ -512,15 +512,13 @@ func (gcm *GenericCompatibilityMatrix) buildCompatibilityMap(matrix *ConstraintM
 					MatchScore:      bestScore,
 				})
 			}
-		} else {
+		} else if i < len(matrix.TargetConstraints) {
 			// Add incompatible pair
-			if i < len(matrix.TargetConstraints) {
-				matrix.IncompatiblePairs = append(matrix.IncompatiblePairs, ConstraintPair{
-					SourceConstraint:      sourceConstraint.ConstraintType,
-					TargetConstraint:      matrix.TargetConstraints[i].ConstraintType,
-					IncompatibilityReason: "constraints are structurally incompatible",
-				})
-			}
+			matrix.IncompatiblePairs = append(matrix.IncompatiblePairs, ConstraintPair{
+				SourceConstraint:      sourceConstraint.ConstraintType,
+				TargetConstraint:      matrix.TargetConstraints[i].ConstraintType,
+				IncompatibilityReason: "constraints are structurally incompatible",
+			})
 		}
 	}
 }

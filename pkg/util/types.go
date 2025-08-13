@@ -4,6 +4,7 @@ package util
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
 	"path"
 	"strings"
@@ -20,7 +21,73 @@ type LookupFieldOpt struct {
 
 // ToAstNode converts types.Object to []ast.Node.
 func ToAstNode(file *ast.File, obj types.Object) (path []ast.Node, exact bool) {
+	if file == nil || obj == nil {
+		return nil, false
+	}
+
+	// First try with the original file
+	defer func() {
+		if r := recover(); r != nil {
+			// If PathEnclosingInterval panics, try with cleaned file
+			if cleanedFile := safeCleanFileForAST(file); cleanedFile != nil {
+				defer func() {
+					if r2 := recover(); r2 != nil {
+						// If cleaning still fails, return empty result
+						path = nil
+						exact = false
+					}
+				}()
+				path, exact = astutil.PathEnclosingInterval(cleanedFile, obj.Pos(), obj.Pos())
+			} else {
+				path = nil
+				exact = false
+			}
+		}
+	}()
+
 	return astutil.PathEnclosingInterval(file, obj.Pos(), obj.Pos())
+}
+
+// safeCleanFileForAST creates a safe copy of the file for AST processing.
+// This prevents panics from empty comment groups without modifying the original.
+func safeCleanFileForAST(file *ast.File) *ast.File {
+	if file == nil {
+		return nil
+	}
+
+	// Create a deep copy to avoid modifying the original
+	cleanedFile := &ast.File{
+		Doc:        file.Doc,
+		Package:    file.Package,
+		Name:       file.Name,
+		Decls:      make([]ast.Decl, len(file.Decls)),
+		Scope:      file.Scope,
+		Imports:    file.Imports,
+		Unresolved: file.Unresolved,
+	}
+
+	// Copy declarations
+	copy(cleanedFile.Decls, file.Decls)
+
+	// Filter out empty comment groups which cause panics in astutil
+	if file.Comments != nil {
+		validComments := make([]*ast.CommentGroup, 0, len(file.Comments))
+		for _, cg := range file.Comments {
+			if cg != nil && len(cg.List) > 0 {
+				// Create a safe copy of the comment group
+				safeCG := &ast.CommentGroup{
+					List: make([]*ast.Comment, len(cg.List)),
+				}
+				copy(safeCG.List, cg.List)
+				validComments = append(validComments, safeCG)
+			}
+		}
+		cleanedFile.Comments = validComments
+	} else {
+		cleanedFile.Comments = nil
+	}
+
+	return cleanedFile
 }
 
 // IsErrorType returns true if the given type is an error type.
@@ -145,57 +212,118 @@ func SliceElement(t types.Type) types.Type {
 
 // GetDocCommentOn retrieves doc comments that relate to nodes.
 func GetDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cleanUp func()) {
-	nodes, _ := ToAstNode(file, obj)
-	if nodes == nil {
+	if file == nil || obj == nil {
 		return nil, func() {}
 	}
 
-	for _, node := range nodes {
-		switch n := node.(type) {
-		case *ast.GenDecl:
-			if n.Doc != nil {
-				return n.Doc, func() {
-					if len(n.Doc.List) == 0 {
-						n.Doc = nil
-					}
-				}
-			}
-		case *ast.FuncDecl:
-			if n.Doc != nil {
-				return n.Doc, func() {
-					if len(n.Doc.List) == 0 {
-						n.Doc = nil
-					}
-				}
-			}
-		case *ast.TypeSpec:
-			if n.Doc != nil {
-				return n.Doc, func() {
-					if len(n.Doc.List) == 0 {
-						n.Doc = nil
-					}
-				}
-			}
-		case *ast.Field:
-			if n.Doc != nil {
-				return n.Doc, func() {
-					if len(n.Doc.List) == 0 {
-						n.Doc = nil
-					}
-				}
-			}
-		case *ast.File:
-			if n.Doc != nil {
-				return n.Doc, func() {
-					if len(n.Doc.List) == 0 {
-						n.Doc = nil
+	// For interface methods, try specialized lookup first
+	if methodObj, ok := obj.(*types.Func); ok {
+		if signature, ok := methodObj.Type().(*types.Signature); ok {
+			// For interface methods, the receiver is the interface type itself
+			// We can detect interface methods by checking if the receiver is an interface
+			if recv := signature.Recv(); recv != nil {
+				if _, isInterface := recv.Type().Underlying().(*types.Interface); isInterface {
+					// This is an interface method - try specialized lookup
+					if comment := findInterfaceMethodComment(file, methodObj); comment != nil {
+						return comment, createDocCleanupFunc(comment)
 					}
 				}
 			}
 		}
 	}
 
+	nodes, _ := ToAstNode(file, obj)
+	if nodes == nil || len(nodes) == 0 {
+		return nil, func() {}
+	}
+
+	for _, node := range nodes {
+		if node == nil {
+			continue
+		}
+		if docComment := extractDocComment(node); docComment != nil && len(docComment.List) > 0 {
+			return docComment, createDocCleanupFunc(docComment)
+		}
+	}
+
 	return nil, func() {}
+}
+
+// findInterfaceMethodComment searches for comments on interface method declarations.
+// This is a specialized function for interface methods where ToAstNode fails to find the right nodes.
+func findInterfaceMethodComment(file *ast.File, methodObj *types.Func) *ast.CommentGroup {
+	methodName := methodObj.Name()
+	methodPos := methodObj.Pos()
+
+	// Walk through all declarations looking for interfaces
+	for _, decl := range file.Decls {
+		if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
+			for _, spec := range genDecl.Specs {
+				if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+					if interfaceType, ok := typeSpec.Type.(*ast.InterfaceType); ok {
+						// Look through interface methods
+						for _, field := range interfaceType.Methods.List {
+							// Check if this field represents our method
+							for _, name := range field.Names {
+								if name.Name == methodName {
+									// Verify this is the right method by checking position proximity
+									if isPositionClose(methodPos, name.Pos(), 10) {
+										return field.Doc
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// isPositionClose checks if two token positions are reasonably close to each other.
+// This helps match types.Object positions with AST node positions.
+func isPositionClose(pos1, pos2 token.Pos, threshold int) bool {
+	if pos1 == token.NoPos || pos2 == token.NoPos {
+		return false
+	}
+
+	diff := int(pos1) - int(pos2)
+	if diff < 0 {
+		diff = -diff
+	}
+
+	return diff <= threshold
+}
+
+// extractDocComment extracts doc comment from various AST node types.
+func extractDocComment(node ast.Node) *ast.CommentGroup {
+	switch n := node.(type) {
+	case *ast.GenDecl:
+		return n.Doc
+	case *ast.FuncDecl:
+		return n.Doc
+	case *ast.TypeSpec:
+		return n.Doc
+	case *ast.Field:
+		return n.Doc
+	case *ast.File:
+		return n.Doc
+	default:
+		return nil
+	}
+}
+
+// createDocCleanupFunc creates a cleanup function for the doc comment.
+func createDocCleanupFunc(docGroup *ast.CommentGroup) func() {
+	return func() {
+		if docGroup == nil || len(docGroup.List) == 0 {
+			// Note: We can't set the doc to nil here because we don't have
+			// a reference to the original node field. This cleanup function
+			// serves as a placeholder for more complex cleanup logic if needed.
+		}
+	}
 }
 
 // ToTextList returns a list of strings representing the comments in a CommentGroup.

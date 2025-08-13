@@ -226,7 +226,7 @@ func (fm *ConcreteFormatManager) FormatCode(ctx context.Context, code *Generated
 
 // ApplyGoFormat applies standard Go formatting tools.
 func (fm *ConcreteFormatManager) ApplyGoFormat(source string) (string, error) {
-	var formattedSource = source
+	formattedSource := source
 
 	var err error
 
@@ -329,11 +329,12 @@ func (fm *ConcreteFormatManager) FormatImports(imports *ImportDeclaration) (*Imp
 
 	// Categorize imports
 	for _, imp := range formattedImports.Imports {
-		if imp.Standard {
+		switch {
+		case imp.Standard:
 			formattedImports.StandardLibs = append(formattedImports.StandardLibs, imp)
-		} else if imp.Local {
+		case imp.Local:
 			formattedImports.LocalImports = append(formattedImports.LocalImports, imp)
-		} else {
+		default:
 			formattedImports.ThirdPartyLibs = append(formattedImports.ThirdPartyLibs, imp)
 		}
 	}

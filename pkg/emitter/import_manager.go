@@ -126,11 +126,12 @@ func (im *ConcreteImportManager) AnalyzeImports(ctx context.Context, code *Gener
 
 	// Categorize imports
 	for _, imp := range analysis.RequiredImports {
-		if imp.Standard {
+		switch {
+		case imp.Standard:
 			analysis.StandardLibs = append(analysis.StandardLibs, imp)
-		} else if imp.Local {
+		case imp.Local:
 			analysis.LocalImports = append(analysis.LocalImports, imp)
-		} else {
+		default:
 			analysis.ThirdPartyLibs = append(analysis.ThirdPartyLibs, imp)
 		}
 	}
@@ -184,11 +185,12 @@ func (im *ConcreteImportManager) GenerateImports(ctx context.Context, analysis *
 
 	// Categorize optimized imports
 	for _, imp := range optimizedImports {
-		if imp.Standard {
+		switch {
+		case imp.Standard:
 			declaration.StandardLibs = append(declaration.StandardLibs, imp)
-		} else if imp.Local {
+		case imp.Local:
 			declaration.LocalImports = append(declaration.LocalImports, imp)
-		} else {
+		default:
 			declaration.ThirdPartyLibs = append(declaration.ThirdPartyLibs, imp)
 		}
 	}
@@ -546,63 +548,69 @@ func (im *ConcreteImportManager) generateImportSource(declaration *ImportDeclara
 	}
 
 	if len(declaration.Imports) == 1 {
-		// Single import
-		imp := declaration.Imports[0]
-		if imp.Alias != "" {
-			return fmt.Sprintf("import %s \"%s\"", imp.Alias, imp.Path)
-		}
-
-		return fmt.Sprintf("import \"%s\"", imp.Path)
+		return im.formatSingleImport(declaration.Imports[0])
 	}
 
-	// Multiple imports
+	return im.formatMultipleImports(declaration)
+}
+
+// formatSingleImport formats a single import statement.
+func (im *ConcreteImportManager) formatSingleImport(imp *Import) string {
+	if imp.Alias != "" {
+		return fmt.Sprintf("import %s \"%s\"", imp.Alias, imp.Path)
+	}
+	return fmt.Sprintf("import \"%s\"", imp.Path)
+}
+
+// formatMultipleImports formats multiple imports with proper grouping.
+func (im *ConcreteImportManager) formatMultipleImports(declaration *ImportDeclaration) string {
 	var lines []string
 	lines = append(lines, "import (")
 
-	// Add standard library imports
-	if len(declaration.StandardLibs) > 0 {
-		for _, imp := range declaration.StandardLibs {
-			if imp.Alias != "" {
-				lines = append(lines, fmt.Sprintf("\t%s \"%s\"", imp.Alias, imp.Path))
-			} else {
-				lines = append(lines, fmt.Sprintf("\t\"%s\"", imp.Path))
-			}
-		}
-
-		if len(declaration.ThirdPartyLibs) > 0 || len(declaration.LocalImports) > 0 {
-			lines = append(lines, "")
-		}
-	}
-
-	// Add third-party imports
-	if len(declaration.ThirdPartyLibs) > 0 {
-		for _, imp := range declaration.ThirdPartyLibs {
-			if imp.Alias != "" {
-				lines = append(lines, fmt.Sprintf("\t%s \"%s\"", imp.Alias, imp.Path))
-			} else {
-				lines = append(lines, fmt.Sprintf("\t\"%s\"", imp.Path))
-			}
-		}
-
-		if len(declaration.LocalImports) > 0 {
-			lines = append(lines, "")
-		}
-	}
-
-	// Add local imports
-	if len(declaration.LocalImports) > 0 {
-		for _, imp := range declaration.LocalImports {
-			if imp.Alias != "" {
-				lines = append(lines, fmt.Sprintf("\t%s \"%s\"", imp.Alias, imp.Path))
-			} else {
-				lines = append(lines, fmt.Sprintf("\t\"%s\"", imp.Path))
-			}
-		}
-	}
+	// Add import groups with spacing
+	lines = im.addImportGroup(lines, declaration.StandardLibs, false)
+	lines = im.addImportGroup(lines, declaration.ThirdPartyLibs, im.needsSpacing(declaration, 1))
+	lines = im.addImportGroup(lines, declaration.LocalImports, im.needsSpacing(declaration, 2))
 
 	lines = append(lines, ")")
-
 	return strings.Join(lines, "\n")
+}
+
+// addImportGroup adds a group of imports to the lines with optional spacing.
+func (im *ConcreteImportManager) addImportGroup(lines []string, imports []*Import, addSpacing bool) []string {
+	if len(imports) == 0 {
+		return lines
+	}
+
+	if addSpacing {
+		lines = append(lines, "")
+	}
+
+	for _, imp := range imports {
+		lines = append(lines, im.formatImportLine(imp))
+	}
+
+	return lines
+}
+
+// formatImportLine formats a single import line with proper indentation.
+func (im *ConcreteImportManager) formatImportLine(imp *Import) string {
+	if imp.Alias != "" {
+		return fmt.Sprintf("\t%s \"%s\"", imp.Alias, imp.Path)
+	}
+	return fmt.Sprintf("\t\"%s\"", imp.Path)
+}
+
+// needsSpacing determines if spacing is needed between import groups.
+func (im *ConcreteImportManager) needsSpacing(declaration *ImportDeclaration, groupIndex int) bool {
+	switch groupIndex {
+	case 1: // Third-party after standard
+		return len(declaration.StandardLibs) > 0
+	case 2: // Local after third-party or standard
+		return len(declaration.ThirdPartyLibs) > 0 || len(declaration.StandardLibs) > 0
+	default:
+		return false
+	}
 }
 
 // Default data initialization

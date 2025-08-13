@@ -185,52 +185,74 @@ func (tp *TypeParam) IsValid() bool {
 	}
 
 	// Check for mutually exclusive constraint types
-	constraintCount := 0
+	constraintCount := tp.countActiveConstraints()
 
-	// Special constraints
+	// Validate specific constraint combinations
+	return tp.validateConstraintCombinations() && constraintCount <= 1
+}
+
+// countActiveConstraints counts the number of active constraint types.
+func (tp *TypeParam) countActiveConstraints() int {
+	count := 0
+
 	if tp.IsAny {
-		constraintCount++
-		// IsAny should not coexist with other constraints (including Constraint field)
-		if tp.Constraint != nil || tp.IsComparable || 0 < len(tp.UnionTypes) || tp.Underlying != nil {
-			return false
-		}
+		count++
 	}
 	if tp.IsComparable {
-		constraintCount++
-		// IsComparable should not coexist with other constraints (including Constraint field)
-		if tp.Constraint != nil || 0 < len(tp.UnionTypes) || tp.Underlying != nil {
-			return false
-		}
+		count++
 	}
 	if 0 < len(tp.UnionTypes) {
-		constraintCount++
-		// Union types should not coexist with other constraints (including Constraint field)
-		if tp.Constraint != nil || tp.Underlying != nil {
-			return false
-		}
-		// UnionUnderlying should only be set when UnionTypes is present
-		if tp.UnionUnderlying && len(tp.UnionTypes) == 0 {
-			return false
-		}
+		count++
 	}
 	if tp.Underlying != nil {
-		constraintCount++
-		// Underlying constraint can coexist with Constraint field (which holds the underlying type)
-		// but not with other special constraints
+		count++
+	}
+	if count == 0 && tp.Constraint != nil {
+		count++
 	}
 
-	// Generic Constraint field (for interface constraints or underlying type reference)
-	if constraintCount == 0 && tp.Constraint != nil {
-		constraintCount++
-	}
+	return count
+}
 
-	// UnionUnderlying should only be set with UnionTypes
-	if tp.UnionUnderlying && len(tp.UnionTypes) == 0 {
-		return false
-	}
+// validateConstraintCombinations checks for invalid constraint combinations.
+func (tp *TypeParam) validateConstraintCombinations() bool {
+	return tp.validateAnyConstraint() &&
+		tp.validateComparableConstraint() &&
+		tp.validateUnionConstraint() &&
+		tp.validateUnionUnderlyingConstraint()
+}
 
-	// Should have at most one constraint type
-	return constraintCount <= 1
+// validateAnyConstraint checks if IsAny constraint is valid.
+func (tp *TypeParam) validateAnyConstraint() bool {
+	if !tp.IsAny {
+		return true
+	}
+	// IsAny should not coexist with other constraints
+	return tp.Constraint == nil && !tp.IsComparable && len(tp.UnionTypes) == 0 && tp.Underlying == nil
+}
+
+// validateComparableConstraint checks if IsComparable constraint is valid.
+func (tp *TypeParam) validateComparableConstraint() bool {
+	if !tp.IsComparable {
+		return true
+	}
+	// IsComparable should not coexist with other constraints
+	return tp.Constraint == nil && len(tp.UnionTypes) == 0 && tp.Underlying == nil
+}
+
+// validateUnionConstraint checks if union constraint is valid.
+func (tp *TypeParam) validateUnionConstraint() bool {
+	if len(tp.UnionTypes) == 0 {
+		return true
+	}
+	// Union types should not coexist with other constraints
+	return tp.Constraint == nil && tp.Underlying == nil
+}
+
+// validateUnionUnderlyingConstraint checks if UnionUnderlying flag is valid.
+func (tp *TypeParam) validateUnionUnderlyingConstraint() bool {
+	// UnionUnderlying should only be set when UnionTypes is present
+	return !tp.UnionUnderlying || len(tp.UnionTypes) > 0
 }
 
 // GetConstraintType returns the type of constraint this type parameter has.

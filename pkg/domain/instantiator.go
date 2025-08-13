@@ -279,6 +279,29 @@ func (ti *TypeInstantiator) InstantiateInterfaceWithContext(
 ) (*InstantiatedInterface, error) {
 	startTime := time.Now()
 
+	// Validate inputs and create type argument mapping
+	typeArgMap, err := ti.validateAndCreateTypeArgMapping(genericInterface, typeArgs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate cache key for this instantiation
+	typeSignature := ti.generateTypeSignature(genericInterface, typeArgMap)
+
+	// Check cache first
+	if cached := ti.checkInstantiationCache(genericInterface, typeSignature); cached != nil {
+		return cached, nil
+	}
+
+	// Perform the main instantiation with recursion handling
+	return ti.performInstantiation(ctx, genericInterface, typeArgs, typeArgMap, typeSignature, startTime)
+}
+
+// validateAndCreateTypeArgMapping validates inputs and creates type argument mapping.
+func (ti *TypeInstantiator) validateAndCreateTypeArgMapping(
+	genericInterface *GenericInterface,
+	typeArgs []Type,
+) (map[string]Type, error) {
 	if genericInterface == nil {
 		return nil, ErrGenericInterfaceNil
 	}
@@ -304,26 +327,44 @@ func (ti *TypeInstantiator) InstantiateInterfaceWithContext(
 		typeArgMap[genericInterface.TypeParams[i].Name] = typeArg
 	}
 
-	// Generate cache key for this instantiation
-	typeSignature := ti.generateTypeSignature(genericInterface, typeArgMap)
+	return typeArgMap, nil
+}
 
-	// Check cache first
-	if ti.cache != nil {
-		if cached, found := ti.cache[typeSignature]; found {
-			ti.cacheHits++
-			ti.totalInstantiations++
-			ti.logger.Debug("cache hit for interface instantiation",
-				zap.String("interface", genericInterface.Name),
-				zap.String("signature", typeSignature))
-
-			// Create a copy with updated cache hit status
-			result := *cached
-			result.CacheHit = true
-			return &result, nil
-		}
-		ti.cacheMisses++
+// checkInstantiationCache checks cache and returns cached result if found.
+func (ti *TypeInstantiator) checkInstantiationCache(
+	genericInterface *GenericInterface,
+	typeSignature string,
+) *InstantiatedInterface {
+	if ti.cache == nil {
+		return nil
 	}
 
+	if cached, found := ti.cache[typeSignature]; found {
+		ti.cacheHits++
+		ti.totalInstantiations++
+		ti.logger.Debug("cache hit for interface instantiation",
+			zap.String("interface", genericInterface.Name),
+			zap.String("signature", typeSignature))
+
+		// Create a copy with updated cache hit status
+		result := *cached
+		result.CacheHit = true
+		return &result
+	}
+
+	ti.cacheMisses++
+	return nil
+}
+
+// performInstantiation handles the main instantiation logic with recursion management.
+func (ti *TypeInstantiator) performInstantiation(
+	ctx context.Context,
+	genericInterface *GenericInterface,
+	typeArgs []Type,
+	typeArgMap map[string]Type,
+	typeSignature string,
+	startTime time.Time,
+) (*InstantiatedInterface, error) {
 	ti.logger.Debug("instantiating generic interface",
 		zap.String("interface", genericInterface.Name),
 		zap.Int("type_params", len(genericInterface.TypeParams)),
@@ -335,12 +376,10 @@ func (ti *TypeInstantiator) InstantiateInterfaceWithContext(
 		return nil, err
 	}
 
-	// Add to recursion stack
+	// Manage recursion stack
 	ti.instantiationStack = append(ti.instantiationStack, typeSignature)
 	ti.recursionDepth++
-
 	defer func() {
-		// Remove from recursion stack
 		if 0 < len(ti.instantiationStack) {
 			ti.instantiationStack = ti.instantiationStack[:len(ti.instantiationStack)-1]
 		}
@@ -349,7 +388,6 @@ func (ti *TypeInstantiator) InstantiateInterfaceWithContext(
 
 	// Validate constraints
 	validationResult := ti.validateConstraints(genericInterface.TypeParams, typeArgMap)
-
 	if !validationResult.Valid {
 		ti.logger.Error("constraint violations detected",
 			zap.String("interface", genericInterface.Name),
@@ -366,6 +404,19 @@ func (ti *TypeInstantiator) InstantiateInterfaceWithContext(
 		return nil, fmt.Errorf("%w: %s", ErrInstantiationFailed, err.Error())
 	}
 
+	// Create and return the result
+	return ti.createInstantiatedResult(genericInterface, typeArgMap, concreteType, typeSignature, startTime, validationResult)
+}
+
+// createInstantiatedResult creates the final InstantiatedInterface result.
+func (ti *TypeInstantiator) createInstantiatedResult(
+	genericInterface *GenericInterface,
+	typeArgMap map[string]Type,
+	concreteType Type,
+	typeSignature string,
+	startTime time.Time,
+	validationResult *ValidationResult,
+) (*InstantiatedInterface, error) {
 	// Create the instantiated interface result
 	instantiated, err := NewInstantiatedInterface(
 		ti.createInterfaceType(genericInterface),

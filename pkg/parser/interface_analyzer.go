@@ -147,6 +147,8 @@ var (
 func (p *ASTParser) isConvergenInterface(file *ast.File, obj types.Object) bool {
 	// Check by name first
 	if obj.Name() == DefaultInterfaceName {
+		p.logger.Debug("found convergen interface by name",
+			zap.String("interface_name", obj.Name()))
 		return true
 	}
 
@@ -158,6 +160,9 @@ func (p *ASTParser) isConvergenInterface(file *ast.File, obj types.Object) bool 
 
 	for _, comment := range docComment.List {
 		if reConvergenInterface.MatchString(comment.Text) {
+			p.logger.Debug("found convergen interface by annotation",
+				zap.String("interface_name", obj.Name()),
+				zap.String("comment", comment.Text))
 			return true
 		}
 	}
@@ -196,6 +201,15 @@ func (p *ASTParser) analyzeInterface(ctx context.Context, _ *packages.Package, f
 		if method.Exported() {
 			methods = append(methods, method)
 		}
+	}
+
+	// Validate that the interface has methods to generate
+	if len(methods) == 0 {
+		p.logger.Error("empty interface detected",
+			zap.String("interface_name", obj.Name()),
+			zap.Int("total_methods", iface.NumMethods()),
+			zap.Int("exported_methods", len(methods)))
+		return nil, fmt.Errorf("empty interface %s has no methods to generate", obj.Name())
 	}
 
 	// Create interface info using constructor
@@ -566,8 +580,13 @@ func (p *ASTParser) applyInterfaceBooleanFlags(options *domain.InterfaceOptions,
 	case "reverse":
 		options.AllowReverse = true
 		return true
+	case "struct-literal":
+		options.ForceStructLit = true
+		options.NoStructLiteral = false
+		return true
 	case "no-struct-literal":
 		options.NoStructLiteral = true
+		options.ForceStructLit = false
 		return true
 	default:
 		return false

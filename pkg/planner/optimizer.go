@@ -165,13 +165,14 @@ func (po *ConcretePlanOptimizer) optimizeBatchSizes(batches []*ExecutionBatch) {
 		mappingCount := len(batch.Mappings)
 
 		// Adjust concurrency level based on batch size
-		if mappingCount < po.config.MinBatchSize {
+		switch {
+		case mappingCount < po.config.MinBatchSize:
 			// Small batch - reduce concurrency to avoid overhead
 			batch.ConcurrencyLevel = 1
-		} else if po.config.MaxBatchSize < mappingCount {
+		case po.config.MaxBatchSize < mappingCount:
 			// Large batch - limit concurrency to prevent resource exhaustion
 			batch.ConcurrencyLevel = po.config.MaxConcurrentWorkers / 2
-		} else {
+		default:
 			// Optimal size - use calculated concurrency
 			batch.ConcurrencyLevel = min(mappingCount, po.config.MaxConcurrentWorkers)
 		}
@@ -288,11 +289,12 @@ func (po *ConcretePlanOptimizer) optimizeBatchConcurrency(batch *ExecutionBatch)
 	// Optimize concurrency based on batch characteristics
 	mappingCount := len(batch.Mappings)
 
-	if mappingCount <= 2 {
+	switch {
+	case mappingCount <= 2:
 		batch.ConcurrencyLevel = 1 // No benefit from concurrency
-	} else if mappingCount <= 10 {
+	case mappingCount <= 10:
 		batch.ConcurrencyLevel = min(mappingCount, 4) // Limited concurrency
-	} else {
+	default:
 		batch.ConcurrencyLevel = min(mappingCount, po.config.MaxConcurrentWorkers)
 	}
 }

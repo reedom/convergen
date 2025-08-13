@@ -41,8 +41,10 @@ func (p *Parser) parseMethodsConcurrent(intf *intfEntry) ([]*model.MethodEntry, 
 	iface := intf.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
 
+	// Check for empty interfaces - they should be rejected
 	if mset.Len() == 0 {
-		return []*model.MethodEntry{}, nil
+		return nil, fmt.Errorf("%v: interface %s has no methods - expected declaration",
+			p.fset.Position(intf.intf.Pos()), intf.intf.Name())
 	}
 
 	// Create logger for concurrent processing
@@ -67,6 +69,13 @@ func (p *Parser) parseMethodsConcurrent(intf *intfEntry) ([]*model.MethodEntry, 
 func (p *Parser) parseMethodsSequential(intf *intfEntry) ([]*model.MethodEntry, error) {
 	iface := intf.intf.Type().Underlying().(*types.Interface)
 	mset := types.NewMethodSet(iface)
+
+	// Check for empty interfaces - they should be rejected
+	if mset.Len() == 0 {
+		return nil, fmt.Errorf("%v: interface %s has no methods - expected declaration",
+			p.fset.Position(intf.intf.Pos()), intf.intf.Name())
+	}
+
 	methods := make([]*model.MethodEntry, 0)
 
 	for i := 0; i < mset.Len(); i++ {

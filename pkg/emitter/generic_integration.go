@@ -13,10 +13,8 @@ import (
 	"github.com/reedom/convergen/v9/pkg/domain"
 )
 
-var (
-	// ErrInstantiatedInterfaceNil is returned when an instantiated interface is nil.
-	ErrInstantiatedInterfaceNil = errors.New("instantiated interface cannot be nil")
-)
+// ErrInstantiatedInterfaceNil is returned when an instantiated interface is nil.
+var ErrInstantiatedInterfaceNil = errors.New("instantiated interface cannot be nil")
 
 // GenericTemplateEngine interface for template execution.
 type GenericTemplateEngine interface {

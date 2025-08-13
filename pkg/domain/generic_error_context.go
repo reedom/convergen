@@ -196,32 +196,21 @@ func (gee *GenericErrorEnhancer) EnhanceError(
 func (gee *GenericErrorEnhancer) generateErrorCode(originalError error, sourceType, targetType Type) string {
 	errorMessage := strings.ToLower(originalError.Error())
 
-	// Generic-specific error codes
-	if sourceType != nil && sourceType.Generic() || targetType != nil && targetType.Generic() {
+	// Check if we're dealing with generic types
+	isGenericType := (sourceType != nil && sourceType.Generic()) || (targetType != nil && targetType.Generic())
+	if isGenericType {
+		// Handle constraint-related errors
 		if strings.Contains(errorMessage, "constraint") {
-			if strings.Contains(errorMessage, "violation") {
-				return "GEN001" // Generic constraint violation
-			}
-			if strings.Contains(errorMessage, "comparable") {
-				return "GEN002" // Comparable constraint violation
-			}
-			if strings.Contains(errorMessage, "union") {
-				return "GEN003" // Union constraint violation
-			}
-			if strings.Contains(errorMessage, "underlying") {
-				return "GEN004" // Underlying type constraint violation
-			}
-			return "GEN005" // General constraint error
+			return gee.getConstraintErrorCode(errorMessage)
 		}
 
+		// Handle other generic-specific errors
 		if strings.Contains(errorMessage, "instantiation") {
 			return "GEN010" // Type instantiation error
 		}
-
 		if strings.Contains(errorMessage, "substitution") {
 			return "GEN020" // Type substitution error
 		}
-
 		if strings.Contains(errorMessage, "parameter") {
 			return "GEN030" // Type parameter error
 		}
@@ -239,6 +228,24 @@ func (gee *GenericErrorEnhancer) generateErrorCode(originalError error, sourceTy
 	}
 
 	return "ERR000" // General error
+}
+
+// getConstraintErrorCode generates error codes for constraint-specific errors.
+func (gee *GenericErrorEnhancer) getConstraintErrorCode(errorMessage string) string {
+	switch {
+	case strings.Contains(errorMessage, "comparable"):
+		return "CONS001" // Comparable constraint violation
+	case strings.Contains(errorMessage, "union"):
+		return "CONS010" // Union constraint violation
+	case strings.Contains(errorMessage, "underlying"):
+		return "CONS020" // Underlying constraint violation
+	case strings.Contains(errorMessage, "interface"):
+		return "CONS030" // Interface constraint violation
+	case strings.Contains(errorMessage, "type parameter"):
+		return "CONS040" // Type parameter constraint violation
+	default:
+		return "CONS100" // General constraint violation
+	}
 }
 
 // categorizeError categorizes the error for better organization.
@@ -299,11 +306,12 @@ func (gee *GenericErrorEnhancer) createGenericContext(sourceType, targetType Typ
 	if strings.Contains(errorMessage, "constraint violation") {
 		context.ConstraintViolationType = constraintViolation
 		// Try to extract specific details from error message
-		if strings.Contains(errorMessage, "comparable") {
+		switch {
+		case strings.Contains(errorMessage, "comparable"):
 			context.ExpectedConstraint = comparableConstraint
-		} else if strings.Contains(errorMessage, "union") {
+		case strings.Contains(errorMessage, "union"):
 			context.ExpectedConstraint = unionConstraint
-		} else if strings.Contains(errorMessage, "underlying") {
+		case strings.Contains(errorMessage, "underlying"):
 			context.ExpectedConstraint = underlyingConstraint
 		}
 	}
