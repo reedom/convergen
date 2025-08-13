@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/types"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -33,8 +34,10 @@ const (
 // It supports parsing all Go generic constraint syntax including unions,
 // underlying types, and interface constraints.
 type ConstraintParser struct {
-	typeResolver *TypeResolver
-	logger       *zap.Logger
+	typeResolver       *TypeResolver
+	logger             *zap.Logger
+	visitedConstraints map[string]bool // Track visited constraints to detect cycles
+	mu                 sync.RWMutex    // Protects visitedConstraints map from concurrent access
 }
 
 // ParsedConstraint represents a fully parsed type constraint.
@@ -65,8 +68,9 @@ type ParsedConstraint struct {
 // NewConstraintParser creates a new constraint parser with the given type resolver and logger.
 func NewConstraintParser(typeResolver *TypeResolver, logger *zap.Logger) *ConstraintParser {
 	return &ConstraintParser{
-		typeResolver: typeResolver,
-		logger:       logger,
+		typeResolver:       typeResolver,
+		logger:             logger,
+		visitedConstraints: make(map[string]bool),
 	}
 }
 
@@ -90,6 +94,41 @@ func (cp *ConstraintParser) ParseConstraint(
 			Valid:          true,
 		}, nil
 	}
+
+	// Check for circular constraint dependencies
+	constraintKey := constraint.String()
+
+	// Read lock for checking if constraint is already visited
+	cp.mu.RLock()
+	isVisited := cp.visitedConstraints[constraintKey]
+	cp.mu.RUnlock()
+
+	if isVisited {
+		cp.logger.Warn("circular constraint detected, treating as 'any'",
+			zap.String("constraint", constraintKey))
+
+		// Return 'any' constraint instead of failing for graceful handling
+		return &ParsedConstraint{
+			Type:           nil,
+			IsAny:          true,
+			IsComparable:   false,
+			ConstraintType: anyConstraint,
+			ParseDuration:  time.Since(startTime),
+			Valid:          true,
+		}, nil
+	}
+
+	// Write lock for marking constraint as visited
+	cp.mu.Lock()
+	cp.visitedConstraints[constraintKey] = true
+	cp.mu.Unlock()
+
+	defer func() {
+		// Write lock for clearing from visited constraints when done processing
+		cp.mu.Lock()
+		delete(cp.visitedConstraints, constraintKey)
+		cp.mu.Unlock()
+	}()
 
 	cp.logger.Debug("parsing constraint",
 		zap.String("constraint", constraint.String()),
