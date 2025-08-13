@@ -68,7 +68,6 @@ func TestCompositeLiteralStrategy(t *testing.T) {
 
 	ctx := context.Background()
 	code, err := strategy.GenerateCode(ctx, simpleMethod, templateData)
-
 	if err != nil {
 		t.Fatalf("Code generation failed: %v", err)
 	}
@@ -233,7 +232,6 @@ func TestAssignmentBlockStrategy(t *testing.T) {
 
 	ctx := context.Background()
 	code, err := strategy.GenerateCode(ctx, complexMethod, templateData)
-
 	if err != nil {
 		t.Fatalf("Assignment block code generation failed: %v", err)
 	}
@@ -337,7 +335,6 @@ func TestMixedApproachStrategy(t *testing.T) {
 
 	ctx := context.Background()
 	code, err := strategy.GenerateCode(ctx, mixedMethod, templateData)
-
 	if err != nil {
 		t.Fatalf("Mixed approach code generation failed: %v", err)
 	}

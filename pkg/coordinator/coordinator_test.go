@@ -163,7 +163,6 @@ func TestShutdownWithTimeout(t *testing.T) {
 	defer cancel()
 
 	err := coord.Shutdown(ctx)
-
 	// Should complete even with short timeout
 	if err != nil {
 		t.Logf("Shutdown completed with error (expected due to short timeout): %v", err)

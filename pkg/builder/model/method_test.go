@@ -48,7 +48,7 @@ func main() {}`
 	_, _, pkg := loadSrc(t, src)
 
 	scope := pkg.Scope()
-	//imports := util.NewImportNames(scope)
+	// imports := util.NewImportNames(scope)
 
 	obj := scope.Lookup("MyType")
 	method1, _, _ := types.LookupFieldOrMethod(obj.Type(), true, pkg, "Test1")

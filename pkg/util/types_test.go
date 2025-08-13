@@ -339,8 +339,8 @@ func TestToTextList(t *testing.T) {
 	assert.Equal(t, []string{"// comment 1\n", "// comment 2\n"}, actual)
 }
 
-//func TestWalkStruct(t *testing.T) {
-//	src := `
+// func TestWalkStruct(t *testing.T) {
+// 	src := `
 //package main
 //
 //type Model struct {

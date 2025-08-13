@@ -36,7 +36,6 @@ func TestResourcePoolGetWorkerPool(t *testing.T) {
 
 	ctx := context.Background()
 	workerPool, err := pool.GetWorkerPool(ctx, 3)
-
 	if err != nil {
 		t.Fatalf("GetWorkerPool failed: %v", err)
 	}

@@ -74,7 +74,6 @@ func TestEmitterIntegration_CompleteWorkflow(t *testing.T) {
 
 	// Execute complete workflow
 	generatedCode, err := eventAwareEmitter.GenerateCode(ctx, results)
-
 	if err != nil {
 		t.Fatalf("Complete workflow failed: %v", err)
 	}
@@ -290,7 +289,6 @@ func TestEmitterIntegration_OptimizationPipeline(t *testing.T) {
 
 	ctx := context.Background()
 	generatedCode, err := emitter.GenerateCode(ctx, results)
-
 	if err != nil {
 		t.Fatalf("Code generation with optimization failed: %v", err)
 	}
@@ -306,7 +304,6 @@ func TestEmitterIntegration_OptimizationPipeline(t *testing.T) {
 
 	// Test standalone optimization
 	optimizedCode, err := emitter.OptimizeOutput(ctx, generatedCode)
-
 	if err != nil {
 		t.Fatalf("Standalone optimization failed: %v", err)
 	}

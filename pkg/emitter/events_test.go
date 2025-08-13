@@ -272,7 +272,6 @@ func TestEventAwareEmitter_GenerateCode(t *testing.T) {
 
 	ctx := context.Background()
 	code, err := eventAwareEmitter.GenerateCode(ctx, results)
-
 	if err != nil {
 		t.Fatalf("EventAwareEmitter GenerateCode failed: %v", err)
 	}
@@ -312,7 +311,6 @@ func TestEventAwareEmitter_GenerateMethod(t *testing.T) {
 
 	ctx := context.Background()
 	methodCode, err := eventAwareEmitter.GenerateMethod(ctx, method)
-
 	if err != nil {
 		t.Fatalf("EventAwareEmitter GenerateMethod failed: %v", err)
 	}

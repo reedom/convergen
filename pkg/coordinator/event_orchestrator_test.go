@@ -71,7 +71,6 @@ func TestEventOrchestratorStartPipeline(t *testing.T) {
 
 	ctx := context.Background()
 	err := orchestrator.StartPipeline(ctx, input)
-
 	if err != nil {
 		t.Fatalf("StartPipeline failed: %v", err)
 	}
@@ -181,7 +180,6 @@ func TestEventOrchestratorHandleEvent(t *testing.T) {
 
 	ctx := context.Background()
 	err := orchestrator.HandleEvent(ctx, testEvent)
-
 	if err != nil {
 		t.Fatalf("HandleEvent failed: %v", err)
 	}
@@ -329,7 +327,6 @@ func TestEventOrchestratorParseCompleteHandler(t *testing.T) {
 
 	ctx := context.Background()
 	err := orchestrator.handleParseComplete(ctx, event)
-
 	if err != nil {
 		t.Fatalf("handleParseComplete failed: %v", err)
 	}
@@ -393,7 +390,6 @@ func TestEventOrchestratorComponentStatusHandler(t *testing.T) {
 
 	ctx := context.Background()
 	err := orchestrator.handleComponentStatusChanged(ctx, event)
-
 	if err != nil {
 		t.Fatalf("handleComponentStatusChanged failed: %v", err)
 	}

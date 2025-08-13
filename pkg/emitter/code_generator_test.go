@@ -40,7 +40,6 @@ func TestCodeGenerator_GenerateMethodCode(t *testing.T) {
 
 	ctx := context.Background()
 	methodCode, err := generator.GenerateMethodCode(ctx, method)
-
 	if err != nil {
 		t.Fatalf("GenerateMethodCode failed: %v", err)
 	}
@@ -86,7 +85,6 @@ func TestCodeGenerator_GenerateFieldCode(t *testing.T) {
 
 	ctx := context.Background()
 	fieldCode, err := generator.GenerateFieldCode(ctx, directField)
-
 	if err != nil {
 		t.Fatalf("GenerateFieldCode failed: %v", err)
 	}
@@ -109,7 +107,6 @@ func TestCodeGenerator_GenerateFieldCode(t *testing.T) {
 	}
 
 	fieldCode2, err := generator.GenerateFieldCode(ctx, converterField)
-
 	if err != nil {
 		t.Fatalf("GenerateFieldCode for converter failed: %v", err)
 	}
@@ -129,7 +126,6 @@ func TestCodeGenerator_GenerateFieldCode(t *testing.T) {
 	}
 
 	fieldCode3, err := generator.GenerateFieldCode(ctx, errorField)
-
 	if err != nil {
 		t.Fatalf("GenerateFieldCode for error field failed: %v", err)
 	}
@@ -169,7 +165,6 @@ func TestCodeGenerator_GenerateErrorHandling(t *testing.T) {
 
 	ctx := context.Background()
 	errorCode, err := generator.GenerateErrorHandling(ctx, errors)
-
 	if err != nil {
 		t.Fatalf("GenerateErrorHandling failed: %v", err)
 	}
@@ -215,7 +210,6 @@ func TestCodeGenerator_Shutdown(t *testing.T) {
 	defer cancel()
 
 	err := generator.Shutdown(ctx)
-
 	if err != nil {
 		t.Fatalf("Shutdown failed: %v", err)
 	}
@@ -341,7 +335,6 @@ func TestCodeGenerator_ComplexScenarios(t *testing.T) {
 
 	ctx := context.Background()
 	methodCode, err := generator.GenerateMethodCode(ctx, method)
-
 	if err != nil {
 		t.Fatalf("Complex method generation failed: %v", err)
 	}
@@ -402,7 +395,6 @@ func TestCodeGenerator_StrategySelection(t *testing.T) {
 
 	ctx := context.Background()
 	methodCode, err := generator.GenerateMethodCode(ctx, simpleMethod)
-
 	if err != nil {
 		t.Fatalf("Simple method generation failed: %v", err)
 	}
@@ -441,7 +433,6 @@ func TestCodeGenerator_StrategySelection(t *testing.T) {
 	}
 
 	methodCode2, err := generator.GenerateMethodCode(ctx, complexMethod)
-
 	if err != nil {
 		t.Fatalf("Complex method generation failed: %v", err)
 	}

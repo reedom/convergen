@@ -90,7 +90,6 @@ func TestRecoveryManager_ExecuteWithRecovery(t *testing.T) {
 			operation,
 			WithFallback(fallback),
 		)
-
 		if err != nil {
 			t.Errorf("ExecuteWithRecovery() error = %v, want nil", err)
 		}
@@ -200,7 +199,6 @@ func TestRecoveryManager_WithOptions(t *testing.T) {
 			operation,
 			WithSkipping(),
 		)
-
 		if err != nil {
 			t.Errorf("ExecuteWithRecovery() error = %v, want nil (should skip warning)", err)
 		}
@@ -268,7 +266,6 @@ func TestCircuitBreaker(t *testing.T) {
 		err := cb.Execute(func() error {
 			return nil
 		})
-
 		if err != nil {
 			t.Errorf("Execute() error = %v, want nil", err)
 		}

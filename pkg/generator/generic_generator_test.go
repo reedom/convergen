@@ -122,7 +122,7 @@ func TestGenerateGenericImplementation(t *testing.T) {
 			result, err := generator.GenerateGenericImplementation(ctx, tt.instantiatedInterface)
 
 			if tt.expectError {
-				checkExpectedError(t, err, tt.expectedErrorType)
+				checkExpectedErrorType(t, err, tt.expectedErrorType)
 			} else {
 				checkSuccessResult(t, err, result, tt.expectedMethodsContains)
 			}
@@ -292,47 +292,13 @@ func TestSubstituteTypeInContext(t *testing.T) {
 			result, err := generator.substituteTypeInContext(tt.typ, tt.substitutions)
 
 			if tt.expectError {
-				if err == nil {
-					t.Error("expected error, got nil")
-				}
-			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-
-				if tt.expectedType != nil && result != tt.expectedType {
-					t.Errorf("expected type %v, got %v", tt.expectedType, result)
-				}
-
-				if tt.expectedName != "" {
-					if result == nil {
-						t.Error("expected non-nil result")
-					} else {
-						// For composite types, check the element type
-						switch result.Kind() {
-						case domain.KindSlice:
-							if sliceType, ok := result.(*domain.SliceType); ok {
-								if sliceType.Elem().Name() != tt.expectedName {
-									t.Errorf("expected element type name %s, got %s",
-										tt.expectedName, sliceType.Elem().Name())
-								}
-							}
-						case domain.KindPointer:
-							if pointerType, ok := result.(*domain.PointerType); ok {
-								if pointerType.Elem().Name() != tt.expectedName {
-									t.Errorf("expected element type name %s, got %s",
-										tt.expectedName, pointerType.Elem().Name())
-								}
-							}
-						default:
-							if result.Name() != tt.expectedName {
-								t.Errorf("expected type name %s, got %s",
-									tt.expectedName, result.Name())
-							}
-						}
-					}
-				}
+				checkExpectedError(t, err)
+				return
 			}
+
+			checkUnexpectedError(t, err)
+			checkExpectedType(t, result, tt.expectedType)
+			checkExpectedName(t, result, tt.expectedName)
 		})
 	}
 }
@@ -676,7 +642,14 @@ func TestGenericTemplateSystemIntegration(t *testing.T) {
 }
 
 // checkExpectedError validates that an expected error occurred.
-func checkExpectedError(t *testing.T, err error, expectedErrorType error) {
+func checkExpectedError(t *testing.T, err error) {
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+}
+
+// checkExpectedErrorType validates that an expected error occurred with specific type.
+func checkExpectedErrorType(t *testing.T, err error, expectedErrorType error) {
 	if err == nil {
 		t.Error("expected error, got nil")
 	}
@@ -697,4 +670,46 @@ func checkSuccessResult(t *testing.T, err error, result, expectedMethodsContains
 			t.Error("expected non-empty result")
 		}
 	}
+}
+
+func checkUnexpectedError(t *testing.T, err error) {
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func checkExpectedType(t *testing.T, result, expectedType domain.Type) {
+	if expectedType != nil && result != expectedType {
+		t.Errorf("expected type %v, got %v", expectedType, result)
+	}
+}
+
+func checkExpectedName(t *testing.T, result domain.Type, expectedName string) {
+	if expectedName == "" {
+		return
+	}
+
+	if result == nil {
+		t.Error("expected non-nil result")
+		return
+	}
+
+	actualName := getTypeName(result, expectedName)
+	if actualName != expectedName {
+		t.Errorf("expected type name %s, got %s", expectedName, actualName)
+	}
+}
+
+func getTypeName(result domain.Type, expectedName string) string {
+	switch result.Kind() {
+	case domain.KindSlice:
+		if sliceType, ok := result.(*domain.SliceType); ok {
+			return sliceType.Elem().Name()
+		}
+	case domain.KindPointer:
+		if pointerType, ok := result.(*domain.PointerType); ok {
+			return pointerType.Elem().Name()
+		}
+	}
+	return result.Name()
 }

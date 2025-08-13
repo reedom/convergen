@@ -65,7 +65,6 @@ func TestComponentManagerInitialize(t *testing.T) {
 
 	ctx := context.Background()
 	err := mgr.Initialize(ctx, config)
-
 	if err != nil {
 		t.Fatalf("Initialize failed: %v", err)
 	}
@@ -273,7 +272,6 @@ func TestComponentManagerShutdownNotInitialized(t *testing.T) {
 
 	ctx := context.Background()
 	err := mgr.Shutdown(ctx)
-
 	// Should not error if not initialized
 	if err != nil {
 		t.Errorf("Shutdown of uninitialized manager failed: %v", err)

@@ -99,7 +99,6 @@ func TestEmitter_GenerateCode(t *testing.T) {
 
 	ctx := context.Background()
 	code, err := emitter.GenerateCode(ctx, results)
-
 	if err != nil {
 		t.Fatalf("GenerateCode failed: %v", err)
 	}
@@ -147,7 +146,6 @@ func TestEmitter_GenerateMethod(t *testing.T) {
 
 	ctx := context.Background()
 	methodCode, err := emitter.GenerateMethod(ctx, method)
-
 	if err != nil {
 		t.Fatalf("GenerateMethod failed: %v", err)
 	}
@@ -191,7 +189,6 @@ func TestEmitter_OptimizeOutput(t *testing.T) {
 
 	ctx := context.Background()
 	optimized, err := emitter.OptimizeOutput(ctx, code)
-
 	if err != nil {
 		t.Fatalf("OptimizeOutput failed: %v", err)
 	}
@@ -237,7 +234,6 @@ func TestEmitter_Shutdown(t *testing.T) {
 	defer cancel()
 
 	err := emitter.Shutdown(ctx)
-
 	if err != nil {
 		t.Fatalf("Shutdown failed: %v", err)
 	}
@@ -324,7 +320,6 @@ func TestEmitter_ConcurrentGeneration(t *testing.T) {
 
 	ctx := context.Background()
 	code, err := emitter.GenerateCode(ctx, results)
-
 	if err != nil {
 		t.Fatalf("Concurrent generation failed: %v", err)
 	}
@@ -407,7 +402,6 @@ func TestEmitter_ComplexFieldHandling(t *testing.T) {
 
 	ctx := context.Background()
 	methodCode, err := emitter.GenerateMethod(ctx, method)
-
 	if err != nil {
 		t.Fatalf("Complex method generation failed: %v", err)
 	}
