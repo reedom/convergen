@@ -217,23 +217,12 @@ func GetDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cl
 	}
 
 	// For interface methods, try specialized lookup first
-	if methodObj, ok := obj.(*types.Func); ok {
-		if signature, ok := methodObj.Type().(*types.Signature); ok {
-			// For interface methods, the receiver is the interface type itself
-			// We can detect interface methods by checking if the receiver is an interface
-			if recv := signature.Recv(); recv != nil {
-				if _, isInterface := recv.Type().Underlying().(*types.Interface); isInterface {
-					// This is an interface method - try specialized lookup
-					if comment := findInterfaceMethodComment(file, methodObj); comment != nil {
-						return comment, createDocCleanupFunc(comment)
-					}
-				}
-			}
-		}
+	if comment := tryInterfaceMethodComment(file, obj); comment != nil {
+		return comment, createDocCleanupFunc(comment)
 	}
 
 	nodes, _ := ToAstNode(file, obj)
-	if nodes == nil || len(nodes) == 0 {
+	if len(nodes) == 0 {
 		return nil, func() {}
 	}
 
@@ -249,33 +238,97 @@ func GetDocCommentOn(file *ast.File, obj types.Object) (cg *ast.CommentGroup, cl
 	return nil, func() {}
 }
 
+// tryInterfaceMethodComment tries to find interface method comments using specialized lookup.
+// Returns nil if not an interface method or no comment found.
+func tryInterfaceMethodComment(file *ast.File, obj types.Object) *ast.CommentGroup {
+	methodObj, ok := obj.(*types.Func)
+	if !ok {
+		return nil
+	}
+
+	signature, ok := methodObj.Type().(*types.Signature)
+	if !ok {
+		return nil
+	}
+
+	// For interface methods, the receiver is the interface type itself
+	// We can detect interface methods by checking if the receiver is an interface
+	recv := signature.Recv()
+	if recv == nil {
+		return nil
+	}
+
+	_, isInterface := recv.Type().Underlying().(*types.Interface)
+	if !isInterface {
+		return nil
+	}
+
+	// This is an interface method - try specialized lookup
+	return findInterfaceMethodComment(file, methodObj)
+}
+
 // findInterfaceMethodComment searches for comments on interface method declarations.
 // This is a specialized function for interface methods where ToAstNode fails to find the right nodes.
 func findInterfaceMethodComment(file *ast.File, methodObj *types.Func) *ast.CommentGroup {
 	methodName := methodObj.Name()
 	methodPos := methodObj.Pos()
 
-	// Walk through all declarations looking for interfaces
 	for _, decl := range file.Decls {
-		if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
-			for _, spec := range genDecl.Specs {
-				if typeSpec, ok := spec.(*ast.TypeSpec); ok {
-					if interfaceType, ok := typeSpec.Type.(*ast.InterfaceType); ok {
-						// Look through interface methods
-						for _, field := range interfaceType.Methods.List {
-							// Check if this field represents our method
-							for _, name := range field.Names {
-								if name.Name == methodName {
-									// Verify this is the right method by checking position proximity
-									if isPositionClose(methodPos, name.Pos(), 10) {
-										return field.Doc
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+		if comment := findMethodInDeclaration(decl, methodName, methodPos); comment != nil {
+			return comment
+		}
+	}
+
+	return nil
+}
+
+// findMethodInDeclaration searches for a method within a single declaration.
+func findMethodInDeclaration(decl ast.Decl, methodName string, methodPos token.Pos) *ast.CommentGroup {
+	genDecl, ok := decl.(*ast.GenDecl)
+	if !ok || genDecl.Tok != token.TYPE {
+		return nil
+	}
+
+	for _, spec := range genDecl.Specs {
+		if comment := findMethodInTypeSpec(spec, methodName, methodPos); comment != nil {
+			return comment
+		}
+	}
+
+	return nil
+}
+
+// findMethodInTypeSpec searches for a method within a type specification.
+func findMethodInTypeSpec(spec ast.Spec, methodName string, methodPos token.Pos) *ast.CommentGroup {
+	typeSpec, ok := spec.(*ast.TypeSpec)
+	if !ok {
+		return nil
+	}
+
+	interfaceType, ok := typeSpec.Type.(*ast.InterfaceType)
+	if !ok {
+		return nil
+	}
+
+	return findMethodInInterface(interfaceType, methodName, methodPos)
+}
+
+// findMethodInInterface searches for a method within an interface type.
+func findMethodInInterface(interfaceType *ast.InterfaceType, methodName string, methodPos token.Pos) *ast.CommentGroup {
+	for _, field := range interfaceType.Methods.List {
+		if comment := findMethodInField(field, methodName, methodPos); comment != nil {
+			return comment
+		}
+	}
+
+	return nil
+}
+
+// findMethodInField checks if a field contains the target method.
+func findMethodInField(field *ast.Field, methodName string, methodPos token.Pos) *ast.CommentGroup {
+	for _, name := range field.Names {
+		if name.Name == methodName && isPositionClose(methodPos, name.Pos(), 10) {
+			return field.Doc
 		}
 	}
 
@@ -322,6 +375,7 @@ func createDocCleanupFunc(docGroup *ast.CommentGroup) func() {
 			// Note: We can't set the doc to nil here because we don't have
 			// a reference to the original node field. This cleanup function
 			// serves as a placeholder for more complex cleanup logic if needed.
+			return // Intentionally empty branch
 		}
 	}
 }
