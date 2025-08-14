@@ -290,6 +290,7 @@ func TestRecursiveTypeParameterResolution(t *testing.T) {
 			if tt.maxRecursionDepth > 0 {
 				// This would require configuration access to the recursive resolver
 				// For now, we'll test with default limits
+				t.Logf("Using recursion depth limit: %d", tt.maxRecursionDepth)
 			}
 
 			options := DefaultFieldMappingOptions()
@@ -336,6 +337,47 @@ func TestRecursiveTypeParameterResolution(t *testing.T) {
 // Helper functions for creating test types
 
 func createNestedGenericTypeForTest(typeName string, typeParams []string) domain.Type {
+	// Handle specific map type cases
+	switch typeName {
+	case "MapStringList":
+		// Create Map[string, List[T]] as a struct with a map field
+		if len(typeParams) > 0 {
+			// List[T] = []T
+			listType := domain.NewSliceType(domain.NewGenericType(typeParams[0], nil, 0, ""), "")
+			// Map[string, List[T]] = map[string][]T
+			mapType := domain.NewMapType(domain.NewBasicType("string", 0), listType)
+
+			fields := []domain.Field{
+				{
+					Name:     "FieldA",
+					Type:     mapType,
+					Position: 0,
+					Exported: true,
+				},
+			}
+			return domain.NewStructType(typeName, fields, "")
+		}
+	case "MapStringArray":
+		// Create Map[string, Array[U]] as a struct with a map field
+		if len(typeParams) > 0 {
+			// Array[U] = []U
+			arrayType := domain.NewSliceType(domain.NewGenericType(typeParams[0], nil, 0, ""), "")
+			// Map[string, Array[U]] = map[string][]U
+			mapType := domain.NewMapType(domain.NewBasicType("string", 0), arrayType)
+
+			fields := []domain.Field{
+				{
+					Name:     "FieldA",
+					Type:     mapType,
+					Position: 0,
+					Exported: true,
+				},
+			}
+			return domain.NewStructType(typeName, fields, "")
+		}
+	}
+
+	// Default behavior for other type names
 	fields := make([]domain.Field, len(typeParams))
 
 	for i, param := range typeParams {
@@ -440,90 +482,4 @@ func setupCommonTypeAliases(mapper *GenericFieldMapper) {
 	mapper.RegisterTypeAlias("Result", domain.NewBasicType("interface{}", 0))
 	mapper.RegisterTypeAlias("Future", domain.NewBasicType("interface{}", 0))
 	mapper.RegisterTypeAlias("Either", domain.NewBasicType("interface{}", 0))
-}
-
-func createComplexNestedGenericExample() (domain.Type, domain.Type, map[string]domain.Type) {
-	// Create a realistic example: Repository[Entity, ID] where Entity has List[Property]
-	// Source: DatabaseRepository[User, int] with User containing List[Permission]
-	// Dest: MemoryRepository[UserDTO, string] with UserDTO containing Array[PermissionDTO]
-
-	// Source type: DatabaseRepository[User, int]
-	sourceFields := []domain.Field{
-		{
-			Name:     "Entity",
-			Type:     domain.NewGenericType("TEntity", nil, 0, ""),
-			Position: 0,
-			Exported: true,
-		},
-		{
-			Name:     "ID",
-			Type:     domain.NewGenericType("TID", nil, 1, ""),
-			Position: 1,
-			Exported: true,
-		},
-	}
-	sourceType := domain.NewStructType("DatabaseRepository", sourceFields, "")
-
-	// Dest type: MemoryRepository[UserDTO, string]
-	destFields := []domain.Field{
-		{
-			Name:     "Entity",
-			Type:     domain.NewGenericType("UEntity", nil, 0, ""),
-			Position: 0,
-			Exported: true,
-		},
-		{
-			Name:     "ID",
-			Type:     domain.NewGenericType("UID", nil, 1, ""),
-			Position: 1,
-			Exported: true,
-		},
-	}
-	destType := domain.NewStructType("MemoryRepository", destFields, "")
-
-	// Type substitutions
-	typeSubstitutions := map[string]domain.Type{
-		"TEntity": createUserEntityType(),
-		"TID":     domain.NewBasicType("int", 0),
-		"UEntity": createUserDTOEntityType(),
-		"UID":     domain.NewBasicType("string", 0),
-	}
-
-	return sourceType, destType, typeSubstitutions
-}
-
-func createUserEntityType() domain.Type {
-	fields := []domain.Field{
-		{
-			Name:     "Name",
-			Type:     domain.NewBasicType("string", 0),
-			Position: 0,
-			Exported: true,
-		},
-		{
-			Name:     "Permissions",
-			Type:     domain.NewSliceType(domain.NewBasicType("Permission", 0), ""),
-			Position: 1,
-			Exported: true,
-		},
-	}
-	return domain.NewStructType("User", fields, "")
-}
-
-func createUserDTOEntityType() domain.Type {
-	fields := []domain.Field{
-		{
-			Name:     "Name",
-			Type:     domain.NewBasicType("string", 0),
-			Position: 0,
-			Exported: true,
-		},
-		{
-			Name:     "Permissions",
-			Type:     domain.NewSliceType(domain.NewBasicType("PermissionDTO", 0), ""),
-			Position: 1,
-			Exported: true,
-		},
-	}
-	return domain.NewStructType("UserDTO", fields, "")
 }
