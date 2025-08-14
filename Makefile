@@ -92,11 +92,11 @@ fmt: ## Format all Go code
 fmt:
 	@echo "Formatting code..."
 	@if command -v goimports >/dev/null 2>&1; then \
-		find . -name "*.go" -not -path "./.reference-projects/*" -not -path "./vendor/*" | xargs goimports -w -local github.com/reedom/convergen; \
+		find . -name "*.go" -not -path "./.reference-projects/*" -not -path "./vendor/*" -not -path "./temp_test/*" | xargs goimports -w -local github.com/reedom/convergen; \
 	else \
 		echo "goimports not found. Install with: go install golang.org/x/tools/cmd/goimports@latest"; \
 		echo "Falling back to gofmt..."; \
-		find . -name "*.go" -not -path "./.reference-projects/*" -not -path "./vendor/*" | xargs gofmt -w -s; \
+		find . -name "*.go" -not -path "./.reference-projects/*" -not -path "./vendor/*" -not -path "./temp_test/*" | xargs gofmt -w -s; \
 	fi
 
 .PHONY: fmt-check
@@ -104,7 +104,7 @@ fmt-check: ## Check if code is properly formatted
 fmt-check:
 	@echo "Checking code formatting..."
 	@if command -v goimports >/dev/null 2>&1; then \
-		formatting_issues=$$(find . -name "*.go" -not -path "./.reference-projects/*" -not -path "./vendor/*" | xargs goimports -l -local github.com/reedom/convergen); \
+		formatting_issues=$$(find . -name "*.go" -not -path "./.reference-projects/*" -not -path "./vendor/*" -not -path "./temp_test/*" | xargs goimports -l -local github.com/reedom/convergen); \
 		if [ -n "$$formatting_issues" ]; then \
 			echo "The following files have formatting issues:"; \
 			echo "$$formatting_issues"; \
@@ -113,7 +113,7 @@ fmt-check:
 	else \
 		echo "goimports not found. Install with: go install golang.org/x/tools/cmd/goimports@latest"; \
 		echo "Falling back to gofmt..."; \
-		unformatted=$$(find . -name "*.go" -not -path "./.reference-projects/*" -not -path "./vendor/*" | xargs gofmt -l); \
+		unformatted=$$(find . -name "*.go" -not -path "./.reference-projects/*" -not -path "./vendor/*" -not -path "./temp_test/*" | xargs gofmt -l); \
 		if [ -n "$$unformatted" ]; then \
 			echo "The following files are not properly formatted:"; \
 			echo "$$unformatted"; \

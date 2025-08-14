@@ -207,6 +207,7 @@ issues:
     - vendor
     - .reference-projects
     - build
+    - temp_test
 
   # Exclude files
   exclude-files:
