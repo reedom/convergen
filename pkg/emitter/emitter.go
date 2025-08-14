@@ -165,110 +165,36 @@ func (e *ConcreteEmitter) GenerateCode(ctx context.Context, results *domain.Exec
 		return nil, ErrExecutionResultsNil
 	}
 
+	startTime := time.Now()
 	e.logger.Info("starting code generation",
 		zap.Int("methods", len(results.Methods)),
 		zap.String("package", results.PackageName))
 
-	startTime := time.Now()
-	generatedCode := &GeneratedCode{
-		PackageName: results.PackageName,
-		BaseCode:    results.BaseCode,
-		Methods:     make([]*MethodCode, 0, len(results.Methods)),
-		Metadata: &GenerationMetadata{
-			GenerationTime: startTime,
-			EmitterVersion: "2.0.0",
-			ConfigHash:     e.calculateConfigHash(),
-		},
-		Metrics: NewGenerationMetrics(),
-	}
+	// Initialize generated code structure
+	generatedCode := e.initializeGeneratedCode(results, startTime)
 
 	// Emit generation started event
-	if err := e.emitEvent(ctx, "emit.started", map[string]interface{}{
-		"package":    results.PackageName,
-		"methods":    len(results.Methods),
-		"start_time": startTime,
-	}); err != nil {
-		e.logger.Warn("failed to emit generation started event", zap.Error(err))
-	}
+	e.emitGenerationStartedEvent(ctx, results, startTime)
 
-	// Generate methods concurrently or sequentially based on configuration
-	var methodCodes []*MethodCode
-
-	var err error
-
-	if e.config.EnableConcurrentGen && len(results.Methods) > 1 {
-		methodCodes, err = e.generateMethodsConcurrently(ctx, results.Methods)
-	} else {
-		methodCodes, err = e.generateMethodsSequentially(ctx, results.Methods)
-	}
-
+	// Generate method codes
+	methodCodes, err := e.generateMethods(ctx, results.Methods)
 	if err != nil {
 		return nil, fmt.Errorf("method generation failed: %w", err)
 	}
-
 	generatedCode.Methods = methodCodes
 
-	// Analyze and generate imports
-	importAnalysis, err := e.importMgr.AnalyzeImports(ctx, generatedCode)
-	if err != nil {
-		return nil, fmt.Errorf("import analysis failed: %w", err)
+	// Process imports
+	if err := e.processImports(ctx, generatedCode); err != nil {
+		return nil, err
 	}
 
-	importDecl, err := e.importMgr.GenerateImports(ctx, importAnalysis)
-	if err != nil {
-		return nil, fmt.Errorf("import generation failed: %w", err)
+	// Apply optimizations and formatting
+	if err := e.optimizeAndFormatCode(ctx, generatedCode); err != nil {
+		return nil, err
 	}
 
-	generatedCode.Imports = importDecl
-
-	// Apply optimizations if enabled
-	if OptimizationNone < e.config.OptimizationLevel {
-		optimizedCode, err := e.optimizer.OptimizeCode(ctx, generatedCode)
-		if err != nil {
-			e.logger.Warn("optimization failed", zap.Error(err))
-		} else {
-			generatedCode = optimizedCode
-		}
-	}
-
-	// Format the final code
-	formattedCode, err := e.formatMgr.FormatCode(ctx, generatedCode)
-	if err != nil {
-		return nil, fmt.Errorf("code formatting failed: %w", err)
-	}
-
-	generatedCode = formattedCode
-
-	// Finalize generation metrics
-	generatedCode.Metadata.CompletionTime = time.Now()
-	generatedCode.Metadata.GenerationDuration = generatedCode.Metadata.CompletionTime.Sub(startTime)
-	generatedCode.Metrics.TotalGenerationTime = generatedCode.Metadata.GenerationDuration
-	generatedCode.Metrics.MethodsGenerated = len(methodCodes)
-
-	// Update global metrics
-	var firstMethod *MethodCode
-	if len(methodCodes) > 0 {
-		firstMethod = methodCodes[0]
-	}
-
-	e.metrics.RecordGeneration(firstMethod, results.PackageName, methodCodes)
-
-	// Emit generation completed event
-	if err := e.emitEvent(ctx, "emit.completed", map[string]interface{}{
-		"package":            results.PackageName,
-		"methods_generated":  len(methodCodes),
-		"generation_time":    generatedCode.Metadata.GenerationDuration.Milliseconds(),
-		"lines_generated":    generatedCode.Metrics.LinesGenerated,
-		"optimization_level": e.config.OptimizationLevel.String(),
-	}); err != nil {
-		e.logger.Warn("failed to emit generation completed event", zap.Error(err))
-	}
-
-	e.logger.Info("code generation completed",
-		zap.Int("methods", len(methodCodes)),
-		zap.Duration("duration", generatedCode.Metadata.GenerationDuration),
-		zap.Int("lines", generatedCode.Metrics.LinesGenerated),
-		zap.Int("imports", len(generatedCode.Imports.Imports)))
+	// Finalize generation
+	e.finalizeGeneration(ctx, generatedCode, results, methodCodes, startTime)
 
 	return generatedCode, nil
 }
@@ -457,4 +383,111 @@ func (e *ConcreteEmitter) SetEventBus(eventBus events.EventBus) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	e.eventBus = eventBus
+}
+
+// Helper methods for GenerateCode refactoring
+
+// initializeGeneratedCode creates the initial GeneratedCode structure
+func (e *ConcreteEmitter) initializeGeneratedCode(results *domain.ExecutionResults, startTime time.Time) *GeneratedCode {
+	return &GeneratedCode{
+		PackageName: results.PackageName,
+		BaseCode:    results.BaseCode,
+		Methods:     make([]*MethodCode, 0, len(results.Methods)),
+		Metadata: &GenerationMetadata{
+			GenerationTime: startTime,
+			EmitterVersion: "2.0.0",
+			ConfigHash:     e.calculateConfigHash(),
+		},
+		Metrics: NewGenerationMetrics(),
+	}
+}
+
+// emitGenerationStartedEvent emits the generation started event
+func (e *ConcreteEmitter) emitGenerationStartedEvent(ctx context.Context, results *domain.ExecutionResults, startTime time.Time) {
+	if err := e.emitEvent(ctx, "emit.started", map[string]interface{}{
+		"package":    results.PackageName,
+		"methods":    len(results.Methods),
+		"start_time": startTime,
+	}); err != nil {
+		e.logger.Warn("failed to emit generation started event", zap.Error(err))
+	}
+}
+
+// generateMethods generates method codes concurrently or sequentially
+func (e *ConcreteEmitter) generateMethods(ctx context.Context, methods []*domain.MethodResult) ([]*MethodCode, error) {
+	if e.config.EnableConcurrentGen && len(methods) > 1 {
+		return e.generateMethodsConcurrently(ctx, methods)
+	}
+	return e.generateMethodsSequentially(ctx, methods)
+}
+
+// processImports analyzes and generates imports for the code
+func (e *ConcreteEmitter) processImports(ctx context.Context, generatedCode *GeneratedCode) error {
+	importAnalysis, err := e.importMgr.AnalyzeImports(ctx, generatedCode)
+	if err != nil {
+		return fmt.Errorf("import analysis failed: %w", err)
+	}
+
+	importDecl, err := e.importMgr.GenerateImports(ctx, importAnalysis)
+	if err != nil {
+		return fmt.Errorf("import generation failed: %w", err)
+	}
+
+	generatedCode.Imports = importDecl
+	return nil
+}
+
+// optimizeAndFormatCode applies optimizations and formatting to the code
+func (e *ConcreteEmitter) optimizeAndFormatCode(ctx context.Context, generatedCode *GeneratedCode) error {
+	// Apply optimizations if enabled
+	if OptimizationNone < e.config.OptimizationLevel {
+		optimizedCode, err := e.optimizer.OptimizeCode(ctx, generatedCode)
+		if err != nil {
+			e.logger.Warn("optimization failed", zap.Error(err))
+		} else {
+			*generatedCode = *optimizedCode
+		}
+	}
+
+	// Format the final code
+	formattedCode, err := e.formatMgr.FormatCode(ctx, generatedCode)
+	if err != nil {
+		return fmt.Errorf("code formatting failed: %w", err)
+	}
+	*generatedCode = *formattedCode
+
+	return nil
+}
+
+// finalizeGeneration finalizes generation with metrics and events
+func (e *ConcreteEmitter) finalizeGeneration(ctx context.Context, generatedCode *GeneratedCode, results *domain.ExecutionResults, methodCodes []*MethodCode, startTime time.Time) {
+	// Finalize generation metrics
+	generatedCode.Metadata.CompletionTime = time.Now()
+	generatedCode.Metadata.GenerationDuration = generatedCode.Metadata.CompletionTime.Sub(startTime)
+	generatedCode.Metrics.TotalGenerationTime = generatedCode.Metadata.GenerationDuration
+	generatedCode.Metrics.MethodsGenerated = len(methodCodes)
+
+	// Update global metrics
+	var firstMethod *MethodCode
+	if len(methodCodes) > 0 {
+		firstMethod = methodCodes[0]
+	}
+	e.metrics.RecordGeneration(firstMethod, results.PackageName, methodCodes)
+
+	// Emit generation completed event
+	if err := e.emitEvent(ctx, "emit.completed", map[string]interface{}{
+		"package":            results.PackageName,
+		"methods_generated":  len(methodCodes),
+		"generation_time":    generatedCode.Metadata.GenerationDuration.Milliseconds(),
+		"lines_generated":    generatedCode.Metrics.LinesGenerated,
+		"optimization_level": e.config.OptimizationLevel.String(),
+	}); err != nil {
+		e.logger.Warn("failed to emit generation completed event", zap.Error(err))
+	}
+
+	e.logger.Info("code generation completed",
+		zap.Int("methods", len(methodCodes)),
+		zap.Duration("duration", generatedCode.Metadata.GenerationDuration),
+		zap.Int("lines", generatedCode.Metrics.LinesGenerated),
+		zap.Int("imports", len(generatedCode.Imports.Imports)))
 }

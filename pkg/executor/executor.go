@@ -197,111 +197,25 @@ func (e *ConcreteExecutor) ExecutePlan(ctx context.Context, plan *domain.Executi
 		return nil, ErrExecutionPlanNil
 	}
 
+	startTime := time.Now()
 	e.logger.Info("starting plan execution",
 		zap.String("plan_id", plan.ID),
 		zap.Int("methods", len(plan.Methods)),
 		zap.Int("max_workers", plan.GlobalLimits.MaxWorkers))
 
-	startTime := time.Now()
-	result := &ExecutionResult{
-		PlanID:    plan.ID,
-		StartTime: startTime,
-		Results:   make(map[string]interface{}),
-		Errors:    make([]ExecutionError, 0),
-		Metrics:   e.metrics.Clone(),
-	}
+	// Initialize execution result
+	result := e.initializeExecutionResult(plan, startTime)
 
-	// Emit plan started event
-	if err := e.emitEvent(ctx, "execution.plan.started", map[string]interface{}{
-		"plan_id":    plan.ID,
-		"methods":    len(plan.Methods),
-		"start_time": startTime,
-	}); err != nil {
-		e.logger.Warn("failed to emit plan started event", zap.Error(err))
-	}
+	// Setup execution environment
+	e.setupExecutionEnvironment(ctx, plan, startTime)
 
-	// Apply global resource limits
-	e.resourcePool.SetLimits(plan.GlobalLimits.MaxWorkers, plan.GlobalLimits.MaxMemoryMB)
+	// Execute all methods
+	methodResults, errors := e.executeAllMethods(ctx, plan.Methods)
+	result.Results = methodResults
+	result.Errors = errors
 
-	// Update executor status
-	e.updateStatus(func(status *Status) {
-		status.State = StateExecuting
-		status.CurrentPlan = plan
-		status.PlanStartTime = &startTime
-	})
-
-	// Execute all methods concurrently
-	var methodWg sync.WaitGroup
-
-	methodResults := make(map[string]*MethodResult)
-
-	var resultMutex sync.Mutex
-
-	errorChannel := make(chan ExecutionError, len(plan.Methods)*10)
-
-	for methodName, methodPlan := range plan.Methods {
-		methodWg.Add(1)
-
-		go func(name string, mPlan *domain.MethodPlan) {
-			defer methodWg.Done()
-
-			methodResult := e.executeMethod(ctx, name, mPlan)
-
-			resultMutex.Lock()
-			if methodResult != nil {
-				methodResults[name] = methodResult
-				result.Results[name] = methodResult.Data
-			}
-			resultMutex.Unlock()
-		}(methodName, methodPlan)
-	}
-
-	// Wait for all methods to complete
-	methodWg.Wait()
-	close(errorChannel)
-
-	// Collect errors
-	for execError := range errorChannel {
-		result.Errors = append(result.Errors, execError)
-	}
-
-	// Finalize result
-	result.EndTime = time.Now()
-	result.Duration = result.EndTime.Sub(result.StartTime)
-	result.Success = len(result.Errors) == 0
-	result.PartialResults = len(result.Errors) > 0 && len(result.Results) > 0
-	result.Metrics = e.metrics.GetSnapshot()
-
-	// Update executor status
-	e.updateStatus(func(status *Status) {
-		status.State = StateIdle
-		status.CurrentPlan = nil
-		status.PlanStartTime = nil
-		status.LastCompletedPlan = plan
-		status.LastCompletionTime = &result.EndTime
-	})
-
-	// Emit plan completed event
-	if err := e.emitEvent(ctx, "execution.plan.completed", map[string]interface{}{
-		"plan_id":          plan.ID,
-		"success":          result.Success,
-		"duration_ms":      result.Duration.Milliseconds(),
-		"fields_processed": result.Metrics.FieldsProcessed,
-		"errors":           len(result.Errors),
-		"end_time":         result.EndTime,
-	}); err != nil {
-		e.logger.Warn("failed to emit plan completed event", zap.Error(err))
-	}
-
-	e.logger.Info("plan execution completed",
-		zap.String("plan_id", plan.ID),
-		zap.Bool("success", result.Success),
-		zap.Duration("duration", result.Duration),
-		zap.Int("errors", len(result.Errors)),
-		zap.Int("methods_completed", len(result.Results)))
-
-	// Record plan execution metrics
-	e.metrics.RecordPlanExecution(result)
+	// Finalize execution
+	e.finalizeExecution(ctx, plan, result)
 
 	return result, nil
 }
@@ -501,4 +415,123 @@ func (e *ConcreteExecutor) collectMetrics() {
 		zap.Int("active_batches", len(status.ActiveBatches)),
 		zap.Int("completed_batches", len(status.CompletedBatches)),
 		zap.String("state", string(status.State)))
+}
+
+// Helper methods for ExecutePlan refactoring
+
+// initializeExecutionResult creates the initial execution result structure
+func (e *ConcreteExecutor) initializeExecutionResult(plan *domain.ExecutionPlan, startTime time.Time) *ExecutionResult {
+	return &ExecutionResult{
+		PlanID:    plan.ID,
+		StartTime: startTime,
+		Results:   make(map[string]interface{}),
+		Errors:    make([]ExecutionError, 0),
+		Metrics:   e.metrics.Clone(),
+	}
+}
+
+// setupExecutionEnvironment configures the execution environment for the plan
+func (e *ConcreteExecutor) setupExecutionEnvironment(ctx context.Context, plan *domain.ExecutionPlan, startTime time.Time) {
+	// Emit plan started event
+	if err := e.emitEvent(ctx, "execution.plan.started", map[string]interface{}{
+		"plan_id":    plan.ID,
+		"methods":    len(plan.Methods),
+		"start_time": startTime,
+	}); err != nil {
+		e.logger.Warn("failed to emit plan started event", zap.Error(err))
+	}
+
+	// Apply global resource limits
+	e.resourcePool.SetLimits(plan.GlobalLimits.MaxWorkers, plan.GlobalLimits.MaxMemoryMB)
+
+	// Update executor status
+	e.updateStatus(func(status *Status) {
+		status.State = StateExecuting
+		status.CurrentPlan = plan
+		status.PlanStartTime = &startTime
+	})
+}
+
+// executeAllMethods executes all methods concurrently and returns results
+func (e *ConcreteExecutor) executeAllMethods(ctx context.Context, methods map[string]*domain.MethodPlan) (map[string]interface{}, []ExecutionError) {
+	var methodWg sync.WaitGroup
+	methodResults := make(map[string]*MethodResult)
+	var resultMutex sync.Mutex
+	errorChannel := make(chan ExecutionError, len(methods)*10)
+
+	for methodName, methodPlan := range methods {
+		methodWg.Add(1)
+
+		go func(name string, mPlan *domain.MethodPlan) {
+			defer methodWg.Done()
+
+			methodResult := e.executeMethod(ctx, name, mPlan)
+
+			resultMutex.Lock()
+			if methodResult != nil {
+				methodResults[name] = methodResult
+			}
+			resultMutex.Unlock()
+		}(methodName, methodPlan)
+	}
+
+	// Wait for all methods to complete
+	methodWg.Wait()
+	close(errorChannel)
+
+	// Collect errors and convert results
+	var errors []ExecutionError
+	for execError := range errorChannel {
+		errors = append(errors, execError)
+	}
+
+	results := make(map[string]interface{})
+	for name, methodResult := range methodResults {
+		if methodResult != nil {
+			results[name] = methodResult.Data
+		}
+	}
+
+	return results, errors
+}
+
+// finalizeExecution finalizes the execution result with metrics and events
+func (e *ConcreteExecutor) finalizeExecution(ctx context.Context, plan *domain.ExecutionPlan, result *ExecutionResult) {
+	// Finalize result
+	result.EndTime = time.Now()
+	result.Duration = result.EndTime.Sub(result.StartTime)
+	result.Success = len(result.Errors) == 0
+	result.PartialResults = len(result.Errors) > 0 && len(result.Results) > 0
+	result.Metrics = e.metrics.GetSnapshot()
+
+	// Update executor status
+	e.updateStatus(func(status *Status) {
+		status.State = StateIdle
+		status.CurrentPlan = nil
+		status.PlanStartTime = nil
+		status.LastCompletedPlan = plan
+		status.LastCompletionTime = &result.EndTime
+	})
+
+	// Emit plan completed event
+	if err := e.emitEvent(ctx, "execution.plan.completed", map[string]interface{}{
+		"plan_id":          plan.ID,
+		"success":          result.Success,
+		"duration_ms":      result.Duration.Milliseconds(),
+		"fields_processed": result.Metrics.FieldsProcessed,
+		"errors":           len(result.Errors),
+		"end_time":         result.EndTime,
+	}); err != nil {
+		e.logger.Warn("failed to emit plan completed event", zap.Error(err))
+	}
+
+	e.logger.Info("plan execution completed",
+		zap.String("plan_id", plan.ID),
+		zap.Bool("success", result.Success),
+		zap.Duration("duration", result.Duration),
+		zap.Int("errors", len(result.Errors)),
+		zap.Int("methods_completed", len(result.Results)))
+
+	// Record plan execution metrics
+	e.metrics.RecordPlanExecution(result)
 }

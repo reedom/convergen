@@ -113,93 +113,29 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	}
 
 	startTime := time.Now()
-
 	cg.logger.Debug("generating method code",
 		zap.String("method", method.Method.Name),
 		zap.Int("metadata_fields", len(method.Metadata)))
 
-	// Analyze method complexity and select strategy
-	strategy := cg.outputStrat.SelectStrategy(ctx, method)
-	complexity := cg.outputStrat.AnalyzeFieldComplexity(cg.extractFieldResults(method))
-
-	// Prepare template data
-	templateData := &TemplateData{
-		Method: method,
-		Fields: cg.extractFieldResults(method),
-		Config: cg.config,
-		Metadata: map[string]interface{}{
-			"strategy":   strategy.String(),
-			"complexity": complexity,
-		},
-		HelperFunctions: cg.getHelperFunctions(),
-	}
-
-	// Generate method signature
-	signature := cg.generateMethodSignature(method)
-
-	// Generate method body based on strategy
-	var body string
-
-	var err error
-
-	var generationStrategy GenerationStrategy
-
-	switch strategy {
-	case StrategyCompositeLiteral:
-		generationStrategy = cg.strategies["composite_literal"]
-	case StrategyAssignmentBlock:
-		generationStrategy = cg.strategies["assignment_block"]
-	case StrategyMixedApproach:
-		generationStrategy = cg.strategies["mixed_approach"]
-	default:
-		generationStrategy = cg.strategies["assignment_block"] // fallback
-	}
-
-	if generationStrategy == nil {
-		return nil, fmt.Errorf("%w for %s", ErrNoGenerationStrategy, strategy.String())
-	}
-
-	body, err = generationStrategy.GenerateCode(ctx, method, templateData)
+	// Initialize generation components
+	strategy, complexity, templateData, err := cg.initializeGeneration(ctx, method)
 	if err != nil {
-		return nil, fmt.Errorf("code generation failed: %w", err)
+		return nil, err
 	}
 
-	// Generate error handling if needed
-	var errorHandling string
-
-	if cg.hasErrorHandling(method) {
-		errorCode, err := cg.GenerateErrorHandling(ctx, cg.extractErrors(method))
-		if err != nil {
-			cg.logger.Warn("error handling generation failed", zap.Error(err))
-		} else {
-			errorHandling = errorCode.HandlingCode
-		}
+	// Generate core method components
+	signature := cg.generateMethodSignature(method)
+	body, imports, err := cg.generateMethodBody(ctx, method, strategy, templateData)
+	if err != nil {
+		return nil, err
 	}
 
-	// Generate documentation
+	// Generate additional components
+	errorHandling := cg.generateErrorHandlingIfNeeded(ctx, method)
 	documentation := cg.generateDocumentation(method)
+	fields := cg.generateFieldCodes(ctx, method)
 
-	// Collect required imports
-	imports := generationStrategy.GetRequiredImports(method)
-
-	// Generate field codes for detailed analysis
-	fields := make([]*FieldCode, 0, len(method.Metadata))
-
-	for fieldName, fieldResult := range method.Metadata {
-		if fr, ok := fieldResult.(*executor.FieldResult); ok {
-			fieldCode, err := cg.GenerateFieldCode(ctx, fr)
-			if err != nil {
-				cg.logger.Warn("field code generation failed",
-					zap.String("field", fieldName),
-					zap.Error(err))
-
-				continue
-			}
-
-			fields = append(fields, fieldCode)
-		}
-	}
-
+	// Assemble final result
 	methodCode := &MethodCode{
 		Name:          method.Method.Name,
 		Signature:     signature,
@@ -212,28 +148,8 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 		Fields:        fields,
 	}
 
-	// Update metrics
-	duration := time.Since(startTime)
-
-	cg.metrics.IncrementMethods()
-	cg.metrics.AddGenerationTime(duration)
-	cg.metrics.IncrementStrategy(strategy.String())
-
-	// Validate generated code if enabled
-	if cg.config.EnableSyntaxValidation && cg.validator != nil {
-		if err := cg.validator.ValidateMethodCode(methodCode); err != nil {
-			cg.logger.Warn("method code validation failed",
-				zap.String("method", method.Method.Name),
-				zap.Error(err))
-			cg.metrics.IncrementErrors()
-		}
-	}
-
-	cg.logger.Debug("method code generated",
-		zap.String("method", method.Method.Name),
-		zap.Duration("duration", duration),
-		zap.String("strategy", strategy.String()),
-		zap.Int("lines", strings.Count(body, "\n")+1))
+	// Finalize with metrics and validation
+	cg.finalizeGeneration(ctx, method, methodCode, startTime)
 
 	return methodCode, nil
 }
@@ -491,6 +407,119 @@ func (cg *ConcreteCodeGenerator) indent(s string, level int) string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// Helper methods for GenerateMethodCode refactoring
+
+// initializeGeneration initializes generation components and returns strategy, complexity, and template data
+func (cg *ConcreteCodeGenerator) initializeGeneration(ctx context.Context, method *domain.MethodResult) (ConstructionStrategy, *ComplexityMetrics, *TemplateData, error) {
+	// Analyze method complexity and select strategy
+	strategy := cg.outputStrat.SelectStrategy(ctx, method)
+	complexity := cg.outputStrat.AnalyzeFieldComplexity(cg.extractFieldResults(method))
+
+	// Prepare template data
+	templateData := &TemplateData{
+		Method: method,
+		Fields: cg.extractFieldResults(method),
+		Config: cg.config,
+		Metadata: map[string]interface{}{
+			"strategy":   strategy.String(),
+			"complexity": complexity,
+		},
+		HelperFunctions: cg.getHelperFunctions(),
+	}
+
+	return strategy, complexity, templateData, nil
+}
+
+// generateMethodBody generates method body using the selected strategy
+func (cg *ConcreteCodeGenerator) generateMethodBody(ctx context.Context, method *domain.MethodResult, strategy ConstructionStrategy, templateData *TemplateData) (string, []*Import, error) {
+	var generationStrategy GenerationStrategy
+
+	switch strategy {
+	case StrategyCompositeLiteral:
+		generationStrategy = cg.strategies["composite_literal"]
+	case StrategyAssignmentBlock:
+		generationStrategy = cg.strategies["assignment_block"]
+	case StrategyMixedApproach:
+		generationStrategy = cg.strategies["mixed_approach"]
+	default:
+		generationStrategy = cg.strategies["assignment_block"] // fallback
+	}
+
+	if generationStrategy == nil {
+		return "", nil, fmt.Errorf("%w for %s", ErrNoGenerationStrategy, strategy.String())
+	}
+
+	body, err := generationStrategy.GenerateCode(ctx, method, templateData)
+	if err != nil {
+		return "", nil, fmt.Errorf("code generation failed: %w", err)
+	}
+
+	// Collect required imports
+	imports := generationStrategy.GetRequiredImports(method)
+
+	return body, imports, nil
+}
+
+// generateErrorHandlingIfNeeded generates error handling code if method has errors
+func (cg *ConcreteCodeGenerator) generateErrorHandlingIfNeeded(ctx context.Context, method *domain.MethodResult) string {
+	if !cg.hasErrorHandling(method) {
+		return ""
+	}
+
+	errorCode, err := cg.GenerateErrorHandling(ctx, cg.extractErrors(method))
+	if err != nil {
+		cg.logger.Warn("error handling generation failed", zap.Error(err))
+		return ""
+	}
+
+	return errorCode.HandlingCode
+}
+
+// generateFieldCodes generates field codes for detailed analysis
+func (cg *ConcreteCodeGenerator) generateFieldCodes(ctx context.Context, method *domain.MethodResult) []*FieldCode {
+	fields := make([]*FieldCode, 0, len(method.Metadata))
+
+	for fieldName, fieldResult := range method.Metadata {
+		if fr, ok := fieldResult.(*executor.FieldResult); ok {
+			fieldCode, err := cg.GenerateFieldCode(ctx, fr)
+			if err != nil {
+				cg.logger.Warn("field code generation failed",
+					zap.String("field", fieldName),
+					zap.Error(err))
+				continue
+			}
+			fields = append(fields, fieldCode)
+		}
+	}
+
+	return fields
+}
+
+// finalizeGeneration updates metrics and performs validation
+func (cg *ConcreteCodeGenerator) finalizeGeneration(ctx context.Context, method *domain.MethodResult, methodCode *MethodCode, startTime time.Time) {
+	// Update metrics
+	duration := time.Since(startTime)
+	cg.metrics.IncrementMethods()
+	cg.metrics.AddGenerationTime(duration)
+	cg.metrics.IncrementStrategy(methodCode.Strategy.String())
+
+	// Validate generated code if enabled
+	if cg.config.EnableSyntaxValidation && cg.validator != nil {
+		if err := cg.validator.ValidateMethodCode(methodCode); err != nil {
+			cg.logger.Warn("method code validation failed",
+				zap.String("method", method.Method.Name),
+				zap.Error(err))
+			cg.metrics.IncrementErrors()
+		}
+	}
+
+	cg.logger.Debug("method code generated",
+		zap.String("method", method.Method.Name),
+		zap.Duration("duration", duration),
+		zap.String("strategy", methodCode.Strategy.String()),
+		zap.Int("lines", strings.Count(methodCode.Body, "\n")+1))
 }
 
 // NewCodeGenMetrics creates a new CodeGenMetrics instance.

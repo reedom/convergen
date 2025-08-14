@@ -83,119 +83,35 @@ func (cp *ConstraintParser) ParseConstraint(
 
 	// Handle nil constraint (represents 'any')
 	if constraint == nil {
-		cp.logger.Debug("parsing nil constraint (any)")
-
-		return &ParsedConstraint{
-			Type:           nil,
-			IsAny:          true,
-			IsComparable:   false,
-			ConstraintType: anyConstraint,
-			ParseDuration:  time.Since(startTime),
-			Valid:          true,
-		}, nil
+		return cp.createAnyConstraint(startTime)
 	}
 
 	// Check for circular constraint dependencies
 	constraintKey := constraint.String()
-
-	// Read lock for checking if constraint is already visited
-	cp.mu.RLock()
-	isVisited := cp.visitedConstraints[constraintKey]
-	cp.mu.RUnlock()
-
-	if isVisited {
-		cp.logger.Warn("circular constraint detected, treating as 'any'",
-			zap.String("constraint", constraintKey))
-
-		// Return 'any' constraint instead of failing for graceful handling
-		return &ParsedConstraint{
-			Type:           nil,
-			IsAny:          true,
-			IsComparable:   false,
-			ConstraintType: anyConstraint,
-			ParseDuration:  time.Since(startTime),
-			Valid:          true,
-		}, nil
+	if cp.isCircularConstraint(constraintKey) {
+		return cp.createAnyConstraintForCircular(constraintKey, startTime)
 	}
 
-	// Write lock for marking constraint as visited
-	cp.mu.Lock()
-	cp.visitedConstraints[constraintKey] = true
-	cp.mu.Unlock()
-
-	defer func() {
-		// Write lock for clearing from visited constraints when done processing
-		cp.mu.Lock()
-		delete(cp.visitedConstraints, constraintKey)
-		cp.mu.Unlock()
-	}()
+	// Mark constraint as visited and setup cleanup
+	cp.markConstraintVisited(constraintKey)
+	defer cp.unmarkConstraintVisited(constraintKey)
 
 	cp.logger.Debug("parsing constraint",
 		zap.String("constraint", constraint.String()),
 		zap.String("constraint_type", fmt.Sprintf("%T", constraint)))
 
+	// Parse constraint by type
 	result := &ParsedConstraint{
 		ParseDuration: 0, // Will be set at the end
 		Valid:         false,
 	}
 
-	// Parse based on constraint type
-	switch constraintType := constraint.(type) {
-	case *types.Interface:
-		err := cp.parseInterfaceConstraint(ctx, constraintType, result)
-		if err != nil {
-			result.ErrorMessage = err.Error()
-			cp.logger.Error("failed to parse interface constraint", zap.Error(err))
-			result.ParseDuration = time.Since(startTime)
-			return result, fmt.Errorf("failed to parse interface constraint: %w", err)
-		}
-
-	case *types.Union:
-		err := cp.parseUnionConstraint(ctx, constraintType, result)
-		if err != nil {
-			result.ErrorMessage = err.Error()
-			cp.logger.Error("failed to parse union constraint", zap.Error(err))
-			result.ParseDuration = time.Since(startTime)
-			return result, fmt.Errorf("failed to parse union constraint: %w", err)
-		}
-
-	case *types.Named:
-		err := cp.parseNamedConstraint(ctx, constraintType, result)
-		if err != nil {
-			result.ErrorMessage = err.Error()
-			cp.logger.Error("failed to parse named constraint", zap.Error(err))
-			result.ParseDuration = time.Since(startTime)
-			return result, fmt.Errorf("failed to parse named constraint: %w", err)
-		}
-
-	case *types.Basic:
-		err := cp.parseBasicConstraint(ctx, constraintType, result)
-		if err != nil {
-			result.ErrorMessage = err.Error()
-			cp.logger.Error("failed to parse basic constraint", zap.Error(err))
-			result.ParseDuration = time.Since(startTime)
-			return result, fmt.Errorf("failed to parse basic constraint: %w", err)
-		}
-
-	case *types.Alias:
-		err := cp.parseAliasConstraint(ctx, constraintType, result)
-		if err != nil {
-			result.ErrorMessage = err.Error()
-			cp.logger.Error("failed to parse alias constraint", zap.Error(err))
-			result.ParseDuration = time.Since(startTime)
-			return result, fmt.Errorf("failed to parse alias constraint: %w", err)
-		}
-
-	default:
-		err := fmt.Errorf("%w: %T", ErrUnsupportedConstraintType, constraint)
-		result.ErrorMessage = err.Error()
-		cp.logger.Error("unsupported constraint type",
-			zap.String("type", fmt.Sprintf("%T", constraint)),
-			zap.String("constraint", constraint.String()))
+	if err := cp.parseConstraintByType(ctx, constraint, result); err != nil {
 		result.ParseDuration = time.Since(startTime)
 		return result, err
 	}
 
+	// Finalize result
 	result.Valid = true
 	result.ParseDuration = time.Since(startTime)
 
@@ -698,4 +614,110 @@ func (cp *ConstraintParser) ConvertToDomainTypeParam(
 	}
 
 	return nil, fmt.Errorf("%w: no valid constraint found", ErrInvalidConstraint)
+}
+
+// Helper methods for ParseConstraint refactoring
+
+// createAnyConstraint creates a ParsedConstraint for 'any' constraints
+func (cp *ConstraintParser) createAnyConstraint(startTime time.Time) (*ParsedConstraint, error) {
+	cp.logger.Debug("parsing nil constraint (any)")
+	return &ParsedConstraint{
+		Type:           nil,
+		IsAny:          true,
+		IsComparable:   false,
+		ConstraintType: anyConstraint,
+		ParseDuration:  time.Since(startTime),
+		Valid:          true,
+	}, nil
+}
+
+// isCircularConstraint checks if a constraint creates a circular dependency
+func (cp *ConstraintParser) isCircularConstraint(constraintKey string) bool {
+	cp.mu.RLock()
+	defer cp.mu.RUnlock()
+	return cp.visitedConstraints[constraintKey]
+}
+
+// createAnyConstraintForCircular creates an 'any' constraint for circular dependencies
+func (cp *ConstraintParser) createAnyConstraintForCircular(constraintKey string, startTime time.Time) (*ParsedConstraint, error) {
+	cp.logger.Warn("circular constraint detected, treating as 'any'",
+		zap.String("constraint", constraintKey))
+
+	return &ParsedConstraint{
+		Type:           nil,
+		IsAny:          true,
+		IsComparable:   false,
+		ConstraintType: anyConstraint,
+		ParseDuration:  time.Since(startTime),
+		Valid:          true,
+	}, nil
+}
+
+// markConstraintVisited marks a constraint as visited to detect cycles
+func (cp *ConstraintParser) markConstraintVisited(constraintKey string) {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+	cp.visitedConstraints[constraintKey] = true
+}
+
+// unmarkConstraintVisited removes a constraint from the visited set
+func (cp *ConstraintParser) unmarkConstraintVisited(constraintKey string) {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+	delete(cp.visitedConstraints, constraintKey)
+}
+
+// parseConstraintByType parses the constraint based on its Go type
+func (cp *ConstraintParser) parseConstraintByType(ctx context.Context, constraint types.Type, result *ParsedConstraint) error {
+	switch constraintType := constraint.(type) {
+	case *types.Interface:
+		err := cp.parseInterfaceConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse interface constraint", zap.Error(err))
+			return fmt.Errorf("failed to parse interface constraint: %w", err)
+		}
+
+	case *types.Union:
+		err := cp.parseUnionConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse union constraint", zap.Error(err))
+			return fmt.Errorf("failed to parse union constraint: %w", err)
+		}
+
+	case *types.Named:
+		err := cp.parseNamedConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse named constraint", zap.Error(err))
+			return fmt.Errorf("failed to parse named constraint: %w", err)
+		}
+
+	case *types.Basic:
+		err := cp.parseBasicConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse basic constraint", zap.Error(err))
+			return fmt.Errorf("failed to parse basic constraint: %w", err)
+		}
+
+	case *types.Alias:
+		err := cp.parseAliasConstraint(ctx, constraintType, result)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			cp.logger.Error("failed to parse alias constraint", zap.Error(err))
+			return fmt.Errorf("failed to parse alias constraint: %w", err)
+		}
+
+	default:
+		err := fmt.Errorf("%w: %T", ErrUnsupportedConstraintType, constraint)
+		result.ErrorMessage = err.Error()
+		cp.logger.Error("unsupported constraint type",
+			zap.String("type", fmt.Sprintf("%T", constraint)),
+			zap.String("constraint", constraint.String()))
+		return err
+	}
+
+	return nil
 }

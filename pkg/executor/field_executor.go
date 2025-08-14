@@ -112,125 +112,30 @@ func (fe *ConcreteFieldExecutor) ExecuteField(ctx context.Context, field *FieldE
 		return nil, ErrFieldExecutionNil
 	}
 
+	startTime := time.Now()
 	fe.logger.Debug("executing field",
 		zap.String("field_id", field.ID),
 		zap.String("batch_id", field.BatchID),
 		zap.String("strategy", field.Mapping.StrategyName))
 
-	startTime := time.Now()
-	fieldMetrics := &FieldMetrics{
-		ExecutionTime: 0,
-	}
-
-	result := &FieldResult{
-		FieldID:      field.ID,
-		StartTime:    startTime,
-		Metrics:      fieldMetrics,
-		StrategyUsed: field.Mapping.StrategyName,
-	}
-
-	// Create field-specific context with timeout
-	fieldCtx, cancel := context.WithTimeout(ctx, field.Timeout)
+	// Initialize field result and context
+	result, execContext, fieldCtx, cancel := fe.initializeFieldExecution(ctx, field, startTime)
 	defer cancel()
 
 	// Emit field started event
-	if err := fe.emitFieldEvent(ctx, EventFieldStarted, field, nil); err != nil {
-		fe.logger.Warn("failed to emit field started event", zap.Error(err))
-	}
+	fe.emitFieldStartedEvent(ctx, field)
 
-	// Create execution context
-	execContext := &ExecutionContext{
-		FieldID:       field.ID,
-		BatchID:       field.BatchID,
-		MethodName:    field.MethodName,
-		StartTime:     startTime,
-		Timeout:       field.Timeout,
-		Data:          field.Context,
-		TargetType:    field.Mapping.Dest.Type,
-		Configuration: field.Configuration,
-		Logger:        fe.logger.With(zap.String("field_id", field.ID)),
-		Cache:         fe.cache,
-	}
-
-	// Get strategy for this field mapping
-	strategy, err := fe.getStrategy(field.Mapping.StrategyName)
+	// Get and validate strategy
+	strategy, err := fe.getAndValidateStrategy(field, result)
 	if err != nil {
-		result.Error = &ExecutionError{
-			FieldID:   field.ID,
-			Error:     fmt.Sprintf("strategy not found: %v", err),
-			ErrorType: "strategy_not_found",
-			Timestamp: time.Now(),
-			Retryable: false,
-		}
-		result.Success = false
-		result.EndTime = time.Now()
-		result.Duration = result.EndTime.Sub(result.StartTime)
-
 		return result, err
 	}
 
-	// Validate strategy can handle this mapping
-	if err := strategy.Validate(field.Mapping); err != nil {
-		result.Error = &ExecutionError{
-			FieldID:   field.ID,
-			Error:     fmt.Sprintf("strategy validation failed: %v", err),
-			ErrorType: "strategy_validation",
-			Timestamp: time.Now(),
-			Retryable: false,
-		}
-		result.Success = false
-		result.EndTime = time.Now()
-		result.Duration = result.EndTime.Sub(result.StartTime)
-
-		return result, fmt.Errorf("field mapping strategy validation failed: %w", err)
-	}
-
-	// Record strategy time start
-	strategyStart := time.Now()
-
 	// Execute the field mapping strategy
-	resultValue, err := strategy.Execute(fieldCtx, field.Mapping, execContext)
+	fe.executeFieldStrategy(fieldCtx, field, strategy, execContext, result)
 
-	// Record strategy time
-	fieldMetrics.StrategyTime = time.Since(strategyStart)
-
-	if err != nil {
-		result.Error = &ExecutionError{
-			FieldID:   field.ID,
-			Error:     err.Error(),
-			ErrorType: "strategy_execution",
-			Timestamp: time.Now(),
-			Retryable: fe.isRetryableError(err),
-		}
-		result.Success = false
-	} else {
-		result.Result = resultValue
-		result.Success = true
-	}
-
-	// Finalize result
-	result.EndTime = time.Now()
-	result.Duration = result.EndTime.Sub(result.StartTime)
-	fieldMetrics.ExecutionTime = result.Duration
-
-	// Update global metrics
-	fe.metrics.RecordFieldExecution(result)
-
-	// Emit field completed event
-	eventType := EventFieldCompleted
-	if !result.Success {
-		eventType = EventFieldFailed
-	}
-
-	if err := fe.emitFieldEvent(ctx, eventType, field, result); err != nil {
-		fe.logger.Warn("failed to emit field completed event", zap.Error(err))
-	}
-
-	fe.logger.Debug("field execution completed",
-		zap.String("field_id", field.ID),
-		zap.Bool("success", result.Success),
-		zap.Duration("duration", result.Duration),
-		zap.String("strategy", result.StrategyUsed))
+	// Finalize field execution
+	fe.finalizeFieldExecution(ctx, field, result, startTime)
 
 	return result, nil
 }
@@ -623,4 +528,135 @@ func (s *CustomStrategy) Validate(mapping *domain.FieldMapping) error {
 // Utility function.
 func contains(s, substr string) bool {
 	return len(substr) <= len(s) && (substr == s || s[len(s)-len(substr):] == substr || s[:len(substr)] == substr)
+}
+
+// Helper methods for ExecuteField refactoring
+
+// initializeFieldExecution initializes field result and execution context
+func (fe *ConcreteFieldExecutor) initializeFieldExecution(ctx context.Context, field *FieldExecution, startTime time.Time) (*FieldResult, *ExecutionContext, context.Context, context.CancelFunc) {
+	fieldMetrics := &FieldMetrics{
+		ExecutionTime: 0,
+	}
+
+	result := &FieldResult{
+		FieldID:      field.ID,
+		StartTime:    startTime,
+		Metrics:      fieldMetrics,
+		StrategyUsed: field.Mapping.StrategyName,
+	}
+
+	// Create field-specific context with timeout
+	fieldCtx, cancel := context.WithTimeout(ctx, field.Timeout)
+
+	// Create execution context
+	execContext := &ExecutionContext{
+		FieldID:       field.ID,
+		BatchID:       field.BatchID,
+		MethodName:    field.MethodName,
+		StartTime:     startTime,
+		Timeout:       field.Timeout,
+		Data:          field.Context,
+		TargetType:    field.Mapping.Dest.Type,
+		Configuration: field.Configuration,
+		Logger:        fe.logger.With(zap.String("field_id", field.ID)),
+		Cache:         fe.cache,
+	}
+
+	return result, execContext, fieldCtx, cancel
+}
+
+// emitFieldStartedEvent emits the field started event
+func (fe *ConcreteFieldExecutor) emitFieldStartedEvent(ctx context.Context, field *FieldExecution) {
+	if err := fe.emitFieldEvent(ctx, EventFieldStarted, field, nil); err != nil {
+		fe.logger.Warn("failed to emit field started event", zap.Error(err))
+	}
+}
+
+// getAndValidateStrategy gets and validates the field mapping strategy
+func (fe *ConcreteFieldExecutor) getAndValidateStrategy(field *FieldExecution, result *FieldResult) (FieldMappingStrategy, error) {
+	// Get strategy for this field mapping
+	strategy, err := fe.getStrategy(field.Mapping.StrategyName)
+	if err != nil {
+		result.Error = &ExecutionError{
+			FieldID:   field.ID,
+			Error:     fmt.Sprintf("strategy not found: %v", err),
+			ErrorType: "strategy_not_found",
+			Timestamp: time.Now(),
+			Retryable: false,
+		}
+		result.Success = false
+		result.EndTime = time.Now()
+		result.Duration = result.EndTime.Sub(result.StartTime)
+		return nil, err
+	}
+
+	// Validate strategy can handle this mapping
+	if err := strategy.Validate(field.Mapping); err != nil {
+		result.Error = &ExecutionError{
+			FieldID:   field.ID,
+			Error:     fmt.Sprintf("strategy validation failed: %v", err),
+			ErrorType: "strategy_validation",
+			Timestamp: time.Now(),
+			Retryable: false,
+		}
+		result.Success = false
+		result.EndTime = time.Now()
+		result.Duration = result.EndTime.Sub(result.StartTime)
+		return nil, fmt.Errorf("field mapping strategy validation failed: %w", err)
+	}
+
+	return strategy, nil
+}
+
+// executeFieldStrategy executes the field mapping strategy
+func (fe *ConcreteFieldExecutor) executeFieldStrategy(fieldCtx context.Context, field *FieldExecution, strategy FieldMappingStrategy, execContext *ExecutionContext, result *FieldResult) {
+	// Record strategy time start
+	strategyStart := time.Now()
+
+	// Execute the field mapping strategy
+	resultValue, err := strategy.Execute(fieldCtx, field.Mapping, execContext)
+
+	// Record strategy time
+	result.Metrics.StrategyTime = time.Since(strategyStart)
+
+	if err != nil {
+		result.Error = &ExecutionError{
+			FieldID:   field.ID,
+			Error:     err.Error(),
+			ErrorType: "strategy_execution",
+			Timestamp: time.Now(),
+			Retryable: fe.isRetryableError(err),
+		}
+		result.Success = false
+	} else {
+		result.Result = resultValue
+		result.Success = true
+	}
+}
+
+// finalizeFieldExecution finalizes field execution with metrics and events
+func (fe *ConcreteFieldExecutor) finalizeFieldExecution(ctx context.Context, field *FieldExecution, result *FieldResult, startTime time.Time) {
+	// Finalize result
+	result.EndTime = time.Now()
+	result.Duration = result.EndTime.Sub(result.StartTime)
+	result.Metrics.ExecutionTime = result.Duration
+
+	// Update global metrics
+	fe.metrics.RecordFieldExecution(result)
+
+	// Emit field completed event
+	eventType := EventFieldCompleted
+	if !result.Success {
+		eventType = EventFieldFailed
+	}
+
+	if err := fe.emitFieldEvent(ctx, eventType, field, result); err != nil {
+		fe.logger.Warn("failed to emit field completed event", zap.Error(err))
+	}
+
+	fe.logger.Debug("field execution completed",
+		zap.String("field_id", field.ID),
+		zap.Bool("success", result.Success),
+		zap.Duration("duration", result.Duration),
+		zap.String("strategy", result.StrategyUsed))
 }
