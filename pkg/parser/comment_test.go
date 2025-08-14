@@ -193,7 +193,7 @@ func createTempTestFile(t *testing.T, content string) *tempTestFile {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "test.go")
 
-	err := os.WriteFile(filePath, []byte(content), 0o600)
+	err := os.WriteFile(filePath, []byte(content), 0600)
 	require.NoError(t, err)
 
 	return &tempTestFile{
