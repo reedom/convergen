@@ -495,53 +495,49 @@ func (fm *ConcreteFormatManager) generateImportBlock(imports *ImportDeclaration)
 	}
 
 	var block strings.Builder
-
 	block.WriteString("import (\n")
 
-	// Standard library imports
-	if len(imports.StandardLibs) > 0 {
-		for _, imp := range imports.StandardLibs {
-			if imp.Alias != "" {
-				block.WriteString(fmt.Sprintf("\t%s \"%s\"\n", imp.Alias, imp.Path))
-			} else {
-				block.WriteString(fmt.Sprintf("\t\"%s\"\n", imp.Path))
-			}
-		}
+	// Process each import group with spacing
+	fm.writeImportGroup(&block, imports.StandardLibs)
+	fm.addSpacingIfNeeded(&block, imports.StandardLibs, imports.ThirdPartyLibs, imports.LocalImports)
 
-		if len(imports.ThirdPartyLibs) > 0 || len(imports.LocalImports) > 0 {
-			block.WriteString("\n")
-		}
-	}
+	fm.writeImportGroup(&block, imports.ThirdPartyLibs)
+	fm.addSpacingIfNeeded(&block, imports.ThirdPartyLibs, imports.LocalImports)
 
-	// Third-party imports
-	if len(imports.ThirdPartyLibs) > 0 {
-		for _, imp := range imports.ThirdPartyLibs {
-			if imp.Alias != "" {
-				block.WriteString(fmt.Sprintf("\t%s \"%s\"\n", imp.Alias, imp.Path))
-			} else {
-				block.WriteString(fmt.Sprintf("\t\"%s\"\n", imp.Path))
-			}
-		}
-
-		if len(imports.LocalImports) > 0 {
-			block.WriteString("\n")
-		}
-	}
-
-	// Local imports
-	if len(imports.LocalImports) > 0 {
-		for _, imp := range imports.LocalImports {
-			if imp.Alias != "" {
-				block.WriteString(fmt.Sprintf("\t%s \"%s\"\n", imp.Alias, imp.Path))
-			} else {
-				block.WriteString(fmt.Sprintf("\t\"%s\"\n", imp.Path))
-			}
-		}
-	}
+	fm.writeImportGroup(&block, imports.LocalImports)
 
 	block.WriteString(")")
-
 	return block.String()
+}
+
+// writeImportGroup writes a group of imports to the builder.
+func (fm *ConcreteFormatManager) writeImportGroup(block *strings.Builder, imports []*Import) {
+	for _, imp := range imports {
+		fm.writeImportLine(block, imp)
+	}
+}
+
+// writeImportLine writes a single import line with proper formatting.
+func (fm *ConcreteFormatManager) writeImportLine(block *strings.Builder, imp *Import) {
+	if imp.Alias != "" {
+		block.WriteString(fmt.Sprintf("\t%s \"%s\"\n", imp.Alias, imp.Path))
+	} else {
+		block.WriteString(fmt.Sprintf("\t\"%s\"\n", imp.Path))
+	}
+}
+
+// addSpacingIfNeeded adds spacing between import groups when needed.
+func (fm *ConcreteFormatManager) addSpacingIfNeeded(block *strings.Builder, currentGroup []*Import, nextGroups ...[]*Import) {
+	if len(currentGroup) == 0 {
+		return
+	}
+
+	for _, group := range nextGroups {
+		if len(group) > 0 {
+			block.WriteString("\n")
+			return
+		}
+	}
 }
 
 // Default implementations for processors
