@@ -1,3 +1,6 @@
+// Package builder provides enhanced type conversion and field mapping functionality
+// for Convergen's code generation pipeline, with specialized support for generic types
+// and complex nested data structures.
 package builder
 
 import (
@@ -41,7 +44,7 @@ type BasicFieldMapping struct {
 type basicFieldMapper struct{}
 
 // MapFields provides a basic field mapping implementation.
-func (bfm *basicFieldMapper) MapFields(sourceType, destType domain.Type, options map[string]string) ([]*BasicFieldMapping, error) {
+func (bfm *basicFieldMapper) MapFields(_, _ domain.Type, _ map[string]string) ([]*BasicFieldMapping, error) {
 	// Simple implementation that returns empty mappings
 	// In a real implementation, this would analyze the types and create appropriate mappings
 	return []*BasicFieldMapping{}, nil
@@ -517,11 +520,23 @@ func (gfm *GenericFieldMapper) typesConvertible(srcType, dstType domain.Type) bo
 		return true
 	}
 
-	// Pointer conversions
+	// Pointer conversions - enhanced to handle pointer/value combinations
 	if srcType.Kind() == domain.KindPointer && dstType.Kind() == domain.KindPointer {
 		srcElem := srcType.(*domain.PointerType).Elem()
 		dstElem := dstType.(*domain.PointerType).Elem()
 		return gfm.typesConvertible(srcElem, dstElem)
+	}
+
+	// Pointer to value conversion (*T → T)
+	if srcType.Kind() == domain.KindPointer && dstType.Kind() != domain.KindPointer {
+		srcElem := srcType.(*domain.PointerType).Elem()
+		return gfm.typesConvertible(srcElem, dstType)
+	}
+
+	// Value to pointer conversion (T → *T)
+	if srcType.Kind() != domain.KindPointer && dstType.Kind() == domain.KindPointer {
+		dstElem := dstType.(*domain.PointerType).Elem()
+		return gfm.typesConvertible(srcType, dstElem)
 	}
 
 	// Slice conversions
@@ -546,6 +561,11 @@ func (gfm *GenericFieldMapper) typesConvertible(srcType, dstType domain.Type) bo
 		return gfm.typesConvertibleForNamedTypes(srcType, dstType)
 	}
 
+	// Interface{} conversions
+	if gfm.isInterfaceEmptyType(srcType) || gfm.isInterfaceEmptyType(dstType) {
+		return true // interface{} is convertible to/from any type
+	}
+
 	return false
 }
 
@@ -554,20 +574,225 @@ func (gfm *GenericFieldMapper) generateDirectAssignment(
 	srcField, dstField *domain.Field,
 	context *GenericMappingContext,
 ) (*FieldAssignment, error) {
+	// Start with default direct assignment
 	assignmentCode := fmt.Sprintf("dst.%s = src.%s", dstField.Name, srcField.Name)
+	assignmentType := DirectAssignment
 
-	// Add type conversion if needed
-	if !srcField.Type.AssignableTo(dstField.Type) && context.Options.UseTypeConversion {
+	// Check if types are directly assignable
+	if srcField.Type.AssignableTo(dstField.Type) {
+		return &FieldAssignment{
+			SourceField:    srcField,
+			DestField:      dstField,
+			AssignmentType: assignmentType,
+			Code:           assignmentCode,
+		}, nil
+	}
+
+	// Apply advanced conversion scenarios
+	conversionCode := gfm.generateAdvancedConversion(srcField, dstField, context)
+	if conversionCode != "" {
+		// Determine appropriate assignment type based on the types being converted
+		assignmentType := ConversionAssignment
+		srcKind := srcField.Type.Kind()
+		dstKind := dstField.Type.Kind()
+
+		// Use specific assignment types for certain conversions
+		if srcKind == domain.KindMap && dstKind == domain.KindMap {
+			assignmentType = MapAssignment
+		} else if srcKind == domain.KindSlice && dstKind == domain.KindSlice {
+			assignmentType = SliceAssignment
+		}
+
+		return &FieldAssignment{
+			SourceField:    srcField,
+			DestField:      dstField,
+			AssignmentType: assignmentType,
+			Code:           conversionCode,
+		}, nil
+	}
+
+	// Fall back to basic type conversion if enabled
+	if context.Options.UseTypeConversion {
 		dstTypeName := gfm.getTypeName(dstField.Type)
 		assignmentCode = fmt.Sprintf("dst.%s = %s(src.%s)", dstField.Name, dstTypeName, srcField.Name)
+		assignmentType = ConversionAssignment
 	}
 
 	return &FieldAssignment{
 		SourceField:    srcField,
 		DestField:      dstField,
-		AssignmentType: DirectAssignment,
+		AssignmentType: assignmentType,
 		Code:           assignmentCode,
 	}, nil
+}
+
+// generateAdvancedConversion handles advanced conversion scenarios
+func (gfm *GenericFieldMapper) generateAdvancedConversion(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	srcKind := srcField.Type.Kind()
+	dstKind := dstField.Type.Kind()
+
+	// Handle slice-to-slice conversions
+	if srcKind == domain.KindSlice && dstKind == domain.KindSlice {
+		return gfm.generateSliceConversionCode(srcField, dstField, context)
+	}
+
+	// Handle map-to-map conversions
+	if srcKind == domain.KindMap && dstKind == domain.KindMap {
+		return gfm.generateMapConversionCode(srcField, dstField, context)
+	}
+
+	// Handle interface{} to concrete type conversions
+	if gfm.isInterfaceToConcreteConversion(srcField.Type, dstField.Type) {
+		return gfm.generateInterfaceToConcreteConversion(srcField, dstField, context)
+	}
+
+	// Handle concrete to interface{} conversions
+	if gfm.isConcreteToInterfaceConversion(srcField.Type, dstField.Type) {
+		return gfm.generateConcreteToInterfaceConversion(srcField, dstField, context)
+	}
+
+	// Handle generic type conversions
+	if srcField.Type.Generic() || dstField.Type.Generic() {
+		return gfm.generateGenericTypeConversion(srcField, dstField, context)
+	}
+
+	// Handle channel conversions
+	if gfm.isChannelType(srcField.Type) && gfm.isChannelType(dstField.Type) {
+		return gfm.generateChannelConversionCode(srcField, dstField, context)
+	}
+
+	// Handle function conversions
+	if srcKind == domain.KindFunction && dstKind == domain.KindFunction {
+		return gfm.generateFunctionConversionCode(srcField, dstField, context)
+	}
+
+	// Handle pointer conversions
+	if gfm.isPointerConversion(srcField.Type, dstField.Type) {
+		return gfm.generatePointerConversion(srcField, dstField, context)
+	}
+
+	// No advanced conversion applicable
+	return ""
+}
+
+// isInterfaceToConcreteConversion checks if conversion is from interface{} to concrete type
+func (gfm *GenericFieldMapper) isInterfaceToConcreteConversion(srcType, dstType domain.Type) bool {
+	return gfm.isInterfaceEmptyType(srcType) && !gfm.isInterfaceEmptyType(dstType)
+}
+
+// isConcreteToInterfaceConversion checks if conversion is from concrete type to interface{}
+func (gfm *GenericFieldMapper) isConcreteToInterfaceConversion(srcType, dstType domain.Type) bool {
+	return !gfm.isInterfaceEmptyType(srcType) && gfm.isInterfaceEmptyType(dstType)
+}
+
+// isChannelType checks if a type is a channel type
+func (gfm *GenericFieldMapper) isChannelType(typ domain.Type) bool {
+	// Check for channel types based on string representation since domain might not have full channel support
+	typeStr := typ.String()
+	return strings.Contains(typeStr, "chan ") || strings.HasPrefix(typeStr, "<-chan") || strings.HasSuffix(typeStr, "chan<-")
+}
+
+// isPointerConversion checks if conversion involves pointer types
+func (gfm *GenericFieldMapper) isPointerConversion(srcType, dstType domain.Type) bool {
+	return (srcType.Kind() == domain.KindPointer) != (dstType.Kind() == domain.KindPointer)
+}
+
+// generateInterfaceToConcreteConversion handles interface{} to concrete type conversion
+func (gfm *GenericFieldMapper) generateInterfaceToConcreteConversion(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	dstTypeName := gfm.getTypeName(dstField.Type)
+	return fmt.Sprintf(`// Interface{} to concrete type conversion: %s -> %s
+	if typedValue, ok := src.%s.(%s); ok {
+		dst.%s = typedValue
+	} else {
+		// TODO: Handle type assertion failure - could set zero value or return error
+		// var zero %s
+		// dst.%s = zero
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstTypeName, dstField.Name,
+		dstTypeName, dstField.Name)
+}
+
+// generateConcreteToInterfaceConversion handles concrete type to interface{} conversion
+func (gfm *GenericFieldMapper) generateConcreteToInterfaceConversion(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	return fmt.Sprintf(`// Concrete to interface{} conversion: %s -> %s
+	dst.%s = src.%s`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, srcField.Name)
+}
+
+// generateGenericTypeConversion handles generic type conversions
+func (gfm *GenericFieldMapper) generateGenericTypeConversion(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	// Apply type substitution
+	substitutedSrcType := gfm.applyTypeSubstitution(srcField.Type, context)
+	substitutedDstType := gfm.applyTypeSubstitution(dstField.Type, context)
+
+	// Check if substituted types are compatible
+	if gfm.typesCompatible(substitutedSrcType, substitutedDstType, context) {
+		conversion := gfm.generateTypeConversion(substitutedSrcType, substitutedDstType)
+		return fmt.Sprintf(`// Generic type conversion with substitution: %s -> %s
+		dst.%s = %s`,
+			srcField.Type.String(), dstField.Type.String(),
+			dstField.Name, gfm.applyConversionToValue(conversion, fmt.Sprintf("src.%s", srcField.Name)))
+	}
+
+	// Handle complex generic conversions
+	return fmt.Sprintf(`// Complex generic conversion: %s -> %s
+	// TODO: Implement complex generic type conversion logic
+	// This may require custom converter functions or additional type constraints
+	dst.%s = convertGenericType(src.%s)`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, srcField.Name)
+}
+
+// generatePointerConversion handles pointer/value conversions
+func (gfm *GenericFieldMapper) generatePointerConversion(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	srcIsPtr := srcField.Type.Kind() == domain.KindPointer
+	dstIsPtr := dstField.Type.Kind() == domain.KindPointer
+
+	if srcIsPtr && !dstIsPtr {
+		// Pointer to value conversion
+		return fmt.Sprintf(`// Pointer to value conversion: %s -> %s
+		if src.%s != nil {
+			dst.%s = *src.%s
+		} else {
+			// TODO: Handle nil pointer - could set zero value or return error
+			// var zero %s
+			// dst.%s = zero
+		}`,
+			srcField.Type.String(), dstField.Type.String(),
+			srcField.Name, dstField.Name, srcField.Name,
+			gfm.getTypeName(dstField.Type), dstField.Name)
+	}
+
+	if !srcIsPtr && dstIsPtr {
+		// Value to pointer conversion
+		return fmt.Sprintf(`// Value to pointer conversion: %s -> %s
+		dst.%s = &src.%s`,
+			srcField.Type.String(), dstField.Type.String(),
+			dstField.Name, srcField.Name)
+	}
+
+	// Should not reach here with current logic, but handle gracefully
+	return fmt.Sprintf(`// Fallback pointer conversion: %s -> %s
+	dst.%s = src.%s`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, srcField.Name)
 }
 
 // generateMappedAssignment generates an assignment using custom field mapping.
@@ -793,41 +1018,6 @@ func (gfm *GenericFieldMapper) generateNestedFieldAssignment(
 	}
 
 	return nil
-}
-
-// generateNestedStructAssignment generates code for nested struct assignments (legacy method).
-// This method is kept for backward compatibility but delegates to the enhanced version.
-func (gfm *GenericFieldMapper) generateNestedStructAssignment(
-	srcField, dstField *domain.Field,
-	context *GenericMappingContext,
-) string {
-	// Delegate to enhanced version
-	return gfm.generateEnhancedNestedStructAssignment(srcField, dstField, context)
-}
-
-// fieldsCanMapNested checks if nested fields can be mapped (simpler rules).
-func (gfm *GenericFieldMapper) fieldsCanMapNested(srcField, dstField *domain.Field) bool {
-	// For nested fields, use more lenient matching
-	if srcField.Name == dstField.Name {
-		return true
-	}
-
-	// Allow common transformations for nested fields
-	commonMappings := map[string][]string{
-		"Inner": {"Inner", "Value", "Data"},
-		"Value": {"Value", "Inner", "Data", "Name"},
-		"Data":  {"Data", "Value", "Content"},
-	}
-
-	if acceptable, exists := commonMappings[dstField.Name]; exists {
-		for _, source := range acceptable {
-			if srcField.Name == source {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 // SetConfiguration updates the mapper configuration.
@@ -1178,13 +1368,159 @@ func (gfm *GenericFieldMapper) generateSliceConversionCode(
 	srcField, dstField *domain.Field,
 	context *GenericMappingContext,
 ) string {
-	// For slice conversions, we need to handle element type conversion
-	// This is a simplified implementation
-	return fmt.Sprintf(`// Convert slice: %s -> %s
+	srcSliceType, srcOk := srcField.Type.(*domain.SliceType)
+	dstSliceType, dstOk := dstField.Type.(*domain.SliceType)
+
+	if !srcOk || !dstOk {
+		gfm.logger.Debug("slice conversion requires both types to be slice types",
+			zap.String("src_type", srcField.Type.String()),
+			zap.String("dst_type", dstField.Type.String()))
+		return gfm.generateFallbackSliceConversion(srcField, dstField)
+	}
+
+	srcElemType := srcSliceType.Elem()
+	dstElemType := dstSliceType.Elem()
+
+	// Check if element types need conversion
+	if gfm.typesCompatible(srcElemType, dstElemType, context) {
+		// Direct element assignment - most efficient
+		return gfm.generateDirectSliceConversion(srcField, dstField)
+	}
+
+	// Check for generic element conversion
+	if srcElemType.Generic() || dstElemType.Generic() {
+		return gfm.generateGenericSliceConversion(srcField, dstField, context)
+	}
+
+	// Check for interface{} to concrete type conversion
+	if gfm.isInterfaceEmptyType(srcElemType) && !gfm.isInterfaceEmptyType(dstElemType) {
+		return gfm.generateInterfaceToConcreteSliceConversion(srcField, dstField, dstElemType)
+	}
+
+	// Check for nested struct conversion
+	if srcElemType.Kind() == domain.KindStruct && dstElemType.Kind() == domain.KindStruct {
+		return gfm.generateNestedStructSliceConversion(srcField, dstField, context)
+	}
+
+	// Complex element transformation with custom converter
+	return gfm.generateCustomSliceConversion(srcField, dstField, context)
+}
+
+// generateDirectSliceConversion handles slice conversion when element types are directly compatible
+func (gfm *GenericFieldMapper) generateDirectSliceConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Direct slice conversion: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s, len(src.%s))
+		copy(dst.%s, src.%s)
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, dstField.Name, srcField.Name)
+}
+
+// generateGenericSliceConversion handles slice conversion with generic element types
+func (gfm *GenericFieldMapper) generateGenericSliceConversion(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	srcSliceType := srcField.Type.(*domain.SliceType)
+	dstSliceType := dstField.Type.(*domain.SliceType)
+
+	srcElemType := srcSliceType.Elem()
+	dstElemType := dstSliceType.Elem()
+
+	// Apply type substitution to element types
+	substitutedSrcElem := gfm.applyTypeSubstitution(srcElemType, context)
+	substitutedDstElem := gfm.applyTypeSubstitution(dstElemType, context)
+
+	// Check if substituted types are compatible
+	if gfm.typesCompatible(substitutedSrcElem, substitutedDstElem, context) {
+		return fmt.Sprintf(`// Generic slice conversion with type substitution: %s -> %s
+		if src.%s != nil {
+			dst.%s = make(%s, len(src.%s))
+			for i, item := range src.%s {
+				dst.%s[i] = %s(item)
+			}
+		}`,
+			srcField.Type.String(), dstField.Type.String(),
+			srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+			srcField.Name, srcField.Name, dstField.Name,
+			gfm.generateTypeConversion(substitutedSrcElem, substitutedDstElem))
+	}
+
+	// Require nested conversion for complex generic types
+	return gfm.generateComplexGenericSliceConversion(srcField, dstField, context)
+}
+
+// generateInterfaceToConcreteSliceConversion handles interface{} to concrete type slice conversion
+func (gfm *GenericFieldMapper) generateInterfaceToConcreteSliceConversion(
+	srcField, dstField *domain.Field,
+	targetElemType domain.Type,
+) string {
+	return fmt.Sprintf(`// Interface{} to concrete slice conversion: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s, 0, len(src.%s))
+		for _, item := range src.%s {
+			if typedItem, ok := item.(%s); ok {
+				dst.%s = append(dst.%s, typedItem)
+			}
+		}
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, srcField.Name, gfm.getTypeName(targetElemType),
+		dstField.Name, dstField.Name)
+}
+
+// generateNestedStructSliceConversion handles slice conversion with nested struct element conversion
+func (gfm *GenericFieldMapper) generateNestedStructSliceConversion(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	srcSliceType := srcField.Type.(*domain.SliceType)
+	dstSliceType := dstField.Type.(*domain.SliceType)
+
+	srcElemType := srcSliceType.Elem()
+	dstElemType := dstSliceType.Elem()
+
+	return fmt.Sprintf(`// Nested struct slice conversion: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s, len(src.%s))
+		for i, item := range src.%s {
+			%s
+		}
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, srcField.Name,
+		gfm.generateNestedElementConversion("item", fmt.Sprintf("dst.%s[i]", dstField.Name), srcElemType, dstElemType, context))
+}
+
+// generateCustomSliceConversion handles slice conversion requiring custom conversion logic
+func (gfm *GenericFieldMapper) generateCustomSliceConversion(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	return fmt.Sprintf(`// Custom slice conversion with element transformation: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s, len(src.%s))
+		for i, item := range src.%s {
+			// TODO: Add custom element conversion logic
+			// This may require converter functions for complex transformations
+			dst.%s[i] = item // Placeholder - replace with actual conversion
+		}
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, srcField.Name, dstField.Name)
+}
+
+// generateFallbackSliceConversion provides a fallback for non-slice types
+func (gfm *GenericFieldMapper) generateFallbackSliceConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Fallback slice conversion: %s -> %s
 	dst.%s = make(%s, len(src.%s))
 	for i, item := range src.%s {
-		// TODO: Add element conversion logic here
-		dst.%s[i] = item // Placeholder conversion
+		dst.%s[i] = item // Direct assignment fallback
 	}`,
 		srcField.Type.String(), dstField.Type.String(),
 		dstField.Name, gfm.getTypeName(dstField.Type),
@@ -1196,17 +1532,607 @@ func (gfm *GenericFieldMapper) generateMapConversionCode(
 	srcField, dstField *domain.Field,
 	context *GenericMappingContext,
 ) string {
-	// For map conversions, we need to handle both key and value type conversion
-	// This is a simplified implementation
-	return fmt.Sprintf(`// Convert map: %s -> %s
-	dst.%s = make(%s, len(src.%s))
-	for key, value := range src.%s {
-		// TODO: Add key/value conversion logic here
-		dst.%s[key] = value // Placeholder conversion
+	// Extract map key and value types
+	srcMapInfo := gfm.extractMapTypeInfo(srcField.Type)
+	dstMapInfo := gfm.extractMapTypeInfo(dstField.Type)
+
+	if srcMapInfo == nil || dstMapInfo == nil {
+		gfm.logger.Debug("map conversion requires both types to be map types",
+			zap.String("src_type", srcField.Type.String()),
+			zap.String("dst_type", dstField.Type.String()))
+		return gfm.generateFallbackMapConversion(srcField, dstField)
+	}
+
+	// Check key and value type compatibility
+	keyCompatible := gfm.typesCompatible(srcMapInfo.KeyType, dstMapInfo.KeyType, context)
+	valueCompatible := gfm.typesCompatible(srcMapInfo.ValueType, dstMapInfo.ValueType, context)
+
+	if keyCompatible && valueCompatible {
+		// Direct map conversion - most efficient
+		return gfm.generateDirectMapConversion(srcField, dstField)
+	}
+
+	// Handle generic key/value transformations
+	if srcMapInfo.KeyType.Generic() || dstMapInfo.KeyType.Generic() ||
+		srcMapInfo.ValueType.Generic() || dstMapInfo.ValueType.Generic() {
+		return gfm.generateGenericMapConversion(srcField, dstField, srcMapInfo, dstMapInfo, context)
+	}
+
+	// Handle interface{} conversions
+	if gfm.requiresInterfaceConversion(srcMapInfo, dstMapInfo) {
+		return gfm.generateInterfaceMapConversion(srcField, dstField, srcMapInfo, dstMapInfo)
+	}
+
+	// Handle nested struct conversions
+	if gfm.requiresNestedStructConversion(srcMapInfo, dstMapInfo) {
+		return gfm.generateNestedStructMapConversion(srcField, dstField, srcMapInfo, dstMapInfo, context)
+	}
+
+	// Complex key/value transformation
+	return gfm.generateCustomMapConversion(srcField, dstField, srcMapInfo, dstMapInfo, context)
+}
+
+// MapTypeInfo holds information about map key and value types
+type MapTypeInfo struct {
+	KeyType   domain.Type
+	ValueType domain.Type
+}
+
+// extractMapTypeInfo extracts key and value type information from a map type
+func (gfm *GenericFieldMapper) extractMapTypeInfo(mapType domain.Type) *MapTypeInfo {
+	// Try to access map type through interface assertion with domain package's mapType
+	if mt, ok := mapType.(interface {
+		Key() domain.Type
+		Value() domain.Type
+	}); ok {
+		return &MapTypeInfo{
+			KeyType:   mt.Key(),
+			ValueType: mt.Value(),
+		}
+	}
+
+	// For types that don't implement our mapType interface, try to parse from string
+	typeStr := mapType.String()
+	if strings.HasPrefix(typeStr, "map[") {
+		return gfm.parseMapTypeFromString(typeStr)
+	}
+	return nil
+}
+
+// parseMapTypeFromString attempts to parse map type information from a type string
+func (gfm *GenericFieldMapper) parseMapTypeFromString(typeStr string) *MapTypeInfo {
+	// This is a simplified parser - in production would use go/types for proper parsing
+	if !strings.HasPrefix(typeStr, "map[") {
+		return nil
+	}
+
+	// Extract key and value type strings (simplified)
+	content := typeStr[4:] // Remove "map["
+	bracketCount := 0
+	keyEnd := -1
+
+	for i, r := range content {
+		switch r {
+		case '[':
+			bracketCount++
+		case ']':
+			if bracketCount == 0 && keyEnd == -1 {
+				keyEnd = i
+				break
+			}
+			bracketCount--
+		}
+	}
+
+	if keyEnd == -1 || keyEnd+1 >= len(content) {
+		return nil
+	}
+
+	keyTypeStr := content[:keyEnd]
+	valueTypeStr := content[keyEnd+1:]
+
+	// Create basic types for key and value (simplified)
+	keyType := domain.NewBasicType(keyTypeStr, 0)
+	valueType := domain.NewBasicType(valueTypeStr, 0)
+
+	return &MapTypeInfo{
+		KeyType:   keyType,
+		ValueType: valueType,
+	}
+}
+
+// generateDirectMapConversion handles map conversion when key and value types are compatible
+func (gfm *GenericFieldMapper) generateDirectMapConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Direct map conversion: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s, len(src.%s))
+		for k, v := range src.%s {
+			dst.%s[k] = v
+		}
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, srcField.Name, dstField.Name)
+}
+
+// generateGenericMapConversion handles map conversion with generic key/value types
+func (gfm *GenericFieldMapper) generateGenericMapConversion(
+	srcField, dstField *domain.Field,
+	srcMapInfo, dstMapInfo *MapTypeInfo,
+	context *GenericMappingContext,
+) string {
+	// Apply type substitution to key and value types
+	substitutedSrcKey := gfm.applyTypeSubstitution(srcMapInfo.KeyType, context)
+	substitutedDstKey := gfm.applyTypeSubstitution(dstMapInfo.KeyType, context)
+	substitutedSrcValue := gfm.applyTypeSubstitution(srcMapInfo.ValueType, context)
+	substitutedDstValue := gfm.applyTypeSubstitution(dstMapInfo.ValueType, context)
+
+	// Generate key and value conversion expressions
+	keyConversion := gfm.generateTypeConversion(substitutedSrcKey, substitutedDstKey)
+	valueConversion := gfm.generateTypeConversion(substitutedSrcValue, substitutedDstValue)
+
+	return fmt.Sprintf(`// Generic map conversion with type substitution: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s, len(src.%s))
+		for k, v := range src.%s {
+			convertedKey := %s
+			convertedValue := %s
+			dst.%s[convertedKey] = convertedValue
+		}
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, srcField.Name,
+		gfm.applyConversionToValue(keyConversion, "k"),
+		gfm.applyConversionToValue(valueConversion, "v"),
+		dstField.Name)
+}
+
+// generateInterfaceMapConversion handles interface{} to concrete type map conversion
+func (gfm *GenericFieldMapper) generateInterfaceMapConversion(
+	srcField, dstField *domain.Field,
+	srcMapInfo, dstMapInfo *MapTypeInfo,
+) string {
+	keyConversion := ""
+	valueConversion := ""
+
+	if gfm.isInterfaceEmptyType(srcMapInfo.KeyType) && !gfm.isInterfaceEmptyType(dstMapInfo.KeyType) {
+		keyConversion = fmt.Sprintf("typedKey, keyOk := k.(%s); if !keyOk { continue }", gfm.getTypeName(dstMapInfo.KeyType))
+	} else {
+		keyConversion = "typedKey := k"
+	}
+
+	if gfm.isInterfaceEmptyType(srcMapInfo.ValueType) && !gfm.isInterfaceEmptyType(dstMapInfo.ValueType) {
+		valueConversion = fmt.Sprintf("typedValue, valueOk := v.(%s); if !valueOk { continue }", gfm.getTypeName(dstMapInfo.ValueType))
+	} else {
+		valueConversion = "typedValue := v"
+	}
+
+	return fmt.Sprintf(`// Interface{} to concrete map conversion: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s)
+		for k, v := range src.%s {
+			%s
+			%s
+			dst.%s[typedKey] = typedValue
+		}
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, keyConversion, valueConversion, dstField.Name)
+}
+
+// generateNestedStructMapConversion handles map conversion with nested struct values
+func (gfm *GenericFieldMapper) generateNestedStructMapConversion(
+	srcField, dstField *domain.Field,
+	srcMapInfo, dstMapInfo *MapTypeInfo,
+	context *GenericMappingContext,
+) string {
+	return fmt.Sprintf(`// Nested struct map conversion: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s, len(src.%s))
+		for k, v := range src.%s {
+			%s
+		}
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, srcField.Name,
+		gfm.generateNestedMapValueConversion("k", "v", dstField.Name, srcMapInfo, dstMapInfo, context))
+}
+
+// generateCustomMapConversion handles map conversion requiring custom conversion logic
+func (gfm *GenericFieldMapper) generateCustomMapConversion(
+	srcField, dstField *domain.Field,
+	srcMapInfo, dstMapInfo *MapTypeInfo,
+	context *GenericMappingContext,
+) string {
+	return fmt.Sprintf(`// Custom map conversion with key/value transformation: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s, len(src.%s))
+		for k, v := range src.%s {
+			// TODO: Add custom key/value conversion logic
+			// This may require converter functions for complex transformations
+			dst.%s[k] = v // Placeholder - replace with actual conversion
+		}
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, srcField.Name, dstField.Name)
+}
+
+// generateFallbackMapConversion provides a fallback for non-map types
+func (gfm *GenericFieldMapper) generateFallbackMapConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Fallback map conversion: %s -> %s
+	dst.%s = make(%s)
+	for k, v := range src.%s {
+		dst.%s[k] = v // Direct assignment fallback
 	}`,
 		srcField.Type.String(), dstField.Type.String(),
 		dstField.Name, gfm.getTypeName(dstField.Type),
+		srcField.Name, dstField.Name)
+}
+
+// isInterfaceEmptyType checks if a type is interface{}
+func (gfm *GenericFieldMapper) isInterfaceEmptyType(typ domain.Type) bool {
+	if typ.Kind() == domain.KindInterface {
+		return typ.String() == "interface{}" || typ.String() == "any"
+	}
+	return false
+}
+
+// requiresInterfaceConversion checks if map conversion requires interface{} handling
+func (gfm *GenericFieldMapper) requiresInterfaceConversion(srcMapInfo, dstMapInfo *MapTypeInfo) bool {
+	return (gfm.isInterfaceEmptyType(srcMapInfo.KeyType) && !gfm.isInterfaceEmptyType(dstMapInfo.KeyType)) ||
+		(gfm.isInterfaceEmptyType(srcMapInfo.ValueType) && !gfm.isInterfaceEmptyType(dstMapInfo.ValueType))
+}
+
+// requiresNestedStructConversion checks if map conversion requires nested struct handling
+func (gfm *GenericFieldMapper) requiresNestedStructConversion(srcMapInfo, dstMapInfo *MapTypeInfo) bool {
+	return (srcMapInfo.ValueType.Kind() == domain.KindStruct && dstMapInfo.ValueType.Kind() == domain.KindStruct) ||
+		(srcMapInfo.KeyType.Kind() == domain.KindStruct && dstMapInfo.KeyType.Kind() == domain.KindStruct)
+}
+
+// generateTypeConversion generates a type conversion expression between two types
+func (gfm *GenericFieldMapper) generateTypeConversion(srcType, dstType domain.Type) string {
+	if srcType.String() == dstType.String() {
+		return "directAssignment"
+	}
+
+	// Handle basic type conversions
+	if srcType.Kind() == domain.KindBasic && dstType.Kind() == domain.KindBasic {
+		return fmt.Sprintf("%s(%s)", gfm.getTypeName(dstType), "VALUE_PLACEHOLDER")
+	}
+
+	// Handle pointer conversions
+	if srcType.Kind() == domain.KindPointer || dstType.Kind() == domain.KindPointer {
+		return "pointerConversion"
+	}
+
+	// Handle generic type conversions
+	if srcType.Generic() || dstType.Generic() {
+		return "genericConversion"
+	}
+
+	return "customConversion"
+}
+
+// applyConversionToValue applies a conversion expression to a specific value
+func (gfm *GenericFieldMapper) applyConversionToValue(conversionExpr, valueName string) string {
+	switch conversionExpr {
+	case "directAssignment":
+		return valueName
+	case "pointerConversion":
+		return fmt.Sprintf("convertPointer(%s)", valueName)
+	case "genericConversion":
+		return fmt.Sprintf("convertGeneric(%s)", valueName)
+	default:
+		return strings.ReplaceAll(conversionExpr, "VALUE_PLACEHOLDER", valueName)
+	}
+}
+
+// generateNestedElementConversion generates conversion code for nested slice elements
+func (gfm *GenericFieldMapper) generateNestedElementConversion(
+	srcVarName, dstVarName string,
+	srcElemType, dstElemType domain.Type,
+	context *GenericMappingContext,
+) string {
+	if srcElemType.Kind() == domain.KindStruct && dstElemType.Kind() == domain.KindStruct {
+		return fmt.Sprintf(`// Convert nested struct element
+		%s = %s{
+			// TODO: Add struct field conversions
+		}`, dstVarName, gfm.getTypeName(dstElemType))
+	}
+
+	return fmt.Sprintf("%s = %s(%s)", dstVarName, gfm.getTypeName(dstElemType), srcVarName)
+}
+
+// generateNestedMapValueConversion generates conversion code for nested map values
+func (gfm *GenericFieldMapper) generateNestedMapValueConversion(
+	keyVarName, valueVarName, dstMapName string,
+	srcMapInfo, dstMapInfo *MapTypeInfo,
+	context *GenericMappingContext,
+) string {
+	if srcMapInfo.ValueType.Kind() == domain.KindStruct && dstMapInfo.ValueType.Kind() == domain.KindStruct {
+		return fmt.Sprintf(`// Convert nested struct map value
+		convertedValue := %s{
+			// TODO: Add struct field conversions
+		}
+		%s[%s] = convertedValue`, gfm.getTypeName(dstMapInfo.ValueType), dstMapName, keyVarName)
+	}
+
+	return fmt.Sprintf("%s[%s] = %s(%s)", dstMapName, keyVarName, gfm.getTypeName(dstMapInfo.ValueType), valueVarName)
+}
+
+// generateComplexGenericSliceConversion handles complex generic slice conversions
+func (gfm *GenericFieldMapper) generateComplexGenericSliceConversion(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	return fmt.Sprintf(`// Complex generic slice conversion: %s -> %s
+	if src.%s != nil {
+		dst.%s = make(%s, len(src.%s))
+		for i, item := range src.%s {
+			// TODO: Implement complex generic element conversion
+			dst.%s[i] = convertGenericElement(item)
+		}
+	}`,
+		srcField.Type.String(), dstField.Type.String(),
+		srcField.Name, dstField.Name, gfm.getTypeName(dstField.Type),
 		srcField.Name, srcField.Name, dstField.Name)
+}
+
+// generateChannelConversionCode handles channel type conversions where applicable
+func (gfm *GenericFieldMapper) generateChannelConversionCode(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	// Extract channel element types and directions
+	srcChanInfo := gfm.extractChannelTypeInfo(srcField.Type)
+	dstChanInfo := gfm.extractChannelTypeInfo(dstField.Type)
+
+	if srcChanInfo == nil || dstChanInfo == nil {
+		return gfm.generateFallbackChannelConversion(srcField, dstField)
+	}
+
+	// Check element type compatibility
+	if !gfm.typesCompatible(srcChanInfo.ElemType, dstChanInfo.ElemType, context) {
+		gfm.logger.Debug("channel element types are not compatible",
+			zap.String("src_elem", srcChanInfo.ElemType.String()),
+			zap.String("dst_elem", dstChanInfo.ElemType.String()))
+		return gfm.generateUnsupportedChannelConversion(srcField, dstField)
+	}
+
+	// Check direction compatibility
+	if !gfm.channelDirectionsCompatible(srcChanInfo.Direction, dstChanInfo.Direction) {
+		return gfm.generateChannelDirectionConversion(srcField, dstField, srcChanInfo, dstChanInfo)
+	}
+
+	// Direct channel assignment for compatible channels
+	return gfm.generateDirectChannelConversion(srcField, dstField)
+}
+
+// generateFunctionConversionCode handles function type conversions where applicable
+func (gfm *GenericFieldMapper) generateFunctionConversionCode(
+	srcField, dstField *domain.Field,
+	context *GenericMappingContext,
+) string {
+	// Extract function signatures
+	srcFuncInfo := gfm.extractFunctionTypeInfo(srcField.Type)
+	dstFuncInfo := gfm.extractFunctionTypeInfo(dstField.Type)
+
+	if srcFuncInfo == nil || dstFuncInfo == nil {
+		return gfm.generateFallbackFunctionConversion(srcField, dstField)
+	}
+
+	// Check signature compatibility
+	if !gfm.functionSignaturesCompatible(srcFuncInfo, dstFuncInfo, context) {
+		gfm.logger.Debug("function signatures are not compatible",
+			zap.String("src_func", srcField.Type.String()),
+			zap.String("dst_func", dstField.Type.String()))
+		return gfm.generateUnsupportedFunctionConversion(srcField, dstField)
+	}
+
+	// Direct function assignment for compatible signatures
+	return gfm.generateDirectFunctionConversion(srcField, dstField)
+}
+
+// ChannelTypeInfo holds information about channel types
+type ChannelTypeInfo struct {
+	ElemType  domain.Type
+	Direction domain.ChannelDirection
+}
+
+// FunctionTypeInfo holds information about function types
+type FunctionTypeInfo struct {
+	Params   []domain.Type
+	Returns  []domain.Type
+	Variadic bool
+}
+
+// extractChannelTypeInfo extracts channel type information
+func (gfm *GenericFieldMapper) extractChannelTypeInfo(chanType domain.Type) *ChannelTypeInfo {
+	if chanType.Kind() != domain.KindFunction { // Channel types might be represented differently
+		// Try to parse from type string
+		typeStr := chanType.String()
+		if strings.HasPrefix(typeStr, "chan ") || strings.Contains(typeStr, "chan<") {
+			return gfm.parseChannelTypeFromString(typeStr)
+		}
+		return nil
+	}
+
+	// TODO: Implement proper channel type extraction once channel types are properly supported in domain
+	return nil
+}
+
+// extractFunctionTypeInfo extracts function type information
+func (gfm *GenericFieldMapper) extractFunctionTypeInfo(funcType domain.Type) *FunctionTypeInfo {
+	// Try to access function type through interface assertion
+	if ft, ok := funcType.(interface {
+		Params() []domain.Type
+		Returns() []domain.Type
+		Variadic() bool
+	}); ok {
+		return &FunctionTypeInfo{
+			Params:   ft.Params(),
+			Returns:  ft.Returns(),
+			Variadic: ft.Variadic(),
+		}
+	}
+
+	// Try to parse from type string for basic cases
+	typeStr := funcType.String()
+	if strings.HasPrefix(typeStr, "func") {
+		return gfm.parseFunctionTypeFromString(typeStr)
+	}
+	return nil
+}
+
+// parseChannelTypeFromString attempts to parse channel type from string
+func (gfm *GenericFieldMapper) parseChannelTypeFromString(typeStr string) *ChannelTypeInfo {
+	// Simplified parser for channel types
+	if strings.HasPrefix(typeStr, "chan ") {
+		elemTypeStr := typeStr[5:] // Remove "chan "
+		elemType := domain.NewBasicType(elemTypeStr, 0)
+		return &ChannelTypeInfo{
+			ElemType:  elemType,
+			Direction: domain.ChannelBidirectional,
+		}
+	}
+
+	if strings.HasPrefix(typeStr, "<-chan ") {
+		elemTypeStr := typeStr[7:] // Remove "<-chan "
+		elemType := domain.NewBasicType(elemTypeStr, 0)
+		return &ChannelTypeInfo{
+			ElemType:  elemType,
+			Direction: domain.ChannelSendOnly, // Receive-only from perspective
+		}
+	}
+
+	return nil
+}
+
+// parseFunctionTypeFromString attempts to parse function type from string
+func (gfm *GenericFieldMapper) parseFunctionTypeFromString(typeStr string) *FunctionTypeInfo {
+	// Simplified parser for function types
+	// This would need proper implementation using go/types for production use
+	return &FunctionTypeInfo{
+		Params:   []domain.Type{},
+		Returns:  []domain.Type{},
+		Variadic: false,
+	}
+}
+
+// channelDirectionsCompatible checks if channel directions are compatible
+func (gfm *GenericFieldMapper) channelDirectionsCompatible(srcDir, dstDir domain.ChannelDirection) bool {
+	// Bidirectional channels are compatible with any direction
+	if srcDir == domain.ChannelBidirectional || dstDir == domain.ChannelBidirectional {
+		return true
+	}
+
+	// Same directions are compatible
+	return srcDir == dstDir
+}
+
+// functionSignaturesCompatible checks if function signatures are compatible
+func (gfm *GenericFieldMapper) functionSignaturesCompatible(
+	srcFunc, dstFunc *FunctionTypeInfo,
+	context *GenericMappingContext,
+) bool {
+	// Check parameter count
+	if len(srcFunc.Params) != len(dstFunc.Params) {
+		return false
+	}
+
+	// Check return count
+	if len(srcFunc.Returns) != len(dstFunc.Returns) {
+		return false
+	}
+
+	// Check variadic compatibility
+	if srcFunc.Variadic != dstFunc.Variadic {
+		return false
+	}
+
+	// Check parameter types
+	for i, srcParam := range srcFunc.Params {
+		if !gfm.typesCompatible(srcParam, dstFunc.Params[i], context) {
+			return false
+		}
+	}
+
+	// Check return types
+	for i, srcReturn := range srcFunc.Returns {
+		if !gfm.typesCompatible(srcReturn, dstFunc.Returns[i], context) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// generateDirectChannelConversion generates direct channel assignment
+func (gfm *GenericFieldMapper) generateDirectChannelConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Direct channel conversion: %s -> %s
+	dst.%s = src.%s`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, srcField.Name)
+}
+
+// generateChannelDirectionConversion handles channel direction conversions
+func (gfm *GenericFieldMapper) generateChannelDirectionConversion(
+	srcField, dstField *domain.Field,
+	srcChanInfo, dstChanInfo *ChannelTypeInfo,
+) string {
+	return fmt.Sprintf(`// Channel direction conversion: %s -> %s
+	// Note: Channel direction conversions may require careful handling
+	dst.%s = (%s)(src.%s)`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, gfm.getTypeName(dstField.Type), srcField.Name)
+}
+
+// generateDirectFunctionConversion generates direct function assignment
+func (gfm *GenericFieldMapper) generateDirectFunctionConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Direct function conversion: %s -> %s
+	dst.%s = src.%s`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, srcField.Name)
+}
+
+// generateFallbackChannelConversion provides fallback for unsupported channel types
+func (gfm *GenericFieldMapper) generateFallbackChannelConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Fallback channel conversion: %s -> %s
+	// TODO: Implement proper channel type conversion
+	dst.%s = src.%s // Direct assignment fallback`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, srcField.Name)
+}
+
+// generateFallbackFunctionConversion provides fallback for unsupported function types
+func (gfm *GenericFieldMapper) generateFallbackFunctionConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Fallback function conversion: %s -> %s
+	// TODO: Implement proper function type conversion
+	dst.%s = src.%s // Direct assignment fallback`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name, srcField.Name)
+}
+
+// generateUnsupportedChannelConversion handles unsupported channel conversions
+func (gfm *GenericFieldMapper) generateUnsupportedChannelConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Unsupported channel conversion: %s -> %s
+	// Channel element types are incompatible - skipping conversion
+	// dst.%s = nil // Uncomment if nil assignment is desired`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name)
+}
+
+// generateUnsupportedFunctionConversion handles unsupported function conversions
+func (gfm *GenericFieldMapper) generateUnsupportedFunctionConversion(srcField, dstField *domain.Field) string {
+	return fmt.Sprintf(`// Unsupported function conversion: %s -> %s
+	// Function signatures are incompatible - skipping conversion
+	// dst.%s = nil // Uncomment if nil assignment is desired`,
+		srcField.Type.String(), dstField.Type.String(),
+		dstField.Name)
 }
 
 // canConvertToGenericField checks if a source field can be converted to a generic destination field.

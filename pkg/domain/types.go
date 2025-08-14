@@ -764,10 +764,16 @@ type mapType struct {
 	value Type
 }
 
+// Key returns the key type of the map.
+func (t *mapType) Key() Type { return t.key }
+
+// Value returns the value type of the map.
+func (t *mapType) Value() Type { return t.value }
+
 func (t *mapType) Name() string                 { return t.name }
 func (t *mapType) Kind() TypeKind               { return KindMap }
 func (t *mapType) String() string               { return t.name }
-func (t *mapType) Generic() bool                { return false }
+func (t *mapType) Generic() bool                { return t.key.Generic() || t.value.Generic() }
 func (t *mapType) TypeParams() []TypeParam      { return nil }
 func (t *mapType) Underlying() Type             { return t }
 func (t *mapType) Package() string              { return "" }
@@ -812,10 +818,31 @@ type functionType struct {
 	variadic bool
 }
 
-func (t *functionType) Name() string                 { return t.name }
-func (t *functionType) Kind() TypeKind               { return KindFunction }
-func (t *functionType) String() string               { return t.name }
-func (t *functionType) Generic() bool                { return false }
+// Params returns the parameter types of the function.
+func (t *functionType) Params() []Type { return t.params }
+
+// Returns returns the return types of the function.
+func (t *functionType) Returns() []Type { return t.returns }
+
+// Variadic returns whether the function is variadic.
+func (t *functionType) Variadic() bool { return t.variadic }
+
+func (t *functionType) Name() string   { return t.name }
+func (t *functionType) Kind() TypeKind { return KindFunction }
+func (t *functionType) String() string { return t.name }
+func (t *functionType) Generic() bool {
+	for _, param := range t.params {
+		if param.Generic() {
+			return true
+		}
+	}
+	for _, ret := range t.returns {
+		if ret.Generic() {
+			return true
+		}
+	}
+	return false
+}
 func (t *functionType) TypeParams() []TypeParam      { return nil }
 func (t *functionType) Underlying() Type             { return t }
 func (t *functionType) Package() string              { return "" }
