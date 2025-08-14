@@ -69,7 +69,7 @@ func (g *Generator) Generate(outPath string, output, dryRun bool) ([]byte, error
 		return formatted, nil
 	}
 
-	err = os.WriteFile(outPath, formatted, 0o600)
+	err = os.WriteFile(outPath, formatted, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("error on writing to the file.\n%w", err)
 	}

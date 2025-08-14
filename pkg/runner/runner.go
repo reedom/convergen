@@ -33,7 +33,7 @@ var (
 // the provided configuration options.
 func Run(conf config.Config) error {
 	if conf.Log != "" {
-		f, err := os.OpenFile(conf.Log, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0o600)
+		f, err := os.OpenFile(conf.Log, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0600)
 		if err != nil {
 			return fmt.Errorf("failed to open log file %s: %w", conf.Log, err)
 		}
@@ -150,7 +150,7 @@ func runGenericGeneration(conf config.Config) error {
 			outputPath = strings.TrimSuffix(conf.Input, ".go") + ".gen.go"
 		}
 
-		if err := os.WriteFile(outputPath, []byte(generatedCode), 0o600); err != nil {
+		if err := os.WriteFile(outputPath, []byte(generatedCode), 0600); err != nil {
 			return fmt.Errorf("failed to write generated code to %s: %w", outputPath, err)
 		}
 

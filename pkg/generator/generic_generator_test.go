@@ -694,13 +694,13 @@ func checkExpectedName(t *testing.T, result domain.Type, expectedName string) {
 		return
 	}
 
-	actualName := getTypeName(result, expectedName)
+	actualName := getTypeName(result)
 	if actualName != expectedName {
 		t.Errorf("expected type name %s, got %s", expectedName, actualName)
 	}
 }
 
-func getTypeName(result domain.Type, expectedName string) string {
+func getTypeName(result domain.Type) string {
 	switch result.Kind() {
 	case domain.KindSlice:
 		if sliceType, ok := result.(*domain.SliceType); ok {
