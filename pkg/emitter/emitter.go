@@ -387,7 +387,7 @@ func (e *ConcreteEmitter) SetEventBus(eventBus events.EventBus) {
 
 // Helper methods for GenerateCode refactoring
 
-// initializeGeneratedCode creates the initial GeneratedCode structure
+// initializeGeneratedCode creates the initial GeneratedCode structure.
 func (e *ConcreteEmitter) initializeGeneratedCode(results *domain.ExecutionResults, startTime time.Time) *GeneratedCode {
 	return &GeneratedCode{
 		PackageName: results.PackageName,
@@ -402,7 +402,7 @@ func (e *ConcreteEmitter) initializeGeneratedCode(results *domain.ExecutionResul
 	}
 }
 
-// emitGenerationStartedEvent emits the generation started event
+// emitGenerationStartedEvent emits the generation started event.
 func (e *ConcreteEmitter) emitGenerationStartedEvent(ctx context.Context, results *domain.ExecutionResults, startTime time.Time) {
 	if err := e.emitEvent(ctx, "emit.started", map[string]interface{}{
 		"package":    results.PackageName,
@@ -413,7 +413,7 @@ func (e *ConcreteEmitter) emitGenerationStartedEvent(ctx context.Context, result
 	}
 }
 
-// generateMethods generates method codes concurrently or sequentially
+// generateMethods generates method codes concurrently or sequentially.
 func (e *ConcreteEmitter) generateMethods(ctx context.Context, methods []*domain.MethodResult) ([]*MethodCode, error) {
 	if e.config.EnableConcurrentGen && len(methods) > 1 {
 		return e.generateMethodsConcurrently(ctx, methods)
@@ -421,7 +421,7 @@ func (e *ConcreteEmitter) generateMethods(ctx context.Context, methods []*domain
 	return e.generateMethodsSequentially(ctx, methods)
 }
 
-// processImports analyzes and generates imports for the code
+// processImports analyzes and generates imports for the code.
 func (e *ConcreteEmitter) processImports(ctx context.Context, generatedCode *GeneratedCode) error {
 	importAnalysis, err := e.importMgr.AnalyzeImports(ctx, generatedCode)
 	if err != nil {
@@ -437,7 +437,7 @@ func (e *ConcreteEmitter) processImports(ctx context.Context, generatedCode *Gen
 	return nil
 }
 
-// optimizeAndFormatCode applies optimizations and formatting to the code
+// optimizeAndFormatCode applies optimizations and formatting to the code.
 func (e *ConcreteEmitter) optimizeAndFormatCode(ctx context.Context, generatedCode *GeneratedCode) error {
 	// Apply optimizations if enabled
 	if OptimizationNone < e.config.OptimizationLevel {
@@ -459,7 +459,7 @@ func (e *ConcreteEmitter) optimizeAndFormatCode(ctx context.Context, generatedCo
 	return nil
 }
 
-// finalizeGeneration finalizes generation with metrics and events
+// finalizeGeneration finalizes generation with metrics and events.
 func (e *ConcreteEmitter) finalizeGeneration(ctx context.Context, generatedCode *GeneratedCode, results *domain.ExecutionResults, methodCodes []*MethodCode, startTime time.Time) {
 	// Finalize generation metrics
 	generatedCode.Metadata.CompletionTime = time.Now()

@@ -419,7 +419,7 @@ func (e *ConcreteExecutor) collectMetrics() {
 
 // Helper methods for ExecutePlan refactoring
 
-// initializeExecutionResult creates the initial execution result structure
+// initializeExecutionResult creates the initial execution result structure.
 func (e *ConcreteExecutor) initializeExecutionResult(plan *domain.ExecutionPlan, startTime time.Time) *ExecutionResult {
 	return &ExecutionResult{
 		PlanID:    plan.ID,
@@ -430,7 +430,7 @@ func (e *ConcreteExecutor) initializeExecutionResult(plan *domain.ExecutionPlan,
 	}
 }
 
-// setupExecutionEnvironment configures the execution environment for the plan
+// setupExecutionEnvironment configures the execution environment for the plan.
 func (e *ConcreteExecutor) setupExecutionEnvironment(ctx context.Context, plan *domain.ExecutionPlan, startTime time.Time) {
 	// Emit plan started event
 	if err := e.emitEvent(ctx, "execution.plan.started", map[string]interface{}{
@@ -452,7 +452,7 @@ func (e *ConcreteExecutor) setupExecutionEnvironment(ctx context.Context, plan *
 	})
 }
 
-// executeAllMethods executes all methods concurrently and returns results
+// executeAllMethods executes all methods concurrently and returns results.
 func (e *ConcreteExecutor) executeAllMethods(ctx context.Context, methods map[string]*domain.MethodPlan) (map[string]interface{}, []ExecutionError) {
 	var methodWg sync.WaitGroup
 	methodResults := make(map[string]*MethodResult)
@@ -480,7 +480,7 @@ func (e *ConcreteExecutor) executeAllMethods(ctx context.Context, methods map[st
 	close(errorChannel)
 
 	// Collect errors and convert results
-	var errors []ExecutionError
+	errors := make([]ExecutionError, 0, len(methods)*10)
 	for execError := range errorChannel {
 		errors = append(errors, execError)
 	}
@@ -495,7 +495,7 @@ func (e *ConcreteExecutor) executeAllMethods(ctx context.Context, methods map[st
 	return results, errors
 }
 
-// finalizeExecution finalizes the execution result with metrics and events
+// finalizeExecution finalizes the execution result with metrics and events.
 func (e *ConcreteExecutor) finalizeExecution(ctx context.Context, plan *domain.ExecutionPlan, result *ExecutionResult) {
 	// Finalize result
 	result.EndTime = time.Now()

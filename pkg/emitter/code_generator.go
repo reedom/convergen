@@ -118,10 +118,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 		zap.Int("metadata_fields", len(method.Metadata)))
 
 	// Initialize generation components
-	strategy, complexity, templateData, err := cg.initializeGeneration(ctx, method)
-	if err != nil {
-		return nil, err
-	}
+	strategy, complexity, templateData := cg.initializeGeneration(ctx, method)
 
 	// Generate core method components
 	signature := cg.generateMethodSignature(method)
@@ -149,7 +146,7 @@ func (cg *ConcreteCodeGenerator) GenerateMethodCode(ctx context.Context, method 
 	}
 
 	// Finalize with metrics and validation
-	cg.finalizeGeneration(ctx, method, methodCode, startTime)
+	cg.finalizeGeneration(method, methodCode, startTime)
 
 	return methodCode, nil
 }
@@ -411,8 +408,8 @@ func (cg *ConcreteCodeGenerator) indent(s string, level int) string {
 
 // Helper methods for GenerateMethodCode refactoring
 
-// initializeGeneration initializes generation components and returns strategy, complexity, and template data
-func (cg *ConcreteCodeGenerator) initializeGeneration(ctx context.Context, method *domain.MethodResult) (ConstructionStrategy, *ComplexityMetrics, *TemplateData, error) {
+// initializeGeneration initializes generation components and returns strategy, complexity, and template data.
+func (cg *ConcreteCodeGenerator) initializeGeneration(ctx context.Context, method *domain.MethodResult) (ConstructionStrategy, *ComplexityMetrics, *TemplateData) {
 	// Analyze method complexity and select strategy
 	strategy := cg.outputStrat.SelectStrategy(ctx, method)
 	complexity := cg.outputStrat.AnalyzeFieldComplexity(cg.extractFieldResults(method))
@@ -429,10 +426,10 @@ func (cg *ConcreteCodeGenerator) initializeGeneration(ctx context.Context, metho
 		HelperFunctions: cg.getHelperFunctions(),
 	}
 
-	return strategy, complexity, templateData, nil
+	return strategy, complexity, templateData
 }
 
-// generateMethodBody generates method body using the selected strategy
+// generateMethodBody generates method body using the selected strategy.
 func (cg *ConcreteCodeGenerator) generateMethodBody(ctx context.Context, method *domain.MethodResult, strategy ConstructionStrategy, templateData *TemplateData) (string, []*Import, error) {
 	var generationStrategy GenerationStrategy
 
@@ -462,7 +459,7 @@ func (cg *ConcreteCodeGenerator) generateMethodBody(ctx context.Context, method 
 	return body, imports, nil
 }
 
-// generateErrorHandlingIfNeeded generates error handling code if method has errors
+// generateErrorHandlingIfNeeded generates error handling code if method has errors.
 func (cg *ConcreteCodeGenerator) generateErrorHandlingIfNeeded(ctx context.Context, method *domain.MethodResult) string {
 	if !cg.hasErrorHandling(method) {
 		return ""
@@ -477,7 +474,7 @@ func (cg *ConcreteCodeGenerator) generateErrorHandlingIfNeeded(ctx context.Conte
 	return errorCode.HandlingCode
 }
 
-// generateFieldCodes generates field codes for detailed analysis
+// generateFieldCodes generates field codes for detailed analysis.
 func (cg *ConcreteCodeGenerator) generateFieldCodes(ctx context.Context, method *domain.MethodResult) []*FieldCode {
 	fields := make([]*FieldCode, 0, len(method.Metadata))
 
@@ -497,8 +494,8 @@ func (cg *ConcreteCodeGenerator) generateFieldCodes(ctx context.Context, method 
 	return fields
 }
 
-// finalizeGeneration updates metrics and performs validation
-func (cg *ConcreteCodeGenerator) finalizeGeneration(ctx context.Context, method *domain.MethodResult, methodCode *MethodCode, startTime time.Time) {
+// finalizeGeneration updates metrics and performs validation.
+func (cg *ConcreteCodeGenerator) finalizeGeneration(method *domain.MethodResult, methodCode *MethodCode, startTime time.Time) {
 	// Update metrics
 	duration := time.Since(startTime)
 	cg.metrics.IncrementMethods()

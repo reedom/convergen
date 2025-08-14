@@ -135,7 +135,7 @@ func (fe *ConcreteFieldExecutor) ExecuteField(ctx context.Context, field *FieldE
 	fe.executeFieldStrategy(fieldCtx, field, strategy, execContext, result)
 
 	// Finalize field execution
-	fe.finalizeFieldExecution(ctx, field, result, startTime)
+	fe.finalizeFieldExecution(ctx, field, result)
 
 	return result, nil
 }
@@ -532,7 +532,7 @@ func contains(s, substr string) bool {
 
 // Helper methods for ExecuteField refactoring
 
-// initializeFieldExecution initializes field result and execution context
+// initializeFieldExecution initializes field result and execution context.
 func (fe *ConcreteFieldExecutor) initializeFieldExecution(ctx context.Context, field *FieldExecution, startTime time.Time) (*FieldResult, *ExecutionContext, context.Context, context.CancelFunc) {
 	fieldMetrics := &FieldMetrics{
 		ExecutionTime: 0,
@@ -565,14 +565,14 @@ func (fe *ConcreteFieldExecutor) initializeFieldExecution(ctx context.Context, f
 	return result, execContext, fieldCtx, cancel
 }
 
-// emitFieldStartedEvent emits the field started event
+// emitFieldStartedEvent emits the field started event.
 func (fe *ConcreteFieldExecutor) emitFieldStartedEvent(ctx context.Context, field *FieldExecution) {
 	if err := fe.emitFieldEvent(ctx, EventFieldStarted, field, nil); err != nil {
 		fe.logger.Warn("failed to emit field started event", zap.Error(err))
 	}
 }
 
-// getAndValidateStrategy gets and validates the field mapping strategy
+// getAndValidateStrategy gets and validates the field mapping strategy.
 func (fe *ConcreteFieldExecutor) getAndValidateStrategy(field *FieldExecution, result *FieldResult) (FieldMappingStrategy, error) {
 	// Get strategy for this field mapping
 	strategy, err := fe.getStrategy(field.Mapping.StrategyName)
@@ -608,7 +608,7 @@ func (fe *ConcreteFieldExecutor) getAndValidateStrategy(field *FieldExecution, r
 	return strategy, nil
 }
 
-// executeFieldStrategy executes the field mapping strategy
+// executeFieldStrategy executes the field mapping strategy.
 func (fe *ConcreteFieldExecutor) executeFieldStrategy(fieldCtx context.Context, field *FieldExecution, strategy FieldMappingStrategy, execContext *ExecutionContext, result *FieldResult) {
 	// Record strategy time start
 	strategyStart := time.Now()
@@ -634,8 +634,8 @@ func (fe *ConcreteFieldExecutor) executeFieldStrategy(fieldCtx context.Context, 
 	}
 }
 
-// finalizeFieldExecution finalizes field execution with metrics and events
-func (fe *ConcreteFieldExecutor) finalizeFieldExecution(ctx context.Context, field *FieldExecution, result *FieldResult, startTime time.Time) {
+// finalizeFieldExecution finalizes field execution with metrics and events.
+func (fe *ConcreteFieldExecutor) finalizeFieldExecution(ctx context.Context, field *FieldExecution, result *FieldResult) {
 	// Finalize result
 	result.EndTime = time.Now()
 	result.Duration = result.EndTime.Sub(result.StartTime)

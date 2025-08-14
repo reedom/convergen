@@ -83,13 +83,13 @@ func (cp *ConstraintParser) ParseConstraint(
 
 	// Handle nil constraint (represents 'any')
 	if constraint == nil {
-		return cp.createAnyConstraint(startTime)
+		return cp.createAnyConstraint(startTime), nil
 	}
 
 	// Check for circular constraint dependencies
 	constraintKey := constraint.String()
 	if cp.isCircularConstraint(constraintKey) {
-		return cp.createAnyConstraintForCircular(constraintKey, startTime)
+		return cp.createAnyConstraintForCircular(constraintKey, startTime), nil
 	}
 
 	// Mark constraint as visited and setup cleanup
@@ -618,8 +618,8 @@ func (cp *ConstraintParser) ConvertToDomainTypeParam(
 
 // Helper methods for ParseConstraint refactoring
 
-// createAnyConstraint creates a ParsedConstraint for 'any' constraints
-func (cp *ConstraintParser) createAnyConstraint(startTime time.Time) (*ParsedConstraint, error) {
+// createAnyConstraint creates a ParsedConstraint for 'any' constraints.
+func (cp *ConstraintParser) createAnyConstraint(startTime time.Time) *ParsedConstraint {
 	cp.logger.Debug("parsing nil constraint (any)")
 	return &ParsedConstraint{
 		Type:           nil,
@@ -628,18 +628,18 @@ func (cp *ConstraintParser) createAnyConstraint(startTime time.Time) (*ParsedCon
 		ConstraintType: anyConstraint,
 		ParseDuration:  time.Since(startTime),
 		Valid:          true,
-	}, nil
+	}
 }
 
-// isCircularConstraint checks if a constraint creates a circular dependency
+// isCircularConstraint checks if a constraint creates a circular dependency.
 func (cp *ConstraintParser) isCircularConstraint(constraintKey string) bool {
 	cp.mu.RLock()
 	defer cp.mu.RUnlock()
 	return cp.visitedConstraints[constraintKey]
 }
 
-// createAnyConstraintForCircular creates an 'any' constraint for circular dependencies
-func (cp *ConstraintParser) createAnyConstraintForCircular(constraintKey string, startTime time.Time) (*ParsedConstraint, error) {
+// createAnyConstraintForCircular creates an 'any' constraint for circular dependencies.
+func (cp *ConstraintParser) createAnyConstraintForCircular(constraintKey string, startTime time.Time) *ParsedConstraint {
 	cp.logger.Warn("circular constraint detected, treating as 'any'",
 		zap.String("constraint", constraintKey))
 
@@ -650,24 +650,24 @@ func (cp *ConstraintParser) createAnyConstraintForCircular(constraintKey string,
 		ConstraintType: anyConstraint,
 		ParseDuration:  time.Since(startTime),
 		Valid:          true,
-	}, nil
+	}
 }
 
-// markConstraintVisited marks a constraint as visited to detect cycles
+// markConstraintVisited marks a constraint as visited to detect cycles.
 func (cp *ConstraintParser) markConstraintVisited(constraintKey string) {
 	cp.mu.Lock()
 	defer cp.mu.Unlock()
 	cp.visitedConstraints[constraintKey] = true
 }
 
-// unmarkConstraintVisited removes a constraint from the visited set
+// unmarkConstraintVisited removes a constraint from the visited set.
 func (cp *ConstraintParser) unmarkConstraintVisited(constraintKey string) {
 	cp.mu.Lock()
 	defer cp.mu.Unlock()
 	delete(cp.visitedConstraints, constraintKey)
 }
 
-// parseConstraintByType parses the constraint based on its Go type
+// parseConstraintByType parses the constraint based on its Go type.
 func (cp *ConstraintParser) parseConstraintByType(ctx context.Context, constraint types.Type, result *ParsedConstraint) error {
 	switch constraintType := constraint.(type) {
 	case *types.Interface:
