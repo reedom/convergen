@@ -11,7 +11,6 @@ import (
 	"go/token"
 	"os"
 	"regexp"
-	"strings"
 
 	"golang.org/x/tools/go/packages"
 
@@ -634,76 +633,4 @@ func (p *Parser) replaceInterfaceBySimpleName(sourceCode, marker, interfaceName 
 	//	originalLen, newLen, originalLen != newLen)
 
 	return result
-}
-
-// replaceInterfaceByName is a simple fallback that replaces interface by name pattern.
-func (p *Parser) replaceInterfaceByName(sourceCode, marker, interfaceName string) string {
-	// For generic interfaces, we need a more sophisticated pattern
-	// Pattern: type InterfaceName[...] interface { ... }
-	// This needs to handle nested braces in constraints and method interfaces
-
-	// Find the start of the type declaration
-	typePattern := fmt.Sprintf(`type\s+%s`, regexp.QuoteMeta(interfaceName))
-	typeRe := regexp.MustCompile(typePattern)
-
-	typeMatch := typeRe.FindStringIndex(sourceCode)
-	if typeMatch == nil {
-		return sourceCode
-	}
-
-	// Find the end by matching braces - start from the type declaration
-	start := typeMatch[0]
-
-	// Simple approach: find all closing braces after the type declaration
-	// and pick the one that completes the declaration
-	pos := start
-	braceCount := 0
-	foundInterface := false
-
-	for pos < len(sourceCode) {
-		char := sourceCode[pos]
-
-		if char == '{' {
-			braceCount++
-		} else if char == '}' {
-			braceCount--
-			if braceCount == 0 && foundInterface {
-				// This might be the end - check if this completes a valid declaration
-				// by seeing if the next non-whitespace character starts a new declaration
-				end := pos + 1
-
-				// Look ahead to verify this is the end
-				nextPos := end
-				for nextPos < len(sourceCode) && (sourceCode[nextPos] == ' ' || sourceCode[nextPos] == '\t' || sourceCode[nextPos] == '\n') {
-					nextPos++
-				}
-
-				// If we've reached the end of source OR found start of new declaration, this is the end
-				if nextPos >= len(sourceCode) ||
-					(nextPos < len(sourceCode) && (strings.HasPrefix(sourceCode[nextPos:], "type") ||
-						strings.HasPrefix(sourceCode[nextPos:], "func") ||
-						strings.HasPrefix(sourceCode[nextPos:], "var") ||
-						strings.HasPrefix(sourceCode[nextPos:], "const") ||
-						strings.HasPrefix(sourceCode[nextPos:], "//"))) {
-					// This is the final closing brace
-					before := sourceCode[:start]
-					after := sourceCode[end:]
-
-					// Replace the interface with the marker
-
-					return before + marker + after
-				}
-			}
-		}
-
-		// Track if we've seen "interface" keyword
-		if !foundInterface && pos+9 < len(sourceCode) && sourceCode[pos:pos+9] == "interface" {
-			foundInterface = true
-		}
-
-		pos++
-	}
-
-	// Could not find proper end for interface
-	return sourceCode
 }
