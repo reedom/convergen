@@ -302,6 +302,7 @@ func (bus *InMemoryEventBus) Emit(ctx context.Context, event Event) error {
 			baseEvent.ctx = ctx
 		}
 	}
+	//nolint:contextcheck // Context is embedded in event, Publish extracts it internally
 	return bus.Publish(event)
 }
 

@@ -19,27 +19,53 @@ import (
 
 // Static errors for err113 compliance.
 var (
-	ErrStyleAnnotationRequiresArgument        = errors.New("style annotation requires an argument")
-	ErrMatchAnnotationRequiresArgument        = errors.New("match annotation requires an argument")
-	ErrRecvAnnotationRequiresReceiverName     = errors.New("recv annotation requires a receiver name")
-	ErrInvalidReceiverName                    = errors.New("invalid receiver name")
-	ErrSkipAnnotationRequiresFieldPattern     = errors.New("skip annotation requires a field pattern")
-	ErrMapAnnotationRequiresArguments         = errors.New("map annotation requires source and destination arguments")
-	ErrConvAnnotationRequiresArguments        = errors.New("conv annotation requires converter and type arguments")
-	ErrLiteralAnnotationRequiresArguments     = errors.New("literal annotation requires field and value arguments")
-	ErrPreprocessAnnotationRequiresFunction   = errors.New("preprocess annotation requires a function name")
-	ErrPostprocessAnnotationRequiresFunction  = errors.New("postprocess annotation requires a function name")
-	ErrUnknownStyle                           = errors.New("unknown style")
-	ErrUnknownMatchRule                       = errors.New("unknown match rule")
-	ErrInstantiationCannotBeNil               = errors.New("instantiation cannot be nil")
-	ErrCannotAddInstantiationToNonGeneric     = errors.New("cannot add instantiation to non-generic interface")
-	ErrTypeArgumentCountMismatch              = errors.New("type argument count does not match type parameter count")
-	ErrIsGenericFlagInconsistent              = errors.New("IsGeneric flag inconsistent with TypeParams length")
-	ErrInvalidTypeParameterForInterface       = errors.New("invalid type parameter for interface")
-	ErrNilInstantiationFound                  = errors.New("nil instantiation found")
-	ErrInstantiationWrongTypeArgumentCount    = errors.New("instantiation has wrong type argument count")
-	ErrNonGenericInterfaceHasInstantiations   = errors.New("non-generic interface should not have instantiations")
-	ErrExternalImportsWithoutExternalTypes    = errors.New("external imports specified but no external types found in type arguments")
+	// ErrEmptyInterface indicates that an interface has no methods to generate.
+	ErrEmptyInterface = errors.New("interface has no methods to generate")
+)
+var (
+	// ErrStyleAnnotationRequiresArgument indicates that a style annotation is missing its required argument.
+	ErrStyleAnnotationRequiresArgument = errors.New("style annotation requires an argument")
+	// ErrMatchAnnotationRequiresArgument indicates that a match annotation is missing its required argument.
+	ErrMatchAnnotationRequiresArgument = errors.New("match annotation requires an argument")
+	// ErrRecvAnnotationRequiresReceiverName indicates that a recv annotation is missing the receiver name.
+	ErrRecvAnnotationRequiresReceiverName = errors.New("recv annotation requires a receiver name")
+	// ErrInvalidReceiverName indicates that the provided receiver name is invalid.
+	ErrInvalidReceiverName = errors.New("invalid receiver name")
+	// ErrSkipAnnotationRequiresFieldPattern indicates that a skip annotation is missing the field pattern.
+	ErrSkipAnnotationRequiresFieldPattern = errors.New("skip annotation requires a field pattern")
+	// ErrMapAnnotationRequiresArguments indicates that a map annotation is missing its required arguments.
+	ErrMapAnnotationRequiresArguments = errors.New("map annotation requires source and destination arguments")
+	// ErrConvAnnotationRequiresArguments indicates that a conv annotation is missing its required arguments.
+	ErrConvAnnotationRequiresArguments = errors.New("conv annotation requires converter and type arguments")
+	// ErrLiteralAnnotationRequiresArguments indicates that a literal annotation is missing its required arguments.
+	ErrLiteralAnnotationRequiresArguments = errors.New("literal annotation requires field and value arguments")
+	// ErrPreprocessAnnotationRequiresFunction indicates that a preprocess annotation is missing the function name.
+	ErrPreprocessAnnotationRequiresFunction = errors.New("preprocess annotation requires a function name")
+	// ErrPostprocessAnnotationRequiresFunction indicates that a postprocess annotation is missing the function name.
+	ErrPostprocessAnnotationRequiresFunction = errors.New("postprocess annotation requires a function name")
+	// ErrUnknownStyle indicates that an unknown style was specified.
+	ErrUnknownStyle = errors.New("unknown style")
+	// ErrUnknownMatchRule indicates that an unknown match rule was specified.
+	ErrUnknownMatchRule = errors.New("unknown match rule")
+	// ErrInstantiationCannotBeNil indicates that an instantiation cannot be nil.
+	ErrInstantiationCannotBeNil = errors.New("instantiation cannot be nil")
+	// ErrCannotAddInstantiationToNonGeneric indicates that instantiation cannot be added to a non-generic interface.
+	ErrCannotAddInstantiationToNonGeneric = errors.New("cannot add instantiation to non-generic interface")
+	// ErrTypeArgumentCountMismatch indicates that the type argument count does not match the type parameter count.
+	ErrTypeArgumentCountMismatch = errors.New("type argument count does not match type parameter count")
+	// ErrIsGenericFlagInconsistent indicates that the IsGeneric flag is inconsistent with TypeParams length.
+	ErrIsGenericFlagInconsistent = errors.New("IsGeneric flag inconsistent with TypeParams length")
+	// ErrInvalidTypeParameterForInterface indicates that an invalid type parameter was provided for an interface.
+	ErrInvalidTypeParameterForInterface = errors.New("invalid type parameter for interface")
+	// ErrNilInstantiationFound indicates that a nil instantiation was found where it should not be.
+	ErrNilInstantiationFound = errors.New("nil instantiation found")
+	// ErrInstantiationWrongTypeArgumentCount indicates that an instantiation has the wrong type argument count.
+	ErrInstantiationWrongTypeArgumentCount = errors.New("instantiation has wrong type argument count")
+	// ErrNonGenericInterfaceHasInstantiations indicates that a non-generic interface should not have instantiations.
+	ErrNonGenericInterfaceHasInstantiations = errors.New("non-generic interface should not have instantiations")
+	// ErrExternalImportsWithoutExternalTypes indicates that external imports were specified but no external types found.
+	ErrExternalImportsWithoutExternalTypes = errors.New("external imports specified but no external types found in type arguments")
+	// ErrInvalidTypeParameterWithConstraintType indicates an invalid type parameter with constraint type.
 	ErrInvalidTypeParameterWithConstraintType = errors.New("invalid type parameter with constraint type")
 )
 
@@ -209,7 +235,7 @@ func (p *ASTParser) analyzeInterface(ctx context.Context, _ *packages.Package, f
 			zap.String("interface_name", obj.Name()),
 			zap.Int("total_methods", iface.NumMethods()),
 			zap.Int("exported_methods", len(methods)))
-		return nil, fmt.Errorf("empty interface %s has no methods to generate", obj.Name())
+		return nil, fmt.Errorf("%w: empty interface %s", ErrEmptyInterface, obj.Name())
 	}
 
 	// Create interface info using constructor

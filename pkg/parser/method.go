@@ -23,6 +23,9 @@ var (
 	// reConvergen is a regular expression that matches a notation that
 	// indicates the beginning of a convergen block.
 	errAbort = errors.New("abort")
+
+	// ErrInterfaceHasNoMethods indicates that an interface has no methods to process.
+	ErrInterfaceHasNoMethods = errors.New("interface has no methods - expected declaration")
 )
 
 // parseMethods parses all the methods in an interface type with optional concurrency.
@@ -43,8 +46,8 @@ func (p *Parser) parseMethodsConcurrent(intf *intfEntry) ([]*model.MethodEntry, 
 
 	// Check for empty interfaces - they should be rejected
 	if mset.Len() == 0 {
-		return nil, fmt.Errorf("%v: interface %s has no methods - expected declaration",
-			p.fset.Position(intf.intf.Pos()), intf.intf.Name())
+		return nil, fmt.Errorf("%v: %w: interface %s",
+			p.fset.Position(intf.intf.Pos()), ErrInterfaceHasNoMethods, intf.intf.Name())
 	}
 
 	// Create logger for concurrent processing
@@ -72,8 +75,8 @@ func (p *Parser) parseMethodsSequential(intf *intfEntry) ([]*model.MethodEntry, 
 
 	// Check for empty interfaces - they should be rejected
 	if mset.Len() == 0 {
-		return nil, fmt.Errorf("%v: interface %s has no methods - expected declaration",
-			p.fset.Position(intf.intf.Pos()), intf.intf.Name())
+		return nil, fmt.Errorf("%v: %w: interface %s",
+			p.fset.Position(intf.intf.Pos()), ErrInterfaceHasNoMethods, intf.intf.Name())
 	}
 
 	methods := make([]*model.MethodEntry, 0)
