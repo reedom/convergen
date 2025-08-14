@@ -262,6 +262,7 @@ func (lp *LegacyParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	startTime := time.Now()
 
 	// Create parser instance
+	//nolint:contextcheck // NewParserWithConfig doesn't accept context, operations are synchronous
 	parser, err := NewParserWithConfig(sourcePath, destPath, lp.config)
 	if err != nil {
 		return &ParseResult{
@@ -274,6 +275,7 @@ func (lp *LegacyParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	lp.parser = parser
 
 	// Parse the source file
+	//nolint:contextcheck // Parse doesn't accept context, operations are synchronous
 	methodsInfo, err := parser.Parse()
 	if err != nil {
 		return &ParseResult{
@@ -424,6 +426,7 @@ func (mp *ModernParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	startTime := time.Now()
 
 	// Create parser instance with concurrent loading enabled
+	//nolint:contextcheck // NewParserWithConfig doesn't accept context, operations are synchronous
 	parser, err := NewParserWithConfig(sourcePath, destPath, mp.config)
 	if err != nil {
 		return &ParseResult{
@@ -436,6 +439,7 @@ func (mp *ModernParser) ParseSourceFile(ctx context.Context, sourcePath, destPat
 	mp.parser = parser
 
 	// Parse with concurrent processing
+	//nolint:contextcheck // Parse doesn't accept context, operations are synchronous
 	methodsInfo, err := parser.Parse()
 	if err != nil {
 		return &ParseResult{

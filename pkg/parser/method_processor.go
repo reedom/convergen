@@ -196,7 +196,6 @@ func (p *ASTParser) parseMethodOptions(annotations []*Annotation, interfaceOpts 
 
 // applyMethodAnnotation applies a method-level annotation to options.
 func (p *ASTParser) applyMethodAnnotation(options *domain.MethodOptions, annotation *Annotation) error {
-
 	switch annotation.Type {
 	case "style", "match", "case", "case:off", "getter", "getter:off",
 		"stringer", "stringer:off", "typecast", "typecast:off", "reverse",

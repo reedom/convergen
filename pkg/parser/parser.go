@@ -401,30 +401,11 @@ func (p *Parser) GenerateBaseCode() (code string, err error) {
 
 // insertInterfaceMarkers inserts position markers around interface definitions.
 // This prepares the AST for later replacement of interface code with simple markers.
-func (p *Parser) insertInterfaceMarkers() error {
-	for _, entry := range p.intfEntries {
-		minPos, maxPos, err := p.findInterfacePositions(entry)
-		if err != nil {
-			return fmt.Errorf("failed to find positions for interface %s: %w", entry.marker, err)
-		}
-
-		// DEBUG: Print the positions being used (commented out for performance)
-		// fmt.Printf("DEBUG: Interface %s, minPos=%d, maxPos=%d\n", entry.intf.Name(), minPos, maxPos)
-
-		// Get the actual text at these positions for debugging (commented out for performance)
-		// minPosFile := p.fset.Position(minPos)
-		// maxPosFile := p.fset.Position(maxPos)
-		// fmt.Printf("DEBUG: minPos=%s, maxPos=%s\n", minPosFile, maxPosFile)
-
-		// Insert markers at interface boundaries
-		util.InsertComment(p.file, entry.marker, minPos)
-		util.InsertComment(p.file, entry.marker, maxPos)
-	}
-	return nil
-}
 
 // findInterfacePositions determines the start and end positions of an interface definition.
 // Returns the minimum and maximum token positions that bound the interface.
+//
+//nolint:unparam // maxPos is used internally but not by callers
 func (p *Parser) findInterfacePositions(entry *intfEntry) (minPos, maxPos token.Pos, err error) {
 	nodes, _ := util.ToAstNode(p.file, entry.intf)
 
@@ -540,27 +521,8 @@ func (p *Parser) renderASTToCode() (string, error) {
 	return buf.String(), nil
 }
 
-// replaceInterfacesWithMarkers replaces interface definitions with simple markers.
-// This converts code like:
-//
-//	type Convergen <<marker>>interface { ... } <<marker>>
-//
-// Into:
-//
-//	<<marker>>
-func (p *Parser) replaceInterfacesWithMarkers(sourceCode string) string {
-	result := sourceCode
-
-	for _, entry := range p.intfEntries {
-		result = p.replaceInterfaceWithMarker(result, entry.marker)
-	}
-
-	return result
-}
-
 // replaceInterfaceWithMarker replaces a single interface definition with its marker.
 func (p *Parser) replaceInterfaceWithMarker(sourceCode, marker string) string {
-
 	// Escape the marker for regex usage
 	reMarker := regexp.QuoteMeta(marker)
 
@@ -620,7 +582,7 @@ func (p *Parser) replaceInterfacesWithMarkersDirectly(sourceCode string) string 
 
 // replaceInterfaceDirectly replaces a single interface in the source code using position information.
 func (p *Parser) replaceInterfaceDirectly(sourceCode string, entry *intfEntry) string {
-	minPos, maxPos, err := p.findInterfacePositions(entry)
+	_, _, err := p.findInterfacePositions(entry)
 	if err != nil {
 		// DEBUG: Log fallback usage (commented out for performance)
 		// fmt.Printf("DEBUG: findInterfacePositions failed for %s: %v, using fallback\n", entry.intf.Name(), err)
@@ -635,52 +597,6 @@ func (p *Parser) replaceInterfaceDirectly(sourceCode string, entry *intfEntry) s
 	// This avoids the position mismatch issues between AST and rendered source code
 	// fmt.Printf("DEBUG: Using simple name-based replacement for interface %s\n", entry.intf.Name())
 	return p.replaceInterfaceBySimpleName(sourceCode, entry.marker, entry.intf.Name())
-
-	// Use line/column based approach since offsets might not match rendered code
-	minPosInfo := p.fset.Position(minPos)
-	maxPosInfo := p.fset.Position(maxPos)
-
-	// Find the interface by line/column in the rendered source code
-	return p.replaceInterfaceByLineColumn(sourceCode, entry.marker, minPosInfo.Line, minPosInfo.Column, maxPosInfo.Line, maxPosInfo.Column)
-}
-
-// replaceInterfaceByLineColumn replaces interface using line/column coordinates.
-func (p *Parser) replaceInterfaceByLineColumn(sourceCode, marker string, startLine, startCol, endLine, endCol int) string {
-	lines := strings.Split(sourceCode, "\n")
-
-	// Validate line numbers
-	if startLine < 1 || endLine < 1 || startLine > len(lines) || endLine > len(lines) || startLine > endLine {
-		// Cannot use line-based replacement, use a simple name-based approach
-		return p.replaceInterfaceByName(sourceCode, marker, "CombinedConstraintConverter")
-	}
-
-	// Convert 1-based line numbers to 0-based indices
-	startLineIdx := startLine - 1
-	endLineIdx := endLine - 1
-
-	// Create result by combining parts before, marker, and parts after
-	var result strings.Builder
-
-	// Add lines before the interface
-	for i := 0; i < startLineIdx; i++ {
-		result.WriteString(lines[i])
-		result.WriteString("\n")
-	}
-
-	// Add the marker (replacing the interface)
-	result.WriteString(marker)
-	result.WriteString("\n")
-
-	// Add lines after the interface
-	for i := endLineIdx + 1; i < len(lines); i++ {
-		result.WriteString(lines[i])
-		if i < len(lines)-1 {
-			result.WriteString("\n")
-		}
-	}
-
-	// Interface replaced successfully
-	return result.String()
 }
 
 // replaceInterfaceBySimpleName replaces an interface by matching its declaration pattern.
@@ -769,7 +685,6 @@ func (p *Parser) replaceInterfaceByName(sourceCode, marker, interfaceName string
 						strings.HasPrefix(sourceCode[nextPos:], "var") ||
 						strings.HasPrefix(sourceCode[nextPos:], "const") ||
 						strings.HasPrefix(sourceCode[nextPos:], "//"))) {
-
 					// This is the final closing brace
 					before := sourceCode[:start]
 					after := sourceCode[end:]
