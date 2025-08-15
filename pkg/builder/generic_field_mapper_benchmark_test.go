@@ -78,7 +78,7 @@ func createMockTypes() (domain.Type, domain.Type) {
 // BenchmarkGenericFieldMapper_Sequential tests performance without optimizations
 func BenchmarkGenericFieldMapper_Sequential(b *testing.B) {
 	logger := zap.NewNop()
-	
+
 	// Create mapper with optimizations disabled
 	config := &GenericFieldMapperConfig{
 		EnableCaching:        false,
@@ -86,7 +86,7 @@ func BenchmarkGenericFieldMapper_Sequential(b *testing.B) {
 		EnableTypeValidation: true,
 		PerformanceMode:      false,
 	}
-	
+
 	perfConfig := &PerformanceConfig{
 		EnableFieldMappingCache: false,
 		EnableParallelMapping:   false,
@@ -114,18 +114,18 @@ func BenchmarkGenericFieldMapper_Sequential(b *testing.B) {
 // BenchmarkGenericFieldMapper_WithCaching tests performance with caching enabled
 func BenchmarkGenericFieldMapper_WithCaching(b *testing.B) {
 	logger := zap.NewNop()
-	
+
 	config := &GenericFieldMapperConfig{
 		EnableCaching:        true,
 		EnableOptimization:   true,
 		EnableTypeValidation: true,
 		PerformanceMode:      true,
 	}
-	
+
 	perfConfig := &PerformanceConfig{
 		EnableFieldMappingCache: true,
-		MaxCacheSize:           1000,
-		CacheTTL:               1 * time.Hour,
+		MaxCacheSize:            1000,
+		CacheTTL:                1 * time.Hour,
 		EnableParallelMapping:   false,
 		EnableMemoryPooling:     true,
 		PerformanceProfile:      "balanced",
@@ -151,18 +151,18 @@ func BenchmarkGenericFieldMapper_WithCaching(b *testing.B) {
 // BenchmarkGenericFieldMapper_WithParallel tests performance with parallel processing
 func BenchmarkGenericFieldMapper_WithParallel(b *testing.B) {
 	logger := zap.NewNop()
-	
+
 	config := &GenericFieldMapperConfig{
 		EnableCaching:        false,
 		EnableOptimization:   true,
 		EnableTypeValidation: true,
 		PerformanceMode:      true,
 	}
-	
+
 	perfConfig := &PerformanceConfig{
 		EnableFieldMappingCache: false,
 		EnableParallelMapping:   true,
-		MaxParallelWorkers:     runtime.NumCPU(),
+		MaxParallelWorkers:      runtime.NumCPU(),
 		EnableMemoryPooling:     true,
 		PerformanceProfile:      "speed",
 	}
@@ -187,23 +187,23 @@ func BenchmarkGenericFieldMapper_WithParallel(b *testing.B) {
 // BenchmarkGenericFieldMapper_AllOptimizations tests performance with all optimizations enabled
 func BenchmarkGenericFieldMapper_AllOptimizations(b *testing.B) {
 	logger := zap.NewNop()
-	
+
 	config := &GenericFieldMapperConfig{
 		EnableCaching:        true,
 		EnableOptimization:   true,
 		EnableTypeValidation: true,
 		PerformanceMode:      true,
 	}
-	
+
 	perfConfig := &PerformanceConfig{
 		EnableFieldMappingCache: true,
-		MaxCacheSize:           10000,
-		CacheTTL:               2 * time.Hour,
+		MaxCacheSize:            10000,
+		CacheTTL:                2 * time.Hour,
 		EnableParallelMapping:   true,
-		MaxParallelWorkers:     runtime.NumCPU(),
+		MaxParallelWorkers:      runtime.NumCPU(),
 		EnableMemoryPooling:     true,
 		PerformanceProfile:      "speed",
-		AutoTune:               true,
+		AutoTune:                true,
 	}
 
 	mapper := NewGenericFieldMapper(nil, nil, logger, config)
@@ -245,7 +245,7 @@ func BenchmarkGenericFieldMapper_MemoryUsage(b *testing.B) {
 		if err != nil {
 			b.Fatalf("Mapping failed: %v", err)
 		}
-		
+
 		if i%100 == 0 {
 			mapper.OptimizeMemoryUsage()
 		}
@@ -254,7 +254,7 @@ func BenchmarkGenericFieldMapper_MemoryUsage(b *testing.B) {
 	b.StopTimer()
 	runtime.GC()
 	runtime.ReadMemStats(&m2)
-	
+
 	memUsed := m2.TotalAlloc - m1.TotalAlloc
 	b.ReportMetric(float64(memUsed)/float64(b.N), "bytes/op")
 }
@@ -270,7 +270,7 @@ func BenchmarkGenericFieldMapper_ConcurrentAccess(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
-	
+
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			_, err := mapper.MapGenericFields(srcType, dstType, nil, options)
@@ -296,7 +296,7 @@ func BenchmarkGenericFieldMapper_CacheHitRate(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		_, err := mapper.MapGenericFields(srcType, dstType, nil, options)
 		if err != nil {
@@ -308,7 +308,7 @@ func BenchmarkGenericFieldMapper_CacheHitRate(b *testing.B) {
 	perfMetrics := metrics["performance_metrics"].(map[string]interface{})
 	cacheHits := perfMetrics["cache_hits"].(int64)
 	cacheMisses := perfMetrics["cache_misses"].(int64)
-	
+
 	if cacheHits+cacheMisses > 0 {
 		hitRate := float64(cacheHits) / float64(cacheHits+cacheMisses) * 100
 		b.ReportMetric(hitRate, "cache_hit_%")
@@ -324,12 +324,12 @@ func BenchmarkGenericFieldMapper_LargeStructs(b *testing.B) {
 	// Create larger, more complex types
 	var sourceFields []domain.Field
 	var destFields []domain.Field
-	
+
 	// Add 50 fields to simulate a large struct
 	for i := 0; i < 50; i++ {
 		field := domain.Field{
-			Name: fmt.Sprintf("Field%d", i),
-			Type: domain.NewBasicType("string", reflect.String),
+			Name:     fmt.Sprintf("Field%d", i),
+			Type:     domain.NewBasicType("string", reflect.String),
 			Exported: true,
 		}
 		sourceFields = append(sourceFields, field)
@@ -355,7 +355,7 @@ func BenchmarkGenericFieldMapper_LargeStructs(b *testing.B) {
 // BenchmarkGenericFieldMapper_ParallelVsSequential compares parallel vs sequential performance
 func BenchmarkGenericFieldMapper_ParallelVsSequential(b *testing.B) {
 	logger := zap.NewNop()
-	
+
 	// Test sequential
 	b.Run("Sequential", func(b *testing.B) {
 		mapper := NewGenericFieldMapper(nil, nil, logger, nil)
@@ -364,7 +364,7 @@ func BenchmarkGenericFieldMapper_ParallelVsSequential(b *testing.B) {
 			EnableMemoryPooling:   false,
 		}
 		mapper.ConfigurePerformance(perfConfig)
-		
+
 		srcType, dstType := createMockTypes()
 		options := DefaultFieldMappingOptions()
 
@@ -386,7 +386,7 @@ func BenchmarkGenericFieldMapper_ParallelVsSequential(b *testing.B) {
 			EnableMemoryPooling:   true,
 		}
 		mapper.ConfigurePerformance(perfConfig)
-		
+
 		srcType, dstType := createMockTypes()
 		options := DefaultFieldMappingOptions()
 
@@ -443,7 +443,7 @@ func TestGenericFieldMapper_PerformanceMetrics(t *testing.T) {
 
 	// Check metrics
 	metrics := mapper.GetEnhancedMetrics()
-	
+
 	basicMetrics := metrics["basic_metrics"].(map[string]interface{})
 	if totalMappings := basicMetrics["total_mappings"].(int64); totalMappings < 1 {
 		t.Errorf("Expected at least 1 mapping, got %d", totalMappings)
@@ -464,27 +464,27 @@ func TestGenericFieldMapper_PerformanceMetrics(t *testing.T) {
 func TestGenericFieldMapper_MemoryOptimization(t *testing.T) {
 	logger := zap.NewNop()
 	mapper := NewGenericFieldMapper(nil, nil, logger, nil)
-	
+
 	// Test memory profile
 	mapper.OptimizeForProfile("memory")
 	config := mapper.GetPerformanceProfile()
-	
+
 	if config.MaxCacheSize != 1000 {
 		t.Errorf("Expected MaxCacheSize=1000 for memory profile, got %d", config.MaxCacheSize)
 	}
-	
+
 	if config.EnableParallelMapping {
 		t.Error("Parallel mapping should be disabled in memory profile")
 	}
 
 	// Test manual memory optimization
 	mapper.OptimizeMemoryUsage() // Should not panic
-	
+
 	// Reset metrics
 	mapper.ResetPerformanceMetrics()
 	metrics := mapper.GetEnhancedMetrics()
 	basicMetrics := metrics["basic_metrics"].(map[string]interface{})
-	
+
 	if totalMappings := basicMetrics["total_mappings"].(int64); totalMappings != 0 {
 		t.Errorf("Expected 0 mappings after reset, got %d", totalMappings)
 	}
@@ -530,7 +530,7 @@ func TestGenericFieldMapper_ThreadSafety(t *testing.T) {
 	basicMetrics := metrics["basic_metrics"].(map[string]interface{})
 	totalMappings := basicMetrics["total_mappings"].(int64)
 	successfulMappings := basicMetrics["successful_mappings"].(int64)
-	
+
 	if totalMappings != successfulMappings {
 		t.Errorf("Mapping count mismatch: total=%d, successful=%d", totalMappings, successfulMappings)
 	}

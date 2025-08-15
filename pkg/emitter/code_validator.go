@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -15,17 +16,29 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+// Static errors for err113 compliance.
+var (
+	ErrCodeNotProperlyFormatted = errors.New("code is not properly formatted")
+	ErrFunctionUnderscorePrefix = errors.New("functions should not start with underscore")
+	ErrEmptyMethodSignature     = errors.New("empty method signature")
+	ErrEmptyMethodBody          = errors.New("empty method body")
+	ErrEmptyImportPath          = errors.New("empty import path")
+	ErrImportPathContainsSpaces = errors.New("import path contains spaces")
+	ErrUnbalancedBracesExtra    = errors.New("unbalanced braces: extra closing brace")
+	ErrUnbalancedBracesUnclosed = errors.New("unbalanced braces: unclosed braces detected")
+)
+
 // ConcreteCodeValidator implements the CodeValidator interface.
 // It provides comprehensive validation including syntax checking, semantic analysis,
 // type safety verification, and in-memory compilation testing.
 type ConcreteCodeValidator struct {
-	logger        *zap.Logger
-	fileSet       *token.FileSet
-	config        *Config
-	packageMode   packages.LoadMode
-	typeChecker   *types.Checker
-	importer      types.Importer
-	metrics       *ValidationMetrics
+	logger      *zap.Logger
+	fileSet     *token.FileSet
+	config      *Config
+	packageMode packages.LoadMode
+	typeChecker *types.Checker
+	importer    types.Importer
+	metrics     *ValidationMetrics
 }
 
 // ValidatorConfig contains configuration for the code validator.
@@ -35,7 +48,7 @@ type ValidatorConfig struct {
 	EnableTypeValidation     bool          `json:"enable_type_validation"`
 	EnableMemoryCompilation  bool          `json:"enable_memory_compilation"`
 	ValidationTimeout        time.Duration `json:"validation_timeout"`
-	StrictMode              bool          `json:"strict_mode"`
+	StrictMode               bool          `json:"strict_mode"`
 }
 
 // NewCodeValidator creates a new code validator with the specified configuration.
@@ -98,7 +111,7 @@ func (v *ConcreteCodeValidator) Validate(code string) error {
 // ValidateMethod validates a method's code generation result.
 func (v *ConcreteCodeValidator) ValidateMethod(method *MethodCode) error {
 	if method == nil {
-		return fmt.Errorf("method code is nil")
+		return ErrMethodCodeNil
 	}
 
 	startTime := time.Now()
@@ -173,11 +186,8 @@ func (v *ConcreteCodeValidator) validateSemantics(code string) error {
 		return fmt.Errorf("failed to parse code for semantic validation: %w", err)
 	}
 
-	// Create package for type checking
-	_ = &ast.Package{
-		Name:  "main",
-		Files: map[string]*ast.File{"validation.go": file},
-	}
+	// Create package for type checking - ast.Package is deprecated but still functional
+	// Using file directly for type checking instead
 
 	// Perform type checking
 	config := &types.Config{
@@ -287,7 +297,7 @@ func (v *ConcreteCodeValidator) validateFormatting(code string) error {
 
 	// Compare with original (optional strict check)
 	if v.config.StrictMode && !bytes.Equal([]byte(code), formattedCode) {
-		return fmt.Errorf("code is not properly formatted")
+		return ErrCodeNotProperlyFormatted
 	}
 
 	return nil
@@ -297,7 +307,7 @@ func (v *ConcreteCodeValidator) validateFormatting(code string) error {
 func (v *ConcreteCodeValidator) validateNamingConventions(code string) error {
 	// This is a simplified check - in practice would be more comprehensive
 	if strings.Contains(code, "func _") {
-		return fmt.Errorf("functions should not start with underscore")
+		return ErrFunctionUnderscorePrefix
 	}
 
 	return nil
@@ -345,9 +355,7 @@ func (v *ConcreteCodeValidator) validateMethodSpecifics(method *MethodCode) erro
 
 	// Validate error handling
 	if method.ErrorHandling != "" {
-		if err := v.validateErrorHandling(method.ErrorHandling); err != nil {
-			return fmt.Errorf("invalid error handling: %w", err)
-		}
+		v.validateErrorHandling(method.ErrorHandling)
 	}
 
 	// Validate imports
@@ -361,7 +369,7 @@ func (v *ConcreteCodeValidator) validateMethodSpecifics(method *MethodCode) erro
 // validateMethodSignature validates the method signature syntax.
 func (v *ConcreteCodeValidator) validateMethodSignature(signature string) error {
 	if signature == "" {
-		return fmt.Errorf("empty method signature")
+		return ErrEmptyMethodSignature
 	}
 
 	// Parse signature as a function declaration
@@ -377,7 +385,7 @@ func (v *ConcreteCodeValidator) validateMethodSignature(signature string) error 
 // validateMethodBody validates the method body for common issues.
 func (v *ConcreteCodeValidator) validateMethodBody(body string) error {
 	if body == "" {
-		return fmt.Errorf("empty method body")
+		return ErrEmptyMethodBody
 	}
 
 	// Check for balanced braces
@@ -386,29 +394,23 @@ func (v *ConcreteCodeValidator) validateMethodBody(body string) error {
 	}
 
 	// Check for proper return statements
-	if err := v.validateReturnStatements(body); err != nil {
-		return err
-	}
-
-	return nil
+	return v.validateReturnStatements(body)
 }
 
 // validateErrorHandling validates error handling code.
-func (v *ConcreteCodeValidator) validateErrorHandling(errorHandling string) error {
+func (v *ConcreteCodeValidator) validateErrorHandling(errorHandling string) {
 	// Check that error handling contains proper error checks
 	if !strings.Contains(errorHandling, "err") {
 		v.metrics.WarningsFound++
 		v.logger.Warn("error handling code doesn't appear to handle errors")
 	}
-
-	return nil
 }
 
 // validateMethodImports validates method imports.
 func (v *ConcreteCodeValidator) validateMethodImports(imports []*Import) error {
 	for _, imp := range imports {
 		if imp.Path == "" {
-			return fmt.Errorf("empty import path")
+			return ErrEmptyImportPath
 		}
 
 		// Validate import path format
@@ -424,7 +426,7 @@ func (v *ConcreteCodeValidator) validateMethodImports(imports []*Import) error {
 func (v *ConcreteCodeValidator) validateImportPath(path string) error {
 	// Basic validation - could be enhanced
 	if strings.Contains(path, " ") {
-		return fmt.Errorf("import path contains spaces")
+		return ErrImportPathContainsSpaces
 	}
 
 	return nil
@@ -440,13 +442,13 @@ func (v *ConcreteCodeValidator) validateBalancedBraces(code string) error {
 		case '}':
 			braceCount--
 			if braceCount < 0 {
-				return fmt.Errorf("unbalanced braces: extra closing brace")
+				return ErrUnbalancedBracesExtra
 			}
 		}
 	}
 
 	if braceCount != 0 {
-		return fmt.Errorf("unbalanced braces: %d unclosed braces", braceCount)
+		return fmt.Errorf("%w: %d", ErrUnbalancedBracesUnclosed, braceCount)
 	}
 
 	return nil
@@ -516,7 +518,7 @@ func (v *ConcreteCodeValidator) getImporter() types.Importer {
 	return v.importer
 }
 
-// simpleImporter is a basic importer for validation purposes
+// simpleImporter is a basic importer for validation purposes.
 type simpleImporter struct{}
 
 func (si *simpleImporter) Import(path string) (*types.Package, error) {
@@ -526,18 +528,21 @@ func (si *simpleImporter) Import(path string) (*types.Package, error) {
 		pkg := types.NewPackage("fmt", "fmt")
 		// Add basic fmt functions for validation
 		scope := pkg.Scope()
-		
-		// Add Errorf function
-		sig := types.NewSignature(nil,
+
+		// Add Errorf function using updated API
+		errorType := types.Universe.Lookup("error").Type()
+		stringType := types.Typ[types.String]
+		emptyInterface := types.NewInterfaceType(nil, nil)
+		sig := types.NewSignatureType(nil, nil, nil,
 			types.NewTuple(
-				types.NewVar(0, pkg, "format", types.Typ[types.String]),
-				types.NewVar(0, pkg, "a", types.NewSlice(types.NewInterface(nil, nil))),
+				types.NewVar(0, pkg, "format", stringType),
+				types.NewVar(0, pkg, "a", types.NewSlice(emptyInterface)),
 			),
-			types.NewTuple(types.NewVar(0, pkg, "", types.Universe.Lookup("error").Type())),
+			types.NewTuple(types.NewVar(0, pkg, "", errorType)),
 			true)
 		errorf := types.NewFunc(0, pkg, "Errorf", sig)
 		scope.Insert(errorf)
-		
+
 		return pkg, nil
 	case "errors":
 		pkg := types.NewPackage("errors", "errors")

@@ -64,7 +64,8 @@ type GenericFieldMapper struct {
 	config *GenericFieldMapperConfig
 
 	// Performance tracking
-	metrics *GenericFieldMappingMetrics
+	metrics    *GenericFieldMappingMetrics
+	metricsMux sync.RWMutex // Protects metrics for thread safety
 
 	// Cache for field mapping strategies
 	strategyCache map[string]domain.ConversionStrategy
@@ -225,8 +226,6 @@ func NewGenericFieldMapper(
 	return mapper
 }
 
-
-
 // Enhanced performance structures
 type (
 	// CacheKey represents a unique key for field mapping cache
@@ -247,10 +246,10 @@ type (
 
 	// PerformanceOptimizer handles advanced performance optimizations
 	PerformanceOptimizer struct {
-		fieldMappingCache  sync.Map            // CacheKey -> *CacheEntry
-		substitutionCache  sync.Map            // string -> domain.Type
-		parallelWorkerPool *sync.Pool          // Worker pool for parallel processing
-		memoryPool         *sync.Pool          // Memory pool for allocations
+		fieldMappingCache  sync.Map   // CacheKey -> *CacheEntry
+		substitutionCache  sync.Map   // string -> domain.Type
+		parallelWorkerPool *sync.Pool // Worker pool for parallel processing
+		memoryPool         *sync.Pool // Memory pool for allocations
 		metrics            *PerformanceMetrics
 		config             *PerformanceConfig
 		mu                 sync.RWMutex
@@ -258,40 +257,40 @@ type (
 
 	// PerformanceMetrics tracks detailed performance data
 	PerformanceMetrics struct {
-		CacheHits           int64
-		CacheMisses         int64
-		CacheEvictions      int64
-		ParallelOperations  int64
-		MemoryPoolHits      int64
-		MemoryPoolMisses    int64
-		MemoryAllocated     int64
-		MemoryFreed         int64
-		ProcessingTime      int64 // nanoseconds
-		ParallelSpeedup     float64
-		MemoryEfficiency    float64
-		CacheEfficiency     float64
+		CacheHits          int64
+		CacheMisses        int64
+		CacheEvictions     int64
+		ParallelOperations int64
+		MemoryPoolHits     int64
+		MemoryPoolMisses   int64
+		MemoryAllocated    int64
+		MemoryFreed        int64
+		ProcessingTime     int64 // nanoseconds
+		ParallelSpeedup    float64
+		MemoryEfficiency   float64
+		CacheEfficiency    float64
 	}
 
 	// PerformanceConfig configures performance optimizations
 	PerformanceConfig struct {
 		EnableFieldMappingCache bool
-		MaxCacheSize           int
-		CacheTTL               time.Duration
-		EnableParallelMapping  bool
-		MaxParallelWorkers     int
-		MemoryPoolSize         int
-		EnableMemoryPooling    bool
-		PerformanceProfile     string // "speed", "memory", "balanced"
-		AutoTune               bool
+		MaxCacheSize            int
+		CacheTTL                time.Duration
+		EnableParallelMapping   bool
+		MaxParallelWorkers      int
+		MemoryPoolSize          int
+		EnableMemoryPooling     bool
+		PerformanceProfile      string // "speed", "memory", "balanced"
+		AutoTune                bool
 	}
 
 	// ParallelFieldMappingJob represents a parallel field mapping task
 	ParallelFieldMappingJob struct {
-		Context *GenericMappingContext
-		DstField *domain.Field
+		Context   *GenericMappingContext
+		DstField  *domain.Field
 		SrcFields []*domain.Field
-		Result   chan *FieldAssignment
-		Error    chan error
+		Result    chan *FieldAssignment
+		Error     chan error
 	}
 )
 
@@ -334,21 +333,21 @@ func NewPerformanceOptimizer(config *PerformanceConfig) *PerformanceOptimizer {
 func DefaultPerformanceConfig() *PerformanceConfig {
 	return &PerformanceConfig{
 		EnableFieldMappingCache: true,
-		MaxCacheSize:           10000,
-		CacheTTL:               1 * time.Hour,
-		EnableParallelMapping:  true,
-		MaxParallelWorkers:     runtime.NumCPU(),
-		MemoryPoolSize:         1000,
-		EnableMemoryPooling:    true,
-		PerformanceProfile:     "balanced",
-		AutoTune:               true,
+		MaxCacheSize:            10000,
+		CacheTTL:                1 * time.Hour,
+		EnableParallelMapping:   true,
+		MaxParallelWorkers:      runtime.NumCPU(),
+		MemoryPoolSize:          1000,
+		EnableMemoryPooling:     true,
+		PerformanceProfile:      "balanced",
+		AutoTune:                true,
 	}
 }
 
 // generateCacheKey creates a unique cache key for field mapping
-func (po *PerformanceOptimizer) generateCacheKey(srcType, dstType domain.Type, 
+func (po *PerformanceOptimizer) generateCacheKey(srcType, dstType domain.Type,
 	substitutions map[string]domain.Type, options *FieldMappingOptions) CacheKey {
-	
+
 	// Create deterministic string representations
 	var substitutionsStr strings.Builder
 	if len(substitutions) > 0 {
@@ -357,7 +356,7 @@ func (po *PerformanceOptimizer) generateCacheKey(srcType, dstType domain.Type,
 			keys = append(keys, k)
 		}
 		sort.Strings(keys) // Ensure deterministic ordering
-		
+
 		for _, k := range keys {
 			substitutionsStr.WriteString(k)
 			substitutionsStr.WriteString(":")
@@ -389,7 +388,7 @@ func (po *PerformanceOptimizer) getCachedFieldMapping(key CacheKey) (*FieldMappi
 
 	if entry, ok := po.fieldMappingCache.Load(key); ok {
 		cacheEntry := entry.(*CacheEntry)
-		
+
 		// Check TTL
 		if time.Since(cacheEntry.Timestamp) > po.config.CacheTTL {
 			po.fieldMappingCache.Delete(key)
@@ -400,7 +399,7 @@ func (po *PerformanceOptimizer) getCachedFieldMapping(key CacheKey) (*FieldMappi
 		// Update hit count and metrics
 		atomic.AddInt64(&cacheEntry.HitCount, 1)
 		atomic.AddInt64(&po.metrics.CacheHits, 1)
-		
+
 		return cacheEntry.Result, true
 	}
 
@@ -485,14 +484,14 @@ func (po *PerformanceOptimizer) processFieldMappingsParallel(
 	srcFields []*domain.Field,
 	context *GenericMappingContext,
 ) ([]*FieldAssignment, error) {
-	
+
 	if !po.config.EnableParallelMapping || len(dstFields) < 4 {
 		// Fall back to sequential processing for small sets
 		return po.processFieldMappingsSequential(gfm, dstFields, srcFields, context)
 	}
 
 	atomic.AddInt64(&po.metrics.ParallelOperations, 1)
-	
+
 	// Calculate optimal number of workers
 	numWorkers := po.config.MaxParallelWorkers
 	if len(dstFields) < numWorkers {
@@ -502,7 +501,7 @@ func (po *PerformanceOptimizer) processFieldMappingsParallel(
 	// Create jobs channel and results collection
 	jobs := make(chan *ParallelFieldMappingJob, len(dstFields))
 	var wg sync.WaitGroup
-	
+
 	// Get assignment slice from memory pool
 	var assignments []*FieldAssignment
 	if po.config.EnableMemoryPooling {
@@ -532,7 +531,7 @@ func (po *PerformanceOptimizer) processFieldMappingsParallel(
 				} else {
 					job.Result <- assignment
 				}
-				
+
 				// Return job to pool
 				if po.parallelWorkerPool != nil {
 					po.parallelWorkerPool.Put(job)
@@ -553,13 +552,13 @@ func (po *PerformanceOptimizer) processFieldMappingsParallel(
 				Error:  make(chan error, 1),
 			}
 		}
-		
+
 		job.Context = context
 		job.DstField = dstField
 		job.SrcFields = srcFields
-		
+
 		jobs <- job
-		
+
 		// Collect result immediately in goroutine to avoid blocking
 		go func(index int, j *ParallelFieldMappingJob) {
 			select {
@@ -601,9 +600,9 @@ func (po *PerformanceOptimizer) processFieldMappingsSequential(
 	srcFields []*domain.Field,
 	context *GenericMappingContext,
 ) ([]*FieldAssignment, error) {
-	
+
 	assignments := make([]*FieldAssignment, 0, len(dstFields))
-	
+
 	for _, dstField := range dstFields {
 		assignment, err := gfm.generateFieldAssignment(dstField, srcFields, context)
 		if err != nil {
@@ -613,7 +612,7 @@ func (po *PerformanceOptimizer) processFieldMappingsSequential(
 			assignments = append(assignments, assignment)
 		}
 	}
-	
+
 	return assignments, nil
 }
 
@@ -641,7 +640,7 @@ func (po *PerformanceOptimizer) calculateParallelSpeedup() float64 {
 	if parallelOps == 0 {
 		return 1.0
 	}
-	
+
 	// Estimate based on number of workers and typical efficiency
 	workers := float64(po.config.MaxParallelWorkers)
 	efficiency := 0.8 // Typical parallel efficiency
@@ -653,11 +652,11 @@ func (po *PerformanceOptimizer) calculateMemoryEfficiency() float64 {
 	hits := atomic.LoadInt64(&po.metrics.MemoryPoolHits)
 	misses := atomic.LoadInt64(&po.metrics.MemoryPoolMisses)
 	total := hits + misses
-	
+
 	if total == 0 {
 		return 1.0
 	}
-	
+
 	return float64(hits) / float64(total)
 }
 
@@ -666,11 +665,11 @@ func (po *PerformanceOptimizer) calculateCacheEfficiency() float64 {
 	hits := atomic.LoadInt64(&po.metrics.CacheHits)
 	misses := atomic.LoadInt64(&po.metrics.CacheMisses)
 	total := hits + misses
-	
+
 	if total == 0 {
 		return 0.0
 	}
-	
+
 	return float64(hits) / float64(total)
 }
 
@@ -699,7 +698,9 @@ func (gfm *GenericFieldMapper) MapGenericFields(
 	}
 
 	startTime := time.Now()
+	gfm.metricsMux.Lock()
 	gfm.metrics.TotalMappings++
+	gfm.metricsMux.Unlock()
 
 	gfm.logger.Debug("starting generic field mapping",
 		zap.String("source_type", srcType.String()),
@@ -719,13 +720,17 @@ func (gfm *GenericFieldMapper) MapGenericFields(
 	// Perform type substitutions
 	substitutedSrcType, err := gfm.substituteTypeIfNeeded(srcType, typeSubstitutions)
 	if err != nil {
+		gfm.metricsMux.Lock()
 		gfm.metrics.FailedMappings++
+		gfm.metricsMux.Unlock()
 		return nil, fmt.Errorf("%w: source type substitution: %s", ErrTypeSubstitutionInMapping, err.Error())
 	}
 
 	substitutedDstType, err := gfm.substituteTypeIfNeeded(dstType, typeSubstitutions)
 	if err != nil {
+		gfm.metricsMux.Lock()
 		gfm.metrics.FailedMappings++
+		gfm.metricsMux.Unlock()
 		return nil, fmt.Errorf("%w: destination type substitution: %s", ErrTypeSubstitutionInMapping, err.Error())
 	}
 
@@ -736,15 +741,19 @@ func (gfm *GenericFieldMapper) MapGenericFields(
 	// Generate field mappings
 	fieldMapping, err := gfm.generateFieldMapping(context)
 	if err != nil {
+		gfm.metricsMux.Lock()
 		gfm.metrics.FailedMappings++
+		gfm.metricsMux.Unlock()
 		return nil, fmt.Errorf("%w: %s", ErrGenericFieldMappingFailed, err.Error())
 	}
 
 	// Update metrics
 	mappingTime := time.Since(startTime)
+	gfm.metricsMux.Lock()
 	gfm.metrics.SuccessfulMappings++
 	gfm.metrics.TotalMappingTime += mappingTime
 	gfm.metrics.AverageMappingTime = gfm.metrics.TotalMappingTime / time.Duration(gfm.metrics.TotalMappings)
+	gfm.metricsMux.Unlock()
 
 	gfm.logger.Info("generic field mapping completed",
 		zap.String("source_type", srcType.String()),
@@ -760,7 +769,7 @@ func (gfm *GenericFieldMapper) MapGenericFields(
 func (gfm *GenericFieldMapper) MapFields(sourceType, destType domain.Type, annotations map[string]string) ([]*GenericFieldMapping, error) {
 	// Convert annotations to FieldMappingOptions
 	options := DefaultFieldMappingOptions()
-	
+
 	// Parse annotations into custom mappings and field-specific annotations
 	fieldAnnotations := make(map[string]*Annotation)
 	for key, value := range annotations {
@@ -788,7 +797,7 @@ func (gfm *GenericFieldMapper) MapFields(sourceType, destType domain.Type, annot
 			options.CustomMappings[key] = value
 		}
 	}
-	
+
 	options.Annotations = fieldAnnotations
 
 	// Check cache first using performance optimizer
@@ -817,7 +826,7 @@ func (gfm *GenericFieldMapper) convertFieldMappingToGenericMappings(mapping *Fie
 	}
 
 	genericMappings := make([]*GenericFieldMapping, 0, len(mapping.Assignments))
-	
+
 	for _, assignment := range mapping.Assignments {
 		if assignment == nil {
 			continue
@@ -871,7 +880,7 @@ func (gfm *GenericFieldMapper) ValidateMapping(mapping *GenericFieldMapping) err
 
 	// Validate type compatibility
 	if !gfm.typesCompatible(mapping.SourceType, mapping.DestType, nil) {
-		return fmt.Errorf("types are not compatible: %s -> %s", 
+		return fmt.Errorf("types are not compatible: %s -> %s",
 			mapping.SourceType.String(), mapping.DestType.String())
 	}
 
@@ -887,7 +896,9 @@ func (gfm *GenericFieldMapper) substituteTypeIfNeeded(
 		return typ, nil
 	}
 
+	gfm.metricsMux.Lock()
 	gfm.metrics.TypeSubstitutions++
+	gfm.metricsMux.Unlock()
 
 	// Enhanced: Use recursive resolver for deeply nested generic types
 	if gfm.isDeeplyNestedGeneric(typ) {
@@ -944,7 +955,7 @@ func (gfm *GenericFieldMapper) generateFieldMapping(context *GenericMappingConte
 		// Fall back to sequential processing if parallel fails
 		gfm.logger.Warn("parallel processing failed, falling back to sequential",
 			zap.Error(err))
-		
+
 		assignments = make([]*FieldAssignment, 0)
 		for _, dstField := range dstFields {
 			assignment, assignErr := gfm.generateFieldAssignment(dstField, srcFields, context)
@@ -967,7 +978,9 @@ func (gfm *GenericFieldMapper) generateFieldMapping(context *GenericMappingConte
 	// Apply optimizations if enabled
 	if gfm.config.EnableOptimization {
 		assignments = gfm.optimizeAssignments(assignments, context)
+		gfm.metricsMux.Lock()
 		gfm.metrics.OptimizationsApplied++
+		gfm.metricsMux.Unlock()
 	}
 
 	return &FieldMapping{
@@ -1598,11 +1611,18 @@ func (gfm *GenericFieldMapper) optimizeAssignments(
 
 // GetMetrics returns the current mapping metrics.
 func (gfm *GenericFieldMapper) GetMetrics() *GenericFieldMappingMetrics {
-	return gfm.metrics
+	gfm.metricsMux.RLock()
+	defer gfm.metricsMux.RUnlock()
+
+	// Return a copy to prevent race conditions on the returned value
+	metricsCopy := *gfm.metrics
+	return &metricsCopy
 }
 
 // ClearMetrics resets all metrics.
 func (gfm *GenericFieldMapper) ClearMetrics() {
+	gfm.metricsMux.Lock()
+	defer gfm.metricsMux.Unlock()
 	gfm.metrics = NewGenericFieldMappingMetrics()
 }
 
@@ -1612,7 +1632,7 @@ func (gfm *GenericFieldMapper) ClearMetrics() {
 func (gfm *GenericFieldMapper) GetEnhancedMetrics() map[string]interface{} {
 	baseMetrics := gfm.GetMetrics()
 	perfMetrics := gfm.performanceOptimizer.GetMetrics()
-	
+
 	return map[string]interface{}{
 		"basic_metrics": map[string]interface{}{
 			"total_mappings":        baseMetrics.TotalMappings,
@@ -1624,26 +1644,26 @@ func (gfm *GenericFieldMapper) GetEnhancedMetrics() map[string]interface{} {
 			"total_mapping_time":    baseMetrics.TotalMappingTime.String(),
 		},
 		"performance_metrics": map[string]interface{}{
-			"cache_hits":           perfMetrics.CacheHits,
-			"cache_misses":         perfMetrics.CacheMisses,
-			"cache_evictions":      perfMetrics.CacheEvictions,
-			"cache_efficiency":     fmt.Sprintf("%.2f%%", perfMetrics.CacheEfficiency*100),
-			"parallel_operations":  perfMetrics.ParallelOperations,
-			"parallel_speedup":     fmt.Sprintf("%.2fx", perfMetrics.ParallelSpeedup),
-			"memory_pool_hits":     perfMetrics.MemoryPoolHits,
-			"memory_pool_misses":   perfMetrics.MemoryPoolMisses,
-			"memory_efficiency":    fmt.Sprintf("%.2f%%", perfMetrics.MemoryEfficiency*100),
-			"memory_allocated":     fmt.Sprintf("%d bytes", perfMetrics.MemoryAllocated),
-			"memory_freed":         fmt.Sprintf("%d bytes", perfMetrics.MemoryFreed),
-			"processing_time":      fmt.Sprintf("%d ns", perfMetrics.ProcessingTime),
+			"cache_hits":          perfMetrics.CacheHits,
+			"cache_misses":        perfMetrics.CacheMisses,
+			"cache_evictions":     perfMetrics.CacheEvictions,
+			"cache_efficiency":    fmt.Sprintf("%.2f%%", perfMetrics.CacheEfficiency*100),
+			"parallel_operations": perfMetrics.ParallelOperations,
+			"parallel_speedup":    fmt.Sprintf("%.2fx", perfMetrics.ParallelSpeedup),
+			"memory_pool_hits":    perfMetrics.MemoryPoolHits,
+			"memory_pool_misses":  perfMetrics.MemoryPoolMisses,
+			"memory_efficiency":   fmt.Sprintf("%.2f%%", perfMetrics.MemoryEfficiency*100),
+			"memory_allocated":    fmt.Sprintf("%d bytes", perfMetrics.MemoryAllocated),
+			"memory_freed":        fmt.Sprintf("%d bytes", perfMetrics.MemoryFreed),
+			"processing_time":     fmt.Sprintf("%d ns", perfMetrics.ProcessingTime),
 		},
 		"configuration": map[string]interface{}{
-			"cache_enabled":         gfm.performanceOptimizer.config.EnableFieldMappingCache,
-			"parallel_enabled":      gfm.performanceOptimizer.config.EnableParallelMapping,
-			"memory_pooling":        gfm.performanceOptimizer.config.EnableMemoryPooling,
-			"max_cache_size":        gfm.performanceOptimizer.config.MaxCacheSize,
-			"max_parallel_workers":  gfm.performanceOptimizer.config.MaxParallelWorkers,
-			"performance_profile":   gfm.performanceOptimizer.config.PerformanceProfile,
+			"cache_enabled":        gfm.performanceOptimizer.config.EnableFieldMappingCache,
+			"parallel_enabled":     gfm.performanceOptimizer.config.EnableParallelMapping,
+			"memory_pooling":       gfm.performanceOptimizer.config.EnableMemoryPooling,
+			"max_cache_size":       gfm.performanceOptimizer.config.MaxCacheSize,
+			"max_parallel_workers": gfm.performanceOptimizer.config.MaxParallelWorkers,
+			"performance_profile":  gfm.performanceOptimizer.config.PerformanceProfile,
 		},
 	}
 }
@@ -1652,7 +1672,7 @@ func (gfm *GenericFieldMapper) GetEnhancedMetrics() map[string]interface{} {
 func (gfm *GenericFieldMapper) OptimizeMemoryUsage() {
 	// Clear old cache entries
 	gfm.performanceOptimizer.maintainCacheSize()
-	
+
 	// Reset memory pools to release unused capacity
 	if gfm.performanceOptimizer.config.EnableMemoryPooling && gfm.performanceOptimizer.memoryPool != nil {
 		// Create a new memory pool to release old allocations
@@ -1662,10 +1682,10 @@ func (gfm *GenericFieldMapper) OptimizeMemoryUsage() {
 			},
 		}
 	}
-	
+
 	// Force garbage collection hint
 	runtime.GC()
-	
+
 	gfm.logger.Info("memory optimization completed",
 		zap.String("optimization_type", "manual_cleanup"))
 }
@@ -1675,9 +1695,9 @@ func (gfm *GenericFieldMapper) ConfigurePerformance(config *PerformanceConfig) {
 	if config == nil {
 		return
 	}
-	
+
 	gfm.performanceOptimizer.config = config
-	
+
 	// Reinitialize pools if needed
 	if config.EnableParallelMapping && gfm.performanceOptimizer.parallelWorkerPool == nil {
 		gfm.performanceOptimizer.parallelWorkerPool = &sync.Pool{
@@ -1689,7 +1709,7 @@ func (gfm *GenericFieldMapper) ConfigurePerformance(config *PerformanceConfig) {
 			},
 		}
 	}
-	
+
 	if config.EnableMemoryPooling && gfm.performanceOptimizer.memoryPool == nil {
 		gfm.performanceOptimizer.memoryPool = &sync.Pool{
 			New: func() interface{} {
@@ -1697,7 +1717,7 @@ func (gfm *GenericFieldMapper) ConfigurePerformance(config *PerformanceConfig) {
 			},
 		}
 	}
-	
+
 	gfm.logger.Info("performance configuration updated",
 		zap.Bool("cache_enabled", config.EnableFieldMappingCache),
 		zap.Bool("parallel_enabled", config.EnableParallelMapping),
@@ -1718,31 +1738,31 @@ func (gfm *GenericFieldMapper) ResetPerformanceMetrics() {
 // OptimizeForProfile configures performance settings for specific use cases
 func (gfm *GenericFieldMapper) OptimizeForProfile(profile string) {
 	var config *PerformanceConfig
-	
+
 	switch profile {
 	case "speed":
 		config = &PerformanceConfig{
 			EnableFieldMappingCache: true,
-			MaxCacheSize:           20000,
-			CacheTTL:               2 * time.Hour,
-			EnableParallelMapping:  true,
-			MaxParallelWorkers:     runtime.NumCPU() * 2,
-			MemoryPoolSize:         2000,
-			EnableMemoryPooling:    true,
-			PerformanceProfile:     "speed",
-			AutoTune:               false,
+			MaxCacheSize:            20000,
+			CacheTTL:                2 * time.Hour,
+			EnableParallelMapping:   true,
+			MaxParallelWorkers:      runtime.NumCPU() * 2,
+			MemoryPoolSize:          2000,
+			EnableMemoryPooling:     true,
+			PerformanceProfile:      "speed",
+			AutoTune:                false,
 		}
 	case "memory":
 		config = &PerformanceConfig{
 			EnableFieldMappingCache: true,
-			MaxCacheSize:           1000,
-			CacheTTL:               30 * time.Minute,
-			EnableParallelMapping:  false,
-			MaxParallelWorkers:     1,
-			MemoryPoolSize:         100,
-			EnableMemoryPooling:    true,
-			PerformanceProfile:     "memory",
-			AutoTune:               false,
+			MaxCacheSize:            1000,
+			CacheTTL:                30 * time.Minute,
+			EnableParallelMapping:   false,
+			MaxParallelWorkers:      1,
+			MemoryPoolSize:          100,
+			EnableMemoryPooling:     true,
+			PerformanceProfile:      "memory",
+			AutoTune:                false,
 		}
 	case "balanced":
 		config = DefaultPerformanceConfig()
@@ -1750,7 +1770,7 @@ func (gfm *GenericFieldMapper) OptimizeForProfile(profile string) {
 		gfm.logger.Warn("unknown performance profile, using balanced", zap.String("profile", profile))
 		config = DefaultPerformanceConfig()
 	}
-	
+
 	gfm.ConfigurePerformance(config)
 }
 
