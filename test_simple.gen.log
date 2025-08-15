@@ -1,0 +1,3 @@
+2025/08/13 01:19:28 /Users/tohru/Documents/src/go/src/github.com/reedom/convergen/test_simple.go:13:6: target interface found: Convergen
+2025/08/13 01:19:28 /Users/tohru/Documents/src/go/src/github.com/reedom/convergen/test_simple.go:14:2: lookup assignment for dst.ID = src.*
+2025/08/13 01:19:28 /Users/tohru/Documents/src/go/src/github.com/reedom/convergen/test_simple.go:14:2: lookup assignment for dst.Name = src.*

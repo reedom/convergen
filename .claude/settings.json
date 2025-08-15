@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(git log:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(go build:*)",
+      "Bash(go doc:*)",
+      "Bash(go generate:*)",
+      "Bash(go get:*)",
+      "Bash(go fmt:*)",
+      "Bash(go list:*)",
+      "Bash(go mod:*)",
+      "Bash(go run:*)",
+      "Bash(go test:*)",
+      "Bash(gofmt:*)",
+      "Bash(goimports:*)",
+      "Bash(golangci-lint:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(ls:*)",
+      "Bash(sed:*)",
+      "Bash(source:*)",
+      "Bash(tail:*)",
+      "Bash(tree:*)",
+      "Bash(wc:*)"
+    ]
+  }
+}

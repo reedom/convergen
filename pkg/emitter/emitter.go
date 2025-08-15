@@ -44,9 +44,12 @@ type Config struct {
 	GenerationTimeout    time.Duration `json:"generation_timeout"`
 
 	// Validation settings
-	EnableSyntaxValidation   bool `json:"enable_syntax_validation"`
-	EnableSemanticValidation bool `json:"enable_semantic_validation"`
-	StrictMode               bool `json:"strict_mode"`
+	EnableSyntaxValidation   bool          `json:"enable_syntax_validation"`
+	EnableSemanticValidation bool          `json:"enable_semantic_validation"`
+	EnableTypeValidation     bool          `json:"enable_type_validation"`
+	EnableMemoryCompilation  bool          `json:"enable_memory_compilation"`
+	ValidationTimeout        time.Duration `json:"validation_timeout"`
+	StrictMode               bool          `json:"strict_mode"`
 
 	// Metrics and monitoring
 	EnableMetrics   bool `json:"enable_metrics"`
@@ -72,6 +75,9 @@ func DefaultConfig() *Config {
 		GenerationTimeout:        30 * time.Second,
 		EnableSyntaxValidation:   true,
 		EnableSemanticValidation: false,
+		EnableTypeValidation:     true,
+		EnableMemoryCompilation:  false, // More expensive, opt-in
+		ValidationTimeout:        10 * time.Second,
 		StrictMode:               false,
 		EnableMetrics:            true,
 		EnableProfiling:          false,

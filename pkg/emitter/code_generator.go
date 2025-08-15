@@ -98,6 +98,7 @@ func NewCodeGenerator(config *Config, logger *zap.Logger, metrics *Metrics) Code
 		strategies:  make(map[string]GenerationStrategy),
 		metrics:     NewCodeGenMetrics(),
 		outputStrat: NewOutputStrategy(config, logger),
+		validator:   NewCodeValidator(config, logger),
 	}
 
 	// Register default generation strategies
