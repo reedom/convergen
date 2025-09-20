@@ -3,7 +3,7 @@ Convergen
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/reedom/convergen.svg)](https://pkg.go.dev/github.com/reedom/convergen) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/reedom/convergen)](https://goreportcard.com/report/github.com/reedom/convergen) 
-![Coverage](https://img.shields.io/badge/Coverage-67.4%25-yellow)
+![Coverage](https://img.shields.io/badge/Coverage-67.3%25-yellow)
 
 Convergen is a code generator that creates functions for type-to-type copy.
 It generates functions that copy field to field between two types.
@@ -49,7 +49,7 @@ import (
     "github.com/sample/myapp/storage"
 )
 
-//go:generate go run github.com/reedom/convergen@v8.0.4
+//go:generate go run github.com/reedom/convergen@v8.0.5
 type Convergen interface {
     // :typecast
     // :stringer

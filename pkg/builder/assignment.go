@@ -351,7 +351,7 @@ func (b *assignmentBuilder) castNode(lhsType types.Type, rhs bmodel.Node) (c bmo
 		return b.castNode(lhsType, bmodel.NewStringer(rhs))
 	}
 
-	if b.opts.Typecast && types.ConvertibleTo(rhs.ExprType(), lhsType) {
+	if b.opts.Typecast && types.ConvertibleTo(rhs.ExprType(), lhsType) && util.IsBasicType(lhsType.Underlying()) {
 		c, ok = bmodel.NewTypecast(b.pkg.Types.Scope(), b.imports, lhsType, rhs)
 		if !ok {
 			logger.Warnf("%v: typecast for %v is not implemented(yet) for %v",
