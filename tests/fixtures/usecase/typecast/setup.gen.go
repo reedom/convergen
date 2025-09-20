@@ -18,6 +18,7 @@ func DomainToModel(src *domain.User) (dst *model.User) {
 	dst.ID = int64(src.ID)
 	dst.Name = src.Name
 	dst.Status = string(src.Status)
+	dst.Origin.Region = src.Origin.Region
 
 	return
 }
@@ -32,6 +33,7 @@ func ModelToDomain(src *model.User) (dst *domain.User) {
 	dst.ID = int(src.ID)
 	dst.Name = src.Name
 	dst.Status = enums.Status(src.Status)
+	dst.Origin.Region = src.Origin.Region
 
 	return
 }
