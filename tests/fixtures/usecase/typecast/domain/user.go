@@ -8,4 +8,9 @@ type User struct {
 	ID     int
 	Name   string
 	Status enums.Status
+	Origin Origin
+}
+
+type Origin struct {
+	Region string
 }
